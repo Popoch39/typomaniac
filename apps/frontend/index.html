@@ -6,17 +6,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>
     <script>
-      // Apply the theme before first paint to avoid a flash. Mirrors src/stores/theme-store.ts:
-      // the persisted choice wins, otherwise the OS preference.
+      // Apply the theme before first paint to avoid a flash. Mirrors src/components/theme-provider.tsx:
+      // "light" / "dark" are applied as-is, "system" or nothing stored follows the OS preference.
       (() => {
         let theme;
         try {
-          theme = JSON.parse(localStorage.getItem("typomaniac-theme") ?? "null")?.state?.theme;
+          theme = localStorage.getItem("vite-ui-theme");
         } catch {}
         if (theme !== "light" && theme !== "dark") {
           theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
         }
-        document.documentElement.classList.toggle("dark", theme === "dark");
+        document.documentElement.classList.add(theme);
       })();
     </script>
   </head>

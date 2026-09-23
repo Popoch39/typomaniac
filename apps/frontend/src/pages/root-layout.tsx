@@ -2,7 +2,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Link, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ModeToggle } from "@/components/mode-toggle";
 import { Button } from "@/components/ui/button";
 
 // TanStack Link sets data-status="active" on the current route.
@@ -29,7 +29,7 @@ export const RootLayout = () => (
           Santé de l'API
         </Button>
       </nav>
-      <ThemeToggle />
+      <ModeToggle />
     </header>
     <main>
       <Outlet />
