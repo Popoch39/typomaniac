@@ -1,0 +1,23 @@
+{
+  "name": "api",
+  "version": "1.0.50",
+  "module": "src/index.js",
+  "scripts": {
+    "test": "bun test",
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build --compile --minify-whitespace --minify-syntax --outfile dist/server src/index.ts",
+    "check-types": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun run src/database/migrate.ts"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "0.34.52",
+    "drizzle-orm": "^0.45.3",
+    "drizzle-typebox": "^0.3.3",
+    "elysia": "latest"
+  },
+  "devDependencies": {
+    "bun-types": "latest",
+    "drizzle-kit": "^0.31.11"
+  }
+}

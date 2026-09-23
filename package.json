@@ -1,0 +1,37 @@
+{
+  "name": "typomaniac",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "oxlint --max-warnings 0",
+    "format": "oxfmt",
+    "check-types": "turbo run check-types",
+    "lint:fix": "oxlint --fix",
+    "format:check": "oxfmt --check",
+    "check": "bun run format:check && bun run lint && bun run check-types",
+    "prepare": "lefthook install"
+  },
+  "devDependencies": {
+    "@oxlint/plugins": "1.85.0",
+    "lefthook": "^2.1.14",
+    "oxfmt": "0.70.0",
+    "oxlint": "1.85.0",
+    "turbo": "^2.11.3",
+    "typescript": "7.0.2"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "bun",
+      "version": "1.4.2"
+    }
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
