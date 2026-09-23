@@ -10,9 +10,17 @@ import {
 
 export type Result = {
   wpm: number;
+  // Every char Keystroke, right or wrong, erased or not.
+  raw: number;
   // Percentage of right character Keystrokes, from 0 to 100.
   accuracy: number;
+  // How steady the raw stays from one second to the next, from 0 to 100.
+  consistency: number;
+  chars: CharCounts;
 };
+
+// Letters of the final state, spaces left out. A missed letter was skipped in a validated word.
+export type CharCounts = { correct: number; incorrect: number; extra: number; missed: number };
 
 type Verdict = "correct" | "incorrect" | "ignored";
 
@@ -58,9 +66,63 @@ const correctChars = (state: RunState) => {
   return validated + inProgress;
 };
 
+// Counts the letters of the validated words and of the current one; the words past it are not
+// typed yet. The current word is right after the validated ones, or the last one once they all are.
+const countChars = (state: RunState): CharCounts => {
+  const chars: CharCounts = { correct: 0, incorrect: 0, extra: 0, missed: 0 };
+
+  for (const word of state.words.slice(0, state.validatedWords + 1)) {
+    const validated = word.index < state.validatedWords;
+
+    for (const letter of word.letters) {
+      if (letter.status !== "pending") {
+        chars[letter.status]++;
+      } else if (validated) {
+        chars.missed++;
+      }
+    }
+  }
+
+  return chars;
+};
+
 // A `time` Run lasts its duration, whenever its end is seen: the caller's clock can only be late.
 const duration = (config: RunConfig, endedAt: number) =>
   config.mode === "time" ? config.seconds * 1000 : endedAt;
+
+// The raw of each second of the Run. The last second can be shorter: its raw is taken over its own
+// length. A Keystroke stamped at the very end of the Run belongs to the last second.
+const rawPerSecond = (typedAt: readonly number[], durationMs: number) => {
+  const seconds = Math.ceil(durationMs / 1000);
+  const counts = Array.from({ length: seconds }, () => 0);
+
+  for (const at of typedAt) {
+    const second = Math.min(Math.floor(at / 1000), seconds - 1);
+
+    counts[second] = (counts[second] ?? 0) + 1;
+  }
+
+  return counts.map((count, second) => {
+    const minutes = Math.min(1000, durationMs - second * 1000) / 60_000;
+
+    return count / 5 / minutes;
+  });
+};
+
+// Monkeytype's formula, from the coefficient of variation `c` of the raws: 100 when the raw stays
+// the same every second, lower as it varies. Zero when nothing was typed.
+const consistency = (raws: readonly number[]) => {
+  const mean = raws.reduce((sum, raw) => sum + raw, 0) / raws.length;
+
+  if (raws.length === 0 || mean === 0) {
+    return 0;
+  }
+
+  const variance = raws.reduce((sum, raw) => sum + (raw - mean) ** 2, 0) / raws.length;
+  const c = Math.sqrt(variance) / mean;
+
+  return 100 * (1 - Math.tanh(c + c ** 3 / 3 + c ** 5 / 5));
+};
 
 // Replays the log from the start: a Result never trusts anything but the Keystrokes (ADR 0002).
 export const computeResult = (
@@ -69,14 +131,15 @@ export const computeResult = (
   endedAt: number,
 ): Result => {
   let state = createRun(config);
-  let typedChars = 0;
+  // When each char Keystroke that counts was typed.
+  const typedAt: number[] = [];
   let rightChars = 0;
 
   for (const keystroke of keystrokes) {
     const verdict = judge(state, keystroke);
 
     if (verdict !== "ignored") {
-      typedChars++;
+      typedAt.push(keystroke.at);
     }
 
     if (verdict === "correct") {
@@ -86,10 +149,15 @@ export const computeResult = (
     state = applyKeystroke(state, keystroke);
   }
 
-  const minutes = duration(config, endedAt) / 60_000;
+  const durationMs = duration(config, endedAt);
+  const minutes = durationMs / 60_000;
+  const typedChars = typedAt.length;
 
   return {
     wpm: minutes === 0 ? 0 : correctChars(state) / 5 / minutes,
+    raw: minutes === 0 ? 0 : typedChars / 5 / minutes,
     accuracy: typedChars === 0 ? 0 : (rightChars / typedChars) * 100,
+    consistency: consistency(rawPerSecond(typedAt, durationMs)),
+    chars: countChars(state),
   };
 };

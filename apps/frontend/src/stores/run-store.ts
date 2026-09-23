@@ -17,7 +17,13 @@ type RunStore = {
   // Clock reading of the first Keystroke: every `at` is relative to it.
   startedAt: number | null;
   result: Result | null;
+  // Counts the Runs started: a new one remounts the typing area, fresh state and focus included.
+  runNumber: number;
   start: (config: RunConfig) => void;
+  // Suivant: a new Run with a new Seed, the rest of the config kept.
+  next: () => void;
+  // Rejouer: the same Seed, so exactly the same Text.
+  replay: () => void;
   press: (key: Key, now: number) => void;
   // Ends a `time` Run once its time is up, even when no key is pressed. Called on every frame.
   tick: (now: number) => void;
@@ -40,6 +46,11 @@ const freshRun = (config: RunConfig) => ({
   result: null,
 });
 
+const newRun = (state: RunStore, config: RunConfig) => ({
+  ...freshRun(config),
+  runNumber: state.runNumber + 1,
+});
+
 // The Result once the Run is finished, `at` milliseconds after its start.
 const resultAt = (run: RunState, keystrokes: readonly Keystroke[], at: number) =>
   isFinished(run, at) ? computeResult(run.config, keystrokes, at) : null;
@@ -47,7 +58,10 @@ const resultAt = (run: RunState, keystrokes: readonly Keystroke[], at: number) =
 // Holds the Run in progress and hands every rule to typing-engine (ADR 0002).
 export const useRunStore = create<RunStore>()((set) => ({
   ...freshRun(defaultConfig()),
-  start: (config) => set(freshRun(config)),
+  runNumber: 0,
+  start: (config) => set((state) => newRun(state, config)),
+  next: () => set((state) => newRun(state, { ...state.run.config, seed: randomSeed() })),
+  replay: () => set((state) => newRun(state, state.run.config)),
   press: (key, now) =>
     set((state) => {
       if (state.result !== null) {

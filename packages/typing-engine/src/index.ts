@@ -11,6 +11,6 @@ export {
   type RunWord,
 } from "./run";
 
-export { computeResult, type Result } from "./result";
+export { computeResult, type CharCounts, type Result } from "./result";
 
 export { generateText, wordLists, type Language } from "./text";

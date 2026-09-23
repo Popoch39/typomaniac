@@ -30,6 +30,8 @@ const renderPage = () => {
 
   render(
     <ClockContext value={() => now}>
+      {/* Stands for the header: its buttons come before the Run in the tab order. */}
+      <button type="button">en-tête</button>
       <HomePage />
     </ClockContext>,
   );
@@ -64,6 +66,10 @@ const stat = (term: string) => screen.getByText(term).nextElementSibling?.textCo
 const resumePrompt = () => screen.queryByRole("button", { name: "clique ou tape pour reprendre" });
 
 const typingInput = () => screen.getByLabelText("Zone de frappe");
+
+// Whether the page shows the Text of Seed 42, every word of it.
+const showsSeed42Text = () =>
+  text.split(" ").every((word) => screen.queryByText(isWord(word)) !== null);
 
 describe("HomePage", () => {
   test("shows the Text to type and the word counter", () => {
@@ -150,10 +156,62 @@ describe("HomePage", () => {
     advance(60_000);
     await user.keyboard(text.slice(-1));
 
-    // 49 letters and 9 spaces, all right, in one minute: 58 / 5 = 11.6 wpm.
+    // 49 letters and 9 spaces, all right, in one minute: 58 / 5 = 11.6 wpm, and as much raw.
     expect(stat("wpm")).toBe("12");
+    expect(stat("raw")).toBe("12");
     expect(stat("précision")).toBe("100 %");
+    // Right, wrong, extra and missed letters.
+    expect(stat("caractères")).toBe("49/0/0/0");
     expect(screen.queryByText(isWord("small"))).not.toBeInTheDocument();
+  });
+});
+
+describe("HomePage between Runs", () => {
+  test("Rejouer starts the same Text again", async () => {
+    const { user } = renderRun();
+
+    await user.keyboard(text);
+    await user.click(screen.getByRole("button", { name: "Rejouer" }));
+
+    expect(showsSeed42Text()).toBe(true);
+    expect(screen.getByText("0/10")).toBeInTheDocument();
+    expect(typingInput()).toHaveFocus();
+  });
+
+  test("Suivant starts another Text, in the same Mode", async () => {
+    const { user } = renderRun();
+
+    await user.keyboard(text);
+    await user.click(screen.getByRole("button", { name: "Suivant" }));
+
+    expect(showsSeed42Text()).toBe(false);
+    expect(screen.getByText("0/10")).toBeInTheDocument();
+    expect(typingInput()).toHaveFocus();
+  });
+
+  test("Tab then Enter starts the next Run from the Result", async () => {
+    const { user } = renderRun();
+
+    await user.keyboard(text);
+    await user.tab();
+    await user.keyboard("{Enter}");
+
+    expect(showsSeed42Text()).toBe(false);
+    expect(screen.getByText("0/10")).toBeInTheDocument();
+    expect(typingInput()).toHaveFocus();
+  });
+
+  test("Tab then Enter starts the next Run during a Run", async () => {
+    const { user } = renderRun();
+
+    await user.keyboard("small hel");
+    await user.tab();
+    await user.keyboard("{Enter}");
+
+    expect(showsSeed42Text()).toBe(false);
+    expect(screen.getByText("0/10")).toBeInTheDocument();
+    expect(typingInput()).toHaveFocus();
+    expect(resumePrompt()).not.toBeInTheDocument();
   });
 });
 
@@ -210,6 +268,9 @@ describe("HomePage in time Mode", () => {
     expect(screen.queryByRole("timer")).not.toBeInTheDocument();
     expect(stat("wpm")).toBe("5");
     expect(stat("précision")).toBe("100 %");
+    // All 13 chars in the first second, none in the 29 others: a raw of 156, then 0. The mean is
+    // 5.2 and the deviation 28, so c ≈ 5.4 and tanh(c + c³/3 + c⁵/5) rounds to 1.
+    expect(stat("régularité")).toBe("0 %");
   });
 
   test("the time keeps running out while the focus is lost", async () => {
@@ -268,7 +329,8 @@ describe("HomePage focus", () => {
     const { user } = renderRun();
 
     await user.click(document.body);
-    // Backwards from the page, the overlay is the first stop (the hidden input comes before it).
+    // Backwards from the page, Suivant is the first stop, then the overlay.
+    await user.tab({ shift: true });
     await user.tab({ shift: true });
 
     expect(resumePrompt()).toHaveFocus();
