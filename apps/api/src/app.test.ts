@@ -4,6 +4,7 @@ import pino from "pino";
 
 import { type AppConfig, createApp } from "./app";
 import { ApiError } from "./errors";
+import { DOCS_PATH, SPEC_PATH } from "./plugins/api-docs";
 import { MAX_REQUEST_BODY_SIZE } from "./plugins/body-limit";
 
 const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
@@ -314,6 +315,51 @@ describe("rate limiting", () => {
 
     expect(countStatus(await pingFrom(limitedApp(true), ips), 200)).toBe(3);
     expect(countStatus(await pingFrom(limitedApp(false), ips), 429)).toBe(1);
+  });
+});
+
+describe("api docs", () => {
+  test("serves the OpenAPI spec with the documented routes", async () => {
+    const response = await app.handle(new Request(`http://localhost${SPEC_PATH}`));
+    const spec = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(spec.info.title).toBe("Typomaniac API");
+    expect(spec.paths["/health"].get).toMatchObject({ tags: ["System"] });
+    expect(spec.paths[DOCS_PATH]).toBeUndefined();
+  });
+
+  test("serves the Scalar page with a CSP that lets it load", async () => {
+    const response = await app.handle(new Request(`http://localhost${DOCS_PATH}`));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/html");
+    expect(response.headers.get("content-security-policy")).toContain(
+      "script-src https://cdn.jsdelivr.net",
+    );
+  });
+
+  test("keeps the strict CSP everywhere else", async () => {
+    const response = await app.handle(new Request("http://localhost/health"));
+
+    expect(response.headers.get("content-security-policy")).toBe(
+      "default-src 'none'; frame-ancestors 'none'",
+    );
+  });
+
+  test("is not exposed in production", async () => {
+    const prodApp = createApp(testConfig({ isProduction: true }));
+
+    const responses = await Promise.all(
+      [DOCS_PATH, SPEC_PATH].map((path) => prodApp.handle(new Request(`http://localhost${path}`))),
+    );
+
+    for (const response of responses) {
+      expect(response.status).toBe(404);
+      expect(response.headers.get("content-security-policy")).toBe(
+        "default-src 'none'; frame-ancestors 'none'",
+      );
+    }
   });
 });
 

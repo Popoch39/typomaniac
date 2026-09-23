@@ -1,7 +1,8 @@
 import { cors } from "@elysiajs/cors";
-import { Elysia } from "elysia";
+import { Elysia, t } from "elysia";
 import type { Logger } from "pino";
 
+import { apiDocs } from "./plugins/api-docs";
 import { bodyLimit } from "./plugins/body-limit";
 import { errorHandler } from "./plugins/error-handler";
 import { rateLimit } from "./plugins/rate-limit";
@@ -20,16 +21,21 @@ export type AppConfig = {
 };
 
 // Order matters: headers and the request id are set before anything can throw, and
-// the error handler is registered before the plugins that reject requests.
+// the error handler is registered before the plugins that reject requests. The docs
+// come after the security headers: they loosen the CSP on their own page.
 export const createApp = (config: AppConfig) =>
   new Elysia()
     .use(requestId)
     .use(requestLogger(config.logger))
     .use(securityHeaders({ isProduction: config.isProduction }))
     .use(cors({ origin: config.corsOrigin }))
+    .use(apiDocs({ enabled: !config.isProduction }))
     .use(errorHandler(config.logger))
     .use(bodyLimit)
     .use(rateLimit({ ...config.rateLimit, trustProxy: config.trustProxy }))
-    .get("/health", () => ({ status: "ok" as const }));
+    .get("/health", () => ({ status: "ok" as const }), {
+      response: t.Object({ status: t.Literal("ok") }),
+      detail: { summary: "Health check", tags: ["System"] },
+    });
 
 export type App = ReturnType<typeof createApp>;

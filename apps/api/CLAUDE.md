@@ -39,13 +39,19 @@ Lint et format se lancent depuis la racine du monorepo (voir le `CLAUDE.md` raci
 
 ## Logs et sécurité
 
-Plugins dans `src/plugins/`, montés par `createApp` dans cet ordre : request-id, request-logger, security-headers, cors, error-handler, body-limit, rate-limit. L'error-handler doit rester avant les plugins qui rejettent des requêtes.
+Plugins dans `src/plugins/`, montés par `createApp` dans cet ordre : request-id, request-logger, security-headers, cors, api-docs, error-handler, body-limit, rate-limit. L'error-handler doit rester avant les plugins qui rejettent des requêtes.
 
 - **Logger** : pino, créé dans `src/index.ts` (`src/logger.ts`) et injecté via `AppConfig.logger`. JSON sur stdout si `NODE_ENV=production`, sinon `pino-pretty` (transport worker, dev uniquement : il ne marche pas dans le binaire compilé). Niveau : `LOG_LEVEL`. Une ligne `request` par requête (méthode, path, status, durée, requestId). Dans un handler, utiliser `log` du contexte : il porte déjà le `requestId`.
 - **Request ID** : `X-Request-Id` repris s'il est sûr (`[\w.-]{1,128}`), sinon UUID ; renvoyé dans la réponse. `requestIdOf(request)` pour le lire hors contexte (hooks d'erreur).
 - **En-têtes de sécurité** : plugin maison façon helmet pour une API JSON (nosniff, CSP `default-src 'none'`, frame DENY, referrer, CORP/COOP). HSTS seulement en prod.
 - **Rate limit** : plugin maison (`FixedWindowStore`, compteurs immuables : `elysia-rate-limit` v4 rejetait toutes les requêtes concurrentes proches de la limite). `RATE_LIMIT_MAX` requêtes par `RATE_LIMIT_WINDOW_MS` et par IP, 404 compris, `/health` exclu ; en-têtes `RateLimit-*` et `Retry-After`. En mémoire, par process : à revoir si l'API passe sur plusieurs instances. IP lue dans `X-Forwarded-For` seulement si `TRUST_PROXY=true`.
 - **Body** : 1 Mo max sur le `Content-Length` déclaré (`body-limit`, 413 au format API). Bun garde une limite dure de 4 Mo (`maxRequestBodySize`) qui répond un 413 vide : elle doit rester au-dessus de la nôtre.
+
+## OpenAPI
+
+- `@elysiajs/openapi`, monté par `src/plugins/api-docs.ts` : spec sur `/openapi/json`, référence Scalar sur `/openapi`. **Désactivé en production** (404).
+- La spec est générée depuis les schémas TypeBox des routes : toute route publique déclare son `response` et un `detail` (`summary`, `tags`). Un nouveau tag se déclare dans `documentation.tags`.
+- La page Scalar a sa propre CSP (bundle jsdelivr, styles inline), posée après `security-headers` ; la version de Scalar est épinglée (`SCALAR_VERSION`).
 
 ## Erreurs
 
