@@ -1,0 +1,5 @@
+# ADR 0002: the engine is fully covered, and `bun test` fails below the threshold.
+# Never exclude a file nor lower these values.
+[test]
+coverage = true
+coverageThreshold = { lines = 1.0, functions = 1.0 }

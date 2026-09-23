@@ -1,21 +1,15 @@
-import { Button } from "@/components/ui/button";
-import { useDemoStore } from "@/stores/demo-store";
+import { RunResult } from "@/components/run/run-result";
+import { TypingArea } from "@/components/run/typing-area";
+import { useRunStore } from "@/stores/run-store";
 
+// The Run page: the typing area while the Run lasts, then its Result.
 export const HomePage = () => {
-  const clicks = useDemoStore((state) => state.clicks);
-  const increment = useDemoStore((state) => state.increment);
-  const reset = useDemoStore((state) => state.reset);
+  const result = useRunStore((state) => state.result);
 
   return (
-    <section className="flex flex-col gap-4">
-      <h1 className="font-heading text-2xl font-bold">typomaniac</h1>
-      <p>Clics (store Zustand de démo) : {clicks}</p>
-      <div className="flex gap-2">
-        <Button onClick={increment}>+1</Button>
-        <Button variant="outline" onClick={reset}>
-          Remettre à zéro
-        </Button>
-      </div>
+    <section className="flex flex-col gap-4 py-12">
+      <h1 className="sr-only">typomaniac</h1>
+      {result === null ? <TypingArea /> : <RunResult result={result} />}
     </section>
   );
 };
