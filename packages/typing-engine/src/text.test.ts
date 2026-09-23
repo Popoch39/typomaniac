@@ -15,6 +15,21 @@ describe("generateText", () => {
     );
   });
 
+  test("Seed 42 in French is pinned", () => {
+    expect(generateText(42, "fr", 10).join(" ")).toBe(
+      "fort marcher couleur dans mur vieux nez plein heure chercher",
+    );
+  });
+
+  test("the same Seed gives a different Text in each Language, drawn from its own list", () => {
+    const english = generateText(42, "en", 25);
+    const french = generateText(42, "fr", 25);
+
+    expect(french).not.toEqual(english);
+    expect(english.every((word) => wordLists.en.includes(word))).toBe(true);
+    expect(french.every((word) => wordLists.fr.includes(word))).toBe(true);
+  });
+
   test("two different Seeds give different Texts", () => {
     expect(generateText(1, "en", 10)).not.toEqual(generateText(2, "en", 10));
   });

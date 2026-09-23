@@ -1,9 +1,11 @@
 import { mulberry32 } from "./prng";
 import { en } from "./words/en";
+import { fr } from "./words/fr";
 
-export type Language = "en";
+// French is written without accents, so a Text types the same on every keyboard.
+export type Language = "fr" | "en";
 
-export const wordLists: Readonly<Record<Language, readonly string[]>> = { en };
+export const wordLists: Readonly<Record<Language, readonly string[]>> = { fr, en };
 
 // Words are drawn one by one from the Seed's sequence: the word at index i only depends on
 // (Seed, Language, i), so a longer Text starts with the shorter one.

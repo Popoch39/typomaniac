@@ -11,6 +11,8 @@ import {
 } from "typing-engine";
 import { create } from "zustand";
 
+import { type Settings, useSettingsStore } from "@/stores/settings-store";
+
 type RunStore = {
   run: RunState;
   keystrokes: readonly Keystroke[];
@@ -31,13 +33,11 @@ type RunStore = {
 
 const randomSeed = () => Math.floor(Math.random() * 2 ** 32);
 
-// `time` 30 until the settings exist (#12).
-const defaultConfig = (): RunConfig => ({
-  mode: "time",
-  seconds: 30,
-  language: "en",
-  seed: randomSeed(),
-});
+// A Run on the settings, with a new Seed.
+const configFrom = ({ mode, seconds, words, language }: Settings): RunConfig =>
+  mode === "time"
+    ? { mode, seconds, language, seed: randomSeed() }
+    : { mode, words, language, seed: randomSeed() };
 
 const freshRun = (config: RunConfig) => ({
   run: createRun(config),
@@ -57,7 +57,7 @@ const resultAt = (run: RunState, keystrokes: readonly Keystroke[], at: number) =
 
 // Holds the Run in progress and hands every rule to typing-engine (ADR 0002).
 export const useRunStore = create<RunStore>()((set) => ({
-  ...freshRun(defaultConfig()),
+  ...freshRun(configFrom(useSettingsStore.getState())),
   runNumber: 0,
   start: (config) => set((state) => newRun(state, config)),
   next: () => set((state) => newRun(state, { ...state.run.config, seed: randomSeed() })),
@@ -86,3 +86,14 @@ export const useRunStore = create<RunStore>()((set) => ({
       return result === null ? state : { result };
     }),
 }));
+
+const sameSettings = (a: Settings, b: Settings) =>
+  a.mode === b.mode && a.seconds === b.seconds && a.words === b.words && a.language === b.language;
+
+// Changing a setting, or restoring the stored ones, starts a new Run: the Text always matches the
+// settings shown.
+useSettingsStore.subscribe((settings, previous) => {
+  if (!sameSettings(settings, previous)) {
+    useRunStore.getState().start(configFrom(settings));
+  }
+});

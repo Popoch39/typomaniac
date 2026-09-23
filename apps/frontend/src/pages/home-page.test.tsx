@@ -1,11 +1,12 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { RunConfig } from "typing-engine";
+import { type RunConfig, wordLists } from "typing-engine";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { ClockContext } from "@/components/run/clock-context";
 import { HomePage } from "@/pages/home-page";
 import { useRunStore } from "@/stores/run-store";
+import { useSettingsStore } from "@/stores/settings-store";
 
 // Seed 42 in English gives this Text (pinned in the typing-engine tests).
 const text = "small help while late letter sell driver quiet never learn";
@@ -16,12 +17,16 @@ const time30: RunConfig = { mode: "time", seconds: 30, language: "en", seed: 42 
 
 // Simulated timers drive the animation frames; the time itself comes from the injected clock.
 // Other timers stay real: Testing Library waits on a real setTimeout after each user event.
+// Every test starts on a first visit: nothing stored, default settings.
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
+  localStorage.clear();
+  useSettingsStore.setState(useSettingsStore.getInitialState());
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 // Renders the page with a clock the test moves by hand, frames included.
@@ -67,9 +72,18 @@ const resumePrompt = () => screen.queryByRole("button", { name: "clique ou tape 
 
 const typingInput = () => screen.getByLabelText("Zone de frappe");
 
-// Whether the page shows the Text of Seed 42, every word of it.
-const showsSeed42Text = () =>
-  text.split(" ").every((word) => screen.queryByText(isWord(word)) !== null);
+// The words of the Text on screen, in order, read from their letters.
+const shownWords = () =>
+  Array.from(
+    new Set(
+      Array.from(document.querySelectorAll("[data-status]"), (letter) => letter.parentElement),
+    ),
+    (word) => word?.textContent ?? "",
+  );
+
+// Whether the page shows the Text of Seed 42: its first ten words, in order. Another Text may hold
+// some of them too, even twice.
+const showsSeed42Text = () => shownWords().slice(0, 10).join(" ") === text;
 
 describe("HomePage", () => {
   test("shows the Text to type and the word counter", () => {
@@ -351,5 +365,157 @@ describe("HomePage focus", () => {
 
     // Same Run as above, typed in one minute because the minute out of focus counts.
     expect(stat("wpm")).toBe("12");
+  });
+});
+
+const setting = (name: string) => screen.getByRole("button", { name });
+
+const settingsBar = () => screen.queryByRole("group", { name: "Réglages" });
+
+type StoredSettings = { mode: string; seconds: number; words: number; language: string };
+
+// Fills the storage as an earlier visit would have.
+const storeSettings = (state: StoredSettings) =>
+  localStorage.setItem("typomaniac-settings", JSON.stringify({ state, version: 1 }));
+
+// Loads the page afresh, as a reload does: every store is created again from the storage.
+const reload = async () => {
+  cleanup();
+  vi.resetModules();
+  const { HomePage: ReloadedPage } = await import("@/pages/home-page");
+
+  render(<ReloadedPage />);
+
+  return { user: userEvent.setup() };
+};
+
+const unavailable = () => {
+  throw new DOMException("The storage is disabled.", "SecurityError");
+};
+
+describe("HomePage settings", () => {
+  test("a first visit is set to time 30 in English", () => {
+    useRunStore.setState(useRunStore.getInitialState());
+    renderPage();
+
+    expect(setting("time")).toHaveAttribute("aria-pressed", "true");
+    expect(setting("30")).toHaveAttribute("aria-pressed", "true");
+    expect(setting("anglais")).toHaveAttribute("aria-pressed", "true");
+    expect(setting("words")).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test.each(["15", "30", "60", "120"])("time %s s can be chosen", async (seconds) => {
+    const { user } = renderPage();
+
+    await user.click(setting(seconds));
+
+    expect(setting(seconds)).toHaveAttribute("aria-pressed", "true");
+    expect(timeLeft()).toHaveTextContent(seconds);
+  });
+
+  test.each(["10", "25", "50", "100"])("words %s can be chosen", async (words) => {
+    const { user } = renderPage();
+
+    await user.click(setting("words"));
+    await user.click(setting(words));
+
+    expect(setting("words")).toHaveAttribute("aria-pressed", "true");
+    expect(setting(words)).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText(`0/${words}`)).toBeInTheDocument();
+  });
+
+  test("the settings are hidden during a Run and come back on its Result", async () => {
+    const { user } = renderRun();
+
+    expect(settingsBar()).toBeInTheDocument();
+
+    await user.keyboard("s");
+
+    expect(settingsBar()).not.toBeInTheDocument();
+
+    await user.keyboard(text.slice(1));
+
+    expect(screen.getByText("wpm")).toBeInTheDocument();
+    expect(settingsBar()).toBeInTheDocument();
+  });
+
+  test("changing a setting on the Result starts a new Run on it", async () => {
+    const { user } = renderRun();
+
+    await user.keyboard(text);
+    await user.click(setting("15"));
+
+    expect(screen.queryByText("wpm")).not.toBeInTheDocument();
+    expect(timeLeft()).toHaveTextContent("15");
+    expect(typingInput()).toHaveFocus();
+  });
+
+  test("changing a setting before typing draws a new Text", async () => {
+    const { user } = renderRun(time30);
+
+    await user.click(setting("60"));
+
+    expect(showsSeed42Text()).toBe(false);
+    expect(timeLeft()).toHaveTextContent("60");
+  });
+
+  test("the settings are restored from the storage on reload", async () => {
+    storeSettings({ mode: "words", seconds: 60, words: 25, language: "fr" });
+    await reload();
+
+    expect(setting("words")).toHaveAttribute("aria-pressed", "true");
+    expect(setting("25")).toHaveAttribute("aria-pressed", "true");
+    expect(setting("français")).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("0/25")).toBeInTheDocument();
+    expect(shownWords().every((word) => wordLists.fr.includes(word))).toBe(true);
+  });
+
+  test("the settings chosen are stored for the next visit", async () => {
+    const { user } = renderPage();
+
+    await user.click(setting("words"));
+    await user.click(setting("50"));
+    await reload();
+
+    expect(screen.getByText("0/50")).toBeInTheDocument();
+  });
+
+  test("stored settings that do not check out give the defaults back", async () => {
+    storeSettings({ mode: "zen", seconds: 7, words: 25, language: "de" });
+    await reload();
+
+    expect(setting("time")).toHaveAttribute("aria-pressed", "true");
+    expect(timeLeft()).toHaveTextContent("30");
+  });
+
+  test("an unavailable storage gives the defaults, and the settings still work", async () => {
+    vi.spyOn(localStorage, "getItem").mockImplementation(unavailable);
+    vi.spyOn(localStorage, "setItem").mockImplementation(unavailable);
+    const errors: ErrorEvent[] = [];
+    const collectError = (event: ErrorEvent) => errors.push(event);
+
+    window.addEventListener("error", collectError);
+    const { user } = await reload();
+
+    expect(timeLeft()).toHaveTextContent("30");
+
+    await user.click(setting("words"));
+    window.removeEventListener("error", collectError);
+
+    expect(screen.getByText("0/10")).toBeInTheDocument();
+    expect(errors).toEqual([]);
+  });
+
+  test("each Language draws its Text from its own word list", async () => {
+    const { user } = renderPage();
+
+    await user.click(setting("français"));
+
+    expect(setting("français")).toHaveAttribute("aria-pressed", "true");
+    expect(shownWords().every((word) => wordLists.fr.includes(word))).toBe(true);
+
+    await user.click(setting("anglais"));
+
+    expect(shownWords().every((word) => wordLists.en.includes(word))).toBe(true);
   });
 });
