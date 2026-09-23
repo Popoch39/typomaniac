@@ -1,7 +1,7 @@
 import type { KeyboardEvent, Ref } from "react";
 
 import { useClock } from "@/components/run/clock-context";
-import { isTypedKey } from "@/components/run/typed-key";
+import { toKey } from "@/components/run/typed-key";
 import { useRunStore } from "@/stores/run-store";
 
 type KeystrokeInputProps = {
@@ -12,15 +12,17 @@ type KeystrokeInputProps = {
 // Hidden input that captures the keyboard and stamps each Keystroke with the injected clock.
 export const KeystrokeInput = ({ ref, onFocusChange }: KeystrokeInputProps) => {
   const clock = useClock();
-  const type = useRunStore((state) => state.type);
+  const press = useRunStore((state) => state.press);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (!isTypedKey(event)) {
+    const key = toKey(event);
+
+    if (key === null) {
       return;
     }
 
     event.preventDefault();
-    type(event.key, clock());
+    press(key, clock());
   };
 
   return (

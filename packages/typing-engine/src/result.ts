@@ -16,9 +16,10 @@ export type Result = {
 
 type Verdict = "correct" | "incorrect" | "ignored";
 
-// Judges a Keystroke against the state it is applied to.
+// Judges a Keystroke against the state it is applied to. Only characters count: a corrected
+// mistake stays a mistake.
 const judge = (state: RunState, keystroke: Keystroke): Verdict => {
-  if (isIgnored(state, keystroke)) {
+  if (keystroke.kind !== "char" || isIgnored(state, keystroke.char)) {
     return "ignored";
   }
 

@@ -72,6 +72,55 @@ describe("HomePage", () => {
     expect(screen.getByText("1/10")).toBeInTheDocument();
   });
 
+  test("shows every letter state apart: right, wrong, extra, missed and not typed yet", async () => {
+    const { user } = renderRun();
+
+    await user.keyboard("sma helpx whxle");
+
+    expect(letterStatuses("small")).toEqual(["correct", "correct", "correct", "missed", "missed"]);
+    expect(letterStatuses("helpx")).toEqual(["correct", "correct", "correct", "correct", "extra"]);
+    expect(letterStatuses("while")).toEqual([
+      "correct",
+      "correct",
+      "incorrect",
+      "correct",
+      "correct",
+    ]);
+    expect(letterStatuses("late")).toEqual(["pending", "pending", "pending", "pending"]);
+  });
+
+  test("backspace corrects the current word, then goes back to a wrong previous word", async () => {
+    const { user } = renderRun();
+
+    await user.keyboard("smallx {Backspace}");
+
+    expect(screen.getByText("0/10")).toBeInTheDocument();
+
+    await user.keyboard("{Backspace} help");
+
+    expect(letterStatuses("small").every((status) => status === "correct")).toBe(true);
+    expect(screen.getByText("1/10")).toBeInTheDocument();
+
+    // "small" is right now: backspace stops at the start of "help".
+    await user.keyboard("{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}");
+
+    expect(screen.getByText("1/10")).toBeInTheDocument();
+  });
+
+  test("Ctrl+Backspace erases the current word", async () => {
+    const { user } = renderRun();
+
+    await user.keyboard("smoll{Control>}{Backspace}{/Control}");
+
+    expect(letterStatuses("small")).toEqual([
+      "pending",
+      "pending",
+      "pending",
+      "pending",
+      "pending",
+    ]);
+  });
+
   test("a full Run ends on its Result", async () => {
     const { user, advance } = renderRun();
 

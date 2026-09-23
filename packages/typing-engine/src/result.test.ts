@@ -37,6 +37,34 @@ describe("computeResult", () => {
     expect(result.wpm).toBeCloseTo(2);
   });
 
+  // "smol", two backspaces, then "all": the word ends right, but the "o" stays a mistake.
+  test("a corrected mistake still counts against accuracy, the corrected word in wpm", () => {
+    const log: Keystroke[] = [
+      ...keystrokes("smol"),
+      { kind: "backspace", at: 400 },
+      { kind: "backspace", at: 500 },
+      ...keystrokes("all help while"),
+    ];
+
+    const result = computeResult(config, log, 60_000);
+
+    // 18 char Keystrokes, backspaces left out; only the "o" is wrong ("small" has an "l" at 3).
+    expect(result.accuracy).toBeCloseTo((17 / 18) * 100);
+    expect(result.accuracy).toBeLessThan(100);
+    // Every word is right: 16 chars in one minute.
+    expect(result.wpm).toBeCloseTo(3.2);
+  });
+
+  test("a wrong word fixed after going back to it counts in wpm", () => {
+    const log: Keystroke[] = [
+      ...keystrokes("smalx "),
+      { kind: "deleteWord", at: 600 },
+      ...keystrokes("small help while"),
+    ];
+
+    expect(computeResult(config, log, 60_000).wpm).toBeCloseTo(3.2);
+  });
+
   test("an empty log gives zero instead of dividing by zero", () => {
     expect(computeResult(config, [], 0)).toEqual({ wpm: 0, accuracy: 0 });
   });

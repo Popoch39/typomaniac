@@ -12,6 +12,10 @@ const type = (state: RunState, input: string) =>
     state,
   );
 
+const backspace = (state: RunState) => applyKeystroke(state, { kind: "backspace", at: 0 });
+
+const deleteWord = (state: RunState) => applyKeystroke(state, { kind: "deleteWord", at: 0 });
+
 const statuses = (state: RunState, wordIndex: number) =>
   state.words[wordIndex]?.letters.map((letter) => letter.status);
 
@@ -67,6 +71,14 @@ describe("applyKeystroke", () => {
     expect(statuses(run, 0)?.every((status) => status === "correct")).toBe(true);
   });
 
+  // A validated word is behind the current one: its pending letters are the missed ones.
+  test("space on an incomplete word leaves its remaining letters pending, behind the caret", () => {
+    const run = type(createRun(config), "sma ");
+
+    expect(run.wordIndex).toBe(1);
+    expect(statuses(run, 0)).toEqual(["correct", "correct", "correct", "pending", "pending"]);
+  });
+
   test("letters typed past the end of a word are extra", () => {
     const run = type(createRun(config), "smallest");
 
@@ -81,6 +93,77 @@ describe("applyKeystroke", () => {
       "extra",
     ]);
     expect(run.words[0]?.letters.slice(5).map((letter) => letter.char)).toEqual(["e", "s", "t"]);
+  });
+});
+
+describe("correcting", () => {
+  test("backspace erases the last letter of the current word", () => {
+    const run = backspace(type(createRun(config), "smo"));
+
+    expect(statuses(run, 0)).toEqual(["correct", "correct", "pending", "pending", "pending"]);
+    expect(run.letterIndex).toBe(2);
+  });
+
+  test("a corrected word is right once validated", () => {
+    const run = type(backspace(backspace(type(createRun(config), "smol"))), "all ");
+
+    expect(run.words[0]?.typed).toBe("small");
+    expect(statuses(run, 0)?.every((status) => status === "correct")).toBe(true);
+  });
+
+  test("backspace on a right previous word changes nothing", () => {
+    const run = type(createRun(config), "small ");
+
+    expect(backspace(run)).toEqual(run);
+  });
+
+  test("backspace on the first letter of the Text changes nothing", () => {
+    const run = createRun(config);
+
+    expect(backspace(run)).toEqual(run);
+  });
+
+  test("backspace goes back to a wrong previous word, after what was typed in it", () => {
+    const run = backspace(type(createRun(config), "smol "));
+
+    expect(run.wordIndex).toBe(0);
+    expect(run.letterIndex).toBe(4);
+    expect(run.validatedWords).toBe(0);
+    expect(run.words[0]?.typed).toBe("smol");
+  });
+
+  test("extra letters make the word wrong and backspace erases them", () => {
+    const extra = type(createRun(config), "smallx ");
+
+    expect(backspace(extra).wordIndex).toBe(0);
+
+    const run = backspace(backspace(extra));
+
+    expect(statuses(run, 0)?.every((status) => status === "correct")).toBe(true);
+    expect(run.letterIndex).toBe(5);
+  });
+
+  test("deleteWord erases the whole current word", () => {
+    const run = deleteWord(type(createRun(config), "small hepl"));
+
+    expect(run.wordIndex).toBe(1);
+    expect(run.letterIndex).toBe(0);
+    expect(statuses(run, 1)).toEqual(["pending", "pending", "pending", "pending"]);
+  });
+
+  test("deleteWord on a right previous word changes nothing", () => {
+    const run = type(createRun(config), "small ");
+
+    expect(deleteWord(run)).toEqual(run);
+  });
+
+  test("deleteWord goes back to a wrong previous word and erases it", () => {
+    const run = deleteWord(type(createRun(config), "smol "));
+
+    expect(run.wordIndex).toBe(0);
+    expect(run.letterIndex).toBe(0);
+    expect(run.validatedWords).toBe(0);
+    expect(run.words[0]?.typed).toBe("");
   });
 });
 
@@ -112,5 +195,7 @@ describe("isFinished in words Mode", () => {
     const run = type(createRun(config), "small help while");
 
     expect(type(run, "s d")).toEqual(run);
+    expect(backspace(run)).toEqual(run);
+    expect(deleteWord(run)).toEqual(run);
   });
 });

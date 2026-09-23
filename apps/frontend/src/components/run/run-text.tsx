@@ -9,6 +9,8 @@ export const RunText = () => {
   const words = useRunStore((state) => state.run.words);
   const wordIndex = useRunStore((state) => state.run.wordIndex);
   const letterIndex = useRunStore((state) => state.run.letterIndex);
+  // Not wordIndex: the caret stays on the last word once it is validated.
+  const validatedWords = useRunStore((state) => state.run.validatedWords);
   const { scrollRef, wordsRef, caretRef } = useTextLayout(wordIndex, letterIndex);
 
   return (
@@ -17,7 +19,7 @@ export const RunText = () => {
         <RunCaret ref={caretRef} />
         <div ref={wordsRef} className="flex flex-wrap gap-x-[1ch]">
           {words.map((word) => (
-            <RunWord key={word.index} word={word} />
+            <RunWord key={word.index} word={word} validated={word.index < validatedWords} />
           ))}
         </div>
       </div>

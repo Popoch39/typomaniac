@@ -3,6 +3,7 @@ import {
   computeResult,
   createRun,
   isFinished,
+  type Key,
   type Keystroke,
   type Result,
   type RunState,
@@ -16,7 +17,7 @@ type RunStore = {
   startedAt: number | null;
   result: Result | null;
   start: (seed: number) => void;
-  type: (char: string, now: number) => void;
+  press: (key: Key, now: number) => void;
 };
 
 const randomSeed = () => Math.floor(Math.random() * 2 ** 32);
@@ -32,14 +33,14 @@ const freshRun = (seed: number) => ({
 export const useRunStore = create<RunStore>()((set) => ({
   ...freshRun(randomSeed()),
   start: (seed) => set(freshRun(seed)),
-  type: (char, now) =>
+  press: (key, now) =>
     set((state) => {
       if (isFinished(state.run)) {
         return state;
       }
 
       const startedAt = state.startedAt ?? now;
-      const keystroke: Keystroke = { kind: "char", char, at: now - startedAt };
+      const keystroke: Keystroke = { ...key, at: now - startedAt };
       const keystrokes = [...state.keystrokes, keystroke];
       const run = applyKeystroke(state.run, keystroke);
 

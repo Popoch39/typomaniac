@@ -2,6 +2,7 @@ export {
   applyKeystroke,
   createRun,
   isFinished,
+  type Key,
   type Keystroke,
   type Letter,
   type LetterStatus,
