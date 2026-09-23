@@ -1,18 +1,39 @@
 import { describe, expect, test } from "bun:test";
+import { betterAuth } from "better-auth";
+import { memoryAdapter } from "better-auth/adapters/memory";
+import { testUtils } from "better-auth/plugins";
 import { status, t } from "elysia";
 import pino from "pino";
 
 import { type AppConfig, createApp } from "./app";
+import { authOptions } from "./auth";
 import { ApiError } from "./errors";
 import { DOCS_PATH, SPEC_PATH } from "./plugins/api-docs";
 import { MAX_REQUEST_BODY_SIZE } from "./plugins/body-limit";
 
+const FRONT_ORIGIN = "http://localhost:5173";
+
+// The production auth options on Better Auth's in-memory database, plus its test
+// helpers to open Sessions without going through an OAuth provider.
+const createTestAuth = () =>
+  betterAuth({
+    ...authOptions({
+      secret: "a-test-secret-of-at-least-thirty-two-chars",
+      baseURL: "http://localhost",
+      trustedOrigin: FRONT_ORIGIN,
+      socialProviders: {},
+    }),
+    database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
+    plugins: [testUtils()],
+  });
+
 const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
-  corsOrigin: "http://localhost:5173",
+  corsOrigin: FRONT_ORIGIN,
   isProduction: false,
   trustProxy: false,
   rateLimit: { max: 1000, windowMs: 60_000 },
   logger: pino({ level: "silent" }),
+  auth: createTestAuth(),
   ...overrides,
 });
 
@@ -374,6 +395,95 @@ describe("api docs", () => {
         "default-src 'none'; frame-ancestors 'none'",
       );
     }
+  });
+});
+
+describe("auth", () => {
+  const auth = createTestAuth();
+  const authApp = createApp(testConfig({ auth }));
+
+  // A User with an open Session: the cookie a browser would hold after an OAuth callback.
+  const signIn = async () => {
+    const { test: helpers } = await auth.$context;
+
+    const user = await helpers.saveUser(
+      helpers.createUser({ name: "Ada", email: "ada@example.com", image: "https://img/ada" }),
+    );
+
+    const login = await helpers.login({ userId: user.id });
+
+    return { user, token: login.token, cookie: login.headers.get("cookie") ?? "" };
+  };
+
+  const getMe = (cookie?: string) =>
+    authApp.handle(
+      new Request("http://localhost/api/me", { headers: cookie ? { cookie } : undefined }),
+    );
+
+  test("GET /api/me without a Session answers 401 in the API error format", async () => {
+    await expectError(await getMe(), { status: 401, code: "UNAUTHORIZED" });
+  });
+
+  test("GET /api/me with a Session returns its User", async () => {
+    const { user, cookie } = await signIn();
+
+    const response = await getMe(cookie);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      id: user.id,
+      name: "Ada",
+      email: "ada@example.com",
+      image: "https://img/ada",
+    });
+  });
+
+  test("GET /api/me refreshes the session cookie cache as an httpOnly Lax cookie", async () => {
+    const { cookie } = await signIn();
+
+    const setCookie = (await getMe(cookie)).headers.getSetCookie().join("\n");
+
+    expect(setCookie).toContain("better-auth.session_data=");
+    expect(setCookie).toContain("HttpOnly");
+    expect(setCookie).toContain("SameSite=Lax");
+  });
+
+  test("GET /api/me with an expired Session answers 401", async () => {
+    const { token, cookie } = await signIn();
+    const context = await auth.$context;
+
+    await context.internalAdapter.updateSession(token, { expiresAt: new Date(Date.now() - 1000) });
+
+    await expectError(await getMe(cookie), { status: 401, code: "UNAUTHORIZED" });
+  });
+
+  test("GET /api/me answers 401 once signed out through /api/auth", async () => {
+    const { cookie } = await signIn();
+
+    const signOut = await authApp.handle(
+      new Request("http://localhost/api/auth/sign-out", {
+        method: "POST",
+        headers: { cookie, origin: FRONT_ORIGIN },
+      }),
+    );
+
+    expect(signOut.status).toBe(200);
+    await expectError(await getMe(cookie), { status: 401, code: "UNAUTHORIZED" });
+  });
+
+  test("lets the front send its cookie cross-origin", async () => {
+    const response = await authApp.handle(
+      new Request("http://localhost/api/me", { headers: { Origin: FRONT_ORIGIN } }),
+    );
+
+    expect(response.headers.get("access-control-allow-origin")).toBe(FRONT_ORIGIN);
+    expect(response.headers.get("access-control-allow-credentials")).toBe("true");
+  });
+
+  test("documents GET /api/me under the Auth tag", async () => {
+    const spec = await (await authApp.handle(new Request(`http://localhost${SPEC_PATH}`))).json();
+
+    expect(spec.paths["/api/me"].get).toMatchObject({ tags: ["Auth"] });
   });
 });
 

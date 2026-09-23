@@ -13,8 +13,35 @@ const EnvSchema = t.Object({
   TRUST_PROXY: t.Boolean({ default: false }),
   RATE_LIMIT_MAX: t.Integer({ minimum: 1, default: 100 }),
   RATE_LIMIT_WINDOW_MS: t.Integer({ minimum: 1, default: 60_000 }),
+  // Signs the session cookies: `openssl rand -base64 32`.
+  BETTER_AUTH_SECRET: t.String({ minLength: 32 }),
+  // The API's public URL, OAuth callbacks are built on it.
+  BETTER_AUTH_URL: t.String({ minLength: 1 }),
+  // Empty counts as unset: `.env.example` lists them blank.
+  GITHUB_CLIENT_ID: t.Optional(t.String()),
+  GITHUB_CLIENT_SECRET: t.Optional(t.String()),
 });
 
-export type Env = typeof EnvSchema.static;
+type OAuthClient = { clientId: string; clientSecret: string };
 
-export const parseEnv = (source: NodeJS.ProcessEnv): Env => Value.Parse(EnvSchema, source);
+export type SocialProviders = { github?: OAuthClient };
+
+export type Env = typeof EnvSchema.static & { socialProviders: SocialProviders };
+
+// A provider is only enabled with both halves of its credentials: a half-configured
+// one would show up in the flow and fail at the provider.
+const socialProvidersOf = (env: typeof EnvSchema.static) => {
+  const providers: SocialProviders = {};
+
+  if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
+    providers.github = { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET };
+  }
+
+  return providers;
+};
+
+export const parseEnv = (source: NodeJS.ProcessEnv): Env => {
+  const env = Value.Parse(EnvSchema, source);
+
+  return { ...env, socialProviders: socialProvidersOf(env) };
+};

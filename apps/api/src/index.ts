@@ -1,5 +1,6 @@
 import { createApp } from "./app";
-import { runMigrations } from "./database/client";
+import { createAuth } from "./auth";
+import { db, runMigrations } from "./database/client";
 import { env } from "./env";
 import { createLogger } from "./logger";
 import { HARD_REQUEST_BODY_SIZE } from "./plugins/body-limit";
@@ -21,6 +22,15 @@ const app = createApp({
   trustProxy: env.TRUST_PROXY,
   rateLimit: { max: env.RATE_LIMIT_MAX, windowMs: env.RATE_LIMIT_WINDOW_MS },
   logger,
+  auth: createAuth(
+    {
+      secret: env.BETTER_AUTH_SECRET,
+      baseURL: env.BETTER_AUTH_URL,
+      trustedOrigin: env.CORS_ORIGIN,
+      socialProviders: env.socialProviders,
+    },
+    db,
+  ),
 }).listen({ port: env.PORT, maxRequestBodySize: HARD_REQUEST_BODY_SIZE });
 
 logger.info({ url: app.server?.url.href }, "server started");

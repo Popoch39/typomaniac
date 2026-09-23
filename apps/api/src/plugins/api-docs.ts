@@ -50,7 +50,10 @@ export const apiDocs = ({ enabled }: { enabled: boolean }) =>
             description:
               "Every error response has the ApiErrorBody layout: `{ error: { code, message, requestId, details? } }`.",
           },
-          tags: [{ name: "System", description: "Service health" }],
+          tags: [
+            { name: "System", description: "Service health" },
+            { name: "Auth", description: "The signed-in User and their Session" },
+          ],
         },
       }),
     );

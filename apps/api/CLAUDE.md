@@ -37,17 +37,29 @@ Lint et format se lancent depuis la racine du monorepo (voir le `CLAUDE.md` raci
 
 ## Image de prod
 
-`apps/api/Dockerfile`, à builder depuis la racine : `docker build -f apps/api/Dockerfile -t typomaniac-api .`. Binaire compilé dans une image distroless, dossier `drizzle/` embarqué. Variables requises à l'exécution : `DATABASE_URL` (et `PORT`, 3000 par défaut ; `CORS_ORIGIN`, origine du front, `http://localhost:5173` par défaut). En prod, poser `NODE_ENV=production` (logs JSON, HSTS) et trancher `TRUST_PROXY` selon l'hébergement.
+`apps/api/Dockerfile`, à builder depuis la racine : `docker build -f apps/api/Dockerfile -t typomaniac-api .`. Binaire compilé dans une image distroless, dossier `drizzle/` embarqué. Variables requises à l'exécution : `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL` (et `PORT`, 3000 par défaut ; `CORS_ORIGIN`, origine du front, `http://localhost:5173` par défaut). En prod, poser `NODE_ENV=production` (logs JSON, HSTS) et trancher `TRUST_PROXY` selon l'hébergement.
 
 ## Logs et sécurité
 
-Plugins dans `src/plugins/`, montés par `createApp` dans cet ordre : request-id, request-logger, security-headers, cors, api-docs, error-handler, body-limit, rate-limit. L'error-handler doit rester avant les plugins qui rejettent des requêtes.
+Plugins dans `src/plugins/`, montés par `createApp` dans cet ordre : request-id, request-logger, security-headers, cors, api-docs, error-handler, body-limit, rate-limit, authentication. L'error-handler doit rester avant les plugins qui rejettent des requêtes.
 
 - **Logger** : pino, créé dans `src/index.ts` (`src/logger.ts`) et injecté via `AppConfig.logger`. JSON sur stdout si `NODE_ENV=production`, sinon `pino-pretty` (transport worker, dev uniquement : il ne marche pas dans le binaire compilé). Niveau : `LOG_LEVEL`. Une ligne `request` par requête (méthode, path, status, durée, requestId). Dans un handler, utiliser `log` du contexte : il porte déjà le `requestId`.
 - **Request ID** : `X-Request-Id` repris s'il est sûr (`[\w.-]{1,128}`), sinon UUID ; renvoyé dans la réponse. `requestIdOf(request)` pour le lire hors contexte (hooks d'erreur).
 - **En-têtes de sécurité** : plugin maison façon helmet pour une API JSON (nosniff, CSP `default-src 'none'`, frame DENY, referrer, CORP/COOP). HSTS seulement en prod.
 - **Rate limit** : plugin maison (`FixedWindowStore`, compteurs immuables : `elysia-rate-limit` v4 rejetait toutes les requêtes concurrentes proches de la limite). `RATE_LIMIT_MAX` requêtes par `RATE_LIMIT_WINDOW_MS` et par IP, 404 compris, `/api/health` exclu ; en-têtes `RateLimit-*` et `Retry-After`. En mémoire, par process : à revoir si l'API passe sur plusieurs instances. IP lue dans `X-Forwarded-For` seulement si `TRUST_PROXY=true`.
 - **Body** : 1 Mo max sur le `Content-Length` déclaré (`body-limit`, 413 au format API). Bun garde une limite dure de 4 Mo (`maxRequestBodySize`) qui répond un 413 vide : elle doit rester au-dessus de la nôtre.
+
+## Auth
+
+Better Auth, OAuth uniquement (ADR `docs/adr/0001-…`, vocabulaire User / Account / Session dans `CONTEXT.md` à la racine).
+
+- **Instance** : `createAuth` (`src/auth.ts`) avec l'adapter Drizzle, appelé par `src/index.ts` avec l'env parsé et injecté via `AppConfig.auth`. `app.ts` ne dépend que du type (`AuthHandler`). Les options (Session, cookies, `trustedOrigins`, fournisseurs) sont dans `authOptions`, partagées avec les tests.
+- **Montage** : `src/plugins/authentication.ts` route `/api/auth/*` vers le handler (`basePath` `/api/auth`). Pas de `.mount("/auth", …)` : il retire le chemin de l'URL et Better Auth route sur l'URL complète.
+- **Macro `auth`** : `{ auth: true }` sur une route exige une Session ; sans Session valide, `ApiError("UNAUTHORIZED")` ; avec, `user` et `session` dans le contexte. Elle renvoie au navigateur les cookies que Better Auth rafraîchit (cache de Session, prolongation).
+- **Session** : en base, 30 jours, prolongée à l'usage (au plus une fois par jour), cache de 5 min dans le cookie `session_data`. Cookies httpOnly, `SameSite=Lax` (front et API sur deux sous-domaines du même site). CORS avec `credentials: true`, `trustedOrigins` = `CORS_ORIGIN`.
+- **Env** : `BETTER_AUTH_SECRET` (32 caractères min, `openssl rand -base64 32`) et `BETTER_AUTH_URL` (URL publique de l'API) obligatoires. Un fournisseur n'est activé que si son client id **et** son secret sont renseignés (vide = absent) : `parseEnv` en dérive `socialProviders`. Callback à déclarer chez le fournisseur : `<BETTER_AUTH_URL>/api/auth/callback/<provider>`.
+- **Schéma** : `src/database/auth-schema.ts` est généré par la CLI (`bunx auth@latest generate`, avec une config qui construit l'instance) ; le régénérer quand les options ou les plugins changent, puis `db:generate`.
+- **Tests** : `betterAuth({ ...authOptions(…), database: memoryAdapter(…), plugins: [testUtils()] })`, puis `(await auth.$context).test.login({ userId })` pour obtenir le cookie d'une Session.
 
 ## OpenAPI
 
@@ -75,6 +87,7 @@ Toute erreur sort au même format, défini dans `src/errors.ts` et réexporté p
 - L'error-handler traduit aussi les erreurs d'Elysia (route inconnue, JSON invalide, validation avec `details`) et un `throw status(409, …)` (code déduit du status, payload ignoré). Une réponse qui viole son propre schéma est un 500.
 - Tout le reste devient `INTERNAL_SERVER_ERROR` générique ; les 5xx sont loggés avec stack et `requestId`.
 - Un `return status(…)` n'est **pas** une erreur pour Elysia : il ne passe pas par l'error-handler. Pour une erreur, `throw`.
+- **Exception** : les routes `/api/auth/*` répondent au format d'erreur de Better Auth (`{ message, code }`), leurs réponses ne passent pas par l'error-handler. `/api/me` et toute route protégée par la macro `auth` restent au format unifié.
 
 ## Eden Treaty
 
