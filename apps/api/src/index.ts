@@ -2,8 +2,7 @@ import { createApp } from "./app";
 import { runMigrations } from "./database/client";
 import { env } from "./env";
 import { createLogger } from "./logger";
-
-const MAX_REQUEST_BODY_SIZE = 1024 * 1024;
+import { HARD_REQUEST_BODY_SIZE } from "./plugins/body-limit";
 
 const isProduction = env.NODE_ENV === "production";
 
@@ -22,6 +21,6 @@ const app = createApp({
   trustProxy: env.TRUST_PROXY,
   rateLimit: { max: env.RATE_LIMIT_MAX, windowMs: env.RATE_LIMIT_WINDOW_MS },
   logger,
-}).listen({ port: env.PORT, maxRequestBodySize: MAX_REQUEST_BODY_SIZE });
+}).listen({ port: env.PORT, maxRequestBodySize: HARD_REQUEST_BODY_SIZE });
 
 logger.info({ url: app.server?.url.href }, "server started");

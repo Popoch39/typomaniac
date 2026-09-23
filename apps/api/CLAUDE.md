@@ -39,14 +39,34 @@ Lint et format se lancent depuis la racine du monorepo (voir le `CLAUDE.md` raci
 
 ## Logs et sécurité
 
-Plugins dans `src/plugins/`, montés par `createApp` dans cet ordre : request-id, request-logger, security-headers, cors, error-handler, rate-limit.
+Plugins dans `src/plugins/`, montés par `createApp` dans cet ordre : request-id, request-logger, security-headers, cors, error-handler, body-limit, rate-limit. L'error-handler doit rester avant les plugins qui rejettent des requêtes.
 
 - **Logger** : pino, créé dans `src/index.ts` (`src/logger.ts`) et injecté via `AppConfig.logger`. JSON sur stdout si `NODE_ENV=production`, sinon `pino-pretty` (transport worker, dev uniquement : il ne marche pas dans le binaire compilé). Niveau : `LOG_LEVEL`. Une ligne `request` par requête (méthode, path, status, durée, requestId). Dans un handler, utiliser `log` du contexte : il porte déjà le `requestId`.
 - **Request ID** : `X-Request-Id` repris s'il est sûr (`[\w.-]{1,128}`), sinon UUID ; renvoyé dans la réponse. `requestIdOf(request)` pour le lire hors contexte (hooks d'erreur).
 - **En-têtes de sécurité** : plugin maison façon helmet pour une API JSON (nosniff, CSP `default-src 'none'`, frame DENY, referrer, CORP/COOP). HSTS seulement en prod.
-- **Erreurs** : les erreurs inattendues répondent `500 { error, requestId }` sans message ni stack (loggés côté serveur). 404, validation et parse gardent la réponse d'Elysia.
-- **Rate limit** : `elysia-rate-limit` **v4** (la v5 exige Elysia 2), `RATE_LIMIT_MAX` requêtes par `RATE_LIMIT_WINDOW_MS` et par IP, `/health` exclu. Store maison `FixedWindowStore` : le `DefaultContext` de la lib renvoie un compteur mutable partagé et met en 429 toutes les requêtes concurrentes. Store en mémoire, par process : à revoir si l'API passe sur plusieurs instances. IP lue dans `X-Forwarded-For` seulement si `TRUST_PROXY=true`.
-- **Body** : 1 Mo max (`maxRequestBodySize` dans `listen`), 413 au-delà.
+- **Rate limit** : plugin maison (`FixedWindowStore`, compteurs immuables : `elysia-rate-limit` v4 rejetait toutes les requêtes concurrentes proches de la limite). `RATE_LIMIT_MAX` requêtes par `RATE_LIMIT_WINDOW_MS` et par IP, 404 compris, `/health` exclu ; en-têtes `RateLimit-*` et `Retry-After`. En mémoire, par process : à revoir si l'API passe sur plusieurs instances. IP lue dans `X-Forwarded-For` seulement si `TRUST_PROXY=true`.
+- **Body** : 1 Mo max sur le `Content-Length` déclaré (`body-limit`, 413 au format API). Bun garde une limite dure de 4 Mo (`maxRequestBodySize`) qui répond un 413 vide : elle doit rester au-dessus de la nôtre.
+
+## Erreurs
+
+Toute erreur sort au même format, défini dans `src/errors.ts` et réexporté par `app.ts` pour le front (`import type { ApiErrorBody } from "api"`) :
+
+```json
+{
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "…",
+    "requestId": "…",
+    "details": [{ "path": "/name", "message": "…" }]
+  }
+}
+```
+
+- Codes : `BAD_REQUEST` 400, `UNAUTHORIZED` 401, `FORBIDDEN` 403, `NOT_FOUND` 404, `CONFLICT` 409, `PAYLOAD_TOO_LARGE` 413, `VALIDATION_FAILED` 422, `TOO_MANY_REQUESTS` 429, `INTERNAL_SERVER_ERROR` 500. Un nouveau cas se déclare dans `ERRORS`.
+- Dans un handler ou un service : `throw new ApiError("FORBIDDEN", "message lisible")`. Le message part au client : jamais de détail interne.
+- L'error-handler traduit aussi les erreurs d'Elysia (route inconnue, JSON invalide, validation avec `details`) et un `throw status(409, …)` (code déduit du status, payload ignoré). Une réponse qui viole son propre schéma est un 500.
+- Tout le reste devient `INTERNAL_SERVER_ERROR` générique ; les 5xx sont loggés avec stack et `requestId`.
+- Un `return status(…)` n'est **pas** une erreur pour Elysia : il ne passe pas par l'error-handler. Pour une erreur, `throw`.
 
 ## Eden Treaty
 

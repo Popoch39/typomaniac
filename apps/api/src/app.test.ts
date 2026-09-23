@@ -1,7 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { status, t } from "elysia";
 import pino from "pino";
 
 import { type AppConfig, createApp } from "./app";
+import { ApiError } from "./errors";
+import { MAX_REQUEST_BODY_SIZE } from "./plugins/body-limit";
 
 const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
   corsOrigin: "http://localhost:5173",
@@ -109,7 +112,7 @@ describe("request logging", () => {
     expect(await requestLine("/boom")).toMatchObject({ status: 500 });
   });
 
-  test("records the status of responses returned as a Response object", async () => {
+  test("records the status of requests rejected before routing", async () => {
     const limitedLogs = captureLogs();
 
     const limited = createApp(
@@ -126,23 +129,119 @@ describe("request logging", () => {
   });
 });
 
+// Every error, whatever raised it, must come out in the ApiErrorBody format.
+const expectError = async (
+  response: Response,
+  expected: { status: number; code: string; message?: string },
+) => {
+  const body = await response.json();
+
+  expect(response.status).toBe(expected.status);
+  expect(response.headers.get("content-type")).toContain("application/json");
+  expect(body).toEqual({
+    error: expect.objectContaining({
+      code: expected.code,
+      message: expected.message ?? expect.any(String),
+      requestId: response.headers.get("x-request-id"),
+    }),
+  });
+
+  return body;
+};
+
 describe("error handling", () => {
   const logs = captureLogs();
 
-  const failingApp = createApp(testConfig({ logger: logs.logger })).get("/boom", () => {
-    throw new Error("database password is hunter2");
-  });
+  const failingApp = createApp(testConfig({ logger: logs.logger }))
+    .get("/boom", () => {
+      throw new Error("database password is hunter2");
+    })
+    .get("/forbidden", () => {
+      throw new ApiError("FORBIDDEN", "You cannot edit this word");
+    })
+    .get("/conflict", () => {
+      throw status(409, "raw Elysia status");
+    })
+    .post("/words", ({ body }) => body, { body: t.Object({ name: t.String() }) })
+    .get("/broken-response", () => ({ id: 42 }), {
+      response: t.Object({ id: t.Number({ maximum: 10 }) }),
+    });
 
   test("answers 500 with a generic body and the request id", async () => {
     const response = await failingApp.handle(new Request("http://localhost/boom"));
-    const body = await response.text();
+    const body = await expectError(response, { status: 500, code: "INTERNAL_SERVER_ERROR" });
 
-    expect(response.status).toBe(500);
-    expect(JSON.parse(body)).toEqual({
-      error: "Internal Server Error",
-      requestId: response.headers.get("x-request-id"),
+    expect(JSON.stringify(body)).not.toContain("hunter2");
+  });
+
+  test("renders a thrown ApiError with its status, code and message", async () => {
+    await expectError(await failingApp.handle(new Request("http://localhost/forbidden")), {
+      status: 403,
+      code: "FORBIDDEN",
+      message: "You cannot edit this word",
     });
-    expect(body).not.toContain("hunter2");
+  });
+
+  test("renders an unknown route as NOT_FOUND", async () => {
+    await expectError(await failingApp.handle(new Request("http://localhost/does-not-exist")), {
+      status: 404,
+      code: "NOT_FOUND",
+    });
+  });
+
+  test("renders a thrown Elysia status with the code matching its status", async () => {
+    await expectError(await failingApp.handle(new Request("http://localhost/conflict")), {
+      status: 409,
+      code: "CONFLICT",
+    });
+  });
+
+  test("renders an invalid body as VALIDATION_FAILED with field details", async () => {
+    const response = await failingApp.handle(
+      new Request("http://localhost/words", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: 42 }),
+      }),
+    );
+
+    const body = await expectError(response, { status: 422, code: "VALIDATION_FAILED" });
+
+    expect(body.error.details).toContainEqual({ path: "/name", message: "Expected string" });
+  });
+
+  test("renders malformed JSON as BAD_REQUEST", async () => {
+    const response = await failingApp.handle(
+      new Request("http://localhost/words", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{not json",
+      }),
+    );
+
+    await expectError(response, { status: 400, code: "BAD_REQUEST" });
+  });
+
+  test("renders a declared body over the size limit as PAYLOAD_TOO_LARGE", async () => {
+    const body = JSON.stringify({ name: "x".repeat(MAX_REQUEST_BODY_SIZE) });
+
+    // A real HTTP client always declares it; a bare Request in tests does not.
+    const response = await failingApp.handle(
+      new Request("http://localhost/words", {
+        method: "POST",
+        headers: { "content-type": "application/json", "content-length": String(body.length) },
+        body,
+      }),
+    );
+
+    await expectError(response, { status: 413, code: "PAYLOAD_TOO_LARGE" });
+  });
+
+  test("treats a response that breaks its own schema as a server error", async () => {
+    await expectError(await failingApp.handle(new Request("http://localhost/broken-response")), {
+      status: 500,
+      code: "INTERNAL_SERVER_ERROR",
+    });
   });
 
   test("logs the error with its stack and the request id", async () => {
@@ -159,12 +258,6 @@ describe("error handling", () => {
         }),
       }),
     );
-  });
-
-  test("keeps Elysia's answer for client errors", async () => {
-    const response = await failingApp.handle(new Request("http://localhost/does-not-exist"));
-
-    expect(response.status).toBe(404);
   });
 });
 
@@ -184,8 +277,8 @@ const pingFrom = (target: ReturnType<typeof limitedApp>, forwardedFors: string[]
   );
 
 // Requests are fired concurrently on purpose: counting must hold under parallel load.
-const countStatus = (responses: Response[], status: number) =>
-  responses.filter((response) => response.status === status).length;
+const countStatus = (responses: Response[], expected: number) =>
+  responses.filter((response) => response.status === expected).length;
 
 describe("rate limiting", () => {
   test("answers 429 with Retry-After once the limit is reached", async () => {
@@ -195,7 +288,13 @@ describe("rate limiting", () => {
     expect(countStatus(responses, 200)).toBe(2);
     expect(countStatus(responses, 429)).toBe(1);
     expect(Number(limited?.headers.get("retry-after"))).toBeGreaterThan(0);
-    expect(await limited?.json()).toEqual({ error: "Too Many Requests" });
+    expect(await limited?.json()).toEqual({
+      error: {
+        code: "TOO_MANY_REQUESTS",
+        message: expect.any(String),
+        requestId: limited?.headers.get("x-request-id"),
+      },
+    });
     expect(limited?.headers.get("x-request-id")).toMatch(UUID);
     expect(limited?.headers.get("x-content-type-options")).toBe("nosniff");
   });
