@@ -1,9 +1,16 @@
 import { openapi } from "@elysiajs/openapi";
 import { Elysia } from "elysia";
 
-export const DOCS_PATH = "/openapi";
+import { API_PREFIX } from "../api-prefix";
 
-export const SPEC_PATH = `${DOCS_PATH}/json`;
+// Routes as registered: createApp's prefix is added in front of them.
+const DOCS_ROUTE = "/openapi";
+
+const SPEC_ROUTE = `${DOCS_ROUTE}/json`;
+
+export const DOCS_PATH = `${API_PREFIX}${DOCS_ROUTE}`;
+
+export const SPEC_PATH = `${API_PREFIX}${SPEC_ROUTE}`;
 
 // Pinned so the bundle loaded from the CDN only changes when we bump it.
 const SCALAR_VERSION = "1.71.0";
@@ -20,7 +27,7 @@ const DOCS_CSP = [
   "frame-ancestors 'none'",
 ].join("; ");
 
-// OpenAPI spec at /openapi/json, Scalar reference at /openapi. Off in production: the
+// OpenAPI spec at /api/openapi/json, Scalar reference at /api/openapi. Off in production: the
 // docs describe every route, nobody outside the team needs them.
 export const apiDocs = ({ enabled }: { enabled: boolean }) =>
   new Elysia({ name: "api-docs", seed: enabled })
@@ -33,8 +40,8 @@ export const apiDocs = ({ enabled }: { enabled: boolean }) =>
     .use(
       openapi({
         enabled,
-        path: DOCS_PATH,
-        specPath: SPEC_PATH,
+        path: DOCS_ROUTE,
+        specPath: SPEC_ROUTE,
         scalar: { version: SCALAR_VERSION },
         documentation: {
           info: {

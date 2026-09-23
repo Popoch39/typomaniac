@@ -19,16 +19,23 @@ const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
 const app = createApp(testConfig());
 
 describe("app", () => {
-  test("GET /health answers ok", async () => {
-    const response = await app.handle(new Request("http://localhost/health"));
+  test("GET /api/health answers ok", async () => {
+    const response = await app.handle(new Request("http://localhost/api/health"));
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ status: "ok" });
   });
 
+  test("serves nothing outside the /api prefix", async () => {
+    await expectError(await app.handle(new Request("http://localhost/health")), {
+      status: 404,
+      code: "NOT_FOUND",
+    });
+  });
+
   test("allows the configured CORS origin", async () => {
     const response = await app.handle(
-      new Request("http://localhost/health", { headers: { Origin: "http://localhost:5173" } }),
+      new Request("http://localhost/api/health", { headers: { Origin: "http://localhost:5173" } }),
     );
 
     expect(response.headers.get("access-control-allow-origin")).toBe("http://localhost:5173");
@@ -39,14 +46,14 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 describe("request id", () => {
   test("is generated when the client sends none", async () => {
-    const response = await app.handle(new Request("http://localhost/health"));
+    const response = await app.handle(new Request("http://localhost/api/health"));
 
     expect(response.headers.get("x-request-id")).toMatch(UUID);
   });
 
   test("echoes a valid incoming X-Request-Id", async () => {
     const response = await app.handle(
-      new Request("http://localhost/health", { headers: { "X-Request-Id": "trace-42_a.b" } }),
+      new Request("http://localhost/api/health", { headers: { "X-Request-Id": "trace-42_a.b" } }),
     );
 
     expect(response.headers.get("x-request-id")).toBe("trace-42_a.b");
@@ -56,7 +63,7 @@ describe("request id", () => {
     const responses = await Promise.all(
       ["a b<script>", "x".repeat(129)].map((invalid) =>
         app.handle(
-          new Request("http://localhost/health", { headers: { "X-Request-Id": invalid } }),
+          new Request("http://localhost/api/health", { headers: { "X-Request-Id": invalid } }),
         ),
       ),
     );
@@ -67,7 +74,7 @@ describe("request id", () => {
   });
 
   test("is set on error responses too", async () => {
-    const response = await app.handle(new Request("http://localhost/does-not-exist"));
+    const response = await app.handle(new Request("http://localhost/api/does-not-exist"));
 
     expect(response.status).toBe(404);
     expect(response.headers.get("x-request-id")).toMatch(UUID);
@@ -89,7 +96,7 @@ describe("request logging", () => {
   });
 
   const requestLine = async (path: string) => {
-    const response = await loggedApp.handle(new Request(`http://localhost${path}`));
+    const response = await loggedApp.handle(new Request(`http://localhost/api${path}`));
     const id = response.headers.get("x-request-id");
 
     // onAfterResponse runs once the response is handed back, not before.
@@ -102,7 +109,7 @@ describe("request logging", () => {
     expect(await requestLine("/health")).toMatchObject({
       level: 30,
       method: "GET",
-      path: "/health",
+      path: "/api/health",
       status: 200,
       durationMs: expect.any(Number),
     });
@@ -120,8 +127,8 @@ describe("request logging", () => {
       testConfig({ logger: limitedLogs.logger, rateLimit: { max: 1, windowMs: 60_000 } }),
     ).get("/ping", () => "pong");
 
-    await limited.handle(new Request("http://localhost/ping"));
-    await limited.handle(new Request("http://localhost/ping"));
+    await limited.handle(new Request("http://localhost/api/ping"));
+    await limited.handle(new Request("http://localhost/api/ping"));
     await Bun.sleep(0);
 
     const statuses = limitedLogs.entries().map((entry) => entry.status);
@@ -169,14 +176,14 @@ describe("error handling", () => {
     });
 
   test("answers 500 with a generic body and the request id", async () => {
-    const response = await failingApp.handle(new Request("http://localhost/boom"));
+    const response = await failingApp.handle(new Request("http://localhost/api/boom"));
     const body = await expectError(response, { status: 500, code: "INTERNAL_SERVER_ERROR" });
 
     expect(JSON.stringify(body)).not.toContain("hunter2");
   });
 
   test("renders a thrown ApiError with its status, code and message", async () => {
-    await expectError(await failingApp.handle(new Request("http://localhost/forbidden")), {
+    await expectError(await failingApp.handle(new Request("http://localhost/api/forbidden")), {
       status: 403,
       code: "FORBIDDEN",
       message: "You cannot edit this word",
@@ -184,14 +191,14 @@ describe("error handling", () => {
   });
 
   test("renders an unknown route as NOT_FOUND", async () => {
-    await expectError(await failingApp.handle(new Request("http://localhost/does-not-exist")), {
+    await expectError(await failingApp.handle(new Request("http://localhost/api/does-not-exist")), {
       status: 404,
       code: "NOT_FOUND",
     });
   });
 
   test("renders a thrown Elysia status with the code matching its status", async () => {
-    await expectError(await failingApp.handle(new Request("http://localhost/conflict")), {
+    await expectError(await failingApp.handle(new Request("http://localhost/api/conflict")), {
       status: 409,
       code: "CONFLICT",
     });
@@ -199,7 +206,7 @@ describe("error handling", () => {
 
   test("renders an invalid body as VALIDATION_FAILED with field details", async () => {
     const response = await failingApp.handle(
-      new Request("http://localhost/words", {
+      new Request("http://localhost/api/words", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: 42 }),
@@ -213,7 +220,7 @@ describe("error handling", () => {
 
   test("renders malformed JSON as BAD_REQUEST", async () => {
     const response = await failingApp.handle(
-      new Request("http://localhost/words", {
+      new Request("http://localhost/api/words", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: "{not json",
@@ -228,7 +235,7 @@ describe("error handling", () => {
 
     // A real HTTP client always declares it; a bare Request in tests does not.
     const response = await failingApp.handle(
-      new Request("http://localhost/words", {
+      new Request("http://localhost/api/words", {
         method: "POST",
         headers: { "content-type": "application/json", "content-length": String(body.length) },
         body,
@@ -239,14 +246,17 @@ describe("error handling", () => {
   });
 
   test("treats a response that breaks its own schema as a server error", async () => {
-    await expectError(await failingApp.handle(new Request("http://localhost/broken-response")), {
-      status: 500,
-      code: "INTERNAL_SERVER_ERROR",
-    });
+    await expectError(
+      await failingApp.handle(new Request("http://localhost/api/broken-response")),
+      {
+        status: 500,
+        code: "INTERNAL_SERVER_ERROR",
+      },
+    );
   });
 
   test("logs the error with its stack and the request id", async () => {
-    const response = await failingApp.handle(new Request("http://localhost/boom"));
+    const response = await failingApp.handle(new Request("http://localhost/api/boom"));
     const requestIdHeader = response.headers.get("x-request-id");
 
     expect(logs.entries()).toContainEqual(
@@ -272,7 +282,7 @@ const pingFrom = (target: ReturnType<typeof limitedApp>, forwardedFors: string[]
   Promise.all(
     forwardedFors.map((forwardedFor) =>
       target.handle(
-        new Request("http://localhost/ping", { headers: { "X-Forwarded-For": forwardedFor } }),
+        new Request("http://localhost/api/ping", { headers: { "X-Forwarded-For": forwardedFor } }),
       ),
     ),
   );
@@ -300,11 +310,11 @@ describe("rate limiting", () => {
     expect(limited?.headers.get("x-content-type-options")).toBe("nosniff");
   });
 
-  test("never limits /health", async () => {
+  test("never limits /api/health", async () => {
     const target = limitedApp(false);
 
     const responses = await Promise.all(
-      Array.from({ length: 5 }, () => target.handle(new Request("http://localhost/health"))),
+      Array.from({ length: 5 }, () => target.handle(new Request("http://localhost/api/health"))),
     );
 
     expect(countStatus(responses, 200)).toBe(5);
@@ -319,13 +329,17 @@ describe("rate limiting", () => {
 });
 
 describe("api docs", () => {
+  test("live under the /api prefix", () => {
+    expect([DOCS_PATH, SPEC_PATH]).toEqual(["/api/openapi", "/api/openapi/json"]);
+  });
+
   test("serves the OpenAPI spec with the documented routes", async () => {
     const response = await app.handle(new Request(`http://localhost${SPEC_PATH}`));
     const spec = await response.json();
 
     expect(response.status).toBe(200);
     expect(spec.info.title).toBe("Typomaniac API");
-    expect(spec.paths["/health"].get).toMatchObject({ tags: ["System"] });
+    expect(spec.paths["/api/health"].get).toMatchObject({ tags: ["System"] });
     expect(spec.paths[DOCS_PATH]).toBeUndefined();
   });
 
@@ -340,7 +354,7 @@ describe("api docs", () => {
   });
 
   test("keeps the strict CSP everywhere else", async () => {
-    const response = await app.handle(new Request("http://localhost/health"));
+    const response = await app.handle(new Request("http://localhost/api/health"));
 
     expect(response.headers.get("content-security-policy")).toBe(
       "default-src 'none'; frame-ancestors 'none'",
@@ -366,7 +380,7 @@ describe("api docs", () => {
 describe("security headers", () => {
   test("are set on every response, errors included", async () => {
     const responses = await Promise.all(
-      ["/health", "/does-not-exist"].map((path) =>
+      ["/api/health", "/api/does-not-exist"].map((path) =>
         app.handle(new Request(`http://localhost${path}`)),
       ),
     );
@@ -384,10 +398,10 @@ describe("security headers", () => {
   });
 
   test("HSTS is only sent in production", async () => {
-    const devResponse = await app.handle(new Request("http://localhost/health"));
+    const devResponse = await app.handle(new Request("http://localhost/api/health"));
 
     const prodResponse = await createApp(testConfig({ isProduction: true })).handle(
-      new Request("http://localhost/health"),
+      new Request("http://localhost/api/health"),
     );
 
     expect(devResponse.headers.get("strict-transport-security")).toBeNull();

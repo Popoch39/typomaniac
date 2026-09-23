@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 API backend en [Elysia](https://elysiajs.com) sur le runtime Bun. Point d'entrée : `src/index.ts` (serveur sur le port 3000).
 
+**Préfixe global `/api`** (`API_PREFIX`, `src/api-prefix.ts`) : `createApp` est une `new Elysia({ prefix })`, donc toute route (y compris celles des plugins montés, comme la doc) vit sous `/api` ; hors préfixe, tout répond 404. Une route se déclare sans le préfixe (`.get("/health")`). Les hooks `onRequest` voient le pathname complet : ils comparent à `` `${API_PREFIX}/…` ``.
+
 ## Skill Elysia obligatoire
 
 **Avant de créer, modifier ou relire un fichier qui utilise Elysia** (routes, plugins, handlers, schémas de validation, config du serveur), invoquer le skill `elysiajs`. Pas d'exception pour les petites modifications : l'API d'Elysia évolue vite et le skill porte les patterns à jour.
@@ -44,12 +46,12 @@ Plugins dans `src/plugins/`, montés par `createApp` dans cet ordre : request-id
 - **Logger** : pino, créé dans `src/index.ts` (`src/logger.ts`) et injecté via `AppConfig.logger`. JSON sur stdout si `NODE_ENV=production`, sinon `pino-pretty` (transport worker, dev uniquement : il ne marche pas dans le binaire compilé). Niveau : `LOG_LEVEL`. Une ligne `request` par requête (méthode, path, status, durée, requestId). Dans un handler, utiliser `log` du contexte : il porte déjà le `requestId`.
 - **Request ID** : `X-Request-Id` repris s'il est sûr (`[\w.-]{1,128}`), sinon UUID ; renvoyé dans la réponse. `requestIdOf(request)` pour le lire hors contexte (hooks d'erreur).
 - **En-têtes de sécurité** : plugin maison façon helmet pour une API JSON (nosniff, CSP `default-src 'none'`, frame DENY, referrer, CORP/COOP). HSTS seulement en prod.
-- **Rate limit** : plugin maison (`FixedWindowStore`, compteurs immuables : `elysia-rate-limit` v4 rejetait toutes les requêtes concurrentes proches de la limite). `RATE_LIMIT_MAX` requêtes par `RATE_LIMIT_WINDOW_MS` et par IP, 404 compris, `/health` exclu ; en-têtes `RateLimit-*` et `Retry-After`. En mémoire, par process : à revoir si l'API passe sur plusieurs instances. IP lue dans `X-Forwarded-For` seulement si `TRUST_PROXY=true`.
+- **Rate limit** : plugin maison (`FixedWindowStore`, compteurs immuables : `elysia-rate-limit` v4 rejetait toutes les requêtes concurrentes proches de la limite). `RATE_LIMIT_MAX` requêtes par `RATE_LIMIT_WINDOW_MS` et par IP, 404 compris, `/api/health` exclu ; en-têtes `RateLimit-*` et `Retry-After`. En mémoire, par process : à revoir si l'API passe sur plusieurs instances. IP lue dans `X-Forwarded-For` seulement si `TRUST_PROXY=true`.
 - **Body** : 1 Mo max sur le `Content-Length` déclaré (`body-limit`, 413 au format API). Bun garde une limite dure de 4 Mo (`maxRequestBodySize`) qui répond un 413 vide : elle doit rester au-dessus de la nôtre.
 
 ## OpenAPI
 
-- `@elysiajs/openapi`, monté par `src/plugins/api-docs.ts` : spec sur `/openapi/json`, référence Scalar sur `/openapi`. **Désactivé en production** (404).
+- `@elysiajs/openapi`, monté par `src/plugins/api-docs.ts` : spec sur `/api/openapi/json`, référence Scalar sur `/api/openapi`. **Désactivé en production** (404).
 - La spec est générée depuis les schémas TypeBox des routes : toute route publique déclare son `response` et un `detail` (`summary`, `tags`). Un nouveau tag se déclare dans `documentation.tags`.
 - La page Scalar a sa propre CSP (bundle jsdelivr, styles inline), posée après `security-headers` ; la version de Scalar est épinglée (`SCALAR_VERSION`).
 
@@ -78,4 +80,5 @@ Toute erreur sort au même format, défini dans `src/errors.ts` et réexporté p
 
 - `src/app.ts` construit l'app (`createApp`) et exporte `type App`, consommé par le front via `import type { App } from "api"` (champ `exports` du `package.json`). `src/index.ts` ne fait que migrer et `listen()`.
 - Routes chaînées sur une seule expression, sinon Eden perd l'inférence.
+- Le préfixe apparaît dans l'arbre Eden : le front exporte `treaty<App>(url).api` (`apps/frontend/src/api/client.ts`), les appels s'écrivent `api.health.get()`.
 - `app.ts` ne doit pas importer `env.ts` : le front typecheck ce graphe de fichiers.

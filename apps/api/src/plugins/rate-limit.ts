@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 
+import { API_PREFIX } from "../api-prefix";
 import { ApiError } from "../errors";
 import { FixedWindowStore } from "./fixed-window-store";
 
@@ -11,7 +12,7 @@ export type RateLimitConfig = {
   trustProxy: boolean;
 };
 
-const UNLIMITED_PATHS = new Set(["/health"]);
+const UNLIMITED_PATHS = new Set([`${API_PREFIX}/health`]);
 
 const clientKey = (
   request: Request,

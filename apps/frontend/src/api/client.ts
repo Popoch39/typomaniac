@@ -3,7 +3,8 @@ import type { App } from "api";
 
 import { env } from "@/env";
 
-export const api = treaty<App>(env.VITE_API_URL);
+// Every API route lives under /api: the tree starts there, calls read `api.health.get()`.
+export const api = treaty<App>(env.VITE_API_URL).api;
 
 export class ApiError<TValue> extends Error {
   readonly status: number;
