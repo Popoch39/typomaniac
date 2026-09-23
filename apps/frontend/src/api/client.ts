@@ -4,7 +4,8 @@ import type { App } from "api";
 import { env } from "@/env";
 
 // Every API route lives under /api: the tree starts there, calls read `api.health.get()`.
-export const api = treaty<App>(env.VITE_API_URL).api;
+// The API is on another origin in dev: without credentials the Session cookie is never sent.
+export const api = treaty<App>(env.VITE_API_URL, { fetch: { credentials: "include" } }).api;
 
 export class ApiError<TValue> extends Error {
   readonly status: number;
@@ -19,7 +20,7 @@ export class ApiError<TValue> extends Error {
   }
 }
 
-type TreatyResult<TData, TError> =
+export type TreatyResult<TData, TError> =
   | { data: TData; error: null; status: number }
   | { data: null; error: { value: TError }; status: number };
 

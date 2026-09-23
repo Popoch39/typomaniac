@@ -14,6 +14,10 @@ _Avoid_ : compte, player, membre, profil
 Le lien entre un User et un fournisseur OAuth (GitHub, Google, Discord). Un User peut en avoir plusieurs ; deux Accounts dont l'email est vérifié par le fournisseur se rattachent au même User.
 _Avoid_ : provider, identité, login
 
+**Visitor** :
+Une personne qui utilise typomaniac sans Session. Elle peut jouer ; se connecter la fait devenir un User.
+_Avoid_ : anonyme, invité, guest
+
 **Session** :
 La preuve qu'un User est connecté sur un navigateur donné, portée par un cookie httpOnly.
 _Avoid_ : token, login
