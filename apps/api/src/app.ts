@@ -49,7 +49,7 @@ export const createApp = (config: AppConfig) =>
       response: t.Object({ status: t.Literal("ok") }),
       detail: { summary: "Health check", tags: ["System"] },
     })
-    .use(authentication(config.auth))
+    .use(authentication(config.auth, { trustProxy: config.trustProxy }))
     .get(
       "/me",
       ({ user }) => ({

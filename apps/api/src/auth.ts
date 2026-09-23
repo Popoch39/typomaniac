@@ -1,4 +1,4 @@
-import { betterAuth, type BetterAuthOptions } from "better-auth";
+import { betterAuth, type BetterAuthOptions, type BetterAuthRateLimitOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { openAPI } from "better-auth/plugins";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
@@ -6,8 +6,48 @@ import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import { type Table, table } from "./database/schema";
 import type { SocialProviders } from "./parse-env";
 import { AUTH_PATH } from "./plugins/authentication";
+import { CLIENT_IP_HEADER } from "./plugins/client-ip";
+import { FixedWindowStore } from "./plugins/fixed-window-store";
 
 const DAY_SECONDS = 60 * 60 * 24;
+
+type RateLimitStorage = NonNullable<BetterAuthRateLimitOptions["customStorage"]>;
+
+// Better Auth's counters on our FixedWindowStore, one store per window length (its
+// rules use a few: 10 s for sign-in, 60 s for others). Its default memory store is a
+// module-wide Map shared by every instance; this one belongs to its instance.
+const rateLimitStorage = (): RateLimitStorage => {
+  const stores = new Map<number, FixedWindowStore>();
+
+  const storeFor = (windowSeconds: number) => {
+    const existing = stores.get(windowSeconds);
+
+    if (existing) {
+      return existing;
+    }
+
+    const store = new FixedWindowStore({ windowMs: windowSeconds * 1000 });
+
+    stores.set(windowSeconds, store);
+
+    return store;
+  };
+
+  return {
+    consume: async (key, rule) => {
+      const window = storeFor(rule.window).increment(key);
+
+      if (window.count <= rule.max) {
+        return { allowed: true, retryAfter: null };
+      }
+
+      return {
+        allowed: false,
+        retryAfter: Math.max(0, Math.ceil((window.nextReset.getTime() - Date.now()) / 1000)),
+      };
+    },
+  };
+};
 
 export type AuthSettings = {
   secret: string;
@@ -42,8 +82,16 @@ export const authOptions = ({ secret, baseURL, trustedOrigin, socialProviders }:
       updateAge: DAY_SECONDS,
       cookieCache: { enabled: true, maxAge: 5 * 60 },
     },
-    // Front and API are two subdomains of the same site in production: Lax is enough.
-    advanced: { defaultCookieAttributes: { httpOnly: true, sameSite: "lax" } },
+    // On top of our global limit, in every environment: Better Auth's stricter rules
+    // on its sensitive endpoints (3 sign-in attempts per 10 s and per IP).
+    rateLimit: { enabled: true, customStorage: rateLimitStorage() },
+    advanced: {
+      // Front and API are two subdomains of the same site in production: Lax is enough.
+      defaultCookieAttributes: { httpOnly: true, sameSite: "lax" },
+      // The client IP our rate limit resolved (TRUST_PROXY), passed on by the
+      // authentication plugin. Never X-Forwarded-For directly: anyone can forge it.
+      ipAddress: { ipAddressHeaders: [CLIENT_IP_HEADER] },
+    },
     telemetry: { enabled: false },
   }) satisfies BetterAuthOptions;
 

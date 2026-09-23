@@ -12,24 +12,30 @@ import { authOptions } from "./auth";
 import { ApiError } from "./errors";
 import { DOCS_PATH, SPEC_PATH } from "./plugins/api-docs";
 import { MAX_REQUEST_BODY_SIZE } from "./plugins/body-limit";
+import { CLIENT_IP_HEADER } from "./plugins/client-ip";
 
 const FRONT_ORIGIN = "http://localhost:5173";
 
-const testAuthOptions = authOptions({
-  secret: "a-test-secret-of-at-least-thirty-two-chars",
-  baseURL: "http://localhost",
-  trustedOrigin: FRONT_ORIGIN,
-  socialProviders: {},
-});
+// A function: each instance gets its own rate limit counters.
+const testAuthOptions = () =>
+  authOptions({
+    secret: "a-test-secret-of-at-least-thirty-two-chars",
+    baseURL: "http://localhost",
+    trustedOrigin: FRONT_ORIGIN,
+    socialProviders: {},
+  });
 
 // The production auth options on Better Auth's in-memory database, plus its test
 // helpers to open Sessions without going through an OAuth provider.
-const createTestAuth = () =>
-  betterAuth({
-    ...testAuthOptions,
+const createTestAuth = () => {
+  const options = testAuthOptions();
+
+  return betterAuth({
+    ...options,
     database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
-    plugins: [...testAuthOptions.plugins, testUtils()],
+    plugins: [...options.plugins, testUtils()],
   });
+};
 
 const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
   corsOrigin: FRONT_ORIGIN,
@@ -545,17 +551,33 @@ const fakeProviders = (profiles: Map<string, ProviderProfile>) => ({
 });
 
 // The production auth options with fake providers in place of the configured ones.
-const createSocialAuth = (socialProviders: BetterAuthOptions["socialProviders"]) =>
-  betterAuth({
-    ...testAuthOptions,
+const createSocialAuth = (
+  socialProviders: BetterAuthOptions["socialProviders"],
+  { rateLimited = true } = {},
+) => {
+  const options = testAuthOptions();
+
+  return betterAuth({
+    ...options,
     socialProviders,
+    rateLimit: { ...options.rateLimit, enabled: rateLimited },
     database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
     logger: { disabled: true },
+  });
+};
+
+const signInRequest = (providerId: string, token: string, headers: Record<string, string> = {}) =>
+  new Request("http://localhost/api/auth/sign-in/social", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: FRONT_ORIGIN, ...headers },
+    body: JSON.stringify({ provider: providerId, idToken: { token } }),
   });
 
 describe("social sign-in", () => {
   const profiles = new Map<string, ProviderProfile>();
-  const auth = createSocialAuth(fakeProviders(profiles));
+  // The tests share one instance and all come from the same address: Better Auth's
+  // sign-in limit would refuse them. It has its own tests below.
+  const auth = createSocialAuth(fakeProviders(profiles), { rateLimited: false });
   const socialApp = createApp(testConfig({ auth }));
 
   const signInWith = (providerId: string, profile: ProviderProfile, target = socialApp) => {
@@ -563,13 +585,7 @@ describe("social sign-in", () => {
 
     profiles.set(token, profile);
 
-    return target.handle(
-      new Request("http://localhost/api/auth/sign-in/social", {
-        method: "POST",
-        headers: { "content-type": "application/json", origin: FRONT_ORIGIN },
-        body: JSON.stringify({ provider: providerId, idToken: { token } }),
-      }),
-    );
+    return target.handle(signInRequest(providerId, token));
   };
 
   const accountsOf = async (email: string) => {
@@ -627,6 +643,56 @@ describe("social sign-in", () => {
 
     expect(response.status).toBe(401);
     expect(await accountsOf(email)).toEqual(new Set(["github"]));
+  });
+});
+
+// Better Auth allows 3 sign-in attempts per 10 seconds and per IP, far below our
+// global limit.
+const SIGN_IN_LIMIT = 3;
+
+const signInApp = (trustProxy: boolean) => {
+  const profiles = new Map([["alan", { id: "1", email: "alan@example.com", emailVerified: true }]]);
+
+  return createApp(
+    testConfig({ trustProxy, auth: createSocialAuth({ github: fakeProviders(profiles).github }) }),
+  );
+};
+
+// One more attempt than allowed, each with its own value of `header`.
+const signInAttempts = (target: ReturnType<typeof signInApp>, header: string, values: string[]) =>
+  Promise.all(
+    values.map((value) => target.handle(signInRequest("github", "alan", { [header]: value }))),
+  );
+
+const OVER_LIMIT = SIGN_IN_LIMIT + 1;
+
+const distinctIps = Array.from({ length: OVER_LIMIT }, (_, i) => `203.0.113.${i + 1}`);
+
+describe("sign-in rate limiting", () => {
+  test("refuses sign-in attempts beyond Better Auth's limit, well under the global one", async () => {
+    const sameIp = Array<string>(OVER_LIMIT).fill("203.0.113.1");
+    const responses = await signInAttempts(signInApp(true), "X-Forwarded-For", sameIp);
+
+    expect(countStatus(responses, 200)).toBe(SIGN_IN_LIMIT);
+    expect(countStatus(responses, 429)).toBe(1);
+  });
+
+  test("a forged X-Forwarded-For does not get around it when the proxy is not trusted", async () => {
+    const responses = await signInAttempts(signInApp(false), "X-Forwarded-For", distinctIps);
+
+    expect(countStatus(responses, 429)).toBe(1);
+  });
+
+  test("keys on X-Forwarded-For when the proxy is trusted, like the global limit", async () => {
+    const responses = await signInAttempts(signInApp(true), "X-Forwarded-For", distinctIps);
+
+    expect(countStatus(responses, 200)).toBe(OVER_LIMIT);
+  });
+
+  test("ignores a client-sent copy of the header Better Auth reads the IP from", async () => {
+    const responses = await signInAttempts(signInApp(false), CLIENT_IP_HEADER, distinctIps);
+
+    expect(countStatus(responses, 429)).toBe(1);
   });
 });
 

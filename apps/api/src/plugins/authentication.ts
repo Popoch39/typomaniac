@@ -3,6 +3,7 @@ import { Elysia } from "elysia";
 import { API_PREFIX } from "../api-prefix";
 import type { Auth } from "../auth";
 import { ApiError } from "../errors";
+import { CLIENT_IP_HEADER, clientIp } from "./client-ip";
 
 // Registered under createApp's prefix.
 const AUTH_ROUTE = "/auth";
@@ -16,18 +17,34 @@ export type AuthHandler = Pick<Auth, "handler"> & {
   api: Pick<Auth["api"], "getSession" | "generateOpenAPISchema">;
 };
 
+// Better Auth only reads the client IP from a header: it gets the one our rate limit
+// uses, in place of anything the client sent under that name.
+const withClientIp = (request: Request, ip: string) => {
+  const headers = new Headers(request.headers);
+
+  headers.delete(CLIENT_IP_HEADER);
+
+  if (ip) {
+    headers.set(CLIENT_IP_HEADER, ip);
+  }
+
+  return new Request(request, { headers });
+};
+
 // Better Auth's endpoints under /api/auth/*, with their own error format. Not
 // `.mount("/auth", …)`: it strips the path, and Better Auth routes on the full URL.
 // `parse: "none"` leaves the body unread for Better Auth.
 //
 // The `auth` macro protects a route: without a valid Session it throws UNAUTHORIZED
 // (API error format), with one it puts `user` and `session` in the context.
-export const authentication = (auth: AuthHandler) =>
+export const authentication = (auth: AuthHandler, { trustProxy }: { trustProxy: boolean }) =>
   new Elysia({ name: "authentication", seed: auth })
-    .all(`${AUTH_ROUTE}/*`, ({ request }) => auth.handler(request), {
-      parse: "none",
-      detail: { hide: true },
-    })
+    .all(
+      `${AUTH_ROUTE}/*`,
+      ({ request, server }) =>
+        auth.handler(withClientIp(request, clientIp(request, server, trustProxy))),
+      { parse: "none", detail: { hide: true } },
+    )
     .macro({
       auth: {
         async resolve({ request, set }) {
