@@ -17,6 +17,7 @@ export default defineConfig({
     "**/build/**",
     "**/dist/**",
     "**/next-env.d.ts",
+    "**/routeTree.gen.ts",
     ".agent/**",
     ".agents/**",
     ".claude/**",

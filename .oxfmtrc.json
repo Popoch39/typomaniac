@@ -8,6 +8,7 @@
     ".codex/**",
     ".cursor/**",
     "tools/oxlint/anti-slop/**",
-    "bun.lock"
+    "bun.lock",
+    "**/routeTree.gen.ts"
   ]
 }
