@@ -14,7 +14,8 @@ const navLinkClassName = "data-[status=active]:bg-muted";
 
 export const RootLayout = () => (
   <div className="mx-auto flex min-h-svh max-w-5xl flex-col gap-6 p-4">
-    <header className="flex items-center justify-between border-b pb-2">
+    {/* Wraps on a phone: the nav and the controls do not fit side by side under ~360px. */}
+    <header className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
       <nav className="flex gap-1">
         <Button
           variant="ghost"

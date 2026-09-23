@@ -39,6 +39,10 @@ const letterStatuses = (word: string) =>
 
 const stat = (term: string) => screen.getByText(term).nextElementSibling?.textContent;
 
+const resumePrompt = () => screen.queryByRole("button", { name: "clique ou tape pour reprendre" });
+
+const typingInput = () => screen.getByLabelText("Zone de frappe");
+
 describe("HomePage", () => {
   test("shows the Text to type and the word counter", () => {
     renderRun();
@@ -79,5 +83,70 @@ describe("HomePage", () => {
     expect(stat("wpm")).toBe("12");
     expect(stat("précision")).toBe("100 %");
     expect(screen.queryByText(isWord("small"))).not.toBeInTheDocument();
+  });
+});
+
+describe("HomePage focus", () => {
+  test("losing the focus hides the Text behind a prompt to resume", async () => {
+    const { user } = renderRun();
+
+    expect(typingInput()).toHaveFocus();
+    expect(resumePrompt()).not.toBeInTheDocument();
+
+    await user.click(document.body);
+
+    expect(resumePrompt()).toBeInTheDocument();
+  });
+
+  test("a click on the Text gives the focus back", async () => {
+    const { user } = renderRun();
+
+    await user.click(document.body);
+    await user.click(screen.getByRole("button", { name: "clique ou tape pour reprendre" }));
+
+    expect(typingInput()).toHaveFocus();
+    expect(resumePrompt()).not.toBeInTheDocument();
+
+    await user.keyboard("s");
+
+    expect(letterStatuses("small")[0]).toBe("correct");
+  });
+
+  test("a key gives the focus back without being typed", async () => {
+    const { user } = renderRun();
+
+    await user.click(document.body);
+    await user.keyboard("x");
+
+    expect(typingInput()).toHaveFocus();
+    expect(resumePrompt()).not.toBeInTheDocument();
+    expect(letterStatuses("small")[0]).toBe("pending");
+  });
+
+  test("a key typed on a focused button gives the focus back too", async () => {
+    const { user } = renderRun();
+
+    await user.click(document.body);
+    // Backwards from the page, the overlay is the first stop (the hidden input comes before it).
+    await user.tab({ shift: true });
+
+    expect(resumePrompt()).toHaveFocus();
+
+    await user.keyboard("x");
+
+    expect(typingInput()).toHaveFocus();
+  });
+
+  test("the clock keeps running while the focus is lost", async () => {
+    const { user, advance } = renderRun();
+
+    await user.keyboard("small help while late letter");
+    await user.click(document.body);
+    advance(60_000);
+    await user.click(screen.getByRole("button", { name: "clique ou tape pour reprendre" }));
+    await user.keyboard(" sell driver quiet never learn");
+
+    // Same Run as above, typed in one minute because the minute out of focus counts.
+    expect(stat("wpm")).toBe("12");
   });
 });
