@@ -35,4 +35,21 @@ Lint et format se lancent depuis la racine du monorepo (voir le `CLAUDE.md` raci
 
 ## Image de prod
 
-`apps/api/Dockerfile`, à builder depuis la racine : `docker build -f apps/api/Dockerfile -t typomaniac-api .`. Binaire compilé dans une image distroless, dossier `drizzle/` embarqué. Variables requises à l'exécution : `DATABASE_URL` (et `PORT`, 3000 par défaut).
+`apps/api/Dockerfile`, à builder depuis la racine : `docker build -f apps/api/Dockerfile -t typomaniac-api .`. Binaire compilé dans une image distroless, dossier `drizzle/` embarqué. Variables requises à l'exécution : `DATABASE_URL` (et `PORT`, 3000 par défaut ; `CORS_ORIGIN`, origine du front, `http://localhost:5173` par défaut). En prod, poser `NODE_ENV=production` (logs JSON, HSTS) et trancher `TRUST_PROXY` selon l'hébergement.
+
+## Logs et sécurité
+
+Plugins dans `src/plugins/`, montés par `createApp` dans cet ordre : request-id, request-logger, security-headers, cors, error-handler, rate-limit.
+
+- **Logger** : pino, créé dans `src/index.ts` (`src/logger.ts`) et injecté via `AppConfig.logger`. JSON sur stdout si `NODE_ENV=production`, sinon `pino-pretty` (transport worker, dev uniquement : il ne marche pas dans le binaire compilé). Niveau : `LOG_LEVEL`. Une ligne `request` par requête (méthode, path, status, durée, requestId). Dans un handler, utiliser `log` du contexte : il porte déjà le `requestId`.
+- **Request ID** : `X-Request-Id` repris s'il est sûr (`[\w.-]{1,128}`), sinon UUID ; renvoyé dans la réponse. `requestIdOf(request)` pour le lire hors contexte (hooks d'erreur).
+- **En-têtes de sécurité** : plugin maison façon helmet pour une API JSON (nosniff, CSP `default-src 'none'`, frame DENY, referrer, CORP/COOP). HSTS seulement en prod.
+- **Erreurs** : les erreurs inattendues répondent `500 { error, requestId }` sans message ni stack (loggés côté serveur). 404, validation et parse gardent la réponse d'Elysia.
+- **Rate limit** : `elysia-rate-limit` **v4** (la v5 exige Elysia 2), `RATE_LIMIT_MAX` requêtes par `RATE_LIMIT_WINDOW_MS` et par IP, `/health` exclu. Store maison `FixedWindowStore` : le `DefaultContext` de la lib renvoie un compteur mutable partagé et met en 429 toutes les requêtes concurrentes. Store en mémoire, par process : à revoir si l'API passe sur plusieurs instances. IP lue dans `X-Forwarded-For` seulement si `TRUST_PROXY=true`.
+- **Body** : 1 Mo max (`maxRequestBodySize` dans `listen`), 413 au-delà.
+
+## Eden Treaty
+
+- `src/app.ts` construit l'app (`createApp`) et exporte `type App`, consommé par le front via `import type { App } from "api"` (champ `exports` du `package.json`). `src/index.ts` ne fait que migrer et `listen()`.
+- Routes chaînées sur une seule expression, sinon Eden perd l'inférence.
+- `app.ts` ne doit pas importer `env.ts` : le front typecheck ce graphe de fichiers.
