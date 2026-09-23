@@ -1,7 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { betterAuth } from "better-auth";
+import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
+import type { OAuth2Tokens } from "better-auth/oauth2";
 import { testUtils } from "better-auth/plugins";
+import type { DiscordProfile, GithubProfile, GoogleProfile } from "better-auth/social-providers";
 import { status, t } from "elysia";
 import pino from "pino";
 
@@ -484,6 +486,133 @@ describe("auth", () => {
     const spec = await (await authApp.handle(new Request(`http://localhost${SPEC_PATH}`))).json();
 
     expect(spec.paths["/api/me"].get).toMatchObject({ tags: ["Auth"] });
+  });
+});
+
+type ProviderProfile = { id: string; email: string; emailVerified: boolean };
+
+// A provider that takes the id token as its profile's key: signing in through
+// POST /sign-in/social with `idToken` runs Better Auth's real User and Account
+// handling, without the OAuth round trip. `subject` builds the raw profile field
+// the provider keys its Accounts on (`id`, or `sub` for Google).
+const fakeProvider = <Profile>(
+  profiles: Map<string, ProviderProfile>,
+  subject: (id: string) => Partial<Profile>,
+) => ({
+  clientId: "id",
+  clientSecret: "secret",
+  verifyIdToken: async (token: string) => profiles.has(token),
+  getUserInfo: async ({ idToken }: OAuth2Tokens) => {
+    const profile = profiles.get(idToken ?? "");
+
+    if (!profile) {
+      return null;
+    }
+
+    const { id, email, emailVerified } = profile;
+
+    // SAFETY: with getUserInfo overridden, Better Auth reads only the account subject
+    // from the raw profile, and `subject` sets it.
+    const data = subject(id) as Profile;
+
+    return { user: { email, emailVerified, name: email }, data };
+  },
+});
+
+const fakeProviders = (profiles: Map<string, ProviderProfile>) => ({
+  github: fakeProvider<GithubProfile>(profiles, (id) => ({ id })),
+  google: fakeProvider<GoogleProfile>(profiles, (sub) => ({ sub })),
+  discord: fakeProvider<DiscordProfile>(profiles, (id) => ({ id })),
+});
+
+// The production auth options with fake providers in place of the configured ones.
+const createSocialAuth = (socialProviders: BetterAuthOptions["socialProviders"]) =>
+  betterAuth({
+    ...authOptions({
+      secret: "a-test-secret-of-at-least-thirty-two-chars",
+      baseURL: "http://localhost",
+      trustedOrigin: FRONT_ORIGIN,
+      socialProviders: {},
+    }),
+    socialProviders,
+    database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
+    logger: { disabled: true },
+  });
+
+describe("social sign-in", () => {
+  const profiles = new Map<string, ProviderProfile>();
+  const auth = createSocialAuth(fakeProviders(profiles));
+  const socialApp = createApp(testConfig({ auth }));
+
+  const signInWith = (providerId: string, profile: ProviderProfile, target = socialApp) => {
+    const token = `${providerId}:${profile.id}`;
+
+    profiles.set(token, profile);
+
+    return target.handle(
+      new Request("http://localhost/api/auth/sign-in/social", {
+        method: "POST",
+        headers: { "content-type": "application/json", origin: FRONT_ORIGIN },
+        body: JSON.stringify({ provider: providerId, idToken: { token } }),
+      }),
+    );
+  };
+
+  const accountsOf = async (email: string) => {
+    const context = await auth.$context;
+    const found = await context.internalAdapter.findUserByEmail(email, { includeAccounts: true });
+
+    return new Set(found?.accounts.map((account) => account.providerId));
+  };
+
+  test("refuses a provider that is not configured", async () => {
+    const githubOnly = createApp(
+      testConfig({ auth: createSocialAuth({ github: fakeProviders(profiles).github }) }),
+    );
+
+    const profile = { id: "0", email: "alan@example.com", emailVerified: true };
+
+    expect((await signInWith("github", profile, githubOnly)).status).toBe(200);
+    expect((await signInWith("discord", profile, githubOnly)).status).toBe(404);
+  });
+
+  test("links a Google Account to the GitHub User with the same email", async () => {
+    const email = "grace@example.com";
+
+    expect((await signInWith("github", { id: "1", email, emailVerified: true })).status).toBe(200);
+    expect((await signInWith("google", { id: "2", email, emailVerified: true })).status).toBe(200);
+
+    expect(await accountsOf(email)).toEqual(new Set(["github", "google"]));
+  });
+
+  test("trusts GitHub and Google even when they do not mark the email verified", async () => {
+    const email = "linus@example.com";
+
+    await signInWith("discord", { id: "3", email, emailVerified: true });
+    await signInWith("github", { id: "4", email, emailVerified: false });
+    await signInWith("google", { id: "5", email, emailVerified: false });
+
+    expect(await accountsOf(email)).toEqual(new Set(["discord", "github", "google"]));
+  });
+
+  test("links a Discord Account whose email Discord verified", async () => {
+    const email = "ken@example.com";
+
+    await signInWith("github", { id: "6", email, emailVerified: true });
+    const response = await signInWith("discord", { id: "7", email, emailVerified: true });
+
+    expect(response.status).toBe(200);
+    expect(await accountsOf(email)).toEqual(new Set(["discord", "github"]));
+  });
+
+  test("refuses to link a Discord Account whose email is not verified", async () => {
+    const email = "barbara@example.com";
+
+    await signInWith("github", { id: "8", email, emailVerified: true });
+    const response = await signInWith("discord", { id: "9", email, emailVerified: false });
+
+    expect(response.status).toBe(401);
+    expect(await accountsOf(email)).toEqual(new Set(["github"]));
   });
 });
 

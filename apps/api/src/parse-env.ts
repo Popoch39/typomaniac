@@ -20,21 +20,65 @@ const EnvSchema = t.Object({
   // Empty counts as unset: `.env.example` lists them blank.
   GITHUB_CLIENT_ID: t.Optional(t.String()),
   GITHUB_CLIENT_SECRET: t.Optional(t.String()),
+  GOOGLE_CLIENT_ID: t.Optional(t.String()),
+  GOOGLE_CLIENT_SECRET: t.Optional(t.String()),
+  DISCORD_CLIENT_ID: t.Optional(t.String()),
+  DISCORD_CLIENT_SECRET: t.Optional(t.String()),
 });
+
+type ParsedEnv = typeof EnvSchema.static;
 
 type OAuthClient = { clientId: string; clientSecret: string };
 
-export type SocialProviders = { github?: OAuthClient };
+export type SocialProviders = { github?: OAuthClient; google?: OAuthClient; discord?: OAuthClient };
 
-export type Env = typeof EnvSchema.static & { socialProviders: SocialProviders };
+export type Env = ParsedEnv & { socialProviders: SocialProviders };
 
-// A provider is only enabled with both halves of its credentials: a half-configured
-// one would show up in the flow and fail at the provider.
-const socialProvidersOf = (env: typeof EnvSchema.static) => {
+type Credentials = { prefix: string; clientId?: string; clientSecret?: string };
+
+const credentialsOf = (env: ParsedEnv) =>
+  ({
+    github: {
+      prefix: "GITHUB",
+      clientId: env.GITHUB_CLIENT_ID,
+      clientSecret: env.GITHUB_CLIENT_SECRET,
+    },
+    google: {
+      prefix: "GOOGLE",
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
+    },
+    discord: {
+      prefix: "DISCORD",
+      clientId: env.DISCORD_CLIENT_ID,
+      clientSecret: env.DISCORD_CLIENT_SECRET,
+    },
+  }) satisfies Record<keyof SocialProviders, Credentials>;
+
+// Both halves set enables the provider, neither leaves it off. A single half is a
+// configuration mistake: refuse to start rather than silently drop the provider.
+const oauthClientOf = ({ prefix, clientId, clientSecret }: Credentials) => {
+  if (!clientId && !clientSecret) {
+    return undefined;
+  }
+
+  if (!clientId || !clientSecret) {
+    throw new Error(`${prefix}_CLIENT_ID and ${prefix}_CLIENT_SECRET must be set together`);
+  }
+
+  return { clientId, clientSecret };
+};
+
+const socialProvidersOf = (env: ParsedEnv) => {
+  const credentials = credentialsOf(env);
   const providers: SocialProviders = {};
 
-  if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
-    providers.github = { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET };
+  for (const provider of ["github", "google", "discord"] as const) {
+    const client = oauthClientOf(credentials[provider]);
+
+    if (client) {
+      providers[provider] = client;
+    }
   }
 
   return providers;

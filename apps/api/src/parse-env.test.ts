@@ -90,31 +90,62 @@ describe("parseEnv", () => {
 });
 
 describe("parseEnv social providers", () => {
-  test("enables GitHub when both its client id and secret are set", () => {
+  const PROVIDERS = ["GITHUB", "GOOGLE", "DISCORD"];
+
+  test("enables each provider whose client id and secret are both set", () => {
     const env = parseEnv({
       ...REQUIRED,
       GITHUB_CLIENT_ID: "github-id",
       GITHUB_CLIENT_SECRET: "github-secret",
+      GOOGLE_CLIENT_ID: "google-id",
+      GOOGLE_CLIENT_SECRET: "google-secret",
+      DISCORD_CLIENT_ID: "discord-id",
+      DISCORD_CLIENT_SECRET: "discord-secret",
     });
 
     expect(env.socialProviders).toEqual({
       github: { clientId: "github-id", clientSecret: "github-secret" },
+      google: { clientId: "google-id", clientSecret: "google-secret" },
+      discord: { clientId: "discord-id", clientSecret: "discord-secret" },
     });
   });
 
-  test("enables no provider when none is configured", () => {
-    expect(parseEnv(REQUIRED).socialProviders).toEqual({});
+  test("enables only the configured providers", () => {
+    const env = parseEnv({
+      ...REQUIRED,
+      DISCORD_CLIENT_ID: "discord-id",
+      DISCORD_CLIENT_SECRET: "discord-secret",
+    });
+
+    expect(env.socialProviders).toEqual({
+      discord: { clientId: "discord-id", clientSecret: "discord-secret" },
+    });
   });
 
-  test("never enables a provider with only half of its credentials", () => {
-    const halves = [
-      { GITHUB_CLIENT_ID: "github-id" },
-      { GITHUB_CLIENT_SECRET: "github-secret" },
-      { GITHUB_CLIENT_ID: "github-id", GITHUB_CLIENT_SECRET: "" },
-    ];
+  test("enables no provider when none is configured, blank counting as unset", () => {
+    expect(parseEnv(REQUIRED).socialProviders).toEqual({});
 
-    for (const half of halves) {
-      expect(parseEnv({ ...REQUIRED, ...half }).socialProviders).toEqual({});
+    const blank = Object.fromEntries(
+      PROVIDERS.flatMap((name) => [
+        [`${name}_CLIENT_ID`, ""],
+        [`${name}_CLIENT_SECRET`, ""],
+      ]),
+    );
+
+    expect(parseEnv({ ...REQUIRED, ...blank }).socialProviders).toEqual({});
+  });
+
+  test("rejects a provider with only half of its credentials", () => {
+    for (const name of PROVIDERS) {
+      const halves = [
+        { [`${name}_CLIENT_ID`]: "id" },
+        { [`${name}_CLIENT_SECRET`]: "secret" },
+        { [`${name}_CLIENT_ID`]: "id", [`${name}_CLIENT_SECRET`]: "" },
+      ];
+
+      for (const half of halves) {
+        expect(() => parseEnv({ ...REQUIRED, ...half })).toThrow(`${name}_CLIENT_ID`);
+      }
     }
   });
 });

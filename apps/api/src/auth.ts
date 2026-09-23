@@ -27,6 +27,12 @@ export const authOptions = ({ secret, baseURL, trustedOrigin, socialProviders }:
     basePath: AUTH_BASE_PATH,
     trustedOrigins: [trustedOrigin],
     socialProviders,
+    // Signing in with a second provider finds the User with the same email. GitHub and
+    // Google only hand out addresses they own or checked: trusted. Discord is linked
+    // only when it marks the email verified, otherwise anyone could claim an address.
+    account: {
+      accountLinking: { enabled: true, trustedProviders: ["github", "google"] },
+    },
     // Stored in the database for 30 days, pushed back by a day at most once a day of
     // use. The short cookie cache spares a database read on every request.
     session: {
