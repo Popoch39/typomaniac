@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 
-import { applyKeystroke, createRun, isFinished, type RunConfig, type RunState } from "./index";
+import {
+  applyKeystroke,
+  createRun,
+  generateText,
+  isFinished,
+  type RunConfig,
+  type RunState,
+} from "./index";
 
 // Seed 42 in English starts with "small help while" (pinned in text.test.ts).
 const config: RunConfig = { mode: "words", words: 3, language: "en", seed: 42 };
@@ -169,33 +176,71 @@ describe("correcting", () => {
 
 describe("isFinished in words Mode", () => {
   test("not while words are left", () => {
-    expect(isFinished(createRun(config))).toBe(false);
-    expect(isFinished(type(createRun(config), "small help whil"))).toBe(false);
+    expect(isFinished(createRun(config), 0)).toBe(false);
+    expect(isFinished(type(createRun(config), "small help whil"), 0)).toBe(false);
   });
 
   test("as soon as the last word is typed right, without space", () => {
     const run = type(createRun(config), "small help while");
 
-    expect(isFinished(run)).toBe(true);
+    expect(isFinished(run, 0)).toBe(true);
     expect(run.validatedWords).toBe(3);
   });
 
   test("a wrong last word only ends the Run on space", () => {
     const wrong = type(createRun(config), "small help whale");
 
-    expect(isFinished(wrong)).toBe(false);
+    expect(isFinished(wrong, 0)).toBe(false);
 
     const run = type(wrong, " ");
 
-    expect(isFinished(run)).toBe(true);
+    expect(isFinished(run, 0)).toBe(true);
     expect(run.validatedWords).toBe(3);
   });
 
-  test("Keystrokes after the end change nothing", () => {
+  test("time does not end a words Run", () => {
+    expect(isFinished(createRun(config), 3_600_000)).toBe(false);
+  });
+
+  test("Keystrokes after the end change nothing, whatever their time", () => {
     const run = type(createRun(config), "small help while");
 
     expect(type(run, "s d")).toEqual(run);
     expect(backspace(run)).toEqual(run);
     expect(deleteWord(run)).toEqual(run);
+  });
+});
+
+describe("time Mode", () => {
+  const timeConfig: RunConfig = { mode: "time", seconds: 30, language: "en", seed: 42 };
+
+  test("the Text never runs out, and stays the Text of the Seed", () => {
+    let run = createRun(timeConfig);
+
+    // 1,000 words, each typed as its first letter then space, all within the first second.
+    for (let i = 0; i < 1_000; i++) {
+      run = type(run, `${run.words[run.wordIndex]?.target[0]} `);
+    }
+
+    expect(run.wordIndex).toBe(1_000);
+    expect(run.validatedWords).toBe(1_000);
+    expect(run.words.length).toBeGreaterThan(1_000);
+    expect(run.words.map((word) => word.target)).toEqual(generateText(42, "en", run.words.length));
+  });
+
+  test("the Run ends once its duration has passed since the first Keystroke", () => {
+    const run = type(createRun(timeConfig), "small help while late letter ");
+
+    expect(isFinished(run, 0)).toBe(false);
+    expect(isFinished(run, 29_999)).toBe(false);
+    expect(isFinished(run, 30_000)).toBe(true);
+  });
+
+  test("Keystrokes once the time is up change nothing", () => {
+    const run = type(createRun(timeConfig), "sma");
+
+    expect(applyKeystroke(run, { kind: "char", char: "l", at: 30_000 })).toEqual(run);
+    expect(applyKeystroke(run, { kind: "backspace", at: 30_000 })).toEqual(run);
+    expect(applyKeystroke(run, { kind: "char", char: "l", at: 29_999 }).letterIndex).toBe(4);
   });
 });

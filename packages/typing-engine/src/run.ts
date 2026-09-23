@@ -1,7 +1,10 @@
 import { generateText, type Language } from "./text";
 
-// `words` Mode: the Run ends after `words` words.
-export type RunConfig = { mode: "words"; words: number; language: Language; seed: number };
+// `words` Mode: the Run ends after `words` words. `time` Mode: the Run ends `seconds` after its
+// first Keystroke, and its Text never runs out.
+export type RunConfig =
+  | { mode: "words"; words: number; language: Language; seed: number }
+  | { mode: "time"; seconds: number; language: Language; seed: number };
 
 // What the player pressed: a character (space included), backspace, or Ctrl+Backspace.
 export type Key = { kind: "char"; char: string } | { kind: "backspace" } | { kind: "deleteWord" };
@@ -50,38 +53,62 @@ const toWord = (index: number, target: string, typed: string): RunWord => {
   return { index, target, typed, letters: [...expected, ...extra] };
 };
 
-export const createRun = (config: RunConfig): RunState => ({
-  config,
-  words: generateText(config.seed, config.language, config.words).map((target, index) =>
-    toWord(index, target, ""),
-  ),
-  wordIndex: 0,
-  letterIndex: 0,
-  validatedWords: 0,
-});
+// In `time` Mode the Text is drawn as the caret moves, `lookahead` words at a time, so there are
+// always at least `lookahead` words past the current one.
+const lookahead = 50;
 
-export const isFinished = (state: RunState) => state.validatedWords === state.words.length;
+const drawnWords = (config: RunConfig, wordIndex: number) =>
+  config.mode === "words" ? config.words : (Math.floor(wordIndex / lookahead) + 2) * lookahead;
 
-const isLastWord = (state: RunState) => state.wordIndex === state.words.length - 1;
+// Draws the words the current one needs past it. The Text of the Seed stays the same: the word at
+// index i does not depend on how many are drawn.
+const drawText = (state: RunState): RunState => {
+  const count = drawnWords(state.config, state.wordIndex);
+
+  if (count <= state.words.length) {
+    return state;
+  }
+
+  const drawn = generateText(state.config.seed, state.config.language, count)
+    .slice(state.words.length)
+    .map((target, i) => toWord(state.words.length + i, target, ""));
+
+  return { ...state, words: [...state.words, ...drawn] };
+};
+
+export const createRun = (config: RunConfig): RunState =>
+  drawText({ config, words: [], wordIndex: 0, letterIndex: 0, validatedWords: 0 });
+
+// `now` is in milliseconds since the start of the Run, like a Keystroke's `at`: a `time` Run ends
+// on the clock, a `words` Run on its last word.
+export const isFinished = (state: RunState, now: number) =>
+  state.config.mode === "time"
+    ? now >= state.config.seconds * 1000
+    : state.validatedWords === state.config.words;
+
+// A `time` Run has no last word.
+const isLastWord = (state: RunState) =>
+  state.config.mode === "words" && state.wordIndex === state.config.words - 1;
 
 // Validating the last word ends the Run: the caret stays on it.
 const validateWord = (state: RunState): RunState =>
   isLastWord(state)
     ? { ...state, validatedWords: state.validatedWords + 1 }
-    : {
+    : drawText({
         ...state,
         wordIndex: state.wordIndex + 1,
         letterIndex: 0,
         validatedWords: state.validatedWords + 1,
-      };
+      });
 
 // SAFETY: wordIndex always points into `words`, and stays on the last word once the Run ends.
 export const currentWord = (state: RunState) => state.words[state.wordIndex] as RunWord;
 
-// A character Keystroke that changes nothing: after the end of the Run, or a space before the
-// first letter of a word. It does not count in the Result either.
-export const isIgnored = (state: RunState, char: string) =>
-  isFinished(state) || (char === " " && currentWord(state).typed === "");
+// A Keystroke that changes nothing: after the end of the Run, or a space before the first letter
+// of a word. It does not count in the Result either.
+export const isIgnored = (state: RunState, keystroke: Keystroke) =>
+  isFinished(state, keystroke.at) ||
+  (keystroke.kind === "char" && keystroke.char === " " && currentWord(state).typed === "");
 
 // Replaces what was typed in the current word, the caret after it.
 const retype = (state: RunState, typed: string): RunState => ({
@@ -94,10 +121,6 @@ const retype = (state: RunState, typed: string): RunState => ({
 });
 
 const typeChar = (state: RunState, char: string): RunState => {
-  if (isIgnored(state, char)) {
-    return state;
-  }
-
   const current = currentWord(state);
 
   // Space validates the current word, right or wrong.
@@ -130,10 +153,6 @@ const backToPreviousWord = (state: RunState): RunState | null => {
 
 // Backspace erases the last letter, or goes back to the end of the previous word.
 const eraseLetter = (state: RunState): RunState => {
-  if (isFinished(state)) {
-    return state;
-  }
-
   if (currentWord(state).typed !== "") {
     return retype(state, currentWord(state).typed.slice(0, -1));
   }
@@ -143,10 +162,6 @@ const eraseLetter = (state: RunState): RunState => {
 
 // Ctrl+Backspace erases the current word, or goes back to the previous word and erases it.
 const eraseWord = (state: RunState): RunState => {
-  if (isFinished(state)) {
-    return state;
-  }
-
   if (currentWord(state).typed !== "") {
     return retype(state, "");
   }
@@ -157,6 +172,10 @@ const eraseWord = (state: RunState): RunState => {
 };
 
 export const applyKeystroke = (state: RunState, keystroke: Keystroke): RunState => {
+  if (isIgnored(state, keystroke)) {
+    return state;
+  }
+
   switch (keystroke.kind) {
     case "char":
       return typeChar(state, keystroke.char);

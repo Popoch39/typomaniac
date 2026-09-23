@@ -69,3 +69,31 @@ describe("computeResult", () => {
     expect(computeResult(config, [], 0)).toEqual({ wpm: 0, accuracy: 0 });
   });
 });
+
+describe("computeResult in time Mode", () => {
+  const timeConfig: RunConfig = { mode: "time", seconds: 30, language: "en", seed: 42 };
+
+  // The time is up on "wh", 2 letters into "while": they count, like "bonj" on "bonjour".
+  // "small " + "help " + "wh" = 13 chars in 30 s, so 13 / 5 / 0.5 = 5.2.
+  test("the right letters of the current word count in wpm", () => {
+    expect(computeResult(timeConfig, keystrokes("small help wh"), 30_000).wpm).toBeCloseTo(5.2);
+  });
+
+  // "wxi": "w" and "i" are right, "x" is not. "small " + "help " + 2 letters = 13 chars.
+  test("only the right letters of the current word count, not the wrong ones", () => {
+    expect(computeResult(timeConfig, keystrokes("small help wxi"), 30_000).wpm).toBeCloseTo(5.2);
+  });
+
+  test("the Run lasts its duration, even when it is seen ending late", () => {
+    const log: Keystroke[] = [
+      ...keystrokes("small help wh"),
+      { kind: "char", char: "i", at: 30_000 },
+    ];
+
+    const result = computeResult(timeConfig, log, 30_250);
+
+    expect(result.wpm).toBeCloseTo(5.2);
+    // The "i" came once the time was up: it is not a Keystroke of the Run.
+    expect(result.accuracy).toBe(100);
+  });
+});
