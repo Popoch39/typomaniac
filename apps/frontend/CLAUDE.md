@@ -6,6 +6,22 @@ Front React 19 + Vite 8 (React Compiler via `@rolldown/plugin-babel`). Point d'e
 
 **Avant de créer, modifier ou relire un composant, un hook ou tout code React**, invoquer le skill `vercel-react-best-practices` et appliquer ses règles. Pas d'exception pour les petites modifications.
 
+## Architecture
+
+- **Routing** : TanStack Router en file-based (`src/routes/`, plugin Vite, `autoCodeSplitting`). `src/routeTree.gen.ts` est généré (ignoré par oxlint/oxfmt), ne pas l'éditer. Un fichier de route ne déclare que `Route` ; ses composants vivent dans `src/pages/` (sinon `react/only-export-components` casse, et exporter le composant depuis la route désactive le code-splitting).
+- **État serveur** : React Query, jamais dans Zustand. Chaque ressource expose des `queryOptions()` dans `src/api/<ressource>.ts`, appels via le client Eden `api` et `unwrap` (`src/api/client.ts`) qui lève une `ApiError`. Les loaders font `context.queryClient.ensureQueryData(opts)`, les composants `useSuspenseQuery(opts)`. `defaultPreloadStaleTime: 0` : le cache est géré par Query.
+- **Types de l'API** : `import type { App } from "api"` (dépendance workspace). Même version d'`elysia` que l'API.
+- **État client** : Zustand dans `src/stores/`, `create<T>()(...)`, lecture par sélecteurs atomiques (`useShallow` si un sélecteur renvoie un objet).
+- **Env** : toute variable `VITE_*` passe par le schéma de `src/env.ts` (voir `.env.example`).
+- **Imports** : toujours via l'alias `@/` (→ `src/`, résolu par `resolve.tsconfigPaths` de Vite), jamais en relatif.
+
+## UI : Tailwind v4 + shadcn/ui
+
+- Config dans `components.json` : style `base-lyra` (primitives **Base UI**, pas Radix), couleur `neutral`, icônes `lucide-react` (le preset impose phosphor : toujours `lucide`). Fusion de classes via le paquet `cn` (officiel shadcn, remplace `clsx` + `tailwind-merge`) : `import { cn } from "cn"`. Le thème (variables CSS, police JetBrains Mono via `@fontsource-variable`) vit dans `src/index.css`.
+- Ajouter un composant : `bunx shadcn@latest add <nom>` depuis `apps/frontend`. Le code généré dans `src/components/ui/` appartient au repo : le corriger jusqu'à ce qu'il passe `bun run check` et react-doctor, sans jamais l'exclure du lint. Cas typique : les `cva` exportés à côté du composant partent dans `<nom>-variants.ts` (voir `button-variants.ts`) à cause de `react/only-export-components`.
+- Un lien stylé en bouton : `<Button nativeButton={false} render={<Link to="…" />}>` (API `render` de Base UI, pas `asChild`).
+- **Thème** : clair/sombre via la classe `.dark` sur `<html>`. Le store `src/stores/theme-store.ts` (Zustand `persist`, clé `typomaniac-theme`) est la source de vérité ; le script inline de `index.html` pose la classe avant le premier rendu (préférence OS tant que rien n'est persisté). Changer la clé ou le format impose de modifier les deux.
+
 ## Quand tu as fini d'éditer du code
 
 Lancer React Doctor avant de rendre la main, en plus de `bun run check` (lancé par le hook Stop). Corrige ce qu'il remonte, puis relance jusqu'à ce qu'il ne reste rien, ou seulement des points que tu signales explicitement à l'utilisateur.

@@ -5,6 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>
+    <script>
+      // Apply the theme before first paint to avoid a flash. Mirrors src/stores/theme-store.ts:
+      // the persisted choice wins, otherwise the OS preference.
+      (() => {
+        let theme;
+        try {
+          theme = JSON.parse(localStorage.getItem("typomaniac-theme") ?? "null")?.state?.theme;
+        } catch {}
+        if (theme !== "light" && theme !== "dark") {
+          theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        }
+        document.documentElement.classList.toggle("dark", theme === "dark");
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
