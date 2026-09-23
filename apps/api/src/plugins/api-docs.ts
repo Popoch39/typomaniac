@@ -2,6 +2,7 @@ import { openapi } from "@elysiajs/openapi";
 import { Elysia } from "elysia";
 
 import { API_PREFIX } from "../api-prefix";
+import { AUTH_PATH, type AuthHandler } from "./authentication";
 
 // Routes as registered: createApp's prefix is added in front of them.
 const DOCS_ROUTE = "/openapi";
@@ -27,33 +28,98 @@ const DOCS_CSP = [
   "frame-ancestors 'none'",
 ].join("; ");
 
+type AuthSchema = Awaited<ReturnType<AuthHandler["api"]["generateOpenAPISchema"]>>;
+
+type AuthPath = AuthSchema["paths"][string];
+
+// The part of the generated spec the merge touches.
+type Spec = {
+  paths: Record<string, AuthPath>;
+  components: { schemas?: AuthSchema["components"]["schemas"] };
+};
+
+// Better Auth describes its endpoints relative to its basePath, under its own tags.
+const authReference = async (auth: AuthHandler) => {
+  const { paths, components } = await auth.api.generateOpenAPISchema();
+
+  const tagged = Object.entries(paths).map(([path, operations]): [string, AuthPath] => [
+    `${AUTH_PATH}${path}`,
+    Object.fromEntries(
+      Object.entries(operations).map(([method, operation]) => [
+        method,
+        { ...operation, tags: ["Auth"] },
+      ]),
+    ),
+  ]);
+
+  return { paths: Object.fromEntries(tagged), components };
+};
+
+type ApiDocsOptions = { enabled: boolean; auth: AuthHandler };
+
 // OpenAPI spec at /api/openapi/json, Scalar reference at /api/openapi. Off in production: the
-// docs describe every route, nobody outside the team needs them.
-export const apiDocs = ({ enabled }: { enabled: boolean }) =>
-  new Elysia({ name: "api-docs", seed: enabled })
-    .onRequest(({ request, set }) => {
-      if (enabled && new URL(request.url).pathname === DOCS_PATH) {
-        set.headers["content-security-policy"] = DOCS_CSP;
-      }
-    })
-    .as("global")
-    .use(
-      openapi({
-        enabled,
-        path: DOCS_ROUTE,
-        specPath: SPEC_ROUTE,
-        scalar: { version: SCALAR_VERSION },
-        documentation: {
-          info: {
-            title: "Typomaniac API",
-            version: "1.0.0",
-            description:
-              "Every error response has the ApiErrorBody layout: `{ error: { code, message, requestId, details? } }`.",
+// docs describe every route, nobody outside the team needs them. Better Auth's endpoints
+// (hidden from the route list) are merged into the spec from its openAPI plugin.
+export const apiDocs = ({ enabled, auth }: ApiDocsOptions) => {
+  // Built on the first spec request, once: the endpoints do not change at runtime.
+  let reference: ReturnType<typeof authReference> | undefined;
+
+  return (
+    new Elysia({ name: "api-docs", seed: enabled })
+      .onRequest(({ request, set }) => {
+        if (enabled && new URL(request.url).pathname === DOCS_PATH) {
+          set.headers["content-security-policy"] = DOCS_CSP;
+        }
+      })
+      .as("global")
+      // Local to the docs routes: as a global hook, its return type would widen every
+      // route's response type in Eden.
+      .onAfterHandle(async ({ request, responseValue }) => {
+        if (!enabled || new URL(request.url).pathname !== SPEC_PATH) {
+          return;
+        }
+
+        reference ??= authReference(auth);
+
+        const { paths, components } = await reference;
+
+        // SAFETY: on SPEC_PATH, the handler is the openapi plugin's, which returns the
+        // full OpenAPI document.
+        const spec = responseValue as Spec;
+
+        return {
+          ...spec,
+          paths: { ...spec.paths, ...paths },
+          components: {
+            ...components,
+            ...spec.components,
+            schemas: { ...components.schemas, ...spec.components.schemas },
           },
-          tags: [
-            { name: "System", description: "Service health" },
-            { name: "Auth", description: "The signed-in User and their Session" },
-          ],
-        },
-      }),
-    );
+        };
+      })
+      .use(
+        openapi({
+          enabled,
+          path: DOCS_ROUTE,
+          specPath: SPEC_ROUTE,
+          scalar: { version: SCALAR_VERSION },
+          documentation: {
+            info: {
+              title: "Typomaniac API",
+              version: "1.0.0",
+              description:
+                "Every error response has the ApiErrorBody layout: `{ error: { code, message, requestId, details? } }`.",
+            },
+            tags: [
+              { name: "System", description: "Service health" },
+              {
+                name: "Auth",
+                description:
+                  "Better Auth's OAuth sign-in and Session endpoints, and the signed-in User",
+              },
+            ],
+          },
+        }),
+      )
+  );
+};

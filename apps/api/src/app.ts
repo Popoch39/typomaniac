@@ -41,7 +41,7 @@ export const createApp = (config: AppConfig) =>
     .use(requestLogger(config.logger))
     .use(securityHeaders({ isProduction: config.isProduction }))
     .use(cors({ origin: config.corsOrigin, credentials: true }))
-    .use(apiDocs({ enabled: !config.isProduction }))
+    .use(apiDocs({ enabled: !config.isProduction, auth: config.auth }))
     .use(errorHandler(config.logger))
     .use(bodyLimit)
     .use(rateLimit({ ...config.rateLimit, trustProxy: config.trustProxy }))

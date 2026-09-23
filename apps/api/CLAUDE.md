@@ -66,6 +66,7 @@ Better Auth, OAuth uniquement (ADR `docs/adr/0001-…`, vocabulaire User / Accou
 
 - `@elysiajs/openapi`, monté par `src/plugins/api-docs.ts` : spec sur `/api/openapi/json`, référence Scalar sur `/api/openapi`. **Désactivé en production** (404).
 - La spec est générée depuis les schémas TypeBox des routes : toute route publique déclare son `response` et un `detail` (`summary`, `tags`). Un nouveau tag se déclare dans `documentation.tags`.
+- **Endpoints Better Auth** : la route `/auth/*` est cachée (`detail.hide`) ; `api-docs` fusionne à la place, dans la réponse de `/api/openapi/json` (`onAfterHandle`), le schéma du plugin `openAPI` de Better Auth (`auth.api.generateOpenAPISchema()`, appelé côté serveur à la première requête puis mémorisé) : chemins préfixés par `/api/auth`, tous sous le tag `Auth` (avec `/api/me`), `components` (schémas User/Session/…, `securitySchemes`) ajoutés aux nôtres. Les routes HTTP du plugin (`/api/auth/open-api/generate-schema`, `/api/auth/reference`) sont dans `disabledPaths` : 404 partout. `generator`, bien que typé comme export de `better-auth/plugins`, n'existe pas au runtime : passer par le plugin.
 - La page Scalar a sa propre CSP (bundle jsdelivr, styles inline), posée après `security-headers` ; la version de Scalar est épinglée (`SCALAR_VERSION`).
 
 ## Erreurs

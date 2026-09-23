@@ -15,18 +15,20 @@ import { MAX_REQUEST_BODY_SIZE } from "./plugins/body-limit";
 
 const FRONT_ORIGIN = "http://localhost:5173";
 
+const testAuthOptions = authOptions({
+  secret: "a-test-secret-of-at-least-thirty-two-chars",
+  baseURL: "http://localhost",
+  trustedOrigin: FRONT_ORIGIN,
+  socialProviders: {},
+});
+
 // The production auth options on Better Auth's in-memory database, plus its test
 // helpers to open Sessions without going through an OAuth provider.
 const createTestAuth = () =>
   betterAuth({
-    ...authOptions({
-      secret: "a-test-secret-of-at-least-thirty-two-chars",
-      baseURL: "http://localhost",
-      trustedOrigin: FRONT_ORIGIN,
-      socialProviders: {},
-    }),
+    ...testAuthOptions,
     database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
-    plugins: [testUtils()],
+    plugins: [...testAuthOptions.plugins, testUtils()],
   });
 
 const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
@@ -366,6 +368,27 @@ describe("api docs", () => {
     expect(spec.paths[DOCS_PATH]).toBeUndefined();
   });
 
+  test("documents GET /api/me and Better Auth's endpoints under the Auth tag", async () => {
+    const spec = await (await app.handle(new Request(`http://localhost${SPEC_PATH}`))).json();
+
+    expect(spec.tags).toContainEqual(expect.objectContaining({ name: "Auth" }));
+    expect(spec.paths["/api/me"].get).toMatchObject({ tags: ["Auth"] });
+    expect(spec.paths["/api/auth/sign-in/social"].post).toMatchObject({ tags: ["Auth"] });
+    expect(spec.paths["/api/auth/get-session"].get).toMatchObject({ tags: ["Auth"] });
+    expect(spec.components.schemas.User).toBeDefined();
+    expect(spec.components.securitySchemes.apiKeyCookie).toBeDefined();
+  });
+
+  test("leaves Better Auth's own schema and reference routes unreachable", async () => {
+    const responses = await Promise.all(
+      ["/api/auth/open-api/generate-schema", "/api/auth/reference"].map((path) =>
+        app.handle(new Request(`http://localhost${path}`)),
+      ),
+    );
+
+    expect(responses.map((response) => response.status)).toEqual([404, 404]);
+  });
+
   test("serves the Scalar page with a CSP that lets it load", async () => {
     const response = await app.handle(new Request(`http://localhost${DOCS_PATH}`));
 
@@ -388,7 +411,9 @@ describe("api docs", () => {
     const prodApp = createApp(testConfig({ isProduction: true }));
 
     const responses = await Promise.all(
-      [DOCS_PATH, SPEC_PATH].map((path) => prodApp.handle(new Request(`http://localhost${path}`))),
+      [DOCS_PATH, SPEC_PATH, "/api/auth/open-api/generate-schema", "/api/auth/reference"].map(
+        (path) => prodApp.handle(new Request(`http://localhost${path}`)),
+      ),
     );
 
     for (const response of responses) {
@@ -481,12 +506,6 @@ describe("auth", () => {
     expect(response.headers.get("access-control-allow-origin")).toBe(FRONT_ORIGIN);
     expect(response.headers.get("access-control-allow-credentials")).toBe("true");
   });
-
-  test("documents GET /api/me under the Auth tag", async () => {
-    const spec = await (await authApp.handle(new Request(`http://localhost${SPEC_PATH}`))).json();
-
-    expect(spec.paths["/api/me"].get).toMatchObject({ tags: ["Auth"] });
-  });
 });
 
 type ProviderProfile = { id: string; email: string; emailVerified: boolean };
@@ -528,12 +547,7 @@ const fakeProviders = (profiles: Map<string, ProviderProfile>) => ({
 // The production auth options with fake providers in place of the configured ones.
 const createSocialAuth = (socialProviders: BetterAuthOptions["socialProviders"]) =>
   betterAuth({
-    ...authOptions({
-      secret: "a-test-secret-of-at-least-thirty-two-chars",
-      baseURL: "http://localhost",
-      trustedOrigin: FRONT_ORIGIN,
-      socialProviders: {},
-    }),
+    ...testAuthOptions,
     socialProviders,
     database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
     logger: { disabled: true },

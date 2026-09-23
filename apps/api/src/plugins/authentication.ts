@@ -1,14 +1,20 @@
 import { Elysia } from "elysia";
 
+import { API_PREFIX } from "../api-prefix";
 import type { Auth } from "../auth";
 import { ApiError } from "../errors";
 
-// Registered under createApp's prefix: Better Auth's basePath is built from it.
-export const AUTH_ROUTE = "/auth";
+// Registered under createApp's prefix.
+const AUTH_ROUTE = "/auth";
+
+// Better Auth's basePath: it routes on the full URL.
+export const AUTH_PATH = `${API_PREFIX}${AUTH_ROUTE}`;
 
 // What the app needs from a Better Auth instance: tests pass one built on the memory
 // adapter, with extra plugins.
-export type AuthHandler = Pick<Auth, "handler"> & { api: Pick<Auth["api"], "getSession"> };
+export type AuthHandler = Pick<Auth, "handler"> & {
+  api: Pick<Auth["api"], "getSession" | "generateOpenAPISchema">;
+};
 
 // Better Auth's endpoints under /api/auth/*, with their own error format. Not
 // `.mount("/auth", …)`: it strips the path, and Better Auth routes on the full URL.

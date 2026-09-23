@@ -1,13 +1,11 @@
 import { betterAuth, type BetterAuthOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { openAPI } from "better-auth/plugins";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 
-import { API_PREFIX } from "./api-prefix";
 import { type Table, table } from "./database/schema";
 import type { SocialProviders } from "./parse-env";
-import { AUTH_ROUTE } from "./plugins/authentication";
-
-const AUTH_BASE_PATH = `${API_PREFIX}${AUTH_ROUTE}`;
+import { AUTH_PATH } from "./plugins/authentication";
 
 const DAY_SECONDS = 60 * 60 * 24;
 
@@ -24,9 +22,13 @@ export const authOptions = ({ secret, baseURL, trustedOrigin, socialProviders }:
   ({
     secret,
     baseURL,
-    basePath: AUTH_BASE_PATH,
+    basePath: AUTH_PATH,
     trustedOrigins: [trustedOrigin],
     socialProviders,
+    // The schema is only read server side (auth.api.generateOpenAPISchema) and merged
+    // into our own spec, off in production: the plugin's routes answer 404 over HTTP.
+    plugins: [openAPI({ disableDefaultReference: true })],
+    disabledPaths: ["/open-api/generate-schema", "/reference"],
     // Signing in with a second provider finds the User with the same email. GitHub and
     // Google only hand out addresses they own or checked: trusted. Discord is linked
     // only when it marks the email verified, otherwise anyone could claim an address.
