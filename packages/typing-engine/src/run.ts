@@ -190,3 +190,7 @@ export const applyKeystroke = (state: RunState, keystroke: Keystroke): RunState 
       return eraseWord(state);
   }
 };
+
+// The state a log of Keystrokes leads to, e.g. an opponent's Run rebuilt from the relayed ones.
+export const replayRun = (config: RunConfig, keystrokes: readonly Keystroke[]) =>
+  keystrokes.reduce(applyKeystroke, createRun(config));

@@ -2,6 +2,7 @@ export {
   applyKeystroke,
   createRun,
   isFinished,
+  replayRun,
   type Key,
   type Keystroke,
   type Letter,
@@ -11,6 +12,15 @@ export {
   type RunWord,
 } from "./run";
 
-export { computeResult, type CharCounts, type Result } from "./result";
+export { computeResult, liveWpm, type CharCounts, type Result } from "./result";
+
+export {
+  acceptKeystroke,
+  startReplay,
+  type Acceptance,
+  type ArrivalWindow,
+  type RejectReason,
+  type Replay,
+} from "./acceptance";
 
 export { currentWordListVersion, generateText, wordList, type Language } from "./text";

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { computeResult, type Keystroke, type RunConfig } from "./index";
+import { computeResult, type Keystroke, liveWpm, replayRun, type RunConfig } from "./index";
 
 // Seed 42 in English, version 1, starts with "small help while" (pinned in text.test.ts).
 const config: RunConfig = { mode: "words", words: 3, language: "en", wordListVersion: 1, seed: 42 };
@@ -181,5 +181,32 @@ describe("computeResult in time Mode", () => {
     expect(result.wpm).toBeCloseTo(5.2);
     // The "i" came once the time was up: it is not a Keystroke of the Run.
     expect(result.accuracy).toBe(100);
+  });
+});
+
+describe("liveWpm", () => {
+  const timeConfig: RunConfig = {
+    mode: "time",
+    seconds: 30,
+    language: "en",
+    wordListVersion: 1,
+    seed: 42,
+  };
+
+  // "small " + "help " + "wh" = 13 right chars, 6 s in: 13 / 5 / 0.1 = 26.
+  test("the wpm so far, over the time elapsed since the start", () => {
+    const run = replayRun(timeConfig, keystrokes("small help wh"));
+
+    expect(liveWpm(run, 6_000)).toBeCloseTo(26);
+  });
+
+  test("past the end, the Run lasts its duration", () => {
+    const run = replayRun(timeConfig, keystrokes("small help wh"));
+
+    expect(liveWpm(run, 60_000)).toBeCloseTo(5.2);
+  });
+
+  test("zero at the start instead of dividing by zero", () => {
+    expect(liveWpm(replayRun(timeConfig, []), 0)).toBe(0);
   });
 });

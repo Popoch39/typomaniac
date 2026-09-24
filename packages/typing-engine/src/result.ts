@@ -90,6 +90,14 @@ const countChars = (state: RunState): CharCounts => {
 const duration = (config: RunConfig, endedAt: number) =>
   config.mode === "time" ? config.seconds * 1000 : endedAt;
 
+// The wpm of a Run in progress, `elapsed` ms after its start: the right chars so far over the time
+// elapsed, capped at the duration of a `time` Run.
+export const liveWpm = (state: RunState, elapsed: number) => {
+  const minutes = Math.min(elapsed, duration(state.config, elapsed)) / 60_000;
+
+  return minutes === 0 ? 0 : correctChars(state) / 5 / minutes;
+};
+
 // The raw of each second of the Run. The last second can be shorter: its raw is taken over its own
 // length. A Keystroke stamped at the very end of the Run belongs to the last second.
 const rawPerSecond = (typedAt: readonly number[], durationMs: number) => {

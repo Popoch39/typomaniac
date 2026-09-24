@@ -1,10 +1,13 @@
-import { currentWordListVersion } from "typing-engine";
+import { currentWordListVersion, type Keystroke } from "typing-engine";
 
 import type { Clock } from "../clock";
 import type { ClientMessage, ServerMessage } from "./protocol";
+import { RunningDuel } from "./running-duel";
 
 // Every Duel has the same format: `time` 30 s in English.
 const DUEL_LANGUAGE = "en";
+
+const DUEL_SECONDS = 30;
 
 const COUNTDOWN_MS = 3000;
 
@@ -20,9 +23,9 @@ export type Connection = {
 
 const randomSeed = () => crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
 
-// The Queue and the connected Users, in memory (ADR 0003). A User has one place: a new
-// connection replaces the previous one and takes over its place in the Queue. Only the
-// current connection of a User is listened to.
+// The Queue, the running Duels and the connected Users, in memory (ADR 0003). A User has one
+// place, in the Queue or in a Duel: a new connection replaces the previous one and takes over
+// its place. Only the current connection of a User is listened to.
 export class DuelQueue {
   readonly #clock: Clock;
 
@@ -30,6 +33,9 @@ export class DuelQueue {
 
   // User ids in arrival order. Queued Users are always connected: leaving drops them.
   readonly #queue = new Set<string>();
+
+  // The Duel of each User in one, until they leave it once it is over.
+  readonly #duels = new Map<string, RunningDuel>();
 
   constructor(clock: Clock) {
     this.#clock = clock;
@@ -62,6 +68,9 @@ export class DuelQueue {
       case "leave-queue":
         this.#queue.delete(userId);
         break;
+      case "keystrokes":
+        this.#type(userId, message.keystrokes);
+        break;
     }
   }
 
@@ -73,13 +82,55 @@ export class DuelQueue {
 
     this.#connected.delete(userId);
     this.#queue.delete(userId);
+    this.#leaveOverDuel(userId);
   }
 
   #isCurrent(userId: string, connectionId: string) {
     return this.#connected.get(userId)?.connection.id === connectionId;
   }
 
+  #send(userId: string, message: ServerMessage) {
+    this.#connected.get(userId)?.connection.send(message);
+  }
+
+  // Frees the User's place in their Duel once it is over. False while it runs.
+  #leaveOverDuel(userId: string) {
+    const duel = this.#duels.get(userId);
+
+    if (duel && !duel.isOver(this.#clock.now())) {
+      return false;
+    }
+
+    this.#duels.delete(userId);
+
+    return true;
+  }
+
+  // The accepted Keystrokes go to the opponent; a rejected one resyncs the sender.
+  #type(userId: string, keystrokes: readonly Keystroke[]) {
+    const duel = this.#duels.get(userId);
+
+    if (!duel) {
+      return;
+    }
+
+    const { accepted, rejected } = duel.receive(userId, keystrokes, this.#clock.now());
+
+    if (accepted.length > 0) {
+      this.#send(duel.opponentOf(userId), { type: "opponent-keystrokes", keystrokes: accepted });
+    }
+
+    if (rejected) {
+      this.#send(userId, { type: "resync", ...duel.stateOf(userId) });
+    }
+  }
+
+  // A User in a running Duel keeps their place in it.
   #join(userId: string) {
+    if (!this.#leaveOverDuel(userId)) {
+      return;
+    }
+
     this.#queue.add(userId);
     this.#connected.get(userId)?.connection.send({ type: "queued" });
     this.#pair();
@@ -107,8 +158,17 @@ export class DuelQueue {
       seed: randomSeed(),
       language: DUEL_LANGUAGE,
       wordListVersion: currentWordListVersion[DUEL_LANGUAGE],
+      seconds: DUEL_SECONDS,
       startsAt: serverTime + COUNTDOWN_MS,
     } as const;
+
+    const running = new RunningDuel({ mode: "time", ...duel }, duel.startsAt, [
+      a.user.id,
+      b.user.id,
+    ]);
+
+    this.#duels.set(a.user.id, running);
+    this.#duels.set(b.user.id, running);
 
     a.connection.send({ type: "duel-found", duel, opponent: opponentOf(b.user), serverTime });
     b.connection.send({ type: "duel-found", duel, opponent: opponentOf(a.user), serverTime });

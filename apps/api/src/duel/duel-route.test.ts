@@ -5,8 +5,14 @@ import { currentWordListVersion } from "typing-engine";
 import { createApp } from "../app";
 import { createTestAuth, signIn, type TestAuth, testConfig } from "../test-app";
 import { type ClientMessage, MAX_DUEL_MESSAGE_SIZE, ServerMessage } from "./protocol";
+import { END_TOLERANCE_MS } from "./running-duel";
 
 const NOW = 1_700_000_000_000;
+
+// A Duel paired at NOW starts after the 3 s Countdown and lasts 30 s.
+const STARTS_AT = NOW + 3000;
+
+const char = (value: string, at: number) => ({ kind: "char" as const, char: value, at });
 
 const serverMessage = TypeCompiler.Compile(ServerMessage);
 
@@ -82,9 +88,13 @@ describe("duel socket", () => {
   let url: string;
   const clients: ReturnType<typeof openClient>[] = [];
 
+  // The server's time, moved by hand.
+  let now = NOW;
+
   beforeEach(() => {
+    now = NOW;
     auth = createTestAuth();
-    app = createApp(testConfig({ auth, clock: { now: () => NOW } })).listen(0);
+    app = createApp(testConfig({ auth, clock: { now: () => now } })).listen(0);
     url = `ws://localhost:${app.server?.port}/api/duel`;
   });
 
@@ -165,7 +175,8 @@ describe("duel socket", () => {
         seed: expect.any(Number),
         language: "en",
         wordListVersion: currentWordListVersion.en,
-        startsAt: NOW + 3000,
+        seconds: 30,
+        startsAt: STARTS_AT,
       },
       opponent: { name: "Ada", image: "https://img/ada" },
       serverTime: NOW,
@@ -240,5 +251,116 @@ describe("duel socket", () => {
     ada.socket.send("x".repeat(MAX_DUEL_MESSAGE_SIZE + 1));
 
     expect(await ada.closed).not.toBe(1000);
+  });
+
+  // Ada and Alan, paired at NOW, each Duel found read.
+  const paired = async () => {
+    const ada = await queued(await signedIn("Ada"));
+    const alan = await queued(await signedIn("Alan"));
+
+    await Promise.all([ada.next(), alan.next()]);
+
+    return { ada, alan };
+  };
+
+  test("relays the accepted Keystrokes to the opponent, not back to the sender", async () => {
+    const { ada, alan } = await paired();
+
+    now = STARTS_AT + 300;
+    ada.send({ type: "keystrokes", keystrokes: [char("s", 100), char("m", 250)] });
+
+    expect(await alan.next()).toEqual({
+      type: "opponent-keystrokes",
+      keystrokes: [char("s", 100), char("m", 250)],
+    });
+    await ada.settle();
+  });
+
+  test("a Keystroke dated after its arrival is ignored, and its sender resynced", async () => {
+    const { ada, alan } = await paired();
+
+    now = STARTS_AT + 1000;
+    alan.send({ type: "keystrokes", keystrokes: [char("h", 400)] });
+    expect(await ada.next()).toMatchObject({ type: "opponent-keystrokes" });
+
+    // "m" is dated 1 s in the future: rejected, the Keystrokes around it still count.
+    ada.send({ type: "keystrokes", keystrokes: [char("s", 100), char("m", 2000), char("a", 300)] });
+
+    expect(await alan.next()).toEqual({
+      type: "opponent-keystrokes",
+      keystrokes: [char("s", 100), char("a", 300)],
+    });
+    expect(await ada.next()).toEqual({
+      type: "resync",
+      keystrokes: [char("s", 100), char("a", 300)],
+      received: 3,
+      opponentKeystrokes: [char("h", 400)],
+    });
+  });
+
+  test("a Keystroke sent during the Countdown is ignored", async () => {
+    const { ada, alan } = await paired();
+
+    now = STARTS_AT - 500;
+    ada.send({ type: "keystrokes", keystrokes: [char("s", -600)] });
+
+    expect(await ada.next()).toEqual({
+      type: "resync",
+      keystrokes: [],
+      received: 1,
+      opponentKeystrokes: [],
+    });
+    await alan.settle();
+  });
+
+  test("a Keystroke dated before the previous one is ignored", async () => {
+    const { ada, alan } = await paired();
+
+    now = STARTS_AT + 1000;
+    ada.send({ type: "keystrokes", keystrokes: [char("s", 500)] });
+    expect(await alan.next()).toMatchObject({ type: "opponent-keystrokes" });
+
+    ada.send({ type: "keystrokes", keystrokes: [char("m", 400)] });
+
+    expect(await ada.next()).toMatchObject({ type: "resync", received: 2 });
+    await alan.settle();
+  });
+
+  test("a Keystroke arriving after the end plus the tolerance is ignored", async () => {
+    const { ada, alan } = await paired();
+
+    now = STARTS_AT + 30_000 + END_TOLERANCE_MS;
+    ada.send({ type: "keystrokes", keystrokes: [char("s", 29_900)] });
+    expect(await alan.next()).toMatchObject({ type: "opponent-keystrokes" });
+
+    now += 1;
+    ada.send({ type: "keystrokes", keystrokes: [char("m", 29_950)] });
+
+    expect(await ada.next()).toMatchObject({ type: "resync", received: 2 });
+    await alan.settle();
+  });
+
+  test("ignores Keystrokes from a User who is not in a Duel", async () => {
+    const ada = await queued(await signedIn("Ada"));
+
+    ada.send({ type: "keystrokes", keystrokes: [char("s", 100)] });
+
+    await ada.settle();
+  });
+
+  test("a User in a Duel cannot join the Queue until the Duel is over", async () => {
+    const { ada, alan } = await paired();
+
+    now = STARTS_AT + 10_000;
+    ada.send({ type: "join-queue" });
+    await ada.settle();
+
+    now = STARTS_AT + 30_000;
+    ada.send({ type: "join-queue" });
+    expect(await ada.next()).toEqual({ type: "queued" });
+
+    alan.send({ type: "join-queue" });
+    expect(await alan.next()).toEqual({ type: "queued" });
+    expect(await ada.next()).toMatchObject({ type: "duel-found", opponent: { name: "Alan" } });
   });
 });
