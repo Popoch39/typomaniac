@@ -19,15 +19,20 @@ export type SoundPack = {
   error: Sound;
 };
 
-const sound = (url: string, gain = 1, detune = 0): Sound => ({ url, gain, detune });
+// The file `name` of the pack, in public/sounds/<pack>.
+const file = (
+  pack: SoundPack["id"],
+  name: string,
+  { gain = 1, detune = 0 }: Partial<Playback> = {},
+): Sound => ({ url: `/sounds/${pack}/${name}.mp3`, gain, detune });
 
-const numbered = (pack: string, name: string, n: number) =>
-  `/sounds/${pack}/${name}-${String(n).padStart(2, "0")}.mp3`;
+// The name of the `n`th file of a series: key-01, key-02…
+const nth = (series: string, n: number) => `${series}-${String(n).padStart(2, "0")}`;
 
 // The keys key-01 to key-`count` of the pack, all at the same gain.
-const keysOf = (pack: string, count: number, gain = 1): SoundPack["keys"] => [
-  sound(numbered(pack, "key", 1), gain),
-  ...Array.from({ length: count - 1 }, (_, i) => sound(numbered(pack, "key", i + 2), gain)),
+const keysOf = (pack: SoundPack["id"], count: number, gain = 1): SoundPack["keys"] => [
+  file(pack, nth("key", 1), { gain }),
+  ...Array.from({ length: count - 1 }, (_, i) => file(pack, nth("key", i + 2), { gain })),
 ];
 
 // The files and their credits are in public/sounds/<pack>. Adding a pack: a folder of files and
@@ -39,9 +44,9 @@ const tactile: SoundPack = {
   keys: keysOf("tactile", 12),
   detuneRange: 50,
   // No real space bar in the pack: one of its keys, played lower.
-  spaces: [sound(numbered("tactile", "key", 5), 1, -300)],
-  backspace: sound("/sounds/tactile/backspace.mp3", 0.9),
-  error: sound("/sounds/tactile/error.mp3", 0.5),
+  spaces: [file("tactile", nth("key", 5), { detune: -300 })],
+  backspace: file("tactile", "backspace", { gain: 0.9 }),
+  error: file("tactile", "error", { gain: 0.5 }),
 };
 
 // Only 3 keys: detuned wider so they do not repeat. The backspace is a carriage return.
@@ -51,9 +56,9 @@ const typewriter: SoundPack = {
   credit: "yottasounds, knufds (Freesound), Kenney. CC0",
   keys: keysOf("typewriter", 3, 0.55),
   detuneRange: 100,
-  spaces: [sound(numbered("typewriter", "key", 2), 0.55, -300)],
-  backspace: sound("/sounds/typewriter/backspace.mp3", 0.75),
-  error: sound("/sounds/typewriter/error.mp3", 0.4),
+  spaces: [file("typewriter", nth("key", 2), { gain: 0.55, detune: -300 })],
+  backspace: file("typewriter", "backspace", { gain: 0.75 }),
+  error: file("typewriter", "error", { gain: 0.4 }),
 };
 
 // No space bar nor backspace in the pack: two of its keys, played lower.
@@ -63,9 +68,9 @@ const office: SoundPack = {
   credit: "unicaegames (OpenGameArt), Kenney. CC0",
   keys: keysOf("office", 12),
   detuneRange: 50,
-  spaces: [sound(numbered("office", "key", 5), 1, -300)],
-  backspace: sound(numbered("office", "key", 9), 0.8, -500),
-  error: sound("/sounds/office/error.mp3", 0.4),
+  spaces: [file("office", nth("key", 5), { detune: -300 })],
+  backspace: file("office", nth("key", 9), { gain: 0.8, detune: -500 }),
+  error: file("office", "error", { gain: 0.4 }),
 };
 
 // Two real space bars, and its shift as the backspace.
@@ -76,11 +81,11 @@ const keyboard: SoundPack = {
   keys: keysOf("keyboard", 4, 1.2),
   detuneRange: 50,
   spaces: [
-    sound(numbered("keyboard", "space", 1), 1.2),
-    sound(numbered("keyboard", "space", 2), 1.2),
+    file("keyboard", nth("space", 1), { gain: 1.2 }),
+    file("keyboard", nth("space", 2), { gain: 1.2 }),
   ],
-  backspace: sound("/sounds/keyboard/backspace.mp3", 0.8),
-  error: sound("/sounds/keyboard/error.mp3", 0.45),
+  backspace: file("keyboard", "backspace", { gain: 0.8 }),
+  error: file("keyboard", "error", { gain: 0.45 }),
 };
 
 // Every pack the User can pick, in the order of the picker.
