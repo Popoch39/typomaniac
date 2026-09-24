@@ -35,9 +35,12 @@ const tactile: SoundPack = {
   error: { url: "/sounds/tactile/error.mp3", gain: 0.5, detune: 0 },
 };
 
+// Every pack the User can pick, in the order of the picker.
+export const soundPacks: readonly [SoundPack, ...SoundPack[]] = [tactile];
+
 export const defaultPack = tactile;
 
-// Medium volume, from 0 to 1.
-export const defaultVolume = 0.5;
+export const packOf = (id: SoundPack["id"]) =>
+  soundPacks.find((pack) => pack.id === id) ?? defaultPack;
 
 export const soundsOf = (pack: SoundPack) => [...pack.keys, pack.space, pack.backspace, pack.error];

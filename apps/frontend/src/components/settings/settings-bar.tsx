@@ -3,7 +3,9 @@ import { DuelFormat } from "@/components/settings/duel-format";
 import { PlaySetting } from "@/components/settings/play-setting";
 import { SoloSettings } from "@/components/settings/solo-settings";
 
-// Solo or Duel first, then the Solo settings, or the Duel's fixed format.
+import { SoundSetting } from "@/components/sound/sound-setting";
+
+// Solo or Duel first, then the Solo settings, or the Duel's fixed format, and the sound last.
 export const SettingsBar = () => {
   const inDuel = useInDuel();
 
@@ -12,6 +14,7 @@ export const SettingsBar = () => {
       <legend className="sr-only">Réglages</legend>
       <PlaySetting />
       {inDuel ? <DuelFormat /> : <SoloSettings />}
+      <SoundSetting />
     </fieldset>
   );
 };

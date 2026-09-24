@@ -3,13 +3,18 @@ import type { AudioOutput } from "@/audio/audio-engine";
 export type Played = { url: string; detune: number; gain: number };
 
 // An audio output for the tests: it decodes every file at once, or never, and writes down what it
-// plays.
+// loads and plays.
 export const fakeOutput = ({ decodes = true } = {}) => {
   const played: Played[] = [];
+  const loaded: string[] = [];
   const state = { volume: 1, resumed: 0 };
 
   const output: AudioOutput<string> = {
-    decode: (url) => (decodes ? Promise.resolve(url) : new Promise<string>(() => {})),
+    decode: (url) => {
+      loaded.push(url);
+
+      return decodes ? Promise.resolve(url) : new Promise<string>(() => {});
+    },
     play: (url, playback) => {
       played.push({ url, ...playback });
     },
@@ -21,7 +26,7 @@ export const fakeOutput = ({ decodes = true } = {}) => {
     },
   };
 
-  return { output, played, state };
+  return { output, played, loaded, state };
 };
 
 // The decoding of the pack is asynchronous: lets it settle before typing.

@@ -4,8 +4,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { createAudioEngine } from "@/audio/audio-engine";
-import { startSoundReactor } from "@/audio/sound-reactor";
+import { previewSound, startSoundReactor } from "@/audio/sound-reactor";
 import { openWebAudio } from "@/audio/web-audio-output";
+import { type SoundPreview, SoundPreviewContext } from "@/components/sound/sound-preview-context";
 import { ThemeProvider } from "@/components/theme-provider";
 import "@/index.css";
 import { queryClient } from "@/query-client";
@@ -17,14 +18,20 @@ if (!rootElement) {
   throw new Error("Missing #root element in index.html");
 }
 
+const audioEngine = createAudioEngine(openWebAudio);
+
 // Once per app load: the keys sound from the first one on.
-startSoundReactor(createAudioEngine(openWebAudio));
+startSoundReactor(audioEngine);
+
+const preview: SoundPreview = (choice) => previewSound(audioEngine, choice);
 
 createRoot(rootElement).render(
   <StrictMode>
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <SoundPreviewContext value={preview}>
+          <RouterProvider router={router} />
+        </SoundPreviewContext>
       </QueryClientProvider>
     </ThemeProvider>
   </StrictMode>,

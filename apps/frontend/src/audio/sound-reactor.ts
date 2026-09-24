@@ -1,14 +1,9 @@
 import type { Cue } from "typing-engine";
 
 import type { AudioEngine } from "@/audio/audio-engine";
-import {
-  defaultPack,
-  defaultVolume,
-  type Sound,
-  type SoundPack,
-  soundsOf,
-} from "@/audio/sound-packs";
+import { packOf, type Sound, type SoundPack, soundsOf } from "@/audio/sound-packs";
 import { onCues } from "@/lib/cue-bus";
+import { type SoundChoice, useSoundStore } from "@/stores/sound-store";
 
 // How far, in cents, a key is detuned at random either way.
 const detuneRange = 50;
@@ -47,19 +42,60 @@ const playCue = (engine: AudioEngine, pack: SoundPack, cue: Cue, random: Random)
   }
 };
 
-// Plays the Cues of the User's Keystrokes, once started at the app startup. Returns the stop.
+// Loads the files of the pack, so its first key sounds. "off" loads nothing.
+const preloadChoice = (engine: AudioEngine, choice: SoundChoice) =>
+  choice === "off"
+    ? Promise.resolve()
+    : engine.preload(soundsOf(packOf(choice)).map((sound) => sound.url));
+
+// Plays the Cues of the User's Keystrokes, once started at the app startup, with the sound
+// settings of the moment: a new pack is loaded as soon as it is chosen. Returns the stop.
 export const startSoundReactor = (
   engine: AudioEngine,
   { random = Math.random }: { random?: Random } = {},
 ) => {
-  const pack = defaultPack;
+  const { pack, volume } = useSoundStore.getState();
 
-  engine.setVolume(defaultVolume);
-  void engine.preload(soundsOf(pack).map((sound) => sound.url));
+  engine.setVolume(volume);
+  void preloadChoice(engine, pack);
 
-  return onCues((cues) => {
-    for (const cue of cues) {
-      playCue(engine, pack, cue, random);
+  const stopSettings = useSoundStore.subscribe((settings, previous) => {
+    if (settings.volume !== previous.volume) {
+      engine.setVolume(settings.volume);
+    }
+
+    if (settings.pack !== previous.pack) {
+      void preloadChoice(engine, settings.pack);
     }
   });
+
+  const stopCues = onCues((cues) => {
+    const choice = useSoundStore.getState().pack;
+
+    if (choice === "off") {
+      return;
+    }
+
+    for (const cue of cues) {
+      playCue(engine, packOf(choice), cue, random);
+    }
+  });
+
+  return () => {
+    stopCues();
+    stopSettings();
+  };
+};
+
+// A key of the pack, to hear it from the picker: loaded first if need be. "off" plays nothing.
+export const previewSound = (
+  engine: AudioEngine,
+  choice: SoundChoice,
+  random: Random = Math.random,
+) => {
+  if (choice === "off") {
+    return;
+  }
+
+  void preloadChoice(engine, choice).then(() => playKey(engine, packOf(choice), "k", random));
 };

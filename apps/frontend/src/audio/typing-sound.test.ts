@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { createAudioEngine } from "@/audio/audio-engine";
 import { startSoundReactor } from "@/audio/sound-reactor";
 import { useRunStore } from "@/stores/run-store";
+import { useSoundStore } from "@/stores/sound-store";
 import {
   backspace,
   decoded,
@@ -40,7 +41,10 @@ const kindsOf = (cues: readonly Cue[]) => cues.map((cue) => cue.kind);
 
 let stop = () => {};
 
+// Every test starts on a first visit: default sound settings.
 beforeEach(() => {
+  localStorage.clear();
+  useSoundStore.setState(useSoundStore.getInitialState());
   useRunStore.getState().start(words10);
 });
 
@@ -159,5 +163,58 @@ describe("typing sound in a solo Run", () => {
 
     expect(() => type("sm")).not.toThrow();
     expect(useRunStore.getState().run.letterIndex).toBe(2);
+  });
+});
+
+describe("sound settings", () => {
+  test("off plays no typing sound at all", async () => {
+    const { played } = await listen();
+
+    useSoundStore.getState().setPack("off");
+    type("sx");
+    press({ kind: "backspace" }, char(" "));
+
+    expect(played).toEqual([]);
+  });
+
+  test("off stored on a previous visit loads no pack, choosing one loads it at once", async () => {
+    useSoundStore.getState().setPack("off");
+
+    const { played, loaded } = await listen();
+
+    expect(loaded).toEqual([]);
+
+    useSoundStore.getState().setPack("tactile");
+    await decoded();
+
+    expect(loaded).toContain(key07.url);
+
+    type("s");
+
+    expect(played).toEqual([key07]);
+  });
+
+  test("the volume sets the level of every sound, even mid-Run", async () => {
+    const { state } = await listen();
+
+    type("sm");
+    useSoundStore.getState().setVolume(0.8);
+
+    expect(state.volume).toBe(0.8);
+  });
+
+  test("changing the pack or the volume mid-Run does not start a new Run", async () => {
+    const { played } = await listen();
+    const { runNumber } = useRunStore.getState();
+
+    type("sm");
+    useSoundStore.getState().setPack("off");
+    useSoundStore.getState().setVolume(0.2);
+    useSoundStore.getState().setPack("tactile");
+    type("a");
+
+    expect(useRunStore.getState().runNumber).toBe(runNumber);
+    expect(useRunStore.getState().run.letterIndex).toBe(3);
+    expect(played).toHaveLength(3);
   });
 });

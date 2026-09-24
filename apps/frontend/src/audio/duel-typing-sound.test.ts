@@ -1,10 +1,11 @@
 import type { ClientMessage, ServerMessage } from "api";
 import type { Key, Keystroke } from "typing-engine";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { createAudioEngine } from "@/audio/audio-engine";
 import { startSoundReactor } from "@/audio/sound-reactor";
 import { type DuelSocket, useDuelStore } from "@/stores/duel-store";
+import { useSoundStore } from "@/stores/sound-store";
 import {
   backspace,
   decoded,
@@ -140,6 +141,11 @@ const opponentTyped = (input: string): Keystroke[] =>
 
 let stop = () => {};
 
+// Every test starts on a first visit: default sound settings.
+beforeEach(() => {
+  useSoundStore.setState(useSoundStore.getInitialState());
+});
+
 afterEach(() => {
   stop();
   useDuelStore.getState().disconnect();
@@ -175,6 +181,16 @@ describe("typing sound in a Duel", () => {
     pressFrom(startsAt + 1_000, [{ kind: "backspace" }]);
 
     expect(played).toEqual([key07, key07, key07, key07, key07, space, key07, error, backspace]);
+  });
+
+  test("off silences the User's keys in a Duel too", async () => {
+    const { played } = await listen();
+
+    useSoundStore.getState().setPack("off");
+    running();
+    type("small x");
+
+    expect(played).toEqual([]);
   });
 
   test("the opponent's Keystrokes play nothing", async () => {
