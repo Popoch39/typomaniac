@@ -49,6 +49,10 @@ Ce qui termine un Run : `time`, au bout d'une durée ; `words`, après un nombre
 Une frappe horodatée pendant un Run ou un Duel : un caractère, un retour arrière ou la suppression d'un mot. Un Run ou un Duel se rejoue entièrement à partir de ses Keystrokes.
 _Avoid_ : input, touche
 
+**Cue** :
+Ce qu'un Keystroke vient de provoquer dans un Run ou un Duel : une frappe juste (Hit), une faute (Miss), un effacement (Erase), un mot validé, un Combo qui monte de palier ou qui casse, un Burst. Un Keystroke peut en provoquer plusieurs, ou aucun. Les sons et les effets visuels réagissent aux Cues, jamais aux touches.
+_Avoid_ : event, feedback, trigger
+
 **Result** :
 Les statistiques d'un Run terminé, calculées à partir de ses Keystrokes : wpm, raw, accuracy, consistency et le décompte des caractères.
 _Avoid_ : stats, score (le Score est autre chose)

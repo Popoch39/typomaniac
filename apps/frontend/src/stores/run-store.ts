@@ -3,6 +3,8 @@ import {
   computeResult,
   computeScore,
   createRun,
+  type Cue,
+  cuesOf,
   currentWordListVersion,
   defaultPace,
   isFinished,
@@ -15,6 +17,7 @@ import {
 } from "typing-engine";
 import { create } from "zustand";
 
+import { emitCues } from "@/lib/cue-bus";
 import { type Settings, useSettingsStore } from "@/stores/settings-store";
 
 type RunStore = {
@@ -27,6 +30,8 @@ type RunStore = {
   score: ScoreState;
   // In wpm, judges the Bursts: frozen at the first Keystroke.
   pace: number;
+  // What the last Keystroke caused, none at the start of a Run (ADR 0006).
+  cues: readonly Cue[];
   // Counts the Runs started: a new one remounts the typing area, fresh state and focus included.
   runNumber: number;
   start: (config: RunConfig) => void;
@@ -61,6 +66,7 @@ const freshRun = (config: RunConfig) => ({
   result: null,
   score: computeScore(config, [], defaultPace, 0),
   pace: defaultPace,
+  cues: [],
 });
 
 const newRun = (state: RunStore, config: RunConfig) => ({
@@ -90,6 +96,7 @@ export const useRunStore = create<RunStore>()((set) => ({
       const keystroke: Keystroke = { ...key, at: now - startedAt };
       const keystrokes = [...state.keystrokes, keystroke];
       const run = applyKeystroke(state.run, keystroke);
+      const score = computeScore(run.config, keystrokes, runPace, keystroke.at);
 
       return {
         run,
@@ -97,7 +104,8 @@ export const useRunStore = create<RunStore>()((set) => ({
         startedAt,
         pace: runPace,
         result: resultAt(run, keystrokes, keystroke.at),
-        score: computeScore(run.config, keystrokes, runPace, keystroke.at),
+        score,
+        cues: cuesOf({ run: state.run, score: state.score }, keystroke, { run, score }),
       };
     }),
   tick: (now) =>
@@ -115,6 +123,14 @@ export const useRunStore = create<RunStore>()((set) => ({
         : { result, score: computeScore(state.run.config, state.keystrokes, state.pace, at) };
     }),
 }));
+
+// Every Keystroke leaves new Cues, even none, and a new Run none: they go to the bus, outside of
+// React.
+useRunStore.subscribe((state, previous) => {
+  if (state.cues !== previous.cues) {
+    emitCues(state.cues);
+  }
+});
 
 const sameSettings = (a: Settings, b: Settings) =>
   a.mode === b.mode && a.seconds === b.seconds && a.words === b.words && a.language === b.language;
