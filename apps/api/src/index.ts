@@ -2,6 +2,7 @@ import { createApp } from "./app";
 import { createAuth } from "./auth";
 import { systemClock } from "./clock";
 import { db, runMigrations } from "./database/client";
+import { drizzleDuelStore } from "./database/drizzle-duel-store";
 import { env } from "./env";
 import { createLogger } from "./logger";
 import { HARD_REQUEST_BODY_SIZE } from "./plugins/body-limit";
@@ -33,6 +34,7 @@ const app = createApp({
     db,
   ),
   clock: systemClock,
+  duelStore: drizzleDuelStore(db),
 }).listen({ port: env.PORT, maxRequestBodySize: HARD_REQUEST_BODY_SIZE });
 
 logger.info({ url: app.server?.url.href }, "server started");

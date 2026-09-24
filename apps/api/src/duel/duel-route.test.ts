@@ -1,9 +1,18 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
-import { currentWordListVersion, generateText } from "typing-engine";
+import pino from "pino";
+import { computeResult, currentWordListVersion, generateText } from "typing-engine";
 
 import { createApp } from "../app";
-import { createTestAuth, manualClock, signIn, type TestAuth, testConfig } from "../test-app";
+import {
+  createTestAuth,
+  manualClock,
+  memoryDuelStore,
+  signIn,
+  type TestAuth,
+  testConfig,
+} from "../test-app";
+import type { DuelRecord } from "./duel-store";
 import { type ClientMessage, MAX_DUEL_MESSAGE_SIZE, ServerMessage } from "./protocol";
 import { END_TOLERANCE_MS } from "./running-duel";
 
@@ -21,6 +30,15 @@ const serverMessage = TypeCompiler.Compile(ServerMessage);
 
 const duelOf = (message: ServerMessage) =>
   message.type === "duel-found" || message.type === "duel-resumed" ? message.duel : null;
+
+// The Result a player is told at the end of their Duel.
+const resultOf = (message: ServerMessage) => {
+  if (message.type !== "duel-ended") {
+    throw new Error(`Not the end of a Duel: ${message.type}`);
+  }
+
+  return message.result;
+};
 
 // The first word of the Duel's Text: typed right with its space, it is worth (length + 1) chars
 // in 30 s, so (length + 1) / 5 / 0.5 wpm.
@@ -113,12 +131,17 @@ describe("duel socket", () => {
   // The server's time, moved by hand.
   let setNow: (time: number) => void;
 
+  // The finished Duels written by the server.
+  let saved: DuelRecord[];
+
   beforeEach(() => {
     const { clock, set } = manualClock(NOW);
+    const duels = memoryDuelStore();
 
     setNow = set;
+    saved = duels.saved;
     auth = createTestAuth();
-    app = createApp(testConfig({ auth, clock })).listen(0);
+    app = createApp(testConfig({ auth, clock, duelStore: duels.store })).listen(0);
     url = `ws://localhost:${app.server?.port}/api/duel`;
   });
 
@@ -141,17 +164,20 @@ describe("duel socket", () => {
 
   let users = 0;
 
-  const signedIn = async (name: string) => {
+  // A new User, with the cookie of their Session.
+  const signedInUser = async (name: string) => {
     users += 1;
 
-    const { cookie } = await signIn(auth, {
+    const { user, cookie } = await signIn(auth, {
       name,
       email: `${name.toLowerCase()}-${users}@example.com`,
       image: `https://img/${name.toLowerCase()}`,
     });
 
-    return cookie;
+    return { id: user.id, cookie };
   };
+
+  const signedIn = async (name: string) => (await signedInUser(name)).cookie;
 
   const queued = async (cookie: string) => {
     const client = await connect(cookie);
@@ -714,5 +740,194 @@ describe("duel socket", () => {
 
     expect(await alan.next()).toMatchObject({ type: "opponent-keystrokes" });
     await ada.settle();
+  });
+
+  // Ada and Alan paired, with their User ids and the Duel found.
+  const pairedUsers = async () => {
+    const adaUser = await signedInUser("Ada");
+    const alanUser = await signedInUser("Alan");
+    const ada = await queued(adaUser.cookie);
+    const alan = await queued(alanUser.cookie);
+    const [found] = await Promise.all([ada.next(), alan.next()]);
+
+    return { ada, alan, adaId: adaUser.id, alanId: alanUser.id, found };
+  };
+
+  test("a Duel won at the end is written once, with both Results and Keystrokes", async () => {
+    const { ada, alan, adaId, alanId, found } = await pairedUsers();
+    const word = firstWordOf(found);
+
+    setNow(STARTS_AT + 5000);
+    ada.send({ type: "keystrokes", keystrokes: typed(word, 1000) });
+    await alan.next();
+    alan.send({ type: "keystrokes", keystrokes: [char("x", 3000)] });
+    await ada.next();
+
+    // Still running: nothing written.
+    setNow(ENDS_AT - 1);
+    await ada.settle();
+    expect(saved).toEqual([]);
+
+    setNow(ENDS_AT);
+
+    const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+    const duel = duelOf(found);
+
+    if (duel === null) {
+      throw new Error(`No Duel found: ${found.type}`);
+    }
+
+    expect(saved).toEqual([
+      {
+        ...duel,
+        mode: "time",
+        endedAt: ENDS_AT,
+        outcome: "win",
+        winnerId: adaId,
+        players: [
+          {
+            userId: adaId,
+            result: resultOf(forAda),
+            keystrokes: typed(word, 1000),
+          },
+          {
+            userId: alanId,
+            result: resultOf(forAlan),
+            keystrokes: [char("x", 3000)],
+          },
+        ],
+      },
+    ]);
+
+    // Ended once: written once.
+    setNow(ENDS_AT + 60_000);
+    await ada.settle();
+    expect(saved).toHaveLength(1);
+  });
+
+  test("the written Keystrokes replay on the Duel's Text to the written Results", async () => {
+    const { ada, alan, found } = await pairedUsers();
+    const word = firstWordOf(found);
+
+    setNow(STARTS_AT + 10_000);
+    ada.send({ type: "keystrokes", keystrokes: [...typed(word, 1000), ...typed("oops", 3000)] });
+    await alan.next();
+    // A mistake, corrected, then the right word.
+    alan.send({
+      type: "keystrokes",
+      keystrokes: [
+        char("q", 2000),
+        { kind: "backspace", at: 2200 },
+        ...typed(word, 2500),
+        { kind: "deleteWord", at: 6000 },
+      ],
+    });
+    await ada.next();
+
+    setNow(ENDS_AT);
+    await Promise.all([ada.next(), alan.next()]);
+
+    const [record] = saved;
+
+    expect(record).toBeDefined();
+
+    const replayed = record?.players.map((player) =>
+      computeResult(
+        {
+          mode: record.mode,
+          seconds: record.seconds,
+          language: record.language,
+          wordListVersion: record.wordListVersion,
+          seed: record.seed,
+        },
+        player.keystrokes,
+        record.seconds * 1000,
+      ),
+    );
+
+    expect(replayed).toEqual(record?.players.map((player) => player.result));
+    // Not a trivial replay: both typed something that counts.
+    expect(record?.players.map((player) => player.result.wpm > 0)).toEqual([true, true]);
+  });
+
+  test("a Draw is written with no winner", async () => {
+    const { ada, alan, found } = await pairedUsers();
+    const word = firstWordOf(found);
+
+    setNow(STARTS_AT + 5000);
+    ada.send({ type: "keystrokes", keystrokes: typed(word, 1000) });
+    alan.send({ type: "keystrokes", keystrokes: typed(word, 2000) });
+    await Promise.all([ada.next(), alan.next()]);
+
+    setNow(ENDS_AT);
+    await Promise.all([ada.next(), alan.next()]);
+
+    expect(saved).toMatchObject([{ outcome: "draw", winnerId: null, endedAt: ENDS_AT }]);
+  });
+
+  test("leaving the Duel is written at once as a Forfeit won by the opponent", async () => {
+    const { ada, alan, adaId, alanId } = await pairedUsers();
+
+    setNow(STARTS_AT + 5000);
+    ada.send({ type: "keystrokes", keystrokes: [char("s", 1000)] });
+    await alan.next();
+    ada.send({ type: "leave-duel" });
+    await Promise.all([ada.next(), alan.next()]);
+
+    expect(saved).toMatchObject([
+      {
+        outcome: "forfeit",
+        winnerId: alanId,
+        endedAt: STARTS_AT + 5000,
+        players: [
+          { userId: adaId, keystrokes: [char("s", 1000)] },
+          { userId: alanId, keystrokes: [] },
+        ],
+      },
+    ]);
+
+    // The scheduled end does not write it again.
+    setNow(ENDS_AT);
+    await alan.settle();
+    expect(saved).toHaveLength(1);
+  });
+
+  test("a player not back within 10 s is written as a Forfeit", async () => {
+    const { ada, alan, alanId } = await pairedUsers();
+
+    setNow(STARTS_AT + 1000);
+    ada.socket.close();
+    await ada.closed;
+    expect(await alan.next()).toEqual({ type: "opponent-disconnected" });
+
+    setNow(STARTS_AT + 11_000);
+    await alan.next();
+
+    expect(saved).toMatchObject([
+      { outcome: "forfeit", winnerId: alanId, endedAt: STARTS_AT + 11_000 },
+    ]);
+  });
+
+  test("a Duel that cannot be written still ends for both players, and the failure is logged", async () => {
+    const { clock, set } = manualClock(NOW);
+    const logged: string[] = [];
+    const logger = pino({ level: "error" }, { write: (line: string) => logged.push(line) });
+    const failing = { save: () => Promise.reject(new Error("database down")) };
+
+    await app.stop(true);
+    setNow = set;
+    app = createApp(testConfig({ auth, clock, logger, duelStore: failing })).listen(0);
+    url = `ws://localhost:${app.server?.port}/api/duel`;
+
+    const { ada, alan } = await paired();
+
+    setNow(ENDS_AT);
+
+    expect(await ada.next()).toMatchObject({ type: "duel-ended" });
+    expect(await alan.next()).toMatchObject({ type: "duel-ended" });
+    expect(logged.map((line) => JSON.parse(line))).toMatchObject([
+      { msg: "finished duel not saved", err: { message: "database down" } },
+    ]);
   });
 });

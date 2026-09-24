@@ -6,6 +6,7 @@ import pino from "pino";
 import type { AppConfig } from "./app";
 import { authOptions } from "./auth";
 import { type Clock, systemClock } from "./clock";
+import type { DuelRecord, DuelStore } from "./duel/duel-store";
 
 // Shared by the test files: the app's config with in-memory dependencies.
 
@@ -75,6 +76,19 @@ export const manualClock = (start: number) => {
   return { clock, set };
 };
 
+// The finished Duels, kept in `saved` in the order they were written.
+export const memoryDuelStore = () => {
+  const saved: DuelRecord[] = [];
+
+  const store: DuelStore = {
+    save: async (record) => {
+      saved.push(record);
+    },
+  };
+
+  return { store, saved };
+};
+
 export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
   corsOrigin: FRONT_ORIGIN,
   isProduction: false,
@@ -83,5 +97,6 @@ export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
   logger: pino({ level: "silent" }),
   auth: createTestAuth(),
   clock: systemClock,
+  duelStore: memoryDuelStore().store,
   ...overrides,
 });

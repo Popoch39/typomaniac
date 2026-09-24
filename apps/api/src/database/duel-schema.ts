@@ -1,0 +1,59 @@
+import {
+  bigint,
+  doublePrecision,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
+import type { Keystroke } from "typing-engine";
+
+import { user } from "./auth-schema";
+
+// A finished Duel: enough to replay it on its Text (Seed, Language, Word list version, Mode) and
+// its issue. A Duel still running when the API stops is never written (ADR 0003).
+export const duel = pgTable("duel", {
+  id: text("id").primaryKey(),
+  // A 32-bit unsigned Seed: past the range of a Postgres integer.
+  seed: bigint("seed", { mode: "number" }).notNull(),
+  language: text("language", { enum: ["fr", "en"] }).notNull(),
+  wordListVersion: integer("word_list_version").notNull(),
+  mode: text("mode", { enum: ["time"] }).notNull(),
+  seconds: integer("seconds").notNull(),
+  // The end of the Countdown.
+  startedAt: timestamp("started_at").notNull(),
+  endedAt: timestamp("ended_at").notNull(),
+  outcome: text("outcome", { enum: ["win", "draw", "forfeit"] }).notNull(),
+  // Null for a Draw.
+  winnerId: text("winner_id").references(() => user.id, { onDelete: "set null" }),
+});
+
+// Each of the two players of a finished Duel: their Result and the Keystrokes the server accepted,
+// which replay to it.
+export const duelPlayer = pgTable(
+  "duel_player",
+  {
+    duelId: text("duel_id")
+      .notNull()
+      .references(() => duel.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    wpm: doublePrecision("wpm").notNull(),
+    raw: doublePrecision("raw").notNull(),
+    accuracy: doublePrecision("accuracy").notNull(),
+    consistency: doublePrecision("consistency").notNull(),
+    correctChars: integer("correct_chars").notNull(),
+    incorrectChars: integer("incorrect_chars").notNull(),
+    extraChars: integer("extra_chars").notNull(),
+    missedChars: integer("missed_chars").notNull(),
+    keystrokes: jsonb("keystrokes").$type<readonly Keystroke[]>().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.duelId, table.userId] }),
+    index("duel_player_userId_idx").on(table.userId),
+  ],
+);

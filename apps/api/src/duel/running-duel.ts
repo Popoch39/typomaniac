@@ -10,6 +10,7 @@ import {
   startReplay,
 } from "typing-engine";
 
+import type { DuelPlayerRecord, DuelRecord } from "./duel-store";
 import type { Duel, ServerMessage } from "./protocol";
 
 // How late past the end a Keystroke may still arrive: the network delay of the last ones.
@@ -25,6 +26,9 @@ export type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
 
 // The end of the Duel as one player is told it.
 export type Ending = { userId: string; message: DuelEnded };
+
+// The end of the Duel: as each player is told it, and as it is written.
+export type Finish = { endings: Ending[]; record: DuelRecord };
 
 // The outcome of the Duel for each player, from the engine's.
 const OUTCOMES = {
@@ -42,6 +46,13 @@ type Player = {
   // Every Keystroke received from the player, accepted or not.
   received: number;
 };
+
+// A player as the finished Duel is written: the Keystrokes that replay to their Result.
+const playerRecord = ({ user, replay }: Player, result: Result): DuelPlayerRecord => ({
+  userId: user.id,
+  result,
+  keystrokes: [...replay.keystrokes],
+});
 
 // What became of a batch of Keystrokes: the accepted ones, to relay, whether any was rejected, and
 // whether the player typed at an inhuman rate.
@@ -118,13 +129,18 @@ export class RunningDuel {
     return computeResult(this.#config, replay.keystrokes, this.#durationMs);
   }
 
-  // The end as each player is told it: both see the same two Results. `outcomeOf` judges them as
-  // the engine's duelOutcome does, first player against second.
-  #endings(forfeit: boolean, outcomeOf: (first: Result, second: Result) => Outcome): Ending[] {
+  // The end at `endedAt`, in ms since the epoch: both players see the same two Results. `outcomeOf`
+  // judges them as the engine's duelOutcome does, first player against second.
+  #finish(
+    endedAt: number,
+    forfeit: boolean,
+    outcomeOf: (first: Result, second: Result) => Outcome,
+  ): Finish {
     const [first, second] = this.#players;
     const firstResult = this.#resultOf(first);
     const secondResult = this.#resultOf(second);
-    const [firstOutcome, secondOutcome] = OUTCOMES[outcomeOf(firstResult, secondResult)];
+    const judged = outcomeOf(firstResult, secondResult);
+    const [firstOutcome, secondOutcome] = OUTCOMES[judged];
 
     const endingFor = (
       player: Player,
@@ -143,23 +159,35 @@ export class RunningDuel {
       },
     });
 
-    return [
-      endingFor(first, second, firstOutcome, [firstResult, secondResult]),
-      endingFor(second, first, secondOutcome, [secondResult, firstResult]),
-    ];
+    const winner = { first, second, draw: null }[judged];
+
+    return {
+      endings: [
+        endingFor(first, second, firstOutcome, [firstResult, secondResult]),
+        endingFor(second, first, secondOutcome, [secondResult, firstResult]),
+      ],
+      record: {
+        ...this.duel,
+        mode: this.#config.mode,
+        endedAt,
+        outcome: forfeit ? "forfeit" : winner ? "win" : "draw",
+        winnerId: winner?.user.id ?? null,
+        players: [playerRecord(first, firstResult), playerRecord(second, secondResult)],
+      },
+    };
   }
 
   // The end once the time is up: the best Result wins (duelOutcome of the engine).
-  end() {
-    return this.#endings(false, duelOutcome);
+  end(now: number) {
+    return this.#finish(now, false, duelOutcome);
   }
 
   // `loserId` forfeits: the opponent wins, whatever the Results so far.
-  forfeit(loserId: string) {
+  forfeit(loserId: string, now: number) {
     const [first] = this.#players;
     const winner = first.user.id === loserId ? "second" : "first";
 
-    return this.#endings(true, () => winner);
+    return this.#finish(now, true, () => winner);
   }
 
   // Judges each Keystroke of a batch on its arrival, `now` on the server's clock.

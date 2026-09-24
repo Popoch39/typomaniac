@@ -1,8 +1,10 @@
+import type { Logger } from "pino";
 import { currentWordListVersion, type Keystroke } from "typing-engine";
 
 import type { Clock } from "../clock";
+import type { DuelStore } from "./duel-store";
 import type { ClientMessage, ServerMessage } from "./protocol";
-import { type DuelEnded, type Ending, RunningDuel, type User } from "./running-duel";
+import { type DuelEnded, type Finish, RunningDuel, type User } from "./running-duel";
 
 // Every Duel has the same format: `time` 30 s in English.
 const DUEL_LANGUAGE = "en";
@@ -23,11 +25,18 @@ export type Connection = {
 
 const randomSeed = () => crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
 
+export type DuelQueueConfig = { clock: Clock; store: DuelStore; logger: Logger };
+
 // The Queue, the running Duels and the connected Users, in memory (ADR 0003). A User has one
 // place, in the Queue or in a Duel: a new connection replaces the previous one and takes over
 // its place. Only the current connection of a User is listened to.
 export class DuelQueue {
   readonly #clock: Clock;
+
+  // Where finished Duels are written.
+  readonly #store: DuelStore;
+
+  readonly #logger: Logger;
 
   readonly #connected = new Map<string, { user: User; connection: Connection }>();
 
@@ -44,8 +53,10 @@ export class DuelQueue {
   // The end of a Duel told to a player who was away then, to tell them on their return.
   readonly #missed = new Map<string, DuelEnded>();
 
-  constructor(clock: Clock) {
+  constructor({ clock, store, logger }: DuelQueueConfig) {
     this.#clock = clock;
+    this.#store = store;
+    this.#logger = logger;
   }
 
   // The new connection is told the User's place: in a Duel (resumed), in the Queue, or none. A
@@ -149,14 +160,21 @@ export class DuelQueue {
     }
   }
 
-  // Once a Duel is over, both players are free to join the Queue again and their Keystrokes are
-  // ignored. It ends once: at the end of its time, or on a Forfeit, whichever comes first.
-  #finish(duel: RunningDuel, endings: () => Ending[]) {
+  // Once a Duel is over, it is written, both players are free to join the Queue again and their
+  // Keystrokes are ignored. It ends once: at the end of its time, or on a Forfeit, whichever comes
+  // first. A failed write is logged: the players are told the end all the same.
+  #finish(duel: RunningDuel, finish: (now: number) => Finish) {
     if (duel.userIds.some((userId) => this.#duels.get(userId) !== duel)) {
       return;
     }
 
-    for (const { userId, message } of endings()) {
+    const { endings, record } = finish(this.#clock.now());
+
+    this.#store.save(record).catch((error: Error) => {
+      this.#logger.error({ err: error, duelId: record.id }, "finished duel not saved");
+    });
+
+    for (const { userId, message } of endings) {
       this.#duels.delete(userId);
       this.#away.delete(userId);
 
@@ -170,7 +188,7 @@ export class DuelQueue {
 
   // `userId` forfeits: they left, did not come back in time, or typed at an inhuman rate.
   #forfeit(duel: RunningDuel, userId: string) {
-    this.#finish(duel, () => duel.forfeit(userId));
+    this.#finish(duel, (now) => duel.forfeit(userId, now));
   }
 
   #leave(userId: string) {
@@ -249,7 +267,7 @@ export class DuelQueue {
 
     this.#duels.set(a.user.id, duel);
     this.#duels.set(b.user.id, duel);
-    this.#clock.at(duel.endsAt, () => this.#finish(duel, () => duel.end()));
+    this.#clock.at(duel.endsAt, () => this.#finish(duel, (now) => duel.end(now)));
 
     for (const { user } of [a, b]) {
       this.#send(user.id, {

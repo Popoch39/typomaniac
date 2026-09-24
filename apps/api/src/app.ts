@@ -5,6 +5,7 @@ import type { Logger } from "pino";
 import { API_PREFIX } from "./api-prefix";
 import type { Clock } from "./clock";
 import { duelRoute } from "./duel/duel-route";
+import type { DuelStore } from "./duel/duel-store";
 import { MAX_DUEL_MESSAGE_SIZE } from "./duel/protocol";
 import { apiDocs } from "./plugins/api-docs";
 import { type AuthHandler, authentication } from "./plugins/authentication";
@@ -29,6 +30,8 @@ export type AppConfig = {
   auth: AuthHandler;
   // The Duel's time source (Countdown, server time sent to the clients).
   clock: Clock;
+  // Where finished Duels are written: Drizzle in production, in memory in the tests.
+  duelStore: DuelStore;
 };
 
 const MeResponse = t.Object({
@@ -71,6 +74,14 @@ export const createApp = (config: AppConfig) =>
         detail: { summary: "The signed-in User", tags: ["Auth"] },
       },
     )
-    .use(duelRoute({ auth: config.auth, trustProxy: config.trustProxy, clock: config.clock }));
+    .use(
+      duelRoute({
+        auth: config.auth,
+        trustProxy: config.trustProxy,
+        clock: config.clock,
+        store: config.duelStore,
+        logger: config.logger,
+      }),
+    );
 
 export type App = ReturnType<typeof createApp>;
