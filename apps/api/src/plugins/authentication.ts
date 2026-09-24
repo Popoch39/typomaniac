@@ -1,8 +1,9 @@
-import { Elysia } from "elysia";
+import { type Context, Elysia } from "elysia";
 
 import { API_PREFIX } from "../api-prefix";
 import type { Auth } from "../auth";
 import { ApiError } from "../errors";
+import type { UsersContext } from "../users";
 import { CLIENT_IP_HEADER, clientIp } from "./client-ip";
 
 // Registered under createApp's prefix.
@@ -15,6 +16,8 @@ export const AUTH_PATH = `${API_PREFIX}${AUTH_ROUTE}`;
 // adapter, with extra plugins.
 export type AuthHandler = Pick<Auth, "handler"> & {
   api: Pick<Auth["api"], "getSession" | "generateOpenAPISchema">;
+  // Its database, for the Users (src/users.ts).
+  $context: Promise<UsersContext>;
 };
 
 // Better Auth only reads the client IP from a header: it gets the one our rate limit
@@ -47,24 +50,34 @@ export const authentication = (auth: AuthHandler, { trustProxy }: { trustProxy: 
     )
     .macro({
       auth: {
-        async resolve({ request, set }) {
-          const { headers, response } = await auth.api.getSession({
-            headers: request.headers,
-            returnHeaders: true,
-          });
-
-          // Refreshed cookie cache or extended Session: the browser must get the new cookies.
-          const cookies = headers.getSetCookie();
-
-          if (cookies.length > 0) {
-            set.headers["set-cookie"] = cookies;
-          }
-
-          if (!response) {
-            throw new ApiError("UNAUTHORIZED");
-          }
-
-          return { user: response.user, session: response.session };
-        },
+        resolve: ({ request, set }) => readSession(auth, request, set, { fresh: false }),
       },
     });
+
+// The request's Session, or UNAUTHORIZED. `fresh` reads it from the database rather than from the
+// cookie cache, and caches it again: after a change of the User, the next requests see it.
+export const readSession = async (
+  auth: AuthHandler,
+  request: Request,
+  set: Context["set"],
+  { fresh }: { fresh: boolean },
+) => {
+  const { headers, response } = await auth.api.getSession({
+    headers: request.headers,
+    query: { disableCookieCache: fresh },
+    returnHeaders: true,
+  });
+
+  // Refreshed cookie cache or extended Session: the browser must get the new cookies.
+  const cookies = headers.getSetCookie();
+
+  if (cookies.length > 0) {
+    set.headers["set-cookie"] = cookies;
+  }
+
+  if (!response) {
+    throw new ApiError("UNAUTHORIZED");
+  }
+
+  return { user: response.user, session: response.session };
+};

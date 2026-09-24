@@ -18,12 +18,11 @@ export const duelRoute = ({ auth, trustProxy, ...queueConfig }: DuelRouteConfig)
       response: ServerMessage,
       detail: { summary: "Duel Queue and pairing", tags: ["Duel"] },
       open(ws) {
-        const { user } = ws.data;
-
-        queue.connect(
-          { id: user.id, name: user.name, image: user.image ?? null },
-          { id: ws.id, send: (message) => ws.send(message), close: () => ws.close() },
-        );
+        queue.connect(ws.data.user.id, {
+          id: ws.id,
+          send: (message) => ws.send(message),
+          close: () => ws.close(),
+        });
       },
       message(ws, message) {
         if (!clientMessage.Check(message)) {

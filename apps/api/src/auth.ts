@@ -80,6 +80,13 @@ export const authOptions = ({
     basePath: AUTH_PATH,
     trustedOrigins: [trustedOrigin],
     socialProviders,
+    // The Handle, lowercased, null until the User chooses it. Never set by a sign-up: only
+    // through its own route (src/handle), which checks it.
+    user: {
+      additionalFields: {
+        handle: { type: "string", required: false, input: false, unique: true },
+      },
+    },
     // No email is ever sent: the address is not checked, the User stays unverified.
     emailAndPassword: { enabled: !isProduction },
     plugins: [openAPI({ disableDefaultReference: true })],

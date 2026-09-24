@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { DuelEnded } from "@/components/duel/duel-ended";
+import { DuelHandleRequired } from "@/components/duel/duel-handle-required";
 import { DuelInterrupted } from "@/components/duel/duel-interrupted";
 import { DuelQueue } from "@/components/duel/duel-queue";
 import { DuelTypingArea } from "@/components/duel/duel-typing-area";
@@ -25,6 +26,8 @@ export const DuelArea = () => {
     case "connecting":
     case "queued":
       return <DuelQueue />;
+    case "handle-required":
+      return <DuelHandleRequired />;
     case "countdown":
     case "running":
     case "finishing":

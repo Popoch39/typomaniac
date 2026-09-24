@@ -2,6 +2,7 @@ import type { Logger } from "pino";
 import { currentWordListVersion, defaultPace, type Keystroke } from "typing-engine";
 
 import type { Clock } from "../clock";
+import type { Users } from "../users";
 import { type DuelStore, readPace } from "./duel-store";
 import type { ClientMessage, ServerMessage } from "./protocol";
 import {
@@ -31,7 +32,11 @@ export type Connection = {
 
 const randomSeed = () => crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
 
-export type DuelQueueConfig = { clock: Clock; store: DuelStore; logger: Logger };
+export type DuelQueueConfig = { clock: Clock; store: DuelStore; users: Users; logger: Logger };
+
+// A User in the Queue: their profile once read (they have a Handle), then their Pace once read
+// from their history. Replaced by a new entry when they leave and join again.
+type QueueEntry = { user: User | null; pace: number | null };
 
 // The Queue, the running Duels and the connected Users, in memory (ADR 0003). A User has one
 // place, in the Queue or in a Duel: a new connection replaces the previous one and takes over
@@ -42,13 +47,15 @@ export class DuelQueue {
   // Where finished Duels are written.
   readonly #store: DuelStore;
 
+  // Where a joining User's Handle and avatar are read: the Session's may be minutes old.
+  readonly #users: Users;
+
   readonly #logger: Logger;
 
-  readonly #connected = new Map<string, { user: User; connection: Connection }>();
+  readonly #connected = new Map<string, Connection>();
 
-  // User ids in arrival order, each with their Pace once read from their history (null until
-  // then). Queued Users are always connected: leaving drops them.
-  readonly #queue = new Map<string, number | null>();
+  // User ids in arrival order. Queued Users are always connected: leaving drops them.
+  readonly #queue = new Map<string, QueueEntry>();
 
   // The write of each User's last Duel, until it is done: their Pace waits for it.
   readonly #saving = new Map<string, Promise<void>>();
@@ -63,33 +70,34 @@ export class DuelQueue {
   // The end of a Duel told to a player who was away then, to tell them on their return.
   readonly #missed = new Map<string, DuelEnded>();
 
-  constructor({ clock, store, logger }: DuelQueueConfig) {
+  constructor({ clock, store, users, logger }: DuelQueueConfig) {
     this.#clock = clock;
     this.#store = store;
+    this.#users = users;
     this.#logger = logger;
   }
 
   // The new connection is told the User's place: in a Duel (resumed), in the Queue, or none. A
   // Duel that ended in their absence is told first.
-  connect(user: User, connection: Connection) {
-    const previous = this.#connected.get(user.id);
+  connect(userId: string, connection: Connection) {
+    const previous = this.#connected.get(userId);
 
-    this.#connected.set(user.id, { user, connection });
+    this.#connected.set(userId, connection);
 
     if (previous) {
-      previous.connection.send({ type: "replaced" });
-      previous.connection.close();
+      previous.send({ type: "replaced" });
+      previous.close();
     }
 
-    const duel = this.#duels.get(user.id);
-    const missed = this.#missed.get(user.id);
+    const duel = this.#duels.get(userId);
+    const missed = this.#missed.get(userId);
 
     if (duel) {
-      this.#resume(user.id, duel);
+      this.#resume(userId, duel);
     } else if (missed) {
-      this.#missed.delete(user.id);
+      this.#missed.delete(userId);
       connection.send(missed);
-    } else if (this.#queue.has(user.id)) {
+    } else if (this.#queue.has(userId)) {
       connection.send({ type: "queued" });
     } else {
       connection.send({ type: "idle" });
@@ -145,11 +153,11 @@ export class DuelQueue {
   }
 
   #isCurrent(userId: string, connectionId: string) {
-    return this.#connected.get(userId)?.connection.id === connectionId;
+    return this.#connected.get(userId)?.id === connectionId;
   }
 
   #send(userId: string, message: ServerMessage) {
-    this.#connected.get(userId)?.connection.send(message);
+    this.#connected.get(userId)?.send(message);
   }
 
   // Back in their Duel: the full state that holds, and the opponent is told if they were away.
@@ -242,26 +250,58 @@ export class DuelQueue {
     }
   }
 
-  // A User in a running Duel keeps their place in it. Joining reads their Pace, frozen for their
-  // next Duel: they are paired once it is read.
+  // A User in a running Duel keeps their place in it. Joining reads their profile: without a
+  // Handle, they are refused. Then their Pace, frozen for their next Duel: they are paired once it
+  // is read. Joining again while in the Queue keeps their place.
   #join(userId: string) {
     if (this.#duels.has(userId)) {
       return;
     }
 
-    this.#send(userId, { type: "queued" });
+    const queued = this.#queue.get(userId);
 
-    if (this.#queue.has(userId)) {
+    if (queued) {
+      if (queued.user !== null) {
+        this.#send(userId, { type: "queued" });
+      }
+
       return;
     }
 
-    this.#queue.set(userId, null);
-    void this.#readPace(userId).then((pace) => {
-      if (this.#queue.get(userId) === null) {
-        this.#queue.set(userId, pace);
-        this.#pair();
-      }
-    });
+    const entry: QueueEntry = { user: null, pace: null };
+
+    this.#queue.set(userId, entry);
+    void this.#users.profileOf(userId).then(
+      (profile) => {
+        if (this.#queue.get(userId) !== entry) {
+          return;
+        }
+
+        if (!profile?.handle) {
+          this.#queue.delete(userId);
+          this.#send(userId, { type: "handle-required" });
+
+          return;
+        }
+
+        entry.user = { id: userId, handle: profile.handle, image: profile.image };
+        this.#send(userId, { type: "queued" });
+        void this.#readPace(userId).then((pace) => {
+          if (this.#queue.get(userId) === entry) {
+            entry.pace = pace;
+            this.#pair();
+          }
+        });
+      },
+      // Unreadable: out of the Queue. Without the opponent's Handle there is no Duel to show.
+      (error) => {
+        this.#logger.error({ err: error, userId }, "profile not read");
+
+        if (this.#queue.get(userId) === entry) {
+          this.#queue.delete(userId);
+        }
+      },
+    );
   }
 
   // The median wpm of the User's last Duels, once their last one is written (engine's paceOf).
@@ -278,16 +318,14 @@ export class DuelQueue {
     }
   }
 
-  // FIFO among the Users whose Pace is read: a Pace still being read holds up no one behind (a Map
-  // iterates in insertion order). They are distinct, the Queue holds User ids.
+  // FIFO among the Users whose profile and Pace are read: one still being read holds up no one
+  // behind (a Map iterates in insertion order). They are distinct, the Queue holds User ids.
   #pair() {
     const ready: PacedUser[] = [];
 
-    for (const [userId, pace] of this.#queue) {
-      const connected = this.#connected.get(userId);
-
-      if (connected && pace !== null) {
-        ready.push({ user: connected.user, pace });
+    for (const [userId, { user, pace }] of this.#queue) {
+      if (this.#connected.has(userId) && user !== null && pace !== null) {
+        ready.push({ user, pace });
       }
 
       if (ready.length === 2) {

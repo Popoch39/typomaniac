@@ -6,6 +6,7 @@ import { drizzleDuelStore } from "./database/drizzle-duel-store";
 import { env } from "./env";
 import { createLogger } from "./logger";
 import { HARD_REQUEST_BODY_SIZE } from "./plugins/body-limit";
+import { authUsers } from "./users";
 
 const isProduction = env.NODE_ENV === "production";
 
@@ -18,22 +19,25 @@ try {
   process.exit(1);
 }
 
+const auth = createAuth(
+  {
+    secret: env.BETTER_AUTH_SECRET,
+    baseURL: env.BETTER_AUTH_URL,
+    trustedOrigin: env.CORS_ORIGIN,
+    socialProviders: env.socialProviders,
+    isProduction,
+  },
+  db,
+);
+
 const app = createApp({
   corsOrigin: env.CORS_ORIGIN,
   isProduction,
   trustProxy: env.TRUST_PROXY,
   rateLimit: { max: env.RATE_LIMIT_MAX, windowMs: env.RATE_LIMIT_WINDOW_MS },
   logger,
-  auth: createAuth(
-    {
-      secret: env.BETTER_AUTH_SECRET,
-      baseURL: env.BETTER_AUTH_URL,
-      trustedOrigin: env.CORS_ORIGIN,
-      socialProviders: env.socialProviders,
-      isProduction,
-    },
-    db,
-  ),
+  auth,
+  users: authUsers(auth),
   clock: systemClock,
   duelStore: drizzleDuelStore(db),
 }).listen({ port: env.PORT, maxRequestBodySize: HARD_REQUEST_BODY_SIZE });

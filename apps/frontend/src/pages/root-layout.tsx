@@ -5,6 +5,7 @@ import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { AuthControl } from "@/components/auth/auth-control";
 import { OAuthErrorToast } from "@/components/auth/oauth-error-toast";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
+import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
@@ -43,6 +44,7 @@ export const RootLayout = () => (
       <Outlet />
     </main>
     <SignInDialog />
+    <HandleChoiceDialog />
     <OAuthErrorToast />
     <Toaster position="bottom-center" />
     <ReactQueryDevtools buttonPosition="bottom-left" />

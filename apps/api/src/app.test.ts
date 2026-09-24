@@ -443,6 +443,7 @@ describe("auth", () => {
       name: "Ada",
       email: "ada@example.com",
       image: "https://img/ada",
+      handle: null,
     });
   });
 

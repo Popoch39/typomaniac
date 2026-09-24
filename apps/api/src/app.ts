@@ -8,13 +8,15 @@ import { duelRoute } from "./duel/duel-route";
 import { type DuelStore, readPace } from "./duel/duel-store";
 import { MAX_DUEL_MESSAGE_SIZE } from "./duel/protocol";
 import { apiDocs } from "./plugins/api-docs";
-import { type AuthHandler, authentication } from "./plugins/authentication";
+import { checkHandle, HANDLE_UNAVAILABLE, setHandle } from "./handle/handle-service";
+import { type AuthHandler, authentication, readSession } from "./plugins/authentication";
 import { bodyLimit } from "./plugins/body-limit";
 import { errorHandler } from "./plugins/error-handler";
 import { rateLimit } from "./plugins/rate-limit";
 import { requestId } from "./plugins/request-id";
 import { requestLogger } from "./plugins/request-logger";
 import { securityHeaders } from "./plugins/security-headers";
+import type { Users } from "./users";
 
 export type { ApiErrorBody, ErrorCode, ErrorDetail } from "./errors";
 
@@ -28,6 +30,8 @@ export type AppConfig = {
   logger: Logger;
   // Built by the entry point (src/auth.ts) from the env, like the logger.
   auth: AuthHandler;
+  // The Users past the Session (Handles, profiles): on the auth's database.
+  users: Users;
   // The Duel's time source (Countdown, server time sent to the clients).
   clock: Clock;
   // Where finished Duels are written: Drizzle in production, in memory in the tests.
@@ -39,7 +43,35 @@ const MeResponse = t.Object({
   name: t.String(),
   email: t.String(),
   image: t.Nullable(t.String()),
+  // Null until the User chooses it: the front asks for it.
+  handle: t.Nullable(t.String()),
 });
+
+type SessionUser = {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+  handle?: string | null;
+};
+
+const meOf = (user: SessionUser) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  image: user.image ?? null,
+  handle: user.handle ?? null,
+});
+
+const HandleUnavailable = t.UnionEnum(HANDLE_UNAVAILABLE);
+
+// Any length: a Handle too long is refused as `too-long`, with the other reasons.
+const HandleInput = t.String();
+
+const HandleAvailability = t.Union([
+  t.Object({ available: t.Literal(true), handle: t.String() }),
+  t.Object({ available: t.Literal(false), reason: HandleUnavailable }),
+]);
 
 // In wpm: the median wpm of the User's last Duels, or the default Pace without any.
 const PaceResponse = t.Object({ pace: t.Number() });
@@ -63,18 +95,36 @@ export const createApp = (config: AppConfig) =>
       detail: { summary: "Health check", tags: ["System"] },
     })
     .use(authentication(config.auth, { trustProxy: config.trustProxy }))
-    .get(
-      "/me",
-      ({ user }) => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        image: user.image ?? null,
-      }),
+    .get("/me", ({ user }) => meOf(user), {
+      auth: true,
+      response: MeResponse,
+      detail: { summary: "The signed-in User", tags: ["Auth"] },
+    })
+    // Sets or changes the User's Handle: 422 with the reason in `details` when invalid, 409 when
+    // another User holds it. The Session is cached again with the Handle.
+    .put(
+      "/me/handle",
+      async ({ user, body, request, set }) => {
+        await setHandle(config.users, user.id, body.handle);
+
+        return meOf((await readSession(config.auth, request, set, { fresh: true })).user);
+      },
       {
         auth: true,
+        body: t.Object({ handle: HandleInput }),
         response: MeResponse,
-        detail: { summary: "The signed-in User", tags: ["Auth"] },
+        detail: { summary: "Sets the signed-in User's Handle", tags: ["Handle"] },
+      },
+    )
+    // For the live check while the User types: valid, and free or already theirs.
+    .get(
+      "/handles/availability",
+      ({ user, query }) => checkHandle(config.users, user.id, query.handle),
+      {
+        auth: true,
+        query: t.Object({ handle: HandleInput }),
+        response: HandleAvailability,
+        detail: { summary: "Whether the signed-in User may take a Handle", tags: ["Handle"] },
       },
     )
     // The Pace of a solo Run: the one of the User's Duels.
@@ -92,6 +142,7 @@ export const createApp = (config: AppConfig) =>
         trustProxy: config.trustProxy,
         clock: config.clock,
         store: config.duelStore,
+        users: config.users,
         logger: config.logger,
       }),
     );

@@ -1,6 +1,6 @@
 # typomaniac
 
-Monorepo Turborepo : `apps/frontend` (Vite 8, React 19), `apps/api` (Elysia sur Bun), `packages/typescript-config`.
+Monorepo Turborepo : `apps/frontend` (Vite 8, React 19), `apps/api` (Elysia sur Bun), `packages/typing-engine`, `packages/handle` (règles du Handle, pures, partagées par le front et l'API), `packages/typescript-config`.
 
 ## Instructions par workspace
 

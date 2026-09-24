@@ -26,7 +26,13 @@ describe("AuthControl", () => {
   });
 
   test("a signed-in User gets their menu instead", () => {
-    renderWithSession({ id: "u1", name: "Ada Lovelace", email: "ada@example.com", image: null });
+    renderWithSession({
+      id: "u1",
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      image: null,
+      handle: "ada",
+    });
 
     expect(screen.getByRole("button", { name: "Menu de Ada Lovelace" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Se connecter" })).not.toBeInTheDocument();

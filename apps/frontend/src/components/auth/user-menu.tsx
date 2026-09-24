@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOutIcon } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { LogOutIcon, UserIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { meQueryOptions, type Me } from "@/api/me";
@@ -14,6 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { atHandle } from "@/lib/at-handle";
 import { authClient } from "@/lib/auth-client";
 import { initials } from "@/lib/initials";
 
@@ -50,11 +52,15 @@ export const UserMenu = ({ me }: UserMenuProps) => {
       <DropdownMenuContent align="end" className="min-w-56">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="flex flex-col gap-0.5">
-            <span className="text-foreground">{me.name}</span>
+            <span className="text-foreground">{me.handle ? atHandle(me.handle) : me.name}</span>
             <span className="truncate">{me.email}</span>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        <DropdownMenuItem render={<Link to="/profile" />}>
+          <UserIcon />
+          Profil
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={signOut}>
           <LogOutIcon />
           Se déconnecter

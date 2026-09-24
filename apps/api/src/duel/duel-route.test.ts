@@ -90,10 +90,11 @@ const burst = (count: number, start: number, every: number) =>
     char(String.fromCodePoint(97 + (i % 26)), start + i * every),
   );
 
+// Each test User's Handle is their name, lowercased (signedInUser).
 const duelFound = (opponent: string) => ({
   type: "duel-found" as const,
   duel: expect.any(Object),
-  opponent: { name: opponent, image: `https://img/${opponent.toLowerCase()}` },
+  opponent: { handle: opponent.toLowerCase(), image: `https://img/${opponent.toLowerCase()}` },
   serverTime: NOW,
   // Neither User has played a Duel yet.
   pace: defaultPace,
@@ -199,14 +200,16 @@ describe("duel socket", () => {
 
   let users = 0;
 
-  // A new User, with the cookie of their Session.
-  const signedInUser = async (name: string) => {
+  // A new User, with the cookie of their Session: their Handle is their name lowercased, unless
+  // they have none yet.
+  const signedInUser = async (name: string, { withHandle = true } = {}) => {
     users += 1;
 
     const { user, cookie } = await signIn(auth, {
       name,
       email: `${name.toLowerCase()}-${users}@example.com`,
       image: `https://img/${name.toLowerCase()}`,
+      handle: withHandle ? name.toLowerCase() : undefined,
     });
 
     return { id: user.id, cookie };
@@ -264,7 +267,7 @@ describe("duel socket", () => {
         seconds: 30,
         startsAt: STARTS_AT,
       },
-      opponent: { name: "Ada", image: "https://img/ada" },
+      opponent: { handle: "ada", image: "https://img/ada" },
       serverTime: NOW,
       pace: defaultPace,
       opponentPace: defaultPace,
@@ -272,6 +275,42 @@ describe("duel socket", () => {
     expect(forAda).toEqual(duelFound("Alan"));
     // The very same Duel (id, Seed, start), only the opponent differs.
     expect(duelOf(forAda)).toEqual(duelOf(forAlan));
+  });
+
+  test("a User without a Handle cannot join the Queue, and is told why", async () => {
+    const nobody = await connect((await signedInUser("Nobody", { withHandle: false })).cookie);
+
+    expect(await nobody.next()).toEqual({ type: "idle" });
+    nobody.send({ type: "join-queue" });
+    expect(await nobody.next()).toEqual({ type: "handle-required" });
+
+    // Not in the Queue: the next User waits alone.
+    const ada = await queued(await signedIn("Ada"));
+
+    await ada.settle();
+    await nobody.settle();
+  });
+
+  test("the opponent is shown by their Handle of the moment, never by their name", async () => {
+    const adaUser = await signedInUser("Ada");
+    const ada = await connect(adaUser.cookie);
+
+    expect(await ada.next()).toEqual({ type: "idle" });
+
+    // Changed after the socket opened, with the Session's cached User still holding the old one.
+    const context = await auth.$context;
+
+    await context.internalAdapter.updateUser(adaUser.id, { handle: "countess" });
+    ada.send({ type: "join-queue" });
+    expect(await ada.next()).toEqual({ type: "queued" });
+
+    const alan = await queued(await signedIn("Alan"));
+
+    expect(await alan.next()).toMatchObject({
+      type: "duel-found",
+      opponent: { handle: "countess", image: "https://img/ada" },
+    });
+    expect(await ada.next()).not.toHaveProperty("opponent.name");
   });
 
   test("each User's Pace is the median wpm of their last 10 Duels, sent to both players", async () => {
@@ -543,13 +582,13 @@ describe("duel socket", () => {
       opponentResult: { wpm: 0, accuracy: 0 },
       score: { score: word.length + 1, bestCombo: 1, bursts: 0 },
       opponentScore: { score: 0, bestCombo: 0, bursts: 0 },
-      opponent: { name: "Alan", image: "https://img/alan" },
+      opponent: { handle: "alan", image: "https://img/alan" },
     });
     expect(forAlan).toMatchObject({
       type: "duel-ended",
       outcome: "loss",
       forfeit: false,
-      opponent: { name: "Ada" },
+      opponent: { handle: "ada" },
     });
 
     const ended = [forAda, forAlan].map((message) =>
@@ -702,7 +741,7 @@ describe("duel socket", () => {
 
     alan.send({ type: "join-queue" });
     expect(await alan.next()).toEqual({ type: "queued" });
-    expect(await ada.next()).toMatchObject({ type: "duel-found", opponent: { name: "Alan" } });
+    expect(await ada.next()).toMatchObject({ type: "duel-found", opponent: { handle: "alan" } });
   });
 
   // Ada's connection drops: Alan is told.
@@ -725,13 +764,13 @@ describe("duel socket", () => {
       type: "duel-ended",
       outcome: "loss",
       forfeit: true,
-      opponent: { name: "Alan" },
+      opponent: { handle: "alan" },
     });
     expect(await alan.next()).toMatchObject({
       type: "duel-ended",
       outcome: "win",
       forfeit: true,
-      opponent: { name: "Ada" },
+      opponent: { handle: "ada" },
     });
 
     // Over for both: the scheduled end does not end it again.
@@ -799,7 +838,7 @@ describe("duel socket", () => {
     expect(resumed).toEqual({
       type: "duel-resumed",
       duel: expect.any(Object),
-      opponent: { name: "Alan", image: "https://img/alan" },
+      opponent: { handle: "alan", image: "https://img/alan" },
       serverTime: STARTS_AT + 1000 + 9999,
       keystrokes: [char("s", 100)],
       received: 2,
@@ -835,7 +874,7 @@ describe("duel socket", () => {
       type: "duel-ended",
       outcome: "win",
       forfeit: true,
-      opponent: { name: "Ada" },
+      opponent: { handle: "ada" },
     });
 
     const back = await connect(cookie);
@@ -844,7 +883,7 @@ describe("duel socket", () => {
       type: "duel-ended",
       outcome: "loss",
       forfeit: true,
-      opponent: { name: "Alan" },
+      opponent: { handle: "alan" },
     });
 
     // Told once: free for a new Duel.
@@ -918,7 +957,7 @@ describe("duel socket", () => {
     expect(await ada.next()).toEqual({ type: "replaced" });
     expect(await secondTab.next()).toMatchObject({
       type: "duel-resumed",
-      opponent: { name: "Alan" },
+      opponent: { handle: "alan" },
       opponentConnected: true,
     });
     await alan.settle();
@@ -1149,8 +1188,8 @@ describe("duel socket", () => {
     const alan = await queued(await signedIn("Alan"));
     const grace = await queued(await signedIn("Grace"));
 
-    expect(await alan.next()).toMatchObject({ type: "duel-found", opponent: { name: "Grace" } });
-    expect(await grace.next()).toMatchObject({ type: "duel-found", opponent: { name: "Alan" } });
+    expect(await alan.next()).toMatchObject({ type: "duel-found", opponent: { handle: "grace" } });
+    expect(await grace.next()).toMatchObject({ type: "duel-found", opponent: { handle: "alan" } });
     await ada.settle();
 
     // Read at last: Ada waits for the next User.

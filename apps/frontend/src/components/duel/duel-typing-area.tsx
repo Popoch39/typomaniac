@@ -9,6 +9,7 @@ import { useDuelElapsed } from "@/components/duel/use-duel-elapsed";
 import { FocusOverlay } from "@/components/run/focus-overlay";
 import { KeystrokeInput } from "@/components/run/keystroke-input";
 import { useTypingFocus } from "@/components/run/use-typing-focus";
+import { atHandle } from "@/lib/at-handle";
 import type { DuelPlay } from "@/stores/duel-store";
 import { useDuelStore } from "@/stores/duel-store";
 
@@ -20,19 +21,20 @@ export const DuelTypingArea = ({ opponent, startsAt, seconds }: DuelTypingAreaPr
   const { inputRef, focused, setFocused, focus } = useTypingFocus();
   const press = useDuelStore((store) => store.press);
   const elapsed = useDuelElapsed(startsAt);
+  const opponentLabel = atHandle(opponent.handle);
 
   return (
     <div className="flex flex-col gap-4">
       <DuelFound opponent={opponent} />
-      <DuelConnection opponent={opponent.name} />
+      <DuelConnection opponent={opponentLabel} />
       <KeystrokeInput ref={inputRef} onFocusChange={setFocused} onPress={press} />
       <div className="flex items-baseline justify-between">
         <DuelClock elapsed={elapsed} seconds={seconds} />
-        <OpponentWpm name={opponent.name} elapsed={elapsed} />
+        <OpponentWpm name={opponentLabel} elapsed={elapsed} />
       </div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <DuelLiveScore name="Toi" />
-        <DuelLiveScore name={opponent.name} opponent />
+        <DuelLiveScore name={opponentLabel} opponent />
       </div>
       <div className="relative">
         <DuelText />

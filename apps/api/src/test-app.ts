@@ -8,6 +8,7 @@ import type { AppConfig } from "./app";
 import { authOptions } from "./auth";
 import { type Clock, systemClock } from "./clock";
 import type { DuelRecord, DuelStore } from "./duel/duel-store";
+import { authUsers } from "./users";
 
 // Shared by the test files: the app's config with in-memory dependencies.
 
@@ -37,10 +38,11 @@ export const createTestAuth = () => {
 
 export type TestAuth = ReturnType<typeof createTestAuth>;
 
-// A User with an open Session: the cookie a browser would hold after an OAuth callback.
+// A User with an open Session: the cookie a browser would hold after an OAuth callback. Without a
+// Handle unless given one.
 export const signIn = async (
   auth: TestAuth,
-  profile: { name: string; email: string; image?: string },
+  profile: { name: string; email: string; image?: string; handle?: string },
 ) => {
   const { test: helpers } = await auth.$context;
 
@@ -130,14 +132,20 @@ export const pastDuel = (userId: string, wpm: number, endedAt: number): DuelReco
   };
 };
 
-export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
-  corsOrigin: FRONT_ORIGIN,
-  isProduction: false,
-  trustProxy: false,
-  rateLimit: { max: 1000, windowMs: 60_000 },
-  logger: pino({ level: "silent" }),
-  auth: createTestAuth(),
-  clock: systemClock,
-  duelStore: memoryDuelStore().store,
-  ...overrides,
-});
+// The Users are read from the auth's database: the one of `overrides.auth` when a test passes one.
+export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => {
+  const auth = overrides.auth ?? createTestAuth();
+
+  return {
+    corsOrigin: FRONT_ORIGIN,
+    isProduction: false,
+    trustProxy: false,
+    rateLimit: { max: 1000, windowMs: 60_000 },
+    logger: pino({ level: "silent" }),
+    auth,
+    users: authUsers(auth),
+    clock: systemClock,
+    duelStore: memoryDuelStore().store,
+    ...overrides,
+  };
+};

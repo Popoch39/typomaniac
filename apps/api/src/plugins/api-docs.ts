@@ -117,6 +117,7 @@ export const apiDocs = ({ enabled, auth }: ApiDocsOptions) => {
                 description:
                   "Better Auth's OAuth sign-in and Session endpoints, and the signed-in User",
               },
+              { name: "Handle", description: "The public and unique name of a User" },
               { name: "Duel", description: "The Duel socket, and the signed-in User's Pace" },
             ],
           },

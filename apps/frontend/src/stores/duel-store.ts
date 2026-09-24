@@ -58,6 +58,8 @@ export type DuelPlay = {
 export type DuelState =
   | { phase: "connecting" }
   | { phase: "queued" }
+  // Refused the Queue: the User has no Handle yet.
+  | { phase: "handle-required" }
   // Paired, typing blocked until the start.
   | { phase: "countdown"; duel: DuelPlay }
   | { phase: "running"; duel: DuelPlay }
@@ -317,6 +319,8 @@ const stateAfter = (state: DuelState, message: ServerMessage): DuelState => {
       return state;
     case "queued":
       return { phase: "queued" };
+    case "handle-required":
+      return { phase: "handle-required" };
     case "duel-found":
       return startDuel(message);
     case "duel-resumed":

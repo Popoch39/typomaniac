@@ -21,8 +21,9 @@ export const END_TOLERANCE_MS = 1000;
 // More Keystrokes than this within a second is no human's cadence: a Forfeit.
 const MAX_KEYSTROKES_PER_SECOND = 40;
 
-// A User as the Duel sees them: who they are and what the opponent is shown.
-export type User = { id: string; name: string; image: string | null };
+// A User as the Duel sees them: who they are and what the opponent is shown, read when they joined
+// the Queue. Only a User with a Handle plays.
+export type User = { id: string; handle: string; image: string | null };
 
 // A User paired into a Duel, with their Pace in wpm, frozen for it.
 export type PacedUser = { user: User; pace: number };
@@ -43,7 +44,7 @@ const OUTCOMES = {
 } as const;
 
 // What a player's opponent is shown of them.
-const profileOf = ({ name, image }: User) => ({ name, image });
+const profileOf = ({ handle, image }: User) => ({ handle, image });
 
 type Player = PacedUser & {
   replay: Replay;

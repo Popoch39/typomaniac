@@ -26,7 +26,7 @@ const duel = {
   startsAt: 3_000,
 } as const;
 
-const opponent = { name: "Ada", image: null };
+const opponent = { handle: "ada", image: null };
 
 // The server's clock and this tab's agree: the Duel starts at 3 s on both.
 const duelFound: ServerMessage = {

@@ -29,6 +29,13 @@
       "when": 1790257427849,
       "tag": "0003_duel_player_pace",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790265520250,
+      "tag": "0004_user_handle",
+      "breakpoints": true
     }
   ]
 }

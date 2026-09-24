@@ -59,7 +59,8 @@ const DuelScore = t.Object({
 
 export type DuelScore = typeof DuelScore.static;
 
-const DuelOpponent = t.Object({ name: t.String(), image: t.Nullable(t.String()) });
+// What a player sees of the other: their Handle of the moment and their avatar, never their name.
+const DuelOpponent = t.Object({ handle: t.String(), image: t.Nullable(t.String()) });
 
 const Duel = t.Object({
   id: t.String(),
@@ -78,6 +79,8 @@ export const ServerMessage = t.Union([
   // On connection, the User has no place: neither in the Queue nor in a Duel.
   t.Object({ type: t.Literal("idle") }),
   t.Object({ type: t.Literal("queued") }),
+  // Refused the Queue: a Duel shows each player's Handle, and the User has none yet.
+  t.Object({ type: t.Literal("handle-required") }),
   t.Object({
     type: t.Literal("duel-found"),
     duel: Duel,
