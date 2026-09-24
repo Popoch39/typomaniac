@@ -37,7 +37,7 @@ export type UsersContext = {
 
 // On Better Auth's adapter: the same code on Drizzle and on the memory adapter of the tests. Except
 // the search: the adapter's `starts_with` is a SQL `LIKE` that takes `_` as a wildcard, so each
-// database brings its own (src/database/drizzle-handle-search.ts, memoryHandleSearch in the tests).
+// database brings its own (drizzle-handle-search.ts, memoryHandleSearch in the tests).
 export const authUsers = (
   auth: { $context: Promise<UsersContext> },
   { searchHandles }: { searchHandles: HandleSearch },

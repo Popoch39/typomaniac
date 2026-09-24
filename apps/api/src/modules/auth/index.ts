@@ -1,22 +1,17 @@
 import { type Context, Elysia } from "elysia";
 
-import { API_PREFIX } from "../api-prefix";
-import type { Auth } from "../auth";
-import { ApiError } from "../errors";
-import type { UsersContext } from "../users";
-import { CLIENT_IP_HEADER, clientIp } from "./client-ip";
+import { ApiError } from "../../lib/errors";
+import { CLIENT_IP_HEADER, clientIp } from "../../plugins/client-ip";
+import type { UsersContext } from "../user/users";
+import { type Auth, AUTH_ROUTE } from "./service";
 
-// Registered under createApp's prefix.
-const AUTH_ROUTE = "/auth";
-
-// Better Auth's basePath: it routes on the full URL.
-export const AUTH_PATH = `${API_PREFIX}${AUTH_ROUTE}`;
+export { AUTH_PATH } from "./service";
 
 // What the app needs from a Better Auth instance: tests pass one built on the memory
 // adapter, with extra plugins.
 export type AuthHandler = Pick<Auth, "handler"> & {
   api: Pick<Auth["api"], "getSession" | "generateOpenAPISchema">;
-  // Its database, for the Users (src/users.ts).
+  // Its database, for the Users (src/modules/user/users.ts).
   $context: Promise<UsersContext>;
 };
 

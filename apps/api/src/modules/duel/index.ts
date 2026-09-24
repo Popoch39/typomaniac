@@ -1,21 +1,21 @@
 import { Elysia } from "elysia";
 
-import { type AuthHandler, authentication } from "../plugins/authentication";
-import { DuelQueue, type DuelQueueConfig } from "./duel-queue";
-import { clientMessage, ServerMessage } from "./protocol";
+import { type AuthHandler, authentication } from "../auth";
+import { clientMessage, DuelModel } from "./model";
+import { DuelQueue, type DuelQueueConfig } from "./service";
 
-export type DuelRouteConfig = DuelQueueConfig & { auth: AuthHandler; trustProxy: boolean };
+export type DuelModuleConfig = DuelQueueConfig & { auth: AuthHandler; trustProxy: boolean };
 
 // The Duel WebSocket, /api/duel. The `auth` macro runs on the upgrade request: without a
 // valid Session it throws, and the upgrade is answered with the API's 401.
-export const duelRoute = ({ auth, trustProxy, ...queueConfig }: DuelRouteConfig) => {
+export const duelModule = ({ auth, trustProxy, ...queueConfig }: DuelModuleConfig) => {
   const queue = new DuelQueue(queueConfig);
 
-  return new Elysia({ name: "duel-route", seed: queue })
+  return new Elysia({ name: "duel", seed: queue })
     .use(authentication(auth, { trustProxy }))
     .ws("/duel", {
       auth: true,
-      response: ServerMessage,
+      response: DuelModel.serverMessage,
       detail: { summary: "Duel Queue and pairing", tags: ["Duel"] },
       open(ws) {
         queue.connect(ws.data.user.id, {

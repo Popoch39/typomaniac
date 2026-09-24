@@ -1,8 +1,8 @@
 import { openapi } from "@elysiajs/openapi";
 import { Elysia } from "elysia";
 
-import { API_PREFIX } from "../api-prefix";
-import { AUTH_PATH, type AuthHandler } from "./authentication";
+import { API_PREFIX } from "../lib/api-prefix";
+import { AUTH_PATH, type AuthHandler } from "../modules/auth";
 
 // Routes as registered: createApp's prefix is added in front of them.
 const DOCS_ROUTE = "/openapi";

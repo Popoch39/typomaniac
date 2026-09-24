@@ -1,7 +1,7 @@
 import { isHandlePrefix } from "handle";
 
-import { ApiError } from "../errors";
-import type { HandleMatch, Users } from "../users";
+import { ApiError } from "../../lib/errors";
+import type { HandleMatch, Users } from "./users";
 
 export const SEARCH_LIMIT = 10;
 

@@ -1,9 +1,9 @@
 import { and, like, ne, sql } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 
-import type { HandleSearch } from "../users";
-import { user } from "./auth-schema";
-import type { Table } from "./schema";
+import { user } from "../../database/auth-schema";
+import type { Table } from "../../database/schema";
+import type { HandleSearch } from "./users";
 
 // `LIKE` takes `_` and `%` as wildcards, `\` as their escape (Postgres' default).
 const escapeLike = (text: string) => text.replaceAll(/[\\%_]/g, String.raw`\$&`);

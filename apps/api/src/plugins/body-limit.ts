@@ -1,6 +1,6 @@
 import { Elysia } from "elysia";
 
-import { ApiError } from "../errors";
+import { ApiError } from "../lib/errors";
 
 export const MAX_REQUEST_BODY_SIZE = 1024 * 1024;
 

@@ -1,6 +1,6 @@
 import { type Keystroke, paceDuels, paceOf, type Result } from "typing-engine";
 
-import type { Duel, DuelScore } from "./protocol";
+import type { Duel, DuelScore } from "./model";
 
 // A player of a finished Duel: their Result, their Pace and Score and the Keystrokes the server
 // accepted from them, which replay to both on the Duel's Text.

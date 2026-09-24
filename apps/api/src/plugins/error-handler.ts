@@ -9,7 +9,7 @@ import {
 } from "elysia";
 import type { Logger } from "pino";
 
-import { ApiError, type ApiErrorBody, codeForStatus } from "../errors";
+import { ApiError, type ApiErrorBody, codeForStatus } from "../lib/errors";
 import { requestIdOf } from "./request-id";
 
 // Elysia's own errors, translated into the API vocabulary. Anything unrecognised is a
@@ -52,7 +52,7 @@ const toApiError = (
   return new ApiError("INTERNAL_SERVER_ERROR");
 };
 
-// Every error leaves the API as ApiErrorBody (see src/errors.ts). Server errors are
+// Every error leaves the API as ApiErrorBody (see src/lib/errors.ts). Server errors are
 // logged with their stack and the request id the client receives.
 export const errorHandler = (logger: Logger) =>
   new Elysia({ name: "error-handler", seed: logger })

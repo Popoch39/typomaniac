@@ -8,7 +8,7 @@ import pino from "pino";
 import { defaultPace } from "typing-engine";
 
 import { createApp } from "./app";
-import { ApiError } from "./errors";
+import { ApiError } from "./lib/errors";
 import { DOCS_PATH, SPEC_PATH } from "./plugins/api-docs";
 import { MAX_REQUEST_BODY_SIZE } from "./plugins/body-limit";
 import { CLIENT_IP_HEADER } from "./plugins/client-ip";

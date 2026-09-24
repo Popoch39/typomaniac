@@ -12,8 +12,8 @@ import {
   startReplay,
 } from "typing-engine";
 
-import type { DuelPlayerRecord, DuelRecord } from "./duel-store";
-import type { Duel, DuelScore, ServerMessage } from "./protocol";
+import type { Duel, DuelScore, ServerMessage } from "./model";
+import type { DuelPlayerRecord, DuelRecord } from "./store";
 
 // How late past the end a Keystroke may still arrive: the network delay of the last ones.
 export const END_TOLERANCE_MS = 1000;

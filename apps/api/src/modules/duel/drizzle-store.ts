@@ -1,9 +1,9 @@
 import { desc, eq } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 
-import type { DuelPlayerRecord, DuelStore } from "../duel/duel-store";
-import { duel, duelPlayer } from "./duel-schema";
-import type { Table } from "./schema";
+import type { Table } from "../../database/schema";
+import { duel, duelPlayer } from "./schema";
+import type { DuelPlayerRecord, DuelStore } from "./store";
 
 const playerRow = (
   duelId: string,

@@ -5,11 +5,11 @@ import pino from "pino";
 import { currentWordListVersion, defaultPace } from "typing-engine";
 
 import type { AppConfig } from "./app";
-import { authOptions } from "./auth";
-import { type Clock, systemClock } from "./clock";
-import type { DuelRecord, DuelStore } from "./duel/duel-store";
-import type { AuthHandler } from "./plugins/authentication";
-import { authUsers, type HandleSearch, type UserRow } from "./users";
+import { type Clock, systemClock } from "./lib/clock";
+import type { AuthHandler } from "./modules/auth";
+import { authOptions } from "./modules/auth/service";
+import type { DuelRecord, DuelStore } from "./modules/duel/store";
+import { authUsers, type HandleSearch, type UserRow } from "./modules/user/users";
 
 // Shared by the test files: the app's config with in-memory dependencies.
 

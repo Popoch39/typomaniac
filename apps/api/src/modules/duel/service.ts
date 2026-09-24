@@ -1,10 +1,10 @@
 import type { Logger } from "pino";
 import { currentWordListVersion, defaultPace, type Keystroke } from "typing-engine";
 
-import type { Clock } from "../clock";
-import type { Users } from "../users";
-import { type DuelStore, readPace } from "./duel-store";
-import type { ClientMessage, ServerMessage } from "./protocol";
+import type { Clock } from "../../lib/clock";
+import type { Users } from "../user/users";
+import type { ClientMessage, ServerMessage } from "./model";
+import { type DuelStore, readPace } from "./store";
 import {
   type DuelEnded,
   type Finish,

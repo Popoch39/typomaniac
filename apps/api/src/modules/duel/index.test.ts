@@ -9,7 +9,7 @@ import {
   generateText,
 } from "typing-engine";
 
-import { createApp } from "../app";
+import { createApp } from "../../app";
 import {
   createTestAuth,
   manualClock,
@@ -18,10 +18,10 @@ import {
   signIn,
   type TestAuth,
   testConfig,
-} from "../test-app";
-import type { DuelRecord } from "./duel-store";
-import { type ClientMessage, MAX_DUEL_MESSAGE_SIZE, ServerMessage } from "./protocol";
+} from "../../test-app";
+import { type ClientMessage, DuelModel, MAX_DUEL_MESSAGE_SIZE, type ServerMessage } from "./model";
 import { END_TOLERANCE_MS } from "./running-duel";
+import type { DuelRecord } from "./store";
 
 const NOW = 1_700_000_000_000;
 
@@ -36,7 +36,7 @@ const ENDS_AT = TIME_UP + END_TOLERANCE_MS;
 
 const char = (value: string, at: number) => ({ kind: "char" as const, char: value, at });
 
-const serverMessage = TypeCompiler.Compile(ServerMessage);
+const serverMessage = TypeCompiler.Compile(DuelModel.serverMessage);
 
 const duelOf = (message: ServerMessage) =>
   message.type === "duel-found" || message.type === "duel-resumed" ? message.duel : null;

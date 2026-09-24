@@ -1,13 +1,13 @@
 import { createApp } from "./app";
-import { createAuth } from "./auth";
-import { systemClock } from "./clock";
 import { db, runMigrations } from "./database/client";
-import { drizzleDuelStore } from "./database/drizzle-duel-store";
-import { drizzleHandleSearch } from "./database/drizzle-handle-search";
 import { env } from "./env";
-import { createLogger } from "./logger";
+import { systemClock } from "./lib/clock";
+import { createLogger } from "./lib/logger";
+import { createAuth } from "./modules/auth/service";
+import { drizzleDuelStore } from "./modules/duel/drizzle-store";
+import { drizzleHandleSearch } from "./modules/user/drizzle-handle-search";
+import { authUsers } from "./modules/user/users";
 import { HARD_REQUEST_BODY_SIZE } from "./plugins/body-limit";
-import { authUsers } from "./users";
 
 const isProduction = env.NODE_ENV === "production";
 

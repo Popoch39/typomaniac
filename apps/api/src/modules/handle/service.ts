@@ -1,7 +1,7 @@
 import { HANDLE_REFUSALS, parseHandle } from "handle";
 
-import { ApiError } from "../errors";
-import type { Users } from "../users";
+import { ApiError } from "../../lib/errors";
+import type { Users } from "../user/users";
 
 // Why the API refuses a Handle: the rules of the shared module, or held by another User.
 export const HANDLE_UNAVAILABLE = [...HANDLE_REFUSALS, "taken"] as const;

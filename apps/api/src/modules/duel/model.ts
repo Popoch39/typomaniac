@@ -18,7 +18,7 @@ const Keystroke = t.Union([
   t.Object({ kind: t.Literal("deleteWord"), at: t.Number() }),
 ]);
 
-export const ClientMessage = t.Union([
+const ClientMessage = t.Union([
   t.Object({ type: t.Literal("join-queue") }),
   t.Object({ type: t.Literal("leave-queue") }),
   t.Object({
@@ -75,7 +75,7 @@ const Duel = t.Object({
 
 export type Duel = typeof Duel.static;
 
-export const ServerMessage = t.Union([
+const ServerMessage = t.Union([
   // On connection, the User has no place: neither in the Queue nor in a Duel.
   t.Object({ type: t.Literal("idle") }),
   t.Object({ type: t.Literal("queued") }),
@@ -139,3 +139,6 @@ export const ServerMessage = t.Union([
 ]);
 
 export type ServerMessage = typeof ServerMessage.static;
+
+// The Duel protocol, both ways.
+export const DuelModel = { clientMessage: ClientMessage, serverMessage: ServerMessage };

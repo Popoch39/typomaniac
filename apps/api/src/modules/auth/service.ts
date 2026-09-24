@@ -3,11 +3,17 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { openAPI } from "better-auth/plugins";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 
-import { type Table, table } from "./database/schema";
-import type { SocialProviders } from "./parse-env";
-import { AUTH_PATH } from "./plugins/authentication";
-import { CLIENT_IP_HEADER } from "./plugins/client-ip";
-import { FixedWindowStore } from "./plugins/fixed-window-store";
+import { type Table, table } from "../../database/schema";
+import { API_PREFIX } from "../../lib/api-prefix";
+import type { SocialProviders } from "../../parse-env";
+import { CLIENT_IP_HEADER } from "../../plugins/client-ip";
+import { FixedWindowStore } from "../../plugins/fixed-window-store";
+
+// Registered under createApp's prefix.
+export const AUTH_ROUTE = "/auth";
+
+// Better Auth's basePath: it routes on the full URL.
+export const AUTH_PATH = `${API_PREFIX}${AUTH_ROUTE}`;
 
 const DAY_SECONDS = 60 * 60 * 24;
 
@@ -81,7 +87,7 @@ export const authOptions = ({
     trustedOrigins: [trustedOrigin],
     socialProviders,
     // The Handle, lowercased, null until the User chooses it. Never set by a sign-up: only
-    // through its own route (src/handle), which checks it.
+    // through its own route (src/modules/handle), which checks it.
     user: {
       additionalFields: {
         handle: { type: "string", required: false, input: false, unique: true },

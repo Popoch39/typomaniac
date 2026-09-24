@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { t } from "elysia";
 
-import { createApp } from "../app";
-import { createTestAuth, signIn, testConfig } from "../test-app";
+import { createApp } from "../../app";
+import { createTestAuth, signIn, testConfig } from "../../test-app";
 
 const usersFound = TypeCompiler.Compile(t.Array(t.Object({ handle: t.String() })));
 

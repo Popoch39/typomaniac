@@ -11,8 +11,8 @@ import {
 } from "drizzle-orm/pg-core";
 import type { Keystroke } from "typing-engine";
 
-import { DUEL_OUTCOMES } from "../duel/duel-store";
-import { user } from "./auth-schema";
+import { user } from "../../database/auth-schema";
+import { DUEL_OUTCOMES } from "./store";
 
 // A finished Duel: enough to replay it on its Text (Seed, Language, Word list version, Mode) and
 // its outcome. A Duel still running when the API stops is never written (ADR 0003).

@@ -1,7 +1,7 @@
 import { type Context, Elysia } from "elysia";
 
-import { API_PREFIX } from "../api-prefix";
-import { ApiError } from "../errors";
+import { API_PREFIX } from "../lib/api-prefix";
+import { ApiError } from "../lib/errors";
 import { clientIp } from "./client-ip";
 import { FixedWindowStore } from "./fixed-window-store";
 

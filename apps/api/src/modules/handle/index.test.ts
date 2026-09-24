@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
-import { createApp } from "../app";
-import { createTestAuth, signIn, testConfig, testUsers } from "../test-app";
+import { createApp } from "../../app";
+import { createTestAuth, signIn, testConfig, testUsers } from "../../test-app";
 
 // The cookies a browser holds: each Set-Cookie of a response replaces the one of the same name.
 const cookieJar = (initial: string) => {
