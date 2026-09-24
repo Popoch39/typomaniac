@@ -1,3 +1,5 @@
+import { expect } from "bun:test";
+import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { testUtils } from "better-auth/plugins";
@@ -8,8 +10,9 @@ import type { AppConfig } from "./app";
 import { type Clock, systemClock } from "./lib/clock";
 import type { AuthHandler } from "./modules/auth";
 import { authOptions } from "./modules/auth/service";
+import { type ClientMessage, DuelModel, type ServerMessage } from "./modules/duel/model";
 import type { DuelRecord, DuelStore } from "./modules/duel/store";
-import type { Relation } from "./modules/friend/model";
+import { type FriendMessage, FriendLiveModel, type Relation } from "./modules/friend/model";
 import { type FriendStore, orderedPair } from "./modules/friend/store";
 import { authUsers, type HandleSearch, type UserRow } from "./modules/user/users";
 
@@ -256,6 +259,102 @@ const memoryHandleSearch =
 // The Users on a test auth's database.
 export const testUsers = (auth: AuthHandler) =>
   authUsers(auth, { searchHandles: memoryHandleSearch(auth) });
+
+const serverMessage = TypeCompiler.Compile(DuelModel.serverMessage);
+
+const friendMessage = TypeCompiler.Compile(FriendLiveModel.friendMessage);
+
+// Messages read in the order they arrived, with next(): waits for the next one when none is there.
+const mailbox = <T>() => {
+  const inbox: T[] = [];
+  const waiting: ((message: T) => void)[] = [];
+
+  const put = (message: T) => {
+    const resolve = waiting.shift();
+
+    if (resolve) {
+      resolve(message);
+    } else {
+      inbox.push(message);
+    }
+  };
+
+  const next = () =>
+    new Promise<T>((resolve) => {
+      const message = inbox.shift();
+
+      if (message) {
+        resolve(message);
+      } else {
+        waiting.push(resolve);
+      }
+    });
+
+  return { inbox, put, next };
+};
+
+// A browser tab on the Duel socket: every message it receives, read in order with next(). What it
+// is told of its Friends goes apart, read with nextFriends(): the Queue and the Duel are read
+// without it.
+export const openClient = (url: string, cookie?: string) => {
+  const socket = new WebSocket(url, { headers: cookie ? { cookie } : {} });
+  const place = mailbox<ServerMessage>();
+  const friends = mailbox<FriendMessage>();
+
+  socket.addEventListener("message", (event) => {
+    const message = JSON.parse(String(event.data));
+
+    if (!serverMessage.Check(message)) {
+      throw new Error(`Not a server message: ${String(event.data)}`);
+    }
+
+    if (friendMessage.Check(message)) {
+      friends.put(message);
+    } else {
+      place.put(message);
+    }
+  });
+
+  const closed = new Promise<number>((resolve) => {
+    socket.addEventListener("close", (event) => resolve(event.code));
+  });
+
+  // Resolves once connected, or to false when the server refuses the upgrade.
+  const opened = Promise.race([
+    new Promise<boolean>((resolve) => socket.addEventListener("open", () => resolve(true))),
+    closed.then(() => false),
+  ]);
+
+  const send = (message: ClientMessage) => socket.send(JSON.stringify(message));
+
+  // A round trip: the server answers a malformed message, so anything it sent before is
+  // already received. Proves that nothing else is on its way, of the Queue and the Duel.
+  const settle = async () => {
+    socket.send("not a message");
+
+    expect(await place.next()).toEqual({ type: "invalid-message" });
+    expect(place.inbox).toEqual([]);
+  };
+
+  // The same, of the Friends too.
+  const settleFriends = async () => {
+    await settle();
+    expect(friends.inbox).toEqual([]);
+  };
+
+  return {
+    socket,
+    opened,
+    closed,
+    next: place.next,
+    nextFriends: friends.next,
+    send,
+    settle,
+    settleFriends,
+  };
+};
+
+export type TestClient = ReturnType<typeof openClient>;
 
 // The Users are read from the auth's database: the one of `overrides.auth` when a test passes one.
 export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => {

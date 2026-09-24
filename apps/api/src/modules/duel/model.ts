@@ -1,6 +1,8 @@
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { t } from "elysia";
 
+import { FriendLiveModel } from "../friend/model";
+
 // Bun closes a connection whose message is larger: no message of the protocol comes close.
 export const MAX_DUEL_MESSAGE_SIZE = 16 * 1024;
 
@@ -145,6 +147,8 @@ const ServerMessage = t.Union([
     opponent: DuelOpponent,
   }),
   t.Object({ type: t.Literal("invalid-message") }),
+  // The same socket tells the User of their Friends: Presence, Friend requests, Friends.
+  FriendLiveModel.friendMessage,
 ]);
 
 export type ServerMessage = typeof ServerMessage.static;

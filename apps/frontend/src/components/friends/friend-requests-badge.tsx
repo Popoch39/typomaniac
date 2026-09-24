@@ -1,14 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useConnectionStore } from "@/stores/connection-store";
 
-import { friendRequestsQueryOptions } from "@/api/friends";
-
-// The number of Friend requests waiting for the User's answer, on the way to the Friends. Nothing
-// while it loads, fails, or when none waits: the header never waits for it.
+// The number of Friend requests waiting for the User's answer, on the way to the Friends, as the
+// real-time connection keeps it. Nothing until it is told, or when none waits: the header never
+// waits for it.
 export const FriendRequestsBadge = () => {
-  const { data: count = 0 } = useQuery({
-    ...friendRequestsQueryOptions,
-    select: (requests) => requests.received.length,
-  });
+  const count = useConnectionStore((store) => store.friends?.requestsReceived ?? 0);
 
   return count > 0 ? (
     <span

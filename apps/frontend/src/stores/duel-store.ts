@@ -361,6 +361,13 @@ const stateAfter = (state: DuelState, message: ServerMessage): DuelState => {
       return updateDuel(state, (duel) => ({ ...duel, opponentConnected: true }));
     case "duel-ended":
       return ended(message);
+    // The Friends: the connection store's.
+    case "friends-snapshot":
+    case "presence":
+    case "friend-request-received":
+    case "friend-request-removed":
+    case "friend-added":
+    case "friend-removed":
     case "invalid-message":
       return state;
   }

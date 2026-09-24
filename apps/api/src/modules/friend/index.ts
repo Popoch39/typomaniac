@@ -3,6 +3,7 @@ import { Elysia } from "elysia";
 import { keyedRateLimit, type RateLimit } from "../../plugins/rate-limit";
 import { type AuthHandler, authentication } from "../auth";
 import type { Users } from "../user/users";
+import type { FriendEvents } from "./live";
 import { FriendModel } from "./model";
 import {
   acceptFriendRequest,
@@ -20,6 +21,8 @@ export type FriendModuleConfig = {
   trustProxy: boolean;
   users: Users;
   store: FriendStore;
+  // Told after each write, for the Users concerned to be told live.
+  events: FriendEvents;
   // Per User, on sending only: nobody sprays Friend requests at everyone.
   sendRateLimit: RateLimit;
 };
@@ -36,9 +39,10 @@ export const friendModule = ({
   trustProxy,
   users,
   store,
+  events,
   sendRateLimit,
 }: FriendModuleConfig) => {
-  const deps = { store, users };
+  const deps = { store, users, events };
 
   // Throws the 429 once a User is over their Friend requests.
   const limitSends = keyedRateLimit(sendRateLimit);

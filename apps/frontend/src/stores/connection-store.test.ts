@@ -2,6 +2,9 @@ import type { ServerMessage } from "api";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import {
+  changesFriendLists,
+  type LiveFriends,
+  friendsAfter,
   onServerMessage,
   placeAfter,
   reconnectDelay,
@@ -103,6 +106,100 @@ describe("the User's place, from the server's messages", () => {
   });
 });
 
+describe("the Friends, from the server's messages", () => {
+  const known: LiveFriends = {
+    presences: new Map([
+      ["ada", "online"],
+      ["alan", "offline"],
+    ]),
+    requestsReceived: 2,
+  };
+
+  test("are unknown until the snapshot, which sets them", () => {
+    expect(friendsAfter(null, { type: "presence", userId: "ada", presence: "online" })).toBeNull();
+    expect(
+      friendsAfter(null, {
+        type: "friends-snapshot",
+        presences: [
+          { userId: "ada", presence: "in-duel" },
+          { userId: "alan", presence: "offline" },
+        ],
+        requestsReceived: 1,
+      }),
+    ).toEqual({
+      presences: new Map([
+        ["ada", "in-duel"],
+        ["alan", "offline"],
+      ]),
+      requestsReceived: 1,
+    });
+  });
+
+  test("a snapshot on a new socket replaces what was known", () => {
+    expect(
+      friendsAfter(known, { type: "friends-snapshot", presences: [], requestsReceived: 0 }),
+    ).toEqual({ presences: new Map(), requestsReceived: 0 });
+  });
+
+  test("follow each Friend's Presence", () => {
+    expect(
+      friendsAfter(known, { type: "presence", userId: "alan", presence: "in-duel" })?.presences,
+    ).toEqual(
+      new Map([
+        ["ada", "online"],
+        ["alan", "in-duel"],
+      ]),
+    );
+  });
+
+  test("count the Friend requests received and gone, as the server does", () => {
+    expect(
+      friendsAfter(known, { type: "friend-request-received", userId: "bob", requestsReceived: 3 }),
+    ).toEqual({ ...known, requestsReceived: 3 });
+    expect(
+      friendsAfter(known, { type: "friend-request-removed", userId: "bob", requestsReceived: 1 }),
+    ).toEqual({ ...known, requestsReceived: 1 });
+  });
+
+  test("gain a new Friend with their Presence, and lose a Friend removed", () => {
+    expect(
+      friendsAfter(known, {
+        type: "friend-added",
+        userId: "bob",
+        presence: "online",
+        requestsReceived: 1,
+      }),
+    ).toEqual({
+      presences: new Map([
+        ["ada", "online"],
+        ["alan", "offline"],
+        ["bob", "online"],
+      ]),
+      requestsReceived: 1,
+    });
+    expect(friendsAfter(known, { type: "friend-removed", userId: "ada" })?.presences).toEqual(
+      new Map([["alan", "offline"]]),
+    );
+  });
+
+  test("unchanged by the Queue and the Duel", () => {
+    expect(friendsAfter(known, { type: "queued" })).toBe(known);
+    expect(friendsAfter(known, duelFound)).toBe(known);
+  });
+
+  test("the lists are read again when a request or a friendship changed, not on a Presence", () => {
+    expect(
+      changesFriendLists({ type: "friend-request-received", userId: "bob", requestsReceived: 1 }),
+    ).toBe(true);
+    expect(changesFriendLists({ type: "friend-removed", userId: "bob" })).toBe(true);
+    expect(
+      changesFriendLists({ type: "friends-snapshot", presences: [], requestsReceived: 0 }),
+    ).toBe(true);
+    expect(changesFriendLists({ type: "presence", userId: "bob", presence: "online" })).toBe(false);
+    expect(changesFriendLists({ type: "idle" })).toBe(false);
+  });
+});
+
 describe("the delay before opening a lost connection again", () => {
   test("doubles from a second, up to 8 s", () => {
     expect([0, 1, 2, 3, 4, 10].map(reconnectDelay)).toEqual([
@@ -199,6 +296,25 @@ describe("the connection store", () => {
 
     expect(fake.sockets).toHaveLength(1);
     expect(received).toEqual([]);
+  });
+
+  test("keeps the Friends the server tells, forgotten once the connection is lost", () => {
+    useConnectionStore.getState().open(fake.open);
+    fake.server().receive({ type: "idle" });
+    fake.server().receive({
+      type: "friends-snapshot",
+      presences: [{ userId: "ada", presence: "online" }],
+      requestsReceived: 1,
+    });
+    fake.server().receive({ type: "presence", userId: "ada", presence: "in-duel" });
+
+    expect(useConnectionStore.getState().friends).toEqual({
+      presences: new Map([["ada", "in-duel"]]),
+      requestsReceived: 1,
+    });
+
+    fake.server().drop();
+    expect(useConnectionStore.getState().friends).toBeNull();
   });
 
   test("opening it again closes the previous socket", () => {

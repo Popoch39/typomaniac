@@ -1,5 +1,6 @@
 import { ApiError, type ErrorCode } from "../../lib/errors";
 import type { Users } from "../user/users";
+import type { FriendEvents } from "./live";
 import type { FriendRefusal, FriendRequests, Relation } from "./model";
 import type { FriendStore } from "./store";
 
@@ -8,7 +9,8 @@ export const MAX_FRIENDS = 200;
 // Sent and still waiting: past it, the User waits for answers or cancels some.
 export const MAX_SENT_REQUESTS = 50;
 
-export type FriendDeps = { store: FriendStore; users: Users };
+// `events`: told once written, for the Users concerned to be told live (FriendsLive).
+export type FriendDeps = { store: FriendStore; users: Users; events: FriendEvents };
 
 // The User acting, as the Session knows them.
 export type Actor = { id: string; handle: string | null };
@@ -56,7 +58,7 @@ const profilesInOrder = async (users: Users, userIds: readonly string[]) => {
 // then the request turned into a friendship in one transaction. Two accepts at once may pass the
 // limit by one: a count, not a constraint.
 const accept = async (
-  store: FriendStore,
+  { store, events }: Pick<FriendDeps, "store" | "events">,
   recipientId: string,
   senderId: string,
 ): Promise<Relation> => {
@@ -76,6 +78,8 @@ const accept = async (
   if (!(await store.acceptRequest(senderId, recipientId))) {
     throw refused("request-not-found");
   }
+
+  events.friendsAdded(recipientId, senderId);
 
   return "friend";
 };
@@ -121,7 +125,7 @@ export const listFriendRequests = async (
 // A Friend request to `recipientId`, who must have a Handle. One they had sent the other way makes
 // them Friends at once.
 export const sendFriendRequest = async (
-  { store, users }: FriendDeps,
+  { store, users, events }: FriendDeps,
   actor: Actor,
   recipientId: string,
 ): Promise<Relation> => {
@@ -146,7 +150,7 @@ export const sendFriendRequest = async (
   }
 
   if (relation === "request-received") {
-    return accept(store, actor.id, recipientId);
+    return accept({ store, events }, actor.id, recipientId);
   }
 
   const [friends, sent] = await Promise.all([
@@ -169,11 +173,17 @@ export const sendFriendRequest = async (
   }
 
   // Theirs landed in the meantime: crossed all the same.
-  return added === "crossed" ? accept(store, actor.id, recipientId) : "request-sent";
+  if (added === "crossed") {
+    return accept({ store, events }, actor.id, recipientId);
+  }
+
+  events.requestSent(actor.id, recipientId);
+
+  return "request-sent";
 };
 
 export const acceptFriendRequest = async (
-  { store }: FriendDeps,
+  { store, events }: FriendDeps,
   actor: Actor,
   senderId: string,
 ): Promise<Relation> => {
@@ -183,12 +193,12 @@ export const acceptFriendRequest = async (
     throw refused("request-not-found");
   }
 
-  return accept(store, actor.id, senderId);
+  return accept({ store, events }, actor.id, senderId);
 };
 
 // Silent: the sender is not told, and may ask again.
 export const declineFriendRequest = async (
-  { store }: FriendDeps,
+  { store, events }: FriendDeps,
   actor: Actor,
   senderId: string,
 ): Promise<Relation> => {
@@ -198,11 +208,13 @@ export const declineFriendRequest = async (
     throw refused("request-not-found");
   }
 
+  events.requestRemoved(senderId, actor.id);
+
   return "none";
 };
 
 export const cancelFriendRequest = async (
-  { store }: FriendDeps,
+  { store, events }: FriendDeps,
   actor: Actor,
   recipientId: string,
 ): Promise<Relation> => {
@@ -212,12 +224,14 @@ export const cancelFriendRequest = async (
     throw refused("request-not-found");
   }
 
+  events.requestRemoved(actor.id, recipientId);
+
   return "none";
 };
 
 // At any time, without the other's say.
 export const removeFriend = async (
-  { store }: FriendDeps,
+  { store, events }: FriendDeps,
   actor: Actor,
   friendId: string,
 ): Promise<Relation> => {
@@ -226,6 +240,8 @@ export const removeFriend = async (
   if (!(await store.deleteFriendship(actor.id, friendId))) {
     throw refused("not-friends");
   }
+
+  events.friendsRemoved(actor.id, friendId);
 
   return "none";
 };

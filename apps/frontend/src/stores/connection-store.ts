@@ -1,4 +1,4 @@
-import type { ClientMessage, ServerMessage } from "api";
+import type { ClientMessage, Presence, ServerMessage } from "api";
 import { create } from "zustand";
 
 import { api } from "@/api/client";
@@ -17,10 +17,19 @@ export type ConnectionStatus =
   // The server told the place.
   | "open";
 
+// What the server tells of the User's Friends: each one's Presence (a Friend missing from it is
+// offline), and how many Friend requests wait for the User's answer.
+export type LiveFriends = {
+  presences: ReadonlyMap<string, Presence>;
+  requestsReceived: number;
+};
+
 type ConnectionStore = {
   status: ConnectionStatus;
   // Unknown until the server tells it on each new socket.
   place: Place | null;
+  // Unknown until the snapshot of each new socket.
+  friends: LiveFriends | null;
   // Opens the socket, opened again whenever it is lost; `openSocket` opens it, and every
   // reconnection's.
   open: (openSocket?: OpenLiveSocket) => void;
@@ -59,6 +68,62 @@ export const placeAfter = (place: Place | null, message: ServerMessage): Place |
       return place;
   }
 };
+
+const withPresence = (friends: LiveFriends, userId: string, presence: Presence | null) => {
+  const presences = new Map(friends.presences);
+
+  if (presence === null) {
+    presences.delete(userId);
+  } else {
+    presences.set(userId, presence);
+  }
+
+  return presences;
+};
+
+// The Friends after a message: the snapshot sets them, the changes that follow update them. A
+// change before the snapshot is left to it: the snapshot is sent after it.
+export const friendsAfter = (
+  friends: LiveFriends | null,
+  message: ServerMessage,
+): LiveFriends | null => {
+  if (message.type === "friends-snapshot") {
+    return {
+      presences: new Map(message.presences.map(({ userId, presence }) => [userId, presence])),
+      requestsReceived: message.requestsReceived,
+    };
+  }
+
+  if (friends === null) {
+    return null;
+  }
+
+  switch (message.type) {
+    case "presence":
+      return { ...friends, presences: withPresence(friends, message.userId, message.presence) };
+    case "friend-request-received":
+    case "friend-request-removed":
+      return { ...friends, requestsReceived: message.requestsReceived };
+    case "friend-added":
+      return {
+        presences: withPresence(friends, message.userId, message.presence),
+        requestsReceived: message.requestsReceived,
+      };
+    case "friend-removed":
+      return { ...friends, presences: withPresence(friends, message.userId, null) };
+    default:
+      return friends;
+  }
+};
+
+// What the Friends page reads over HTTP and a message says changed: the lists, the relations of
+// the search. A snapshot too: things may have changed while the connection was lost.
+export const changesFriendLists = (message: ServerMessage) =>
+  message.type === "friends-snapshot" ||
+  message.type === "friend-request-received" ||
+  message.type === "friend-request-removed" ||
+  message.type === "friend-added" ||
+  message.type === "friend-removed";
 
 const FIRST_RECONNECT_MS = 1_000;
 
@@ -118,7 +183,11 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
       }
 
       attempts = 0;
-      set({ status: "open", place: placeAfter(get().place, data) });
+      set({
+        status: "open",
+        place: placeAfter(get().place, data),
+        friends: friendsAfter(get().friends, data),
+      });
 
       for (const listener of listeners) {
         listener(data);
@@ -132,13 +201,14 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
       socket = null;
       reconnectTimer = setTimeout(connect, reconnectDelay(attempts));
       attempts += 1;
-      set({ status: "connecting", place: null });
+      set({ status: "connecting", place: null, friends: null });
     });
   };
 
   return {
     status: "closed",
     place: null,
+    friends: null,
     open: (tabSocket = openApiSocket) => {
       get().close();
       openSocket = tabSocket;
@@ -150,7 +220,7 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
 
       socket = null;
       stopReconnecting();
-      set({ status: "closed", place: null });
+      set({ status: "closed", place: null, friends: null });
       current?.close();
     },
   };

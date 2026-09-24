@@ -41,6 +41,43 @@ export const FriendModel = {
   otherUser,
 };
 
+// What a User shows their Friends of their availability: typomaniac open (the Queue counts), in a
+// Duel (Countdown included), or no tab open at all.
+export const PRESENCES = ["online", "in-duel", "offline"] as const;
+
+const presence = t.UnionEnum(PRESENCES);
+
+const friendId = t.String();
+
+// How many Friend requests wait for the User's answer, after the change: the badge shows it.
+const requestsReceived = t.Integer({ minimum: 0 });
+
+// What the real-time connection tells a User of their Friends, on the Duel socket (ADR 0007): the
+// front reads its lists again over HTTP, these only say what changed.
+const friendMessage = t.Union([
+  // On connection: each Friend's Presence, and the Friend requests waiting.
+  t.Object({
+    type: t.Literal("friends-snapshot"),
+    presences: t.Array(t.Object({ userId: friendId, presence })),
+    requestsReceived,
+  }),
+  // A Friend's Presence changed. Only their Friends are told.
+  t.Object({ type: t.Literal("presence"), userId: friendId, presence }),
+  t.Object({ type: t.Literal("friend-request-received"), userId: friendId, requestsReceived }),
+  // A request received is gone: cancelled by its sender, or declined from another tab.
+  t.Object({ type: t.Literal("friend-request-removed"), userId: friendId, requestsReceived }),
+  // Friends now, a request accepted either way: any request between the two is gone.
+  t.Object({ type: t.Literal("friend-added"), userId: friendId, presence, requestsReceived }),
+  // Removed by either of the two: their Presence is not told anymore.
+  t.Object({ type: t.Literal("friend-removed"), userId: friendId }),
+]);
+
+export const FriendLiveModel = { friendMessage };
+
+export type Presence = (typeof PRESENCES)[number];
+
+export type FriendMessage = typeof friendMessage.static;
+
 export type Relation = (typeof RELATIONS)[number];
 
 export type FriendRefusal = (typeof FRIEND_REFUSALS)[number];

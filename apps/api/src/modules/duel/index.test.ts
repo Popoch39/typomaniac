@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { TypeCompiler } from "@sinclair/typebox/compiler";
 import pino from "pino";
 import {
   computeResult,
@@ -14,12 +13,14 @@ import {
   createTestAuth,
   manualClock,
   memoryDuelStore,
+  openClient,
   pastDuel,
   signIn,
   type TestAuth,
+  type TestClient,
   testConfig,
 } from "../../test-app";
-import { type ClientMessage, DuelModel, MAX_DUEL_MESSAGE_SIZE, type ServerMessage } from "./model";
+import { MAX_DUEL_MESSAGE_SIZE, type ServerMessage } from "./model";
 import { END_TOLERANCE_MS } from "./running-duel";
 import type { DuelRecord } from "./store";
 
@@ -35,8 +36,6 @@ const TIME_UP = STARTS_AT + 30_000;
 const ENDS_AT = TIME_UP + END_TOLERANCE_MS;
 
 const char = (value: string, at: number) => ({ kind: "char" as const, char: value, at });
-
-const serverMessage = TypeCompiler.Compile(DuelModel.serverMessage);
 
 const duelOf = (message: ServerMessage) =>
   message.type === "duel-found" || message.type === "duel-resumed" ? message.duel : null;
@@ -101,68 +100,18 @@ const duelFound = (opponent: string) => ({
   opponentPace: defaultPace,
 });
 
-// A browser tab on the Duel socket: every message it receives, read in order with next().
-const openClient = (url: string, cookie?: string) => {
-  const socket = new WebSocket(url, { headers: cookie ? { cookie } : {} });
-  const inbox: ServerMessage[] = [];
-  const waiting: ((message: ServerMessage) => void)[] = [];
-
-  socket.addEventListener("message", (event) => {
-    const message = JSON.parse(String(event.data));
-
-    if (!serverMessage.Check(message)) {
-      throw new Error(`Not a server message: ${String(event.data)}`);
-    }
-
-    const resolve = waiting.shift();
-
-    if (resolve) {
-      resolve(message);
-    } else {
-      inbox.push(message);
-    }
-  });
-
-  const closed = new Promise<number>((resolve) => {
-    socket.addEventListener("close", (event) => resolve(event.code));
-  });
-
-  // Resolves once connected, or to false when the server refuses the upgrade.
-  const opened = Promise.race([
-    new Promise<boolean>((resolve) => socket.addEventListener("open", () => resolve(true))),
-    closed.then(() => false),
-  ]);
-
-  const next = () =>
-    new Promise<ServerMessage>((resolve) => {
-      const message = inbox.shift();
-
-      if (message) {
-        resolve(message);
-      } else {
-        waiting.push(resolve);
-      }
-    });
-
-  const send = (message: ClientMessage) => socket.send(JSON.stringify(message));
-
-  // A round trip: the server answers a malformed message, so anything it sent before is
-  // already received. Proves that nothing else is on its way.
-  const settle = async () => {
-    socket.send("not a message");
-
-    expect(await next()).toEqual({ type: "invalid-message" });
-    expect(inbox).toEqual([]);
-  };
-
-  return { socket, opened, closed, next, send, settle };
+// Ada's connection drops: Alan is told.
+const dropped = async (ada: TestClient, alan: TestClient) => {
+  ada.socket.close();
+  await ada.closed;
+  expect(await alan.next()).toEqual({ type: "opponent-disconnected" });
 };
 
 describe("duel socket", () => {
   let auth: TestAuth;
   let app: ReturnType<typeof createApp>;
   let url: string;
-  const clients: ReturnType<typeof openClient>[] = [];
+  const clients: TestClient[] = [];
 
   // The server's time, moved by hand.
   let setNow: (time: number) => void;
@@ -806,16 +755,6 @@ describe("duel socket", () => {
     expect(await alan.next()).toEqual({ type: "queued" });
     expect(await ada.next()).toMatchObject({ type: "duel-found", opponent: { handle: "alan" } });
   });
-
-  // Ada's connection drops: Alan is told.
-  const dropped = async (
-    ada: ReturnType<typeof openClient>,
-    alan: ReturnType<typeof openClient>,
-  ) => {
-    ada.socket.close();
-    await ada.closed;
-    expect(await alan.next()).toEqual({ type: "opponent-disconnected" });
-  };
 
   // A new socket of the User, as after a reload: told she is in a Duel, she plays it there.
   const resumedOn = async (cookie: string) => {

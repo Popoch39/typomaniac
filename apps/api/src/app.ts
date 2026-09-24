@@ -9,6 +9,7 @@ import { duelModule } from "./modules/duel";
 import { MAX_DUEL_MESSAGE_SIZE } from "./modules/duel/model";
 import type { DuelStore } from "./modules/duel/store";
 import { friendModule } from "./modules/friend";
+import { FriendsLive } from "./modules/friend/live";
 import type { FriendStore } from "./modules/friend/store";
 import { handleModule } from "./modules/handle";
 import { meModule } from "./modules/me";
@@ -26,7 +27,7 @@ export type { ApiErrorBody, ErrorCode, ErrorDetail } from "./lib/errors";
 
 export type { ClientMessage, ServerMessage } from "./modules/duel/model";
 
-export type { FriendRefusal } from "./modules/friend/model";
+export type { FriendRefusal, Presence } from "./modules/friend/model";
 
 export type AppConfig = {
   corsOrigin: string;
@@ -57,6 +58,10 @@ export type AppConfig = {
 // come last, each one from src/modules/.
 export const createApp = (config: AppConfig) => {
   const { auth, trustProxy, users, duelStore, friendStore } = config;
+
+  // The Presence and the live Friend events, in memory: told by the Friend routes once they wrote,
+  // and by the Duel socket of each connection and each Duel.
+  const friendsLive = new FriendsLive({ store: friendStore, logger: config.logger });
 
   return new Elysia({
     prefix: API_PREFIX,
@@ -92,6 +97,7 @@ export const createApp = (config: AppConfig) => {
         trustProxy,
         users,
         store: friendStore,
+        events: friendsLive,
         sendRateLimit: config.friendRequestRateLimit,
       }),
     )
@@ -103,6 +109,7 @@ export const createApp = (config: AppConfig) => {
         store: duelStore,
         users,
         logger: config.logger,
+        friendsLive,
       }),
     );
 };

@@ -31,7 +31,15 @@ export type Connection = {
 
 const randomSeed = () => crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
 
-export type DuelQueueConfig = { clock: Clock; store: DuelStore; users: Users; logger: Logger };
+export type DuelQueueConfig = {
+  clock: Clock;
+  store: DuelStore;
+  users: Users;
+  logger: Logger;
+  // Told when a User's Duel starts (at the pairing, Countdown included) and when it ends: their
+  // Presence.
+  onDuel: (userId: string, inDuel: boolean) => void;
+};
 
 // A User in the Queue: their profile once read (they have a Handle), then their Pace once read
 // from their history. Replaced by a new entry when they leave and join again.
@@ -51,6 +59,8 @@ export class DuelQueue {
   readonly #users: Users;
 
   readonly #logger: Logger;
+
+  readonly #onDuel: DuelQueueConfig["onDuel"];
 
   // Every open connection of each User, by connection id.
   readonly #connections = new Map<string, Map<string, Connection>>();
@@ -75,11 +85,12 @@ export class DuelQueue {
   // The end of a Duel told to a player who was away then, to tell them on their return.
   readonly #missed = new Map<string, DuelEnded>();
 
-  constructor({ clock, store, users, logger }: DuelQueueConfig) {
+  constructor({ clock, store, users, logger, onDuel }: DuelQueueConfig) {
     this.#clock = clock;
     this.#store = store;
     this.#users = users;
     this.#logger = logger;
+    this.#onDuel = onDuel;
   }
 
   // The new connection plays nothing yet: it is told the User's place.
@@ -277,6 +288,7 @@ export class DuelQueue {
     for (const { userId, message } of endings) {
       this.#duels.delete(userId);
       this.#away.delete(userId);
+      this.#onDuel(userId, false);
       this.#saving.set(userId, saving);
       void saving.then(() => {
         if (this.#saving.get(userId) === saving) {
@@ -449,6 +461,7 @@ export class DuelQueue {
     this.#clock.at(duel.endsAt, () => this.#finish(duel, () => duel.end()));
 
     for (const { user } of [a, b]) {
+      this.#onDuel(user.id, true);
       this.#send(user.id, {
         type: "duel-found",
         duel: duel.duel,

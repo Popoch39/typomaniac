@@ -1,28 +1,42 @@
 import { Elysia } from "elysia";
 
 import { type AuthHandler, authentication } from "../auth";
-import { clientMessage, DuelModel } from "./model";
+import type { PresenceEvents } from "../friend/live";
+import { clientMessage, DuelModel, type ServerMessage } from "./model";
 import { DuelQueue, type DuelQueueConfig } from "./service";
 
-export type DuelModuleConfig = DuelQueueConfig & { auth: AuthHandler; trustProxy: boolean };
+export type DuelModuleConfig = Omit<DuelQueueConfig, "onDuel"> & {
+  auth: AuthHandler;
+  trustProxy: boolean;
+  // Told of each connection and each Duel: the Presence the User's Friends see.
+  friendsLive: PresenceEvents;
+};
 
 // The Duel WebSocket, /api/duel: the real-time connection of the whole app, one per open tab of a
 // User (ADR 0007). The `auth` macro runs on the upgrade request: without a valid Session it throws,
 // and the upgrade is answered with the API's 401.
-export const duelModule = ({ auth, trustProxy, ...queueConfig }: DuelModuleConfig) => {
-  const queue = new DuelQueue(queueConfig);
+export const duelModule = ({ auth, trustProxy, friendsLive, ...queueConfig }: DuelModuleConfig) => {
+  const queue = new DuelQueue({
+    ...queueConfig,
+    onDuel: (userId, inDuel) => friendsLive.setInDuel(userId, inDuel),
+  });
 
   return new Elysia({ name: "duel", seed: queue })
     .use(authentication(auth, { trustProxy }))
     .ws("/duel", {
       auth: true,
       response: DuelModel.serverMessage,
-      detail: { summary: "Duel Queue and pairing", tags: ["Duel"] },
+      detail: { summary: "Duel Queue and pairing, Friends' Presence", tags: ["Duel"] },
       open(ws) {
-        queue.connect(ws.data.user.id, {
+        const connection = {
           id: ws.id,
-          send: (message) => ws.send(message),
-        });
+          send: (message: ServerMessage) => {
+            ws.send(message);
+          },
+        };
+
+        queue.connect(ws.data.user.id, connection);
+        friendsLive.connect(ws.data.user.id, connection);
       },
       message(ws, message) {
         if (!clientMessage.Check(message)) {
@@ -35,6 +49,7 @@ export const duelModule = ({ auth, trustProxy, ...queueConfig }: DuelModuleConfi
       },
       close(ws) {
         queue.disconnect(ws.data.user.id, ws.id);
+        friendsLive.disconnect(ws.data.user.id, ws.id);
       },
     });
 };
