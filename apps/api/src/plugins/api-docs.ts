@@ -119,6 +119,7 @@ export const apiDocs = ({ enabled, auth }: ApiDocsOptions) => {
               },
               { name: "Handle", description: "The public and unique name of a User" },
               { name: "Duel", description: "The Duel socket, and the signed-in User's Pace" },
+              { name: "Friends", description: "Finding other Users by their Handle" },
             ],
           },
         }),

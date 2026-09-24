@@ -1,6 +1,25 @@
 import { describe, expect, test } from "bun:test";
 
-import { parseHandle, suggestHandle } from "./index";
+import { isHandlePrefix, parseHandle, suggestHandle } from "./index";
+
+describe("isHandlePrefix", () => {
+  test("holds for what a Handle may start with", () => {
+    expect(["po", "pop_", "a1", "a".repeat(20)].map(isHandlePrefix)).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  test("does not hold for characters out of the Handles' set, capitals included", () => {
+    expect(["a%", "po ", "Po", "zoé"].map(isHandlePrefix)).toEqual([false, false, false, false]);
+  });
+
+  test("does not hold past the maximum length", () => {
+    expect(isHandlePrefix("a".repeat(21))).toBe(false);
+  });
+});
 
 describe("suggestHandle", () => {
   test("lowercases the name and joins its words with underscores", () => {

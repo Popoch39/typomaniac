@@ -1,8 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { createApp } from "../app";
-import { authUsers } from "../users";
-import { createTestAuth, signIn, testConfig } from "../test-app";
+import { createTestAuth, signIn, testConfig, testUsers } from "../test-app";
 
 // The cookies a browser holds: each Set-Cookie of a response replaces the one of the same name.
 const cookieJar = (initial: string) => {
@@ -189,7 +188,7 @@ describe("handle", () => {
 
   test("a Handle taken in the meantime answers the conflict, not a 500", async () => {
     const raceAuth = createTestAuth();
-    const real = authUsers(raceAuth);
+    const real = testUsers(raceAuth);
     const { user: alan } = await signIn(raceAuth, { name: "Alan", email: "alan@example.com" });
     const { cookie } = await signIn(raceAuth, { name: "Ada", email: "ada@example.com" });
 

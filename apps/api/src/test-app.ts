@@ -8,7 +8,8 @@ import type { AppConfig } from "./app";
 import { authOptions } from "./auth";
 import { type Clock, systemClock } from "./clock";
 import type { DuelRecord, DuelStore } from "./duel/duel-store";
-import { authUsers } from "./users";
+import type { AuthHandler } from "./plugins/authentication";
+import { authUsers, type HandleSearch, type UserRow } from "./users";
 
 // Shared by the test files: the app's config with in-memory dependencies.
 
@@ -132,6 +133,29 @@ export const pastDuel = (userId: string, wpm: number, endedAt: number): DuelReco
   };
 };
 
+// The Handle search on the memory adapter: every User read, then filtered and sorted here, the way
+// Postgres does it with `COLLATE "C"` (code unit order).
+const memoryHandleSearch =
+  (auth: AuthHandler): HandleSearch =>
+  async (prefix, { excluding, limit }) => {
+    const { adapter } = await auth.$context;
+
+    const rows = await adapter.findMany<UserRow>({ model: "user", limit: Number.MAX_SAFE_INTEGER });
+
+    return rows
+      .flatMap(({ id, handle, image }) =>
+        handle && handle.startsWith(prefix) && id !== excluding
+          ? [{ id, handle, image: image ?? null }]
+          : [],
+      )
+      .toSorted((a, b) => (a.handle < b.handle ? -1 : 1))
+      .slice(0, limit);
+  };
+
+// The Users on a test auth's database.
+export const testUsers = (auth: AuthHandler) =>
+  authUsers(auth, { searchHandles: memoryHandleSearch(auth) });
+
 // The Users are read from the auth's database: the one of `overrides.auth` when a test passes one.
 export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => {
   const auth = overrides.auth ?? createTestAuth();
@@ -143,9 +167,10 @@ export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => {
     rateLimit: { max: 1000, windowMs: 60_000 },
     logger: pino({ level: "silent" }),
     auth,
-    users: authUsers(auth),
+    users: testUsers(auth),
     clock: systemClock,
     duelStore: memoryDuelStore().store,
+    searchRateLimit: { max: 1000, windowMs: 60_000 },
     ...overrides,
   };
 };

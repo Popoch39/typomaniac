@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { parseHandle } from "handle";
 
 import { handleAvailabilityQueryOptions, type HandleUnavailable } from "@/api/handle";
-import { useDebouncedValue } from "@/components/handle/use-debounced-value";
+import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 // Waits this long after the last key before asking the API.
 const CHECK_DELAY_MS = 300;

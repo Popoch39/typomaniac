@@ -4,6 +4,13 @@ export const HANDLE_MAX_LENGTH = 20;
 
 const HANDLE_CHARS = /^[a-z0-9_]*$/;
 
+// The search looks for Users from this many characters of their Handle.
+export const HANDLE_SEARCH_MIN_LENGTH = 2;
+
+// Whether some Handle may start with `prefix`, already lowercased: the search skips the others.
+export const isHandlePrefix = (prefix: string) =>
+  HANDLE_CHARS.test(prefix) && prefix.length <= HANDLE_MAX_LENGTH;
+
 // Names that would pass for the team or for a page of the app.
 const RESERVED_HANDLES = new Set([
   "admin",

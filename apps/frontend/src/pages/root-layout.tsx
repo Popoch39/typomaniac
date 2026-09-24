@@ -5,6 +5,7 @@ import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { AuthControl } from "@/components/auth/auth-control";
 import { OAuthErrorToast } from "@/components/auth/oauth-error-toast";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
+import { FriendsNavLink } from "@/components/friends/friends-nav-link";
 import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ export const RootLayout = () => (
         >
           Accueil
         </Button>
+        <FriendsNavLink className={navLinkClassName} />
         <Button
           variant="ghost"
           nativeButton={false}

@@ -3,12 +3,16 @@ import { createAuth } from "./auth";
 import { systemClock } from "./clock";
 import { db, runMigrations } from "./database/client";
 import { drizzleDuelStore } from "./database/drizzle-duel-store";
+import { drizzleHandleSearch } from "./database/drizzle-handle-search";
 import { env } from "./env";
 import { createLogger } from "./logger";
 import { HARD_REQUEST_BODY_SIZE } from "./plugins/body-limit";
 import { authUsers } from "./users";
 
 const isProduction = env.NODE_ENV === "production";
+
+// Per User: a search per pause in the typing (debounced), far from enough to dump the Handles.
+const SEARCH_RATE_LIMIT = { max: 30, windowMs: 60_000 };
 
 const logger = createLogger({ level: env.LOG_LEVEL, pretty: !isProduction });
 
@@ -37,9 +41,10 @@ const app = createApp({
   rateLimit: { max: env.RATE_LIMIT_MAX, windowMs: env.RATE_LIMIT_WINDOW_MS },
   logger,
   auth,
-  users: authUsers(auth),
+  users: authUsers(auth, { searchHandles: drizzleHandleSearch(db) }),
   clock: systemClock,
   duelStore: drizzleDuelStore(db),
+  searchRateLimit: SEARCH_RATE_LIMIT,
 }).listen({ port: env.PORT, maxRequestBodySize: HARD_REQUEST_BODY_SIZE });
 
 logger.info({ url: app.server?.url.href }, "server started");
