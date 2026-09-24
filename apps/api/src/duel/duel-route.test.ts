@@ -19,7 +19,8 @@ const char = (value: string, at: number) => ({ kind: "char" as const, char: valu
 
 const serverMessage = TypeCompiler.Compile(ServerMessage);
 
-const duelOf = (message: ServerMessage) => (message.type === "duel-found" ? message.duel : null);
+const duelOf = (message: ServerMessage) =>
+  message.type === "duel-found" || message.type === "duel-resumed" ? message.duel : null;
 
 // The first word of the Duel's Text: typed right with its space, it is worth (length + 1) chars
 // in 30 s, so (length + 1) / 5 / 0.5 wpm.
@@ -32,6 +33,12 @@ const firstWordOf = (message: ServerMessage) => {
 // A word and its space, one Keystroke every 100 ms from `start`.
 const typed = (word: string, start: number) =>
   [...`${word} `].map((value, i) => char(value, start + i * 100));
+
+// `count` Keystrokes, one every `every` ms from `start`: the letters of the alphabet in turn.
+const burst = (count: number, start: number, every: number) =>
+  Array.from({ length: count }, (_, i) =>
+    char(String.fromCodePoint(97 + (i % 26)), start + i * every),
+  );
 
 const duelFound = (opponent: string) => ({
   type: "duel-found" as const,
@@ -149,6 +156,7 @@ describe("duel socket", () => {
   const queued = async (cookie: string) => {
     const client = await connect(cookie);
 
+    expect(await client.next()).toEqual({ type: "idle" });
     client.send({ type: "join-queue" });
     expect(await client.next()).toEqual({ type: "queued" });
 
@@ -252,8 +260,17 @@ describe("duel socket", () => {
     expect(await alan.next()).toEqual(duelFound("Ada"));
   });
 
+  test("tells a User with no place that they are idle on connection", async () => {
+    const ada = await connect(await signedIn("Ada"));
+
+    expect(await ada.next()).toEqual({ type: "idle" });
+    await ada.settle();
+  });
+
   test("rejects a malformed message and keeps the connection", async () => {
     const ada = await connect(await signedIn("Ada"));
+
+    expect(await ada.next()).toEqual({ type: "idle" });
 
     ada.socket.send(JSON.stringify({ type: "join-duel-now" }));
     expect(await ada.next()).toEqual({ type: "invalid-message" });
@@ -391,10 +408,17 @@ describe("duel socket", () => {
     expect(forAda).toMatchObject({
       type: "duel-ended",
       outcome: "win",
+      forfeit: false,
       result: { wpm: (word.length + 1) / 5 / 0.5, accuracy: 100 },
       opponentResult: { wpm: 0, accuracy: 0 },
+      opponent: { name: "Alan", image: "https://img/alan" },
     });
-    expect(forAlan).toMatchObject({ type: "duel-ended", outcome: "loss" });
+    expect(forAlan).toMatchObject({
+      type: "duel-ended",
+      outcome: "loss",
+      forfeit: false,
+      opponent: { name: "Ada" },
+    });
 
     const ended = [forAda, forAlan].map((message) =>
       message.type === "duel-ended" ? message : null,
@@ -454,5 +478,241 @@ describe("duel socket", () => {
     alan.send({ type: "join-queue" });
     expect(await alan.next()).toEqual({ type: "queued" });
     expect(await ada.next()).toMatchObject({ type: "duel-found", opponent: { name: "Alan" } });
+  });
+
+  // Ada and Alan paired, and the cookie Ada signed in with, to reconnect.
+  const pairedWithCookie = async () => {
+    const cookie = await signedIn("Ada");
+    const ada = await queued(cookie);
+    const alan = await queued(await signedIn("Alan"));
+    const [found] = await Promise.all([ada.next(), alan.next()]);
+
+    return { cookie, ada, alan, found };
+  };
+
+  // Ada's connection drops: Alan is told.
+  const dropped = async (
+    ada: ReturnType<typeof openClient>,
+    alan: ReturnType<typeof openClient>,
+  ) => {
+    ada.socket.close();
+    await ada.closed;
+    expect(await alan.next()).toEqual({ type: "opponent-disconnected" });
+  };
+
+  test("leaving the Duel is an immediate Forfeit, the opponent wins", async () => {
+    const { ada, alan } = await paired();
+
+    setNow(STARTS_AT + 5000);
+    ada.send({ type: "leave-duel" });
+
+    expect(await ada.next()).toMatchObject({
+      type: "duel-ended",
+      outcome: "loss",
+      forfeit: true,
+      opponent: { name: "Alan" },
+    });
+    expect(await alan.next()).toMatchObject({
+      type: "duel-ended",
+      outcome: "win",
+      forfeit: true,
+      opponent: { name: "Ada" },
+    });
+
+    // Over for both: the scheduled end does not end it again.
+    setNow(ENDS_AT);
+    await ada.settle();
+    await alan.settle();
+  });
+
+  test("leaving the Duel during the Countdown is a Forfeit too", async () => {
+    const { ada, alan } = await paired();
+
+    alan.send({ type: "leave-duel" });
+
+    expect(await alan.next()).toMatchObject({ type: "duel-ended", outcome: "loss", forfeit: true });
+    expect(await ada.next()).toMatchObject({ type: "duel-ended", outcome: "win", forfeit: true });
+  });
+
+  test("leaving a Duel is ignored outside one", async () => {
+    const ada = await queued(await signedIn("Ada"));
+
+    ada.send({ type: "leave-duel" });
+    await ada.settle();
+  });
+
+  test("a disconnected player back within 10 s resumes the Duel where it was", async () => {
+    const { cookie, ada, alan, found } = await pairedWithCookie();
+
+    setNow(STARTS_AT + 1000);
+    ada.send({ type: "keystrokes", keystrokes: [char("s", 100), char("m", 2000)] });
+    expect(await alan.next()).toMatchObject({ type: "opponent-keystrokes" });
+    expect(await ada.next()).toMatchObject({ type: "resync" });
+    alan.send({ type: "keystrokes", keystrokes: [char("h", 400)] });
+    expect(await ada.next()).toMatchObject({ type: "opponent-keystrokes" });
+
+    await dropped(ada, alan);
+
+    setNow(STARTS_AT + 1000 + 9999);
+    await alan.settle();
+
+    // A new socket of the same User, as after a reload.
+    const back = await connect(cookie);
+
+    const resumed = await back.next();
+
+    // The very Duel that was found.
+    expect(duelOf(resumed)).toEqual(duelOf(found));
+    expect(resumed).toEqual({
+      type: "duel-resumed",
+      duel: expect.any(Object),
+      opponent: { name: "Alan", image: "https://img/alan" },
+      serverTime: STARTS_AT + 1000 + 9999,
+      keystrokes: [char("s", 100)],
+      received: 2,
+      opponentKeystrokes: [char("h", 400)],
+      opponentConnected: true,
+    });
+    expect(await alan.next()).toEqual({ type: "opponent-reconnected" });
+
+    // Past the 10 s: no Forfeit, the Duel goes on.
+    setNow(STARTS_AT + 20_000);
+    back.send({ type: "keystrokes", keystrokes: [char("a", 15_000)] });
+    expect(await alan.next()).toEqual({
+      type: "opponent-keystrokes",
+      keystrokes: [char("a", 15_000)],
+    });
+
+    setNow(ENDS_AT);
+    expect(await back.next()).toMatchObject({ type: "duel-ended", forfeit: false });
+    expect(await alan.next()).toMatchObject({ type: "duel-ended", forfeit: false });
+  });
+
+  test("a disconnected player not back within 10 s forfeits, and learns it on their return", async () => {
+    const { cookie, ada, alan } = await pairedWithCookie();
+
+    setNow(STARTS_AT + 1000);
+    await dropped(ada, alan);
+
+    setNow(STARTS_AT + 11_000);
+    expect(await alan.next()).toMatchObject({
+      type: "duel-ended",
+      outcome: "win",
+      forfeit: true,
+      opponent: { name: "Ada" },
+    });
+
+    const back = await connect(cookie);
+
+    expect(await back.next()).toMatchObject({
+      type: "duel-ended",
+      outcome: "loss",
+      forfeit: true,
+      opponent: { name: "Alan" },
+    });
+
+    // Told once: free for a new Duel.
+    back.send({ type: "join-queue" });
+    expect(await back.next()).toEqual({ type: "queued" });
+  });
+
+  test("a second disconnection gets its own 10 s", async () => {
+    const { cookie, ada, alan } = await pairedWithCookie();
+
+    setNow(STARTS_AT + 1000);
+    await dropped(ada, alan);
+
+    setNow(STARTS_AT + 5000);
+
+    const back = await connect(cookie);
+
+    expect(await back.next()).toMatchObject({ type: "duel-resumed" });
+    expect(await alan.next()).toEqual({ type: "opponent-reconnected" });
+
+    setNow(STARTS_AT + 8000);
+    await dropped(back, alan);
+
+    // The first disconnection's 10 s are over, not the second's.
+    setNow(STARTS_AT + 17_999);
+    await alan.settle();
+
+    setNow(STARTS_AT + 18_000);
+    expect(await alan.next()).toMatchObject({ type: "duel-ended", outcome: "win", forfeit: true });
+  });
+
+  test("the opponent resuming while the other is away sees them disconnected", async () => {
+    const { cookie, ada, alan } = await pairedWithCookie();
+
+    setNow(STARTS_AT + 1000);
+    await dropped(alan, ada);
+    ada.socket.close();
+    await ada.closed;
+
+    const back = await connect(cookie);
+
+    expect(await back.next()).toMatchObject({ type: "duel-resumed", opponentConnected: false });
+  });
+
+  test("a Duel whose end came while a player was away tells them on their return", async () => {
+    const { cookie, ada, alan } = await pairedWithCookie();
+
+    setNow(ENDS_AT - 5000);
+    await dropped(ada, alan);
+
+    setNow(ENDS_AT);
+    expect(await alan.next()).toMatchObject({ type: "duel-ended", forfeit: false });
+
+    // The 10 s run out after the end: nothing more.
+    setNow(ENDS_AT + 10_000);
+    await alan.settle();
+
+    const back = await connect(cookie);
+
+    expect(await back.next()).toMatchObject({ type: "duel-ended", forfeit: false });
+    await back.settle();
+  });
+
+  test("a second tab during a Duel resumes it there, the opponent is not told", async () => {
+    const { cookie, ada, alan } = await pairedWithCookie();
+
+    setNow(STARTS_AT + 1000);
+
+    const secondTab = await connect(cookie);
+
+    expect(await ada.next()).toEqual({ type: "replaced" });
+    expect(await secondTab.next()).toMatchObject({
+      type: "duel-resumed",
+      opponent: { name: "Alan" },
+      opponentConnected: true,
+    });
+    await alan.settle();
+
+    // The first tab is closed, but the User is still there: no Forfeit.
+    setNow(STARTS_AT + 20_000);
+    await alan.settle();
+  });
+
+  test("typing more than 40 Keystrokes in a second is a Forfeit", async () => {
+    const { ada, alan } = await paired();
+
+    setNow(STARTS_AT + 5000);
+    // 41 Keystrokes in 960 ms, over two batches.
+    ada.send({ type: "keystrokes", keystrokes: burst(20, 1000, 24) });
+    expect(await alan.next()).toMatchObject({ type: "opponent-keystrokes" });
+    ada.send({ type: "keystrokes", keystrokes: burst(21, 1480, 24) });
+
+    expect(await ada.next()).toMatchObject({ type: "duel-ended", outcome: "loss", forfeit: true });
+    expect(await alan.next()).toMatchObject({ type: "duel-ended", outcome: "win", forfeit: true });
+  });
+
+  test("40 Keystrokes a second is still human", async () => {
+    const { ada, alan } = await paired();
+
+    setNow(STARTS_AT + 5000);
+    // Any 41 Keystrokes in a row span exactly one second.
+    ada.send({ type: "keystrokes", keystrokes: burst(81, 1000, 25) });
+
+    expect(await alan.next()).toMatchObject({ type: "opponent-keystrokes" });
+    await ada.settle();
   });
 });

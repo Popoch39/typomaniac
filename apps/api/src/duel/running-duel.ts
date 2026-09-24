@@ -3,18 +3,28 @@ import {
   computeResult,
   duelOutcome,
   type Keystroke,
+  type Outcome,
   type Replay,
   type Result,
   type RunConfig,
   startReplay,
 } from "typing-engine";
 
-import type { ServerMessage } from "./protocol";
+import type { Duel, ServerMessage } from "./protocol";
 
 // How late past the end a Keystroke may still arrive: the network delay of the last ones.
 export const END_TOLERANCE_MS = 1000;
 
-type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
+// More Keystrokes than this within a second is no human's cadence: a Forfeit.
+const MAX_KEYSTROKES_PER_SECOND = 40;
+
+// A User as the Duel sees them: who they are and what the opponent is shown.
+export type User = { id: string; name: string; image: string | null };
+
+export type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
+
+// The end of the Duel as one player is told it.
+export type Ending = { userId: string; message: DuelEnded };
 
 // The outcome of the Duel for each player, from the engine's.
 const OUTCOMES = {
@@ -23,40 +33,54 @@ const OUTCOMES = {
   draw: ["draw", "draw"],
 } as const;
 
-const ending = (
-  outcome: DuelEnded["outcome"],
-  result: Result,
-  opponentResult: Result,
-): DuelEnded => ({ type: "duel-ended", outcome, result, opponentResult });
+// What a player's opponent is shown of them.
+const profileOf = ({ name, image }: User) => ({ name, image });
 
 type Player = {
+  user: User;
   replay: Replay;
   // Every Keystroke received from the player, accepted or not.
   received: number;
 };
 
-// What became of a batch of Keystrokes: the accepted ones, to relay, and whether any was rejected.
-type Batch = { accepted: Keystroke[]; rejected: boolean };
+// What became of a batch of Keystrokes: the accepted ones, to relay, whether any was rejected, and
+// whether the player typed at an inhuman rate.
+type Batch = { accepted: Keystroke[]; rejected: boolean; flooded: boolean };
+
+// The last accepted Keystrokes are too close together: more than the cadence allows in a second.
+const isFlooding = ({ keystrokes }: Replay) => {
+  const last = keystrokes.at(-1);
+  const first = keystrokes.at(-1 - MAX_KEYSTROKES_PER_SECOND);
+
+  return typeof last !== "undefined" && typeof first !== "undefined" && last.at - first.at < 1000;
+};
 
 // A Duel between its Countdown and its end: the server replays each player's Keystrokes with the
 // engine and only keeps those whose date is plausible (ADR 0003).
 export class RunningDuel {
+  readonly duel: Duel;
+
   readonly #config: RunConfig & { mode: "time" };
 
-  // In ms since the epoch, on the server's clock.
-  readonly #startsAt: number;
+  readonly #players: readonly [Player, Player];
 
-  readonly #userIds: readonly [string, string];
+  constructor(duel: Duel, users: readonly [User, User]) {
+    this.duel = duel;
+    this.#config = {
+      mode: "time",
+      seconds: duel.seconds,
+      language: duel.language,
+      wordListVersion: duel.wordListVersion,
+      seed: duel.seed,
+    };
 
-  readonly #players: Map<string, Player>;
+    const [first, second] = users;
 
-  constructor(config: RunConfig & { mode: "time" }, startsAt: number, userIds: [string, string]) {
-    this.#config = config;
-    this.#startsAt = startsAt;
-    this.#userIds = userIds;
-    this.#players = new Map(
-      userIds.map((id) => [id, { replay: startReplay(config), received: 0 }]),
-    );
+    this.#players = [this.#newPlayer(first), this.#newPlayer(second)];
+  }
+
+  #newPlayer(user: User): Player {
+    return { user, replay: startReplay(this.#config), received: 0 };
   }
 
   get #durationMs() {
@@ -66,48 +90,85 @@ export class RunningDuel {
   // When the server ends the Duel: once the time is up and the last Keystrokes had the time to
   // arrive. In ms since the epoch.
   get endsAt() {
-    return this.#startsAt + this.#durationMs + END_TOLERANCE_MS;
+    return this.duel.startsAt + this.#durationMs + END_TOLERANCE_MS;
   }
 
-  #resultOf(userId: string) {
-    return computeResult(this.#config, this.#keystrokesOf(userId), this.#durationMs);
+  get userIds() {
+    return this.#players.map((player) => player.user.id);
   }
 
-  // The end as each player is told it: both see the same two Results.
-  end(): { userId: string; message: DuelEnded }[] {
-    const [first, second] = this.#userIds;
-    const firstResult = this.#resultOf(first);
-    const secondResult = this.#resultOf(second);
-    const [firstOutcome, secondOutcome] = OUTCOMES[duelOutcome(firstResult, secondResult)];
+  #player(userId: string) {
+    const [first, second] = this.#players;
 
-    return [
-      { userId: first, message: ending(firstOutcome, firstResult, secondResult) },
-      { userId: second, message: ending(secondOutcome, secondResult, firstResult) },
-    ];
+    return first.user.id === userId ? first : second;
   }
 
   // `userId` is one of the two players.
-  opponentOf(userId: string) {
-    const [first, second] = this.#userIds;
+  #opponent(userId: string) {
+    const [first, second] = this.#players;
 
-    return userId === first ? second : first;
+    return first.user.id === userId ? second : first;
   }
 
-  #keystrokesOf(userId: string) {
-    return [...(this.#players.get(userId)?.replay.keystrokes ?? [])];
+  opponentOf(userId: string) {
+    return this.#opponent(userId).user.id;
+  }
+
+  #resultOf({ replay }: Player) {
+    return computeResult(this.#config, replay.keystrokes, this.#durationMs);
+  }
+
+  // The end as each player is told it: both see the same two Results. `outcomeOf` judges them as
+  // the engine's duelOutcome does, first player against second.
+  #endings(forfeit: boolean, outcomeOf: (first: Result, second: Result) => Outcome): Ending[] {
+    const [first, second] = this.#players;
+    const firstResult = this.#resultOf(first);
+    const secondResult = this.#resultOf(second);
+    const [firstOutcome, secondOutcome] = OUTCOMES[outcomeOf(firstResult, secondResult)];
+
+    const endingFor = (
+      player: Player,
+      opponent: Player,
+      outcome: DuelEnded["outcome"],
+      [result, opponentResult]: [Result, Result],
+    ): Ending => ({
+      userId: player.user.id,
+      message: {
+        type: "duel-ended",
+        outcome,
+        forfeit,
+        result,
+        opponentResult,
+        opponent: profileOf(opponent.user),
+      },
+    });
+
+    return [
+      endingFor(first, second, firstOutcome, [firstResult, secondResult]),
+      endingFor(second, first, secondOutcome, [secondResult, firstResult]),
+    ];
+  }
+
+  // The end once the time is up: the best Result wins (duelOutcome of the engine).
+  end() {
+    return this.#endings(false, duelOutcome);
+  }
+
+  // `loserId` forfeits: the opponent wins, whatever the Results so far.
+  forfeit(loserId: string) {
+    const [first] = this.#players;
+    const winner = first.user.id === loserId ? "second" : "first";
+
+    return this.#endings(true, () => winner);
   }
 
   // Judges each Keystroke of a batch on its arrival, `now` on the server's clock.
   receive(userId: string, keystrokes: readonly Keystroke[], now: number): Batch {
-    const player = this.#players.get(userId);
-    const batch: Batch = { accepted: [], rejected: false };
-
-    if (!player) {
-      return batch;
-    }
+    const player = this.#player(userId);
+    const batch: Batch = { accepted: [], rejected: false, flooded: false };
 
     const window = {
-      arrivedAt: now - this.#startsAt,
+      arrivedAt: now - this.duel.startsAt,
       endsAt: this.#durationMs,
       tolerance: END_TOLERANCE_MS,
     };
@@ -123,6 +184,12 @@ export class RunningDuel {
       } else {
         batch.rejected = true;
       }
+
+      if (isFlooding(player.replay)) {
+        batch.flooded = true;
+
+        return batch;
+      }
     }
 
     return batch;
@@ -130,10 +197,17 @@ export class RunningDuel {
 
   // The state that holds for a player: what a resync sends them.
   stateOf(userId: string) {
+    const player = this.#player(userId);
+
     return {
-      keystrokes: this.#keystrokesOf(userId),
-      received: this.#players.get(userId)?.received ?? 0,
-      opponentKeystrokes: this.#keystrokesOf(this.opponentOf(userId)),
+      keystrokes: [...player.replay.keystrokes],
+      received: player.received,
+      opponentKeystrokes: [...this.#opponent(userId).replay.keystrokes],
     };
+  }
+
+  // Who a player faces, as `duel-found` shows them.
+  opponentProfileOf(userId: string) {
+    return profileOf(this.#opponent(userId).user);
   }
 }

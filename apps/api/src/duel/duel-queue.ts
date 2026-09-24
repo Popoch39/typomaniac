@@ -2,7 +2,7 @@ import { currentWordListVersion, type Keystroke } from "typing-engine";
 
 import type { Clock } from "../clock";
 import type { ClientMessage, ServerMessage } from "./protocol";
-import { RunningDuel } from "./running-duel";
+import { type DuelEnded, type Ending, RunningDuel, type User } from "./running-duel";
 
 // Every Duel has the same format: `time` 30 s in English.
 const DUEL_LANGUAGE = "en";
@@ -11,8 +11,8 @@ const DUEL_SECONDS = 30;
 
 const COUNTDOWN_MS = 3000;
 
-// A User as the Duel sees them: who they are and what the opponent is shown.
-export type User = { id: string; name: string; image: string | null };
+// How long a player whose connection dropped has to come back before forfeiting.
+const RECONNECT_GRACE_MS = 10_000;
 
 // One WebSocket, seen from the Queue: the route adapts Elysia's to it.
 export type Connection = {
@@ -34,13 +34,22 @@ export class DuelQueue {
   // User ids in arrival order. Queued Users are always connected: leaving drops them.
   readonly #queue = new Set<string>();
 
-  // The Duel of each User in one, until they leave it once it is over.
+  // The Duel of each User in one, until it is over.
   readonly #duels = new Map<string, RunningDuel>();
+
+  // Players of a Duel whose connection dropped, each with a token of that disconnection: their
+  // time to come back only runs out if they are still away from that one.
+  readonly #away = new Map<string, symbol>();
+
+  // The end of a Duel told to a player who was away then, to tell them on their return.
+  readonly #missed = new Map<string, DuelEnded>();
 
   constructor(clock: Clock) {
     this.#clock = clock;
   }
 
+  // The new connection is told the User's place: in a Duel (resumed), in the Queue, or none. A
+  // Duel that ended in their absence is told first.
   connect(user: User, connection: Connection) {
     const previous = this.#connected.get(user.id);
 
@@ -51,8 +60,18 @@ export class DuelQueue {
       previous.connection.close();
     }
 
-    if (this.#queue.has(user.id)) {
+    const duel = this.#duels.get(user.id);
+    const missed = this.#missed.get(user.id);
+
+    if (duel) {
+      this.#resume(user.id, duel);
+    } else if (missed) {
+      this.#missed.delete(user.id);
+      connection.send(missed);
+    } else if (this.#queue.has(user.id)) {
       connection.send({ type: "queued" });
+    } else {
+      connection.send({ type: "idle" });
     }
   }
 
@@ -71,10 +90,14 @@ export class DuelQueue {
       case "keystrokes":
         this.#type(userId, message.keystrokes);
         break;
+      case "leave-duel":
+        this.#leave(userId);
+        break;
     }
   }
 
-  // Also called for a replaced connection, once closed: it has no place left to free.
+  // Also called for a replaced connection, once closed: it has no place left to free. A player in
+  // a Duel keeps their place for a while: the opponent is told, and the time to come back starts.
   disconnect(userId: string, connectionId: string) {
     if (!this.#isCurrent(userId, connectionId)) {
       return;
@@ -82,6 +105,22 @@ export class DuelQueue {
 
     this.#connected.delete(userId);
     this.#queue.delete(userId);
+
+    const duel = this.#duels.get(userId);
+
+    if (!duel) {
+      return;
+    }
+
+    const away = Symbol(userId);
+
+    this.#away.set(userId, away);
+    this.#send(duel.opponentOf(userId), { type: "opponent-disconnected" });
+    this.#clock.at(this.#clock.now() + RECONNECT_GRACE_MS, () => {
+      if (this.#away.get(userId) === away) {
+        this.#forfeit(duel, userId);
+      }
+    });
   }
 
   #isCurrent(userId: string, connectionId: string) {
@@ -92,16 +131,58 @@ export class DuelQueue {
     this.#connected.get(userId)?.connection.send(message);
   }
 
-  // Both players get the same Results; once told, they are free to join the Queue again and
-  // their Keystrokes are ignored.
-  #end(duel: RunningDuel) {
-    for (const { userId, message } of duel.end()) {
-      this.#duels.delete(userId);
-      this.#send(userId, message);
+  // Back in their Duel: the full state that holds, and the opponent is told if they were away.
+  #resume(userId: string, duel: RunningDuel) {
+    const opponentId = duel.opponentOf(userId);
+
+    this.#send(userId, {
+      type: "duel-resumed",
+      duel: duel.duel,
+      opponent: duel.opponentProfileOf(userId),
+      serverTime: this.#clock.now(),
+      ...duel.stateOf(userId),
+      opponentConnected: this.#connected.has(opponentId),
+    });
+
+    if (this.#away.delete(userId)) {
+      this.#send(opponentId, { type: "opponent-reconnected" });
     }
   }
 
-  // The accepted Keystrokes go to the opponent; a rejected one resyncs the sender.
+  // Once a Duel is over, both players are free to join the Queue again and their Keystrokes are
+  // ignored. It ends once: at the end of its time, or on a Forfeit, whichever comes first.
+  #finish(duel: RunningDuel, endings: () => Ending[]) {
+    if (duel.userIds.some((userId) => this.#duels.get(userId) !== duel)) {
+      return;
+    }
+
+    for (const { userId, message } of endings()) {
+      this.#duels.delete(userId);
+      this.#away.delete(userId);
+
+      if (this.#connected.has(userId)) {
+        this.#send(userId, message);
+      } else {
+        this.#missed.set(userId, message);
+      }
+    }
+  }
+
+  // `userId` forfeits: they left, did not come back in time, or typed at an inhuman rate.
+  #forfeit(duel: RunningDuel, userId: string) {
+    this.#finish(duel, () => duel.forfeit(userId));
+  }
+
+  #leave(userId: string) {
+    const duel = this.#duels.get(userId);
+
+    if (duel) {
+      this.#forfeit(duel, userId);
+    }
+  }
+
+  // The accepted Keystrokes go to the opponent; a rejected one resyncs the sender; an inhuman
+  // cadence is a Forfeit.
   #type(userId: string, keystrokes: readonly Keystroke[]) {
     const duel = this.#duels.get(userId);
 
@@ -109,7 +190,13 @@ export class DuelQueue {
       return;
     }
 
-    const { accepted, rejected } = duel.receive(userId, keystrokes, this.#clock.now());
+    const { accepted, rejected, flooded } = duel.receive(userId, keystrokes, this.#clock.now());
+
+    if (flooded) {
+      this.#forfeit(duel, userId);
+
+      return;
+    }
 
     if (accepted.length > 0) {
       this.#send(duel.opponentOf(userId), { type: "opponent-keystrokes", keystrokes: accepted });
@@ -127,7 +214,7 @@ export class DuelQueue {
     }
 
     this.#queue.add(userId);
-    this.#connected.get(userId)?.connection.send({ type: "queued" });
+    this.#send(userId, { type: "queued" });
     this.#pair();
   }
 
@@ -148,27 +235,29 @@ export class DuelQueue {
 
     const serverTime = this.#clock.now();
 
-    const duel = {
-      id: crypto.randomUUID(),
-      seed: randomSeed(),
-      language: DUEL_LANGUAGE,
-      wordListVersion: currentWordListVersion[DUEL_LANGUAGE],
-      seconds: DUEL_SECONDS,
-      startsAt: serverTime + COUNTDOWN_MS,
-    } as const;
+    const duel = new RunningDuel(
+      {
+        id: crypto.randomUUID(),
+        seed: randomSeed(),
+        language: DUEL_LANGUAGE,
+        wordListVersion: currentWordListVersion[DUEL_LANGUAGE],
+        seconds: DUEL_SECONDS,
+        startsAt: serverTime + COUNTDOWN_MS,
+      },
+      [a.user, b.user],
+    );
 
-    const running = new RunningDuel({ mode: "time", ...duel }, duel.startsAt, [
-      a.user.id,
-      b.user.id,
-    ]);
+    this.#duels.set(a.user.id, duel);
+    this.#duels.set(b.user.id, duel);
+    this.#clock.at(duel.endsAt, () => this.#finish(duel, () => duel.end()));
 
-    this.#duels.set(a.user.id, running);
-    this.#duels.set(b.user.id, running);
-    this.#clock.at(running.endsAt, () => this.#end(running));
-
-    a.connection.send({ type: "duel-found", duel, opponent: opponentOf(b.user), serverTime });
-    b.connection.send({ type: "duel-found", duel, opponent: opponentOf(a.user), serverTime });
+    for (const { user } of [a, b]) {
+      this.#send(user.id, {
+        type: "duel-found",
+        duel: duel.duel,
+        opponent: duel.opponentProfileOf(user.id),
+        serverTime,
+      });
+    }
   }
 }
-
-const opponentOf = ({ name, image }: User) => ({ name, image });

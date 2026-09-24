@@ -1,7 +1,9 @@
 import { DuelClock } from "@/components/duel/duel-clock";
+import { DuelConnection } from "@/components/duel/duel-connection";
 import { DuelFound } from "@/components/duel/duel-found";
 import { DuelText } from "@/components/duel/duel-text";
 import { OpponentWpm } from "@/components/duel/opponent-wpm";
+import { LeaveDuel } from "@/components/duel/leave-duel";
 import { useDuelElapsed } from "@/components/duel/use-duel-elapsed";
 import { FocusOverlay } from "@/components/run/focus-overlay";
 import { KeystrokeInput } from "@/components/run/keystroke-input";
@@ -21,6 +23,7 @@ export const DuelTypingArea = ({ opponent, startsAt, seconds }: DuelTypingAreaPr
   return (
     <div className="flex flex-col gap-4">
       <DuelFound opponent={opponent} />
+      <DuelConnection opponent={opponent.name} />
       <KeystrokeInput ref={inputRef} onFocusChange={setFocused} onPress={press} />
       <div className="flex items-baseline justify-between">
         <DuelClock elapsed={elapsed} seconds={seconds} />
@@ -29,6 +32,9 @@ export const DuelTypingArea = ({ opponent, startsAt, seconds }: DuelTypingAreaPr
       <div className="relative">
         <DuelText />
         {focused ? null : <FocusOverlay onResume={focus} />}
+      </div>
+      <div className="flex justify-center">
+        <LeaveDuel />
       </div>
     </div>
   );

@@ -25,6 +25,8 @@ export const ClientMessage = t.Union([
     type: t.Literal("keystrokes"),
     keystrokes: t.Array(Keystroke, { maxItems: MAX_KEYSTROKES_PER_BATCH }),
   }),
+  // Leaving on purpose: a Forfeit.
+  t.Object({ type: t.Literal("leave-duel") }),
 ]);
 
 export type ClientMessage = typeof ClientMessage.static;
@@ -49,24 +51,46 @@ const Result = t.Object({
 
 const DuelOpponent = t.Object({ name: t.String(), image: t.Nullable(t.String()) });
 
+const Duel = t.Object({
+  id: t.String(),
+  seed: t.Integer(),
+  language: t.Union([t.Literal("fr"), t.Literal("en")]),
+  wordListVersion: t.Integer(),
+  // A `time` Duel of that many seconds.
+  seconds: t.Integer(),
+  // Server time, in ms since the epoch.
+  startsAt: t.Number(),
+});
+
+export type Duel = typeof Duel.static;
+
 export const ServerMessage = t.Union([
+  // On connection, the User has no place: neither in the Queue nor in a Duel.
+  t.Object({ type: t.Literal("idle") }),
   t.Object({ type: t.Literal("queued") }),
   t.Object({
     type: t.Literal("duel-found"),
-    duel: t.Object({
-      id: t.String(),
-      seed: t.Integer(),
-      language: t.Union([t.Literal("fr"), t.Literal("en")]),
-      wordListVersion: t.Integer(),
-      // A `time` Duel of that many seconds.
-      seconds: t.Integer(),
-      // Server time, in ms since the epoch.
-      startsAt: t.Number(),
-    }),
+    duel: Duel,
     opponent: DuelOpponent,
     // The server's clock when it sent the message: the client derives its offset from it.
     serverTime: t.Number(),
   }),
+  // On connection, the User is in a Duel (back after a disconnection, a reload, another tab): the
+  // Duel as `duel-found` gives it, plus the state that holds, as `resync` gives it.
+  t.Object({
+    type: t.Literal("duel-resumed"),
+    duel: Duel,
+    opponent: DuelOpponent,
+    serverTime: t.Number(),
+    keystrokes: t.Array(Keystroke),
+    received: t.Integer(),
+    opponentKeystrokes: t.Array(Keystroke),
+    // False while the opponent is disconnected, within their time to come back.
+    opponentConnected: t.Boolean(),
+  }),
+  // The opponent's connection dropped: they have a few seconds to come back, or forfeit.
+  t.Object({ type: t.Literal("opponent-disconnected") }),
+  t.Object({ type: t.Literal("opponent-reconnected") }),
   // The opponent's Keystrokes the server accepted, in order: the client replays them.
   t.Object({ type: t.Literal("opponent-keystrokes"), keystrokes: t.Array(Keystroke) }),
   // The state that holds after a rejected Keystroke: every Keystroke the server accepted from each
@@ -78,11 +102,15 @@ export const ServerMessage = t.Union([
     opponentKeystrokes: t.Array(Keystroke),
   }),
   // The end, the same for both: each side gets its own outcome, its Result and the opponent's.
+  // Sent on connection too to a User who missed the end of their Duel while disconnected.
   t.Object({
     type: t.Literal("duel-ended"),
     outcome: t.Union([t.Literal("win"), t.Literal("loss"), t.Literal("draw")]),
+    // The loser forfeited: left, did not come back in time, or typed at an inhuman rate.
+    forfeit: t.Boolean(),
     result: Result,
     opponentResult: Result,
+    opponent: DuelOpponent,
   }),
   // Another connection of the same User took its place; the server closes this one.
   t.Object({ type: t.Literal("replaced") }),

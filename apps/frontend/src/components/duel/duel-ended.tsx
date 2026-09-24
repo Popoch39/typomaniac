@@ -13,7 +13,11 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
 
   return (
     <div ref={focusOnMount} tabIndex={-1} className="flex flex-col gap-8 outline-none">
-      <DuelOutcome outcome={ending.outcome} opponent={ending.opponent.name} />
+      <DuelOutcome
+        outcome={ending.outcome}
+        forfeit={ending.forfeit}
+        opponent={ending.opponent.name}
+      />
       <div className="grid gap-8 md:grid-cols-2">
         <PlayerResult name="Toi" result={ending.result} />
         <PlayerResult name={ending.opponent.name} result={ending.opponentResult} opponent />
