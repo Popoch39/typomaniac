@@ -14,7 +14,15 @@ export {
 
 export { computeResult, liveWpm, type CharCounts, type Result } from "./result";
 
-export { comboSteps, computeScore, maxMultiplier, type ScoreState } from "./score";
+export {
+  burstMargin,
+  burstMinLetters,
+  comboSteps,
+  computeScore,
+  defaultPace,
+  maxMultiplier,
+  type ScoreState,
+} from "./score";
 
 export { duelOutcome, type Outcome } from "./outcome";
 

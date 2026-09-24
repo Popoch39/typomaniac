@@ -8,11 +8,13 @@ type RunTextProps = {
   run: RunState;
   // In a Duel, where the opponent's caret stands in the same Text.
   opponent: CaretPosition | null;
+  // The index of the word of the last Burst, highlighted; null when there is none.
+  lastBurst: number | null;
 };
 
 // The Text of a Run, three lines at a time. A keystroke only replaces the current word, so the
 // others keep their identity and the React Compiler skips them.
-export const RunText = ({ run, opponent }: RunTextProps) => {
+export const RunText = ({ run, opponent, lastBurst }: RunTextProps) => {
   const { words, wordIndex, letterIndex, validatedWords } = run;
 
   const { scrollRef, wordsRef, caretRef, opponentCaretRef } = useTextLayout(
@@ -28,7 +30,12 @@ export const RunText = ({ run, opponent }: RunTextProps) => {
         <div ref={wordsRef} className="flex flex-wrap gap-x-[1ch]">
           {/* Not wordIndex: the caret stays on the last word once it is validated. */}
           {words.map((word) => (
-            <RunWord key={word.index} word={word} validated={word.index < validatedWords} />
+            <RunWord
+              key={word.index}
+              word={word}
+              validated={word.index < validatedWords}
+              burst={word.index === lastBurst}
+            />
           ))}
         </div>
       </div>

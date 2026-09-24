@@ -4,6 +4,7 @@ import {
   computeScore,
   createRun,
   currentWordListVersion,
+  defaultPace,
   isFinished,
   type Key,
   type Keystroke,
@@ -49,12 +50,16 @@ const configFrom = ({ mode, seconds, words, language }: Settings): RunConfig => 
   return mode === "time" ? { mode, seconds, ...textSource } : { mode, words, ...textSource };
 };
 
+// Every Run goes at the default Pace for now, a Visitor's as well as a User's.
+const scoreAt = (config: RunConfig, keystrokes: readonly Keystroke[], at: number) =>
+  computeScore(config, keystrokes, defaultPace, at);
+
 const freshRun = (config: RunConfig) => ({
   run: createRun(config),
   keystrokes: [],
   startedAt: null,
   result: null,
-  score: computeScore(config, [], 0),
+  score: scoreAt(config, [], 0),
 });
 
 const newRun = (state: RunStore, config: RunConfig) => ({
@@ -89,7 +94,7 @@ export const useRunStore = create<RunStore>()((set) => ({
         keystrokes,
         startedAt,
         result: resultAt(run, keystrokes, keystroke.at),
-        score: computeScore(run.config, keystrokes, keystroke.at),
+        score: scoreAt(run.config, keystrokes, keystroke.at),
       };
     }),
   tick: (now) =>
@@ -104,7 +109,7 @@ export const useRunStore = create<RunStore>()((set) => ({
       // The end of a `time` Run pays the word in progress.
       return result === null
         ? state
-        : { result, score: computeScore(state.run.config, state.keystrokes, at) };
+        : { result, score: scoreAt(state.run.config, state.keystrokes, at) };
     }),
 }));
 

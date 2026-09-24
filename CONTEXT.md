@@ -96,7 +96,7 @@ Le nombre de mots justes d'affilée tapés sans aucune faute, même corrigée. I
 _Avoid_ : streak, série, chaîne
 
 **Burst** :
-Un mot juste sans faute, d'au moins 4 lettres, tapé au moins 20 % plus vite que la Pace du User, chronométré de l'espace qui le précède à celui qui le valide. Ses points sont doublés. Pas encore construit.
+Un mot juste sans faute, d'au moins 4 lettres, tapé au moins 20 % plus vite que la Pace du User, chronométré de l'espace qui le précède (ou du départ, pour le premier mot) à la frappe qui le valide (sa dernière lettre, pour le dernier mot d'un Run `words`). Ses points sont doublés. Le mot en cours à la fin du temps n'en est jamais un. Construit dans le Run solo, à la Pace par défaut ; pas encore dans le Duel.
 _Avoid_ : perfect, crit, rush
 
 **Pace** :

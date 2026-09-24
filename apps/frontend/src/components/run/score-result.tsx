@@ -5,6 +5,7 @@ import { useRunStore } from "@/stores/run-store";
 export const ScoreResult = () => {
   const score = useRunStore((state) => state.score.score);
   const bestCombo = useRunStore((state) => state.score.bestCombo);
+  const bursts = useRunStore((state) => state.score.bursts);
 
   return (
     <dl className="flex gap-12">
@@ -13,6 +14,9 @@ export const ScoreResult = () => {
       </ResultStat>
       <ResultStat term="meilleur combo" size="main">
         {bestCombo}
+      </ResultStat>
+      <ResultStat term="bursts" size="main">
+        {bursts}
       </ResultStat>
     </dl>
   );

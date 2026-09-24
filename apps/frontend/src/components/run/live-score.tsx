@@ -6,12 +6,14 @@ export const LiveScore = () => {
   const score = useRunStore((state) => state.score.score);
   const multiplier = useRunStore((state) => state.score.multiplier);
   const combo = useRunStore((state) => state.score.combo);
+  const bursts = useRunStore((state) => state.score.bursts);
 
   return (
     <dl className="flex gap-6">
       <LiveStat term="score">{score}</LiveStat>
       <LiveStat term="multiplicateur">x{multiplier}</LiveStat>
       <LiveStat term="combo">{combo}</LiveStat>
+      <LiveStat term="bursts">{bursts}</LiveStat>
     </dl>
   );
 };

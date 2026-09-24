@@ -19,6 +19,7 @@ export const DuelText = () => {
     <RunText
       run={run}
       opponent={{ wordIndex: opponentWordIndex, letterIndex: opponentLetterIndex }}
+      lastBurst={null}
     />
   );
 };
