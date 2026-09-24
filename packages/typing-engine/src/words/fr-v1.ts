@@ -1,7 +1,8 @@
 // Written for typomaniac (not taken from Monkeytype, which is GPL-3): 200 everyday French words,
 // lowercase `[a-z]` only. Only words spelled without accents, so none is misspelled to fit.
-// Editing this list changes the Text of every Seed (ADR 0002).
-export const fr: readonly string[] = [
+// Word list version 1 of French: released, so never edited. A change is a new version, otherwise
+// the recorded Keystrokes would no longer replay on their Text.
+export const frV1: readonly string[] = [
   // Nature
   "soleil",
   "lune",

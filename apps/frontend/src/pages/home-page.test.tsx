@@ -1,6 +1,6 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { type RunConfig, wordLists } from "typing-engine";
+import { currentWordListVersion, type Language, type RunConfig, wordList } from "typing-engine";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { ClockContext } from "@/components/run/clock-context";
@@ -8,12 +8,27 @@ import { HomePage } from "@/pages/home-page";
 import { useRunStore } from "@/stores/run-store";
 import { useSettingsStore } from "@/stores/settings-store";
 
-// Seed 42 in English gives this Text (pinned in the typing-engine tests).
+// Seed 42 in English, version 1, gives this Text (pinned in the typing-engine tests).
 const text = "small help while late letter sell driver quiet never learn";
 
-const words10: RunConfig = { mode: "words", words: 10, language: "en", seed: 42 };
+const words10: RunConfig = {
+  mode: "words",
+  words: 10,
+  language: "en",
+  wordListVersion: 1,
+  seed: 42,
+};
 
-const time30: RunConfig = { mode: "time", seconds: 30, language: "en", seed: 42 };
+const time30: RunConfig = {
+  mode: "time",
+  seconds: 30,
+  language: "en",
+  wordListVersion: 1,
+  seed: 42,
+};
+
+// The solo draws every Text from the current Word list version of its Language.
+const currentWords = (language: Language) => wordList(language, currentWordListVersion[language]);
 
 // Simulated timers drive the animation frames; the time itself comes from the injected clock.
 // Other timers stay real: Testing Library waits on a real setTimeout after each user event.
@@ -467,7 +482,7 @@ describe("HomePage settings", () => {
     expect(setting("25")).toHaveAttribute("aria-pressed", "true");
     expect(setting("français")).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("0/25")).toBeInTheDocument();
-    expect(shownWords().every((word) => wordLists.fr.includes(word))).toBe(true);
+    expect(shownWords().every((word) => currentWords("fr").includes(word))).toBe(true);
   });
 
   test("the settings chosen are stored for the next visit", async () => {
@@ -512,10 +527,10 @@ describe("HomePage settings", () => {
     await user.click(setting("français"));
 
     expect(setting("français")).toHaveAttribute("aria-pressed", "true");
-    expect(shownWords().every((word) => wordLists.fr.includes(word))).toBe(true);
+    expect(shownWords().every((word) => currentWords("fr").includes(word))).toBe(true);
 
     await user.click(setting("anglais"));
 
-    expect(shownWords().every((word) => wordLists.en.includes(word))).toBe(true);
+    expect(shownWords().every((word) => currentWords("en").includes(word))).toBe(true);
   });
 });

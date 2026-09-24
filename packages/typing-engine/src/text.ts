@@ -1,16 +1,37 @@
 import { mulberry32 } from "./prng";
-import { en } from "./words/en";
-import { fr } from "./words/fr";
+import { enV1 } from "./words/en-v1";
+import { frV1 } from "./words/fr-v1";
 
 // French is written without accents, so a Text types the same on every keyboard.
 export type Language = "fr" | "en";
 
-export const wordLists: Readonly<Record<Language, readonly string[]>> = { fr, en };
+// Word list version n of a Language is at index n - 1. A released list is never edited: a change
+// is a new version appended here, and the old ones stay so recorded Keystrokes still replay.
+const versions: Readonly<Record<Language, readonly (readonly string[])[]>> = {
+  en: [enV1],
+  fr: [frV1],
+};
+
+// The Word list version a new Text is drawn from, per Language.
+export const currentWordListVersion: Readonly<Record<Language, number>> = {
+  en: versions.en.length,
+  fr: versions.fr.length,
+};
+
+export const wordList = (language: Language, version: number) => {
+  const words = versions[language][version - 1];
+
+  if (typeof words === "undefined") {
+    throw new RangeError(`No word list version ${version} for ${language}`);
+  }
+
+  return words;
+};
 
 // Words are drawn one by one from the Seed's sequence: the word at index i only depends on
-// (Seed, Language, i), so a longer Text starts with the shorter one.
-export const generateText = (seed: number, language: Language, count: number) => {
-  const words = wordLists[language];
+// (Seed, Language, Word list version, i), so a longer Text starts with the shorter one.
+export const generateText = (seed: number, language: Language, version: number, count: number) => {
+  const words = wordList(language, version);
   const next = mulberry32(seed);
   const text: string[] = [];
   let previous = -1;

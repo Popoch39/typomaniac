@@ -1,6 +1,7 @@
 // Written for typomaniac (not taken from Monkeytype, which is GPL-3): 200 everyday words,
-// lowercase `[a-z]` only. Editing this list changes the Text of every Seed (ADR 0002).
-export const en: readonly string[] = [
+// lowercase `[a-z]` only. Word list version 1 of English: released, so never edited. A change is
+// a new version, otherwise the recorded Keystrokes would no longer replay on their Text.
+export const enV1: readonly string[] = [
   // Nature
   "river",
   "stone",

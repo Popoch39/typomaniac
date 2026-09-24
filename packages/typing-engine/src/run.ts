@@ -1,10 +1,13 @@
 import { generateText, type Language } from "./text";
 
+// What fixes the Text of a Run.
+type TextSource = { language: Language; wordListVersion: number; seed: number };
+
 // `words` Mode: the Run ends after `words` words. `time` Mode: the Run ends `seconds` after its
 // first Keystroke, and its Text never runs out.
 export type RunConfig =
-  | { mode: "words"; words: number; language: Language; seed: number }
-  | { mode: "time"; seconds: number; language: Language; seed: number };
+  | ({ mode: "words"; words: number } & TextSource)
+  | ({ mode: "time"; seconds: number } & TextSource);
 
 // What the player pressed: a character (space included), backspace, or Ctrl+Backspace.
 export type Key = { kind: "char"; char: string } | { kind: "backspace" } | { kind: "deleteWord" };
@@ -69,7 +72,9 @@ const drawText = (state: RunState): RunState => {
     return state;
   }
 
-  const drawn = generateText(state.config.seed, state.config.language, count)
+  const { seed, language, wordListVersion } = state.config;
+
+  const drawn = generateText(seed, language, wordListVersion, count)
     .slice(state.words.length)
     .map((target, i) => toWord(state.words.length + i, target, ""));
 

@@ -1,8 +1,15 @@
 import { describe, expect, test } from "bun:test";
 
-import { wordLists } from "./index";
+import { currentWordListVersion, type Language, wordList } from "./index";
 
-describe.each(Object.entries(wordLists))("the %s word list", (_, words) => {
+const lists = (["en", "fr"] satisfies Language[]).flatMap((language) =>
+  Array.from({ length: currentWordListVersion[language] }, (_, i) => ({
+    name: `${language} v${i + 1}`,
+    words: wordList(language, i + 1),
+  })),
+);
+
+describe.each(lists)("the $name word list", ({ words }) => {
   test("has 200 words", () => {
     expect(words).toHaveLength(200);
   });

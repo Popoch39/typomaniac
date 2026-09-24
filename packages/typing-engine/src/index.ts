@@ -13,4 +13,4 @@ export {
 
 export { computeResult, type CharCounts, type Result } from "./result";
 
-export { generateText, wordLists, type Language } from "./text";
+export { currentWordListVersion, generateText, wordList, type Language } from "./text";

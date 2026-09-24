@@ -2,6 +2,7 @@ import {
   applyKeystroke,
   computeResult,
   createRun,
+  currentWordListVersion,
   isFinished,
   type Key,
   type Keystroke,
@@ -33,11 +34,16 @@ type RunStore = {
 
 const randomSeed = () => Math.floor(Math.random() * 2 ** 32);
 
-// A Run on the settings, with a new Seed.
-const configFrom = ({ mode, seconds, words, language }: Settings): RunConfig =>
-  mode === "time"
-    ? { mode, seconds, language, seed: randomSeed() }
-    : { mode, words, language, seed: randomSeed() };
+// A Run on the settings, with a new Seed and the current Word list version of its Language.
+const configFrom = ({ mode, seconds, words, language }: Settings): RunConfig => {
+  const textSource = {
+    language,
+    wordListVersion: currentWordListVersion[language],
+    seed: randomSeed(),
+  };
+
+  return mode === "time" ? { mode, seconds, ...textSource } : { mode, words, ...textSource };
+};
 
 const freshRun = (config: RunConfig) => ({
   run: createRun(config),

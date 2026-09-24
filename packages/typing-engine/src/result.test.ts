@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import { computeResult, type Keystroke, type RunConfig } from "./index";
 
-// Seed 42 in English starts with "small help while" (pinned in text.test.ts).
-const config: RunConfig = { mode: "words", words: 3, language: "en", seed: 42 };
+// Seed 42 in English, version 1, starts with "small help while" (pinned in text.test.ts).
+const config: RunConfig = { mode: "words", words: 3, language: "en", wordListVersion: 1, seed: 42 };
 
 // One char Keystroke per character, `step` ms apart from `start`.
 const keystrokes = (input: string, start = 0, step = 100): Keystroke[] =>
@@ -115,7 +115,13 @@ describe("computeResult", () => {
 });
 
 describe("computeResult in time Mode", () => {
-  const timeConfig: RunConfig = { mode: "time", seconds: 30, language: "en", seed: 42 };
+  const timeConfig: RunConfig = {
+    mode: "time",
+    seconds: 30,
+    language: "en",
+    wordListVersion: 1,
+    seed: 42,
+  };
 
   // The time is up on "wh", 2 letters into "while": they count, like "bonj" on "bonjour".
   // "small " + "help " + "wh" = 13 chars in 30 s, so 13 / 5 / 0.5 = 5.2.

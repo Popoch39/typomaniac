@@ -9,8 +9,8 @@ import {
   type RunState,
 } from "./index";
 
-// Seed 42 in English starts with "small help while" (pinned in text.test.ts).
-const config: RunConfig = { mode: "words", words: 3, language: "en", seed: 42 };
+// Seed 42 in English, version 1, starts with "small help while" (pinned in text.test.ts).
+const config: RunConfig = { mode: "words", words: 3, language: "en", wordListVersion: 1, seed: 42 };
 
 // Types each character of `input` as a Keystroke, 100 ms apart.
 const type = (state: RunState, input: string) =>
@@ -212,7 +212,13 @@ describe("isFinished in words Mode", () => {
 });
 
 describe("time Mode", () => {
-  const timeConfig: RunConfig = { mode: "time", seconds: 30, language: "en", seed: 42 };
+  const timeConfig: RunConfig = {
+    mode: "time",
+    seconds: 30,
+    language: "en",
+    wordListVersion: 1,
+    seed: 42,
+  };
 
   test("the Text never runs out, and stays the Text of the Seed", () => {
     let run = createRun(timeConfig);
@@ -225,7 +231,9 @@ describe("time Mode", () => {
     expect(run.wordIndex).toBe(1_000);
     expect(run.validatedWords).toBe(1_000);
     expect(run.words.length).toBeGreaterThan(1_000);
-    expect(run.words.map((word) => word.target)).toEqual(generateText(42, "en", run.words.length));
+    expect(run.words.map((word) => word.target)).toEqual(
+      generateText(42, "en", 1, run.words.length),
+    );
   });
 
   test("the Run ends once its duration has passed since the first Keystroke", () => {
