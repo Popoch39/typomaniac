@@ -2,7 +2,9 @@ import type { ServerMessage } from "api";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import {
+  challengesAfter,
   changesFriendLists,
+  type LiveChallenges,
   type LiveFriends,
   friendsAfter,
   onServerMessage,
@@ -200,6 +202,86 @@ describe("the Friends, from the server's messages", () => {
   });
 });
 
+describe("the Challenges, from the server's messages", () => {
+  const ada = { id: "ada", handle: "ada", image: null };
+  const alan = { id: "alan", handle: "alan", image: null };
+
+  // The server's clock runs 1 s ahead of this tab's, which reads 10_000.
+  const NOW = 10_000;
+
+  const known: LiveChallenges = {
+    sent: { id: "c1", to: ada, expiresAt: 40_000 },
+    received: [{ id: "c2", from: alan, expiresAt: 35_000 }],
+  };
+
+  test("are unknown until the snapshot, which sets them on this tab's clock", () => {
+    expect(challengesAfter(null, { type: "idle" }, NOW)).toBeNull();
+    expect(
+      challengesAfter(
+        null,
+        {
+          type: "challenges-snapshot",
+          sent: { id: "c1", to: ada, expiresAt: 41_000 },
+          received: [{ id: "c2", from: alan, expiresAt: 36_000 }],
+          serverTime: 11_000,
+        },
+        NOW,
+      ),
+    ).toEqual(known);
+  });
+
+  test("gain a Challenge received, or the one sent", () => {
+    const none: LiveChallenges = { sent: null, received: [] };
+
+    expect(
+      challengesAfter(
+        none,
+        {
+          type: "challenge-received",
+          challenge: { id: "c2", from: alan, expiresAt: 36_000 },
+          serverTime: 11_000,
+        },
+        NOW,
+      ),
+    ).toEqual({ sent: null, received: known.received });
+    expect(
+      challengesAfter(
+        none,
+        {
+          type: "challenge-sent",
+          challenge: { id: "c1", to: ada, expiresAt: 41_000 },
+          serverTime: 11_000,
+        },
+        NOW,
+      ),
+    ).toEqual({ sent: known.sent, received: [] });
+  });
+
+  test("lose a Challenge once it ended, sent or received", () => {
+    expect(
+      challengesAfter(
+        known,
+        { type: "challenge-ended", challengeId: "c1", reason: "declined" },
+        NOW,
+      ),
+    ).toEqual({ sent: null, received: known.received });
+    expect(
+      challengesAfter(
+        known,
+        { type: "challenge-ended", challengeId: "c2", reason: "expired" },
+        NOW,
+      ),
+    ).toEqual({ sent: known.sent, received: [] });
+  });
+
+  test("unchanged by a refusal, the Queue and the Duel", () => {
+    expect(
+      challengesAfter(known, { type: "challenge-refused", userId: "ada", reason: "offline" }, NOW),
+    ).toBe(known);
+    expect(challengesAfter(known, duelFound, NOW)).toBe(known);
+  });
+});
+
 describe("the delay before opening a lost connection again", () => {
   test("doubles from a second, up to 8 s", () => {
     expect([0, 1, 2, 3, 4, 10].map(reconnectDelay)).toEqual([
@@ -315,6 +397,17 @@ describe("the connection store", () => {
 
     fake.server().drop();
     expect(useConnectionStore.getState().friends).toBeNull();
+  });
+
+  test("keeps the Challenges the server tells, forgotten once the connection is lost", () => {
+    useConnectionStore.getState().open(fake.open);
+    fake.server().receive({ type: "idle" });
+    fake.server().receive({ type: "challenges-snapshot", sent: null, received: [], serverTime: 0 });
+
+    expect(useConnectionStore.getState().challenges).toEqual({ sent: null, received: [] });
+
+    fake.server().drop();
+    expect(useConnectionStore.getState().challenges).toBeNull();
   });
 
   test("opening it again closes the previous socket", () => {

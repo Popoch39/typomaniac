@@ -7,9 +7,10 @@ import type { Clock } from "./lib/clock";
 import { type AuthHandler, authentication } from "./modules/auth";
 import { duelModule } from "./modules/duel";
 import { MAX_DUEL_MESSAGE_SIZE } from "./modules/duel/model";
+import { DuelQueue } from "./modules/duel/service";
 import type { DuelStore } from "./modules/duel/store";
 import { friendModule } from "./modules/friend";
-import { FriendsLive } from "./modules/friend/live";
+import { type FriendEvents, FriendsLive } from "./modules/friend/live";
 import type { FriendStore } from "./modules/friend/store";
 import { handleModule } from "./modules/handle";
 import { meModule } from "./modules/me";
@@ -28,6 +29,8 @@ export type { ApiErrorBody, ErrorCode, ErrorDetail } from "./lib/errors";
 export type { ClientMessage, ServerMessage } from "./modules/duel/model";
 
 export type { FriendRefusal, Presence } from "./modules/friend/model";
+
+export type { ChallengeEnding, ChallengeRefusal } from "./modules/challenge/model";
 
 export type AppConfig = {
   corsOrigin: string;
@@ -63,6 +66,27 @@ export const createApp = (config: AppConfig) => {
   // and by the Duel socket of each connection and each Duel.
   const friendsLive = new FriendsLive({ store: friendStore, logger: config.logger });
 
+  // The Queue, the Duels and the Challenges, in memory: each Duel is a Presence for the Friends.
+  const duelQueue = new DuelQueue({
+    clock: config.clock,
+    store: duelStore,
+    users,
+    friendStore,
+    logger: config.logger,
+    onDuel: (userId, inDuel) => friendsLive.setInDuel(userId, inDuel),
+  });
+
+  // The Friend routes tell both: an ended friendship also ends the Challenges between the two.
+  const friendEvents: FriendEvents = {
+    requestSent: (senderId, recipientId) => friendsLive.requestSent(senderId, recipientId),
+    requestRemoved: (senderId, recipientId) => friendsLive.requestRemoved(senderId, recipientId),
+    friendsAdded: (a, b) => friendsLive.friendsAdded(a, b),
+    friendsRemoved: (a, b) => {
+      friendsLive.friendsRemoved(a, b);
+      duelQueue.friendsRemoved(a, b);
+    },
+  };
+
   return new Elysia({
     prefix: API_PREFIX,
     websocket: { maxPayloadLength: MAX_DUEL_MESSAGE_SIZE },
@@ -97,21 +121,11 @@ export const createApp = (config: AppConfig) => {
         trustProxy,
         users,
         store: friendStore,
-        events: friendsLive,
+        events: friendEvents,
         sendRateLimit: config.friendRequestRateLimit,
       }),
     )
-    .use(
-      duelModule({
-        auth,
-        trustProxy,
-        clock: config.clock,
-        store: duelStore,
-        users,
-        logger: config.logger,
-        friendsLive,
-      }),
-    );
+    .use(duelModule({ auth, trustProxy, queue: duelQueue, friendsLive }));
 };
 
 export type App = ReturnType<typeof createApp>;

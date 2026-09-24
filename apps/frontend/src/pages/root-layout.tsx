@@ -5,6 +5,9 @@ import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { AuthControl } from "@/components/auth/auth-control";
 import { OAuthErrorToast } from "@/components/auth/oauth-error-toast";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
+import { ChallengeNotices } from "@/components/challenge/challenge-notices";
+import { DuelOnChallenge } from "@/components/challenge/duel-on-challenge";
+import { WaitingChallenges } from "@/components/challenge/waiting-challenges";
 import { FriendsNavLink } from "@/components/friends/friends-nav-link";
 import { LiveFriendLists } from "@/components/friends/live-friend-lists";
 import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
@@ -49,6 +52,9 @@ export const RootLayout = () => (
     </main>
     <RealtimeConnection />
     <LiveFriendLists />
+    <WaitingChallenges />
+    <ChallengeNotices />
+    <DuelOnChallenge />
     <SignInDialog />
     <HandleChoiceDialog />
     <OAuthErrorToast />

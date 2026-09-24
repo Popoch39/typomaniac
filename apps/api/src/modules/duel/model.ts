@@ -1,6 +1,7 @@
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { t } from "elysia";
 
+import { ChallengeModel } from "../challenge/model";
 import { FriendLiveModel } from "../friend/model";
 
 // Bun closes a connection whose message is larger: no message of the protocol comes close.
@@ -32,6 +33,8 @@ const ClientMessage = t.Union([
   // Plays the User's Duel on this connection from now on: after a reconnection, a reload, from
   // another tab.
   t.Object({ type: t.Literal("resume-duel") }),
+  // The same socket carries the User's Challenges.
+  ChallengeModel.challengeClientMessage,
 ]);
 
 export type ClientMessage = typeof ClientMessage.static;
@@ -149,6 +152,8 @@ const ServerMessage = t.Union([
   t.Object({ type: t.Literal("invalid-message") }),
   // The same socket tells the User of their Friends: Presence, Friend requests, Friends.
   FriendLiveModel.friendMessage,
+  // And of their Challenges, sent and received.
+  ChallengeModel.challengeMessage,
 ]);
 
 export type ServerMessage = typeof ServerMessage.static;

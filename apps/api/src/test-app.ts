@@ -10,6 +10,7 @@ import type { AppConfig } from "./app";
 import { type Clock, systemClock } from "./lib/clock";
 import type { AuthHandler } from "./modules/auth";
 import { authOptions } from "./modules/auth/service";
+import { type ChallengeMessage, ChallengeModel } from "./modules/challenge/model";
 import { type ClientMessage, DuelModel, type ServerMessage } from "./modules/duel/model";
 import type { DuelRecord, DuelStore } from "./modules/duel/store";
 import { type FriendMessage, FriendLiveModel, type Relation } from "./modules/friend/model";
@@ -264,6 +265,8 @@ const serverMessage = TypeCompiler.Compile(DuelModel.serverMessage);
 
 const friendMessage = TypeCompiler.Compile(FriendLiveModel.friendMessage);
 
+const challengeMessage = TypeCompiler.Compile(ChallengeModel.challengeMessage);
+
 // Messages read in the order they arrived, with next(): waits for the next one when none is there.
 const mailbox = <T>() => {
   const inbox: T[] = [];
@@ -294,12 +297,13 @@ const mailbox = <T>() => {
 };
 
 // A browser tab on the Duel socket: every message it receives, read in order with next(). What it
-// is told of its Friends goes apart, read with nextFriends(): the Queue and the Duel are read
-// without it.
+// is told of its Friends goes apart, read with nextFriends(), and of its Challenges, read with
+// nextChallenge(): the Queue and the Duel are read without them.
 export const openClient = (url: string, cookie?: string) => {
   const socket = new WebSocket(url, { headers: cookie ? { cookie } : {} });
   const place = mailbox<ServerMessage>();
   const friends = mailbox<FriendMessage>();
+  const challenges = mailbox<ChallengeMessage>();
 
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(String(event.data));
@@ -310,6 +314,8 @@ export const openClient = (url: string, cookie?: string) => {
 
     if (friendMessage.Check(message)) {
       friends.put(message);
+    } else if (challengeMessage.Check(message)) {
+      challenges.put(message);
     } else {
       place.put(message);
     }
@@ -342,15 +348,23 @@ export const openClient = (url: string, cookie?: string) => {
     expect(friends.inbox).toEqual([]);
   };
 
+  // The same, of the Challenges too.
+  const settleChallenges = async () => {
+    await settle();
+    expect(challenges.inbox).toEqual([]);
+  };
+
   return {
     socket,
     opened,
     closed,
     next: place.next,
     nextFriends: friends.next,
+    nextChallenge: challenges.next,
     send,
     settle,
     settleFriends,
+    settleChallenges,
   };
 };
 

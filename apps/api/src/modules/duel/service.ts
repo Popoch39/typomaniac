@@ -2,6 +2,8 @@ import type { Logger } from "pino";
 import { currentWordListVersion, defaultPace, type Keystroke } from "typing-engine";
 
 import type { Clock } from "../../lib/clock";
+import { type ChallengeArena, Challenges, type Seat } from "../challenge/service";
+import type { FriendStore } from "../friend/store";
 import type { Users } from "../user/users";
 import type { ClientMessage, ServerMessage } from "./model";
 import { type DuelStore, readPace } from "./store";
@@ -35,6 +37,8 @@ export type DuelQueueConfig = {
   clock: Clock;
   store: DuelStore;
   users: Users;
+  // Where a Challenge checks the two are Friends.
+  friendStore: FriendStore;
   logger: Logger;
   // Told when a User's Duel starts (at the pairing, Countdown included) and when it ends: their
   // Presence.
@@ -45,11 +49,12 @@ export type DuelQueueConfig = {
 // from their history. Replaced by a new entry when they leave and join again.
 type QueueEntry = { user: User | null; pace: number | null };
 
-// The Queue, the running Duels and the connected Users, in memory (ADR 0003). A User can have many
-// connections (tabs, ADR 0007) but one place, in the Queue or in a Duel, played on one of them: the
-// one that joined the Queue or resumed the Duel. The others are told the place and can take it; the
-// Keystrokes and Duel actions they send are ignored.
-export class DuelQueue {
+// The Queue, the running Duels, the Challenges and the connected Users, in memory (ADR 0003). A User
+// can have many connections (tabs, ADR 0007) but one place, in the Queue or in a Duel, played on
+// one of them: the one that joined the Queue or resumed the Duel. The others are told the place and
+// can take it; the Keystrokes and Duel actions they send are ignored. A Duel starts from the Queue
+// or from an accepted Challenge.
+export class DuelQueue implements ChallengeArena {
   readonly #clock: Clock;
 
   // Where finished Duels are written.
@@ -85,41 +90,52 @@ export class DuelQueue {
   // The end of a Duel told to a player who was away then, to tell them on their return.
   readonly #missed = new Map<string, DuelEnded>();
 
-  constructor({ clock, store, users, logger, onDuel }: DuelQueueConfig) {
+  readonly #challenges: Challenges;
+
+  constructor({ clock, store, users, friendStore, logger, onDuel }: DuelQueueConfig) {
     this.#clock = clock;
     this.#store = store;
     this.#users = users;
     this.#logger = logger;
     this.#onDuel = onDuel;
+    this.#challenges = new Challenges({ clock, users, friendStore, logger, arena: this });
   }
 
-  // The new connection plays nothing yet: it is told the User's place.
+  // The new connection plays nothing yet: it is told the User's place, then their Challenges.
   connect(userId: string, connection: Connection) {
     const connections = this.#connections.get(userId) ?? new Map<string, Connection>();
 
     connections.set(connection.id, connection);
     this.#connections.set(userId, connections);
     connection.send(this.#placeOf(userId));
+    this.#challenges.connect(userId, connection);
   }
 
-  // Any connection can take the place; only the one that plays it acts in the Queue or the Duel.
+  // Any connection can take the place or act on the Challenges; only the one that plays the place
+  // acts in the Queue or the Duel.
   receive(userId: string, connectionId: string, message: ClientMessage) {
-    const connection = this.#connections.get(userId)?.get(connectionId);
+    const connection = this.connectionOf(userId, connectionId);
 
     if (!connection) {
       return;
     }
 
-    if (message.type === "join-queue") {
-      this.#join(userId, connection);
+    switch (message.type) {
+      case "join-queue":
+        this.#join(userId, connection);
 
-      return;
-    }
+        return;
+      case "resume-duel":
+        this.#resumeOn(userId, connection);
 
-    if (message.type === "resume-duel") {
-      this.#resumeOn(userId, connection);
+        return;
+      case "send-challenge":
+      case "cancel-challenge":
+      case "accept-challenge":
+      case "decline-challenge":
+        this.#challenges.receive(userId, connection, message);
 
-      return;
+        return;
     }
 
     if (this.#playing.get(userId) !== connection) {
@@ -149,6 +165,7 @@ export class DuelQueue {
 
     if (connections?.size === 0) {
       this.#connections.delete(userId);
+      this.#challenges.left(userId);
     }
 
     if (this.#playing.get(userId)?.id !== connectionId) {
@@ -173,6 +190,37 @@ export class DuelQueue {
         this.#forfeit(duel, userId);
       }
     });
+  }
+
+  // Every open connection of the User: none once they are offline.
+  connectionsOf(userId: string) {
+    return [...(this.#connections.get(userId)?.values() ?? [])];
+  }
+
+  connectionOf(userId: string, connectionId: string) {
+    return this.#connections.get(userId)?.get(connectionId);
+  }
+
+  // From the pairing (Countdown included) to the end.
+  isInDuel(userId: string) {
+    return this.#duels.has(userId);
+  }
+
+  // Their Challenges between them are over.
+  friendsRemoved(a: string, b: string) {
+    this.#challenges.friendsRemoved(a, b);
+  }
+
+  // A Duel from a Challenge: both leave the Queue if they were in it, and play it on the seats'
+  // connections (an end they were not told is not told anymore, as when joining the Queue).
+  startDuel(seats: readonly [Seat, Seat]) {
+    for (const { user, connection } of seats) {
+      this.#queue.delete(user.id);
+      this.#missed.delete(user.id);
+      this.#playOn(user.id, connection);
+    }
+
+    this.#start(seats);
   }
 
   // To the connection that plays the User's place.
@@ -386,7 +434,7 @@ export class DuelQueue {
         entry.user = { id: userId, handle: profile.handle, image: profile.image };
         this.#send(userId, { type: "queued" });
         this.#tellOthers(userId);
-        void this.#readPace(userId).then((pace) => {
+        void this.readPace(userId).then((pace) => {
           if (this.#queue.get(userId) === entry) {
             entry.pace = pace;
             this.#pair();
@@ -406,7 +454,7 @@ export class DuelQueue {
 
   // The median wpm of the User's last Duels, once their last one is written (engine's paceOf).
   // Unreadable, the default Pace: a Duel is never held up by the database.
-  async #readPace(userId: string) {
+  async readPace(userId: string) {
     try {
       await this.#saving.get(userId);
 
@@ -441,7 +489,13 @@ export class DuelQueue {
 
     this.#queue.delete(a.user.id);
     this.#queue.delete(b.user.id);
+    this.#start([a, b]);
+  }
 
+  // Seed drawn here, same format for every Duel, the Countdown starting now. Each player is told on
+  // the connection that plays, their other connections that the Duel is elsewhere; their
+  // Challenges are over.
+  #start([a, b]: readonly [PacedUser, PacedUser]) {
     const serverTime = this.#clock.now();
 
     const duel = new RunningDuel(
@@ -462,6 +516,7 @@ export class DuelQueue {
 
     for (const { user } of [a, b]) {
       this.#onDuel(user.id, true);
+      this.#challenges.enteredDuel(user.id);
       this.#send(user.id, {
         type: "duel-found",
         duel: duel.duel,

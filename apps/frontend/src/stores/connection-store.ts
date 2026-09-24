@@ -24,12 +24,27 @@ export type LiveFriends = {
   requestsReceived: number;
 };
 
+type Snapshot = Extract<ServerMessage, { type: "challenges-snapshot" }>;
+
+// A Challenge waiting, its expiry on this tab's clock (`Date.now()`).
+export type SentChallenge = NonNullable<Snapshot["sent"]>;
+
+export type ReceivedChallenge = Snapshot["received"][number];
+
+// The User's Challenges waiting: the one they sent, and those they received.
+export type LiveChallenges = {
+  sent: SentChallenge | null;
+  received: readonly ReceivedChallenge[];
+};
+
 type ConnectionStore = {
   status: ConnectionStatus;
   // Unknown until the server tells it on each new socket.
   place: Place | null;
   // Unknown until the snapshot of each new socket.
   friends: LiveFriends | null;
+  // Unknown until the snapshot of each new socket.
+  challenges: LiveChallenges | null;
   // Opens the socket, opened again whenever it is lost; `openSocket` opens it, and every
   // reconnection's.
   open: (openSocket?: OpenLiveSocket) => void;
@@ -116,6 +131,54 @@ export const friendsAfter = (
   }
 };
 
+// The server's expiry shifted to this tab's clock, `now` read when its message arrived. The offset
+// lags by the message's delay: the time left shown never ends late.
+const localExpiry = <T extends { expiresAt: number }>(
+  challenge: T,
+  serverTime: number,
+  now: number,
+) => ({
+  ...challenge,
+  expiresAt: challenge.expiresAt - serverTime + now,
+});
+
+// The Challenges after a message: the snapshot sets them, the changes that follow update them.
+export const challengesAfter = (
+  challenges: LiveChallenges | null,
+  message: ServerMessage,
+  now: number,
+): LiveChallenges | null => {
+  if (message.type === "challenges-snapshot") {
+    return {
+      sent: message.sent === null ? null : localExpiry(message.sent, message.serverTime, now),
+      received: message.received.map((challenge) =>
+        localExpiry(challenge, message.serverTime, now),
+      ),
+    };
+  }
+
+  if (challenges === null) {
+    return null;
+  }
+
+  switch (message.type) {
+    case "challenge-received":
+      return {
+        ...challenges,
+        received: [...challenges.received, localExpiry(message.challenge, message.serverTime, now)],
+      };
+    case "challenge-sent":
+      return { ...challenges, sent: localExpiry(message.challenge, message.serverTime, now) };
+    case "challenge-ended":
+      return {
+        sent: challenges.sent?.id === message.challengeId ? null : challenges.sent,
+        received: challenges.received.filter(({ id }) => id !== message.challengeId),
+      };
+    default:
+      return challenges;
+  }
+};
+
 // What the Friends page reads over HTTP and a message says changed: the lists, the relations of
 // the search. A snapshot too: things may have changed while the connection was lost.
 export const changesFriendLists = (message: ServerMessage) =>
@@ -187,6 +250,7 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
         status: "open",
         place: placeAfter(get().place, data),
         friends: friendsAfter(get().friends, data),
+        challenges: challengesAfter(get().challenges, data, Date.now()),
       });
 
       for (const listener of listeners) {
@@ -201,7 +265,7 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
       socket = null;
       reconnectTimer = setTimeout(connect, reconnectDelay(attempts));
       attempts += 1;
-      set({ status: "connecting", place: null, friends: null });
+      set({ status: "connecting", place: null, friends: null, challenges: null });
     });
   };
 
@@ -209,6 +273,7 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
     status: "closed",
     place: null,
     friends: null,
+    challenges: null,
     open: (tabSocket = openApiSocket) => {
       get().close();
       openSocket = tabSocket;
@@ -220,7 +285,7 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
 
       socket = null;
       stopReconnecting();
-      set({ status: "closed", place: null, friends: null });
+      set({ status: "closed", place: null, friends: null, challenges: null });
       current?.close();
     },
   };

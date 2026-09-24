@@ -368,6 +368,12 @@ const stateAfter = (state: DuelState, message: ServerMessage): DuelState => {
     case "friend-request-removed":
     case "friend-added":
     case "friend-removed":
+    // The Challenges too: an accepted one starts with `duel-found`.
+    case "challenges-snapshot":
+    case "challenge-received":
+    case "challenge-sent":
+    case "challenge-ended":
+    case "challenge-refused":
     case "invalid-message":
       return state;
   }
