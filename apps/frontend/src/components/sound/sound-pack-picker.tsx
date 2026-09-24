@@ -21,7 +21,7 @@ export const SoundPackPicker = () => {
   };
 
   return (
-    <RadioGroup aria-label="Sound pack" value={pack} onValueChange={choose} className="gap-0">
+    <RadioGroup aria-label="Pack de sons" value={pack} onValueChange={choose} className="gap-0">
       {choices.map((choice) => (
         <SoundPackOption key={choice.value} value={choice.value} label={choice.label} />
       ))}

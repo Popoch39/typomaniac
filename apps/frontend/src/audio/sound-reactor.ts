@@ -42,11 +42,15 @@ const playCue = (engine: AudioEngine, pack: SoundPack, cue: Cue, random: Random)
   }
 };
 
-// Loads the files of the pack, so its first key sounds. "off" loads nothing.
-const preloadChoice = (engine: AudioEngine, choice: SoundChoice) =>
-  choice === "off"
-    ? Promise.resolve()
-    : engine.preload(soundsOf(packOf(choice)).map((sound) => sound.url));
+// The pack chosen, or null when the sound is off.
+const packOfChoice = (choice: SoundChoice) => (choice === "off" ? null : packOf(choice));
+
+// Loads the files of the pack, so its first key sounds.
+const preload = (engine: AudioEngine, pack: SoundPack) =>
+  engine.preload(soundsOf(pack).map((sound) => sound.url));
+
+// A letter, not a space: the preview plays one of the key variants.
+const previewChar = "k";
 
 // Plays the Cues of the User's Keystrokes, once started at the app startup, with the sound
 // settings of the moment: a new pack is loaded as soon as it is chosen. Returns the stop.
@@ -54,30 +58,36 @@ export const startSoundReactor = (
   engine: AudioEngine,
   { random = Math.random }: { random?: Random } = {},
 ) => {
-  const { pack, volume } = useSoundStore.getState();
+  const { pack: choice, volume } = useSoundStore.getState();
+  const pack = packOfChoice(choice);
 
   engine.setVolume(volume);
-  void preloadChoice(engine, pack);
+
+  if (pack !== null) {
+    void preload(engine, pack);
+  }
 
   const stopSettings = useSoundStore.subscribe((settings, previous) => {
+    const chosen = packOfChoice(settings.pack);
+
     if (settings.volume !== previous.volume) {
       engine.setVolume(settings.volume);
     }
 
-    if (settings.pack !== previous.pack) {
-      void preloadChoice(engine, settings.pack);
+    if (settings.pack !== previous.pack && chosen !== null) {
+      void preload(engine, chosen);
     }
   });
 
   const stopCues = onCues((cues) => {
-    const choice = useSoundStore.getState().pack;
+    const current = packOfChoice(useSoundStore.getState().pack);
 
-    if (choice === "off") {
+    if (current === null) {
       return;
     }
 
     for (const cue of cues) {
-      playCue(engine, packOf(choice), cue, random);
+      playCue(engine, current, cue, random);
     }
   });
 
@@ -93,9 +103,11 @@ export const previewSound = (
   choice: SoundChoice,
   random: Random = Math.random,
 ) => {
-  if (choice === "off") {
+  const pack = packOfChoice(choice);
+
+  if (pack === null) {
     return;
   }
 
-  void preloadChoice(engine, choice).then(() => playKey(engine, packOf(choice), "k", random));
+  void preload(engine, pack).then(() => playKey(engine, pack, previewChar, random));
 };

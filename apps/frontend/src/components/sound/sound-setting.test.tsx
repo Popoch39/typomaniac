@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
@@ -58,6 +58,19 @@ const reload = async () => {
   await useSoundStore.persist.rehydrate();
 };
 
+// Reloads the page, renders the speaker again and opens the picker.
+const reopen = async () => {
+  cleanup();
+  stop();
+  await reload();
+
+  const rendered = await renderSetting();
+
+  await rendered.user.click(screen.getByRole("button", { name: /^Son/ }));
+
+  return rendered;
+};
+
 describe("sound picker", () => {
   test("the speaker opens the Sound packs and off, hovering a pack plays one of its keys", async () => {
     const { user, played } = await renderSetting();
@@ -84,14 +97,14 @@ describe("sound picker", () => {
     await user.click(screen.getByRole("button", { name: "Son" }));
     await user.click(screen.getByRole("radio", { name: "off" }));
 
-    expect(useSoundStore.getState().pack).toBe("off");
+    expect(screen.getByRole("radio", { name: "off" })).toBeChecked();
     expect(screen.getByRole("button", { name: "Son coupé" })).toBeInTheDocument();
 
     played.length = 0;
     await user.click(screen.getByRole("radio", { name: "Tactile" }));
     await decoded();
 
-    expect(useSoundStore.getState().pack).toBe("tactile");
+    expect(screen.getByRole("radio", { name: "Tactile" })).toBeChecked();
     expect(played).toContainEqual(key07);
     expect(screen.getByRole("button", { name: "Son" })).toBeInTheDocument();
   });
@@ -104,7 +117,7 @@ describe("sound picker", () => {
     await user.keyboard("{ArrowDown}");
 
     expect(screen.getByRole("radio", { name: "off" })).toBeChecked();
-    expect(useSoundStore.getState().pack).toBe("off");
+    expect(screen.getByRole("button", { name: "Son coupé" })).toBeInTheDocument();
   });
 
   test("the slider sets the volume of every sound", async () => {
@@ -114,7 +127,6 @@ describe("sound picker", () => {
     volumeSlider().focus();
     await user.keyboard("{ArrowRight}");
 
-    expect(useSoundStore.getState().volume).toBeCloseTo(0.55);
     expect(state.volume).toBeCloseTo(0.55);
   });
 
@@ -125,9 +137,11 @@ describe("sound picker", () => {
     await user.click(screen.getByRole("radio", { name: "off" }));
     volumeSlider().focus();
     await user.keyboard("{ArrowLeft}");
-    await reload();
+    await reopen();
 
-    expect(useSoundStore.getState()).toMatchObject({ pack: "off", volume: 0.45 });
+    expect(screen.getByRole("radio", { name: "off" })).toBeChecked();
+    expect(screen.getByRole("button", { name: "Son coupé" })).toBeInTheDocument();
+    expect(volumeSlider()).toHaveAttribute("aria-valuenow", "0.45");
   });
 
   test.each([
@@ -136,8 +150,10 @@ describe("sound picker", () => {
     ["a missing field", { pack: "off" }],
   ])("%s stored gives the defaults back", async (_, state) => {
     localStorage.setItem(storageKey, JSON.stringify({ state, version: 1 }));
-    await reload();
+    const reloaded = await reopen();
 
-    expect(useSoundStore.getState()).toMatchObject({ pack: "tactile", volume: 0.5 });
+    expect(screen.getByRole("radio", { name: "Tactile" })).toBeChecked();
+    expect(volumeSlider()).toHaveAttribute("aria-valuenow", "0.5");
+    expect(reloaded.state.volume).toBe(0.5);
   });
 });

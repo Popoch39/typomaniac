@@ -143,6 +143,7 @@ let stop = () => {};
 
 // Every test starts on a first visit: default sound settings.
 beforeEach(() => {
+  localStorage.clear();
   useSoundStore.setState(useSoundStore.getInitialState());
 });
 
