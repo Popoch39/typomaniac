@@ -3,6 +3,7 @@ import type { Result } from "typing-engine";
 import { NextRunButton } from "@/components/run/next-run-button";
 import { ReplayButton } from "@/components/run/replay-button";
 import { RunResult } from "@/components/run/run-result";
+import { ScoreResult } from "@/components/run/score-result";
 
 // Called once with the node on mount. The typing input is gone with the Run, and the focus would
 // fall back to the page, where Tab reaches the header first.
@@ -12,6 +13,7 @@ const focusOnMount = (node: HTMLElement | null) => node?.focus();
 // Suivant, the first button after it.
 export const ResultScreen = ({ result }: { result: Result }) => (
   <div ref={focusOnMount} tabIndex={-1} className="flex flex-col gap-8 outline-none">
+    <ScoreResult />
     <RunResult result={result} />
     <div className="flex gap-2">
       <NextRunButton />

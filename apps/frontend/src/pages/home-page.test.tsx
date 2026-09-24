@@ -202,6 +202,40 @@ describe("HomePage", () => {
     expect(stat("caractères")).toBe("49/0/0/0");
     expect(screen.queryByText(isWord("small"))).not.toBeInTheDocument();
   });
+
+  // "small " 6 + "help " 5 + "while " 6 + "late " 5 at x1, then "letter " 7 at x2: 36.
+  test("shows the Score, the multiplier and the Combo while typing", async () => {
+    const { user } = renderRun();
+
+    await user.keyboard("small help while late ");
+
+    // The multiplier shown is the one of the word in progress: the 5th is paid x2.
+    expect(stat("score")).toBe("22");
+    expect(stat("multiplicateur")).toBe("x2");
+
+    await user.keyboard("letter ");
+
+    expect(stat("score")).toBe("36");
+    expect(stat("multiplicateur")).toBe("x2");
+    expect(stat("combo")).toBe("5");
+
+    await user.keyboard("x");
+
+    expect(stat("score")).toBe("36");
+    expect(stat("multiplicateur")).toBe("x1");
+    expect(stat("combo")).toBe("0");
+  });
+
+  // Four words at x1 (22), then "letter " 7, "sell " 5, "driver " 7, "quiet " 6, "never " 6 at
+  // x2 (62), then "learn" 5, the last word without a space, at x3 (15).
+  test("the Result shows the Score and the best Combo", async () => {
+    const { user } = renderRun();
+
+    await user.keyboard(text);
+
+    expect(stat("score")).toBe("99");
+    expect(stat("meilleur combo")).toBe("10");
+  });
 });
 
 describe("HomePage between Runs", () => {
@@ -309,6 +343,8 @@ describe("HomePage in time Mode", () => {
     // All 13 chars in the first second, none in the 29 others: a raw of 156, then 0. The mean is
     // 5.2 and the deviation 28, so c ≈ 5.4 and tanh(c + c³/3 + c⁵/5) rounds to 1.
     expect(stat("régularité")).toBe("0 %");
+    // The word in progress pays its right letters too: "small " + "help " + "wh" at x1.
+    expect(stat("score")).toBe("13");
   });
 
   test("the time keeps running out while the focus is lost", async () => {

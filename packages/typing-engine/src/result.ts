@@ -26,7 +26,7 @@ type Verdict = "correct" | "incorrect" | "ignored";
 
 // Judges a Keystroke against the state it is applied to. Only characters count: a corrected
 // mistake stays a mistake.
-const judge = (state: RunState, keystroke: Keystroke): Verdict => {
+export const judge = (state: RunState, keystroke: Keystroke): Verdict => {
   if (keystroke.kind !== "char" || isIgnored(state, keystroke)) {
     return "ignored";
   }
@@ -42,7 +42,7 @@ const judge = (state: RunState, keystroke: Keystroke): Verdict => {
 
 // Every validated word is followed by the space that validated it, but the last one of a `words`
 // Run, validated as soon as it is right.
-const hasSpaceAfter = (config: RunConfig, index: number) =>
+export const hasSpaceAfter = (config: RunConfig, index: number) =>
   config.mode === "time" || index < config.words - 1;
 
 // Chars of the right validated words, each with its space, plus the right letters of the word in

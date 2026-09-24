@@ -1,5 +1,6 @@
 import { FocusOverlay } from "@/components/run/focus-overlay";
 import { KeystrokeInput } from "@/components/run/keystroke-input";
+import { LiveScore } from "@/components/run/live-score";
 import { NextRunButton } from "@/components/run/next-run-button";
 import { RunProgress } from "@/components/run/run-progress";
 import { SoloText } from "@/components/run/solo-text";
@@ -13,7 +14,10 @@ export const TypingArea = () => {
   return (
     <div className="flex flex-col gap-4">
       <KeystrokeInput ref={inputRef} onFocusChange={setFocused} onPress={press} />
-      <RunProgress />
+      <div className="flex flex-wrap items-baseline justify-between gap-4">
+        <RunProgress />
+        <LiveScore />
+      </div>
       <div className="relative">
         <SoloText />
         {focused ? null : <FocusOverlay onResume={focus} />}

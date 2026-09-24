@@ -1,6 +1,7 @@
 import {
   applyKeystroke,
   computeResult,
+  computeScore,
   createRun,
   currentWordListVersion,
   isFinished,
@@ -9,6 +10,7 @@ import {
   type Result,
   type RunConfig,
   type RunState,
+  type ScoreState,
 } from "typing-engine";
 import { create } from "zustand";
 
@@ -20,6 +22,8 @@ type RunStore = {
   // Clock reading of the first Keystroke: every `at` is relative to it.
   startedAt: number | null;
   result: Result | null;
+  // Live while the Run lasts, final once it is finished.
+  score: ScoreState;
   // Counts the Runs started: a new one remounts the typing area, fresh state and focus included.
   runNumber: number;
   start: (config: RunConfig) => void;
@@ -50,6 +54,7 @@ const freshRun = (config: RunConfig) => ({
   keystrokes: [],
   startedAt: null,
   result: null,
+  score: computeScore(config, [], 0),
 });
 
 const newRun = (state: RunStore, config: RunConfig) => ({
@@ -79,7 +84,13 @@ export const useRunStore = create<RunStore>()((set) => ({
       const keystrokes = [...state.keystrokes, keystroke];
       const run = applyKeystroke(state.run, keystroke);
 
-      return { run, keystrokes, startedAt, result: resultAt(run, keystrokes, keystroke.at) };
+      return {
+        run,
+        keystrokes,
+        startedAt,
+        result: resultAt(run, keystrokes, keystroke.at),
+        score: computeScore(run.config, keystrokes, keystroke.at),
+      };
     }),
   tick: (now) =>
     set((state) => {
@@ -87,9 +98,13 @@ export const useRunStore = create<RunStore>()((set) => ({
         return state;
       }
 
-      const result = resultAt(state.run, state.keystrokes, now - state.startedAt);
+      const at = now - state.startedAt;
+      const result = resultAt(state.run, state.keystrokes, at);
 
-      return result === null ? state : { result };
+      // The end of a `time` Run pays the word in progress.
+      return result === null
+        ? state
+        : { result, score: computeScore(state.run.config, state.keystrokes, at) };
     }),
 }));
 
