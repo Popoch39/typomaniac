@@ -5,6 +5,7 @@ import pino from "pino";
 
 import type { AppConfig } from "./app";
 import { authOptions } from "./auth";
+import { type Clock, systemClock } from "./clock";
 
 // Shared by the test files: the app's config with in-memory dependencies.
 
@@ -47,6 +48,33 @@ export const signIn = async (
   return { user, token: login.token, cookie: login.headers.get("cookie") ?? "" };
 };
 
+// A clock moved by hand: `set` moves it forward and runs, in order, the callbacks due by then.
+export const manualClock = (start: number) => {
+  let time = start;
+  let timers: { at: number; callback: () => void }[] = [];
+
+  const clock: Clock = {
+    now: () => time,
+    at: (at, callback) => {
+      timers.push({ at, callback });
+    },
+  };
+
+  const set = (to: number) => {
+    time = to;
+
+    const due = timers.filter((timer) => timer.at <= to).toSorted((a, b) => a.at - b.at);
+
+    timers = timers.filter((timer) => timer.at > to);
+
+    for (const timer of due) {
+      timer.callback();
+    }
+  };
+
+  return { clock, set };
+};
+
 export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
   corsOrigin: FRONT_ORIGIN,
   isProduction: false,
@@ -54,6 +82,6 @@ export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
   rateLimit: { max: 1000, windowMs: 60_000 },
   logger: pino({ level: "silent" }),
   auth: createTestAuth(),
-  clock: { now: () => Date.now() },
+  clock: systemClock,
   ...overrides,
 });

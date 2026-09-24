@@ -27,6 +27,7 @@ export const DuelArea = () => {
       return <DuelQueue />;
     case "countdown":
     case "running":
+    case "finishing":
       return (
         <DuelTypingArea
           opponent={state.duel.opponent}
@@ -35,7 +36,7 @@ export const DuelArea = () => {
         />
       );
     case "ended":
-      return <DuelEnded result={state.result} />;
+      return <DuelEnded ending={state.ending} />;
     case "replaced":
       return <DuelInterrupted message="Le Duel est ouvert dans un autre onglet." />;
     case "disconnected":

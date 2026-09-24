@@ -1,13 +1,33 @@
 import {
   acceptKeystroke,
+  computeResult,
+  duelOutcome,
   type Keystroke,
   type Replay,
+  type Result,
   type RunConfig,
   startReplay,
 } from "typing-engine";
 
+import type { ServerMessage } from "./protocol";
+
 // How late past the end a Keystroke may still arrive: the network delay of the last ones.
 export const END_TOLERANCE_MS = 1000;
+
+type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
+
+// The outcome of the Duel for each player, from the engine's.
+const OUTCOMES = {
+  first: ["win", "loss"],
+  second: ["loss", "win"],
+  draw: ["draw", "draw"],
+} as const;
+
+const ending = (
+  outcome: DuelEnded["outcome"],
+  result: Result,
+  opponentResult: Result,
+): DuelEnded => ({ type: "duel-ended", outcome, result, opponentResult });
 
 type Player = {
   replay: Replay;
@@ -43,9 +63,27 @@ export class RunningDuel {
     return this.#config.seconds * 1000;
   }
 
-  // Once over, the players are free to join the Queue again.
-  isOver(now: number) {
-    return now - this.#startsAt >= this.#durationMs;
+  // When the server ends the Duel: once the time is up and the last Keystrokes had the time to
+  // arrive. In ms since the epoch.
+  get endsAt() {
+    return this.#startsAt + this.#durationMs + END_TOLERANCE_MS;
+  }
+
+  #resultOf(userId: string) {
+    return computeResult(this.#config, this.#keystrokesOf(userId), this.#durationMs);
+  }
+
+  // The end as each player is told it: both see the same two Results.
+  end(): { userId: string; message: DuelEnded }[] {
+    const [first, second] = this.#userIds;
+    const firstResult = this.#resultOf(first);
+    const secondResult = this.#resultOf(second);
+    const [firstOutcome, secondOutcome] = OUTCOMES[duelOutcome(firstResult, secondResult)];
+
+    return [
+      { userId: first, message: ending(firstOutcome, firstResult, secondResult) },
+      { userId: second, message: ending(secondOutcome, secondResult, firstResult) },
+    ];
   }
 
   // `userId` is one of the two players.

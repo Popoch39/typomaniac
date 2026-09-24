@@ -1,13 +1,11 @@
 import type { ClientMessage, ServerMessage } from "api";
 import {
   applyKeystroke,
-  computeResult,
   createRun,
   isFinished,
   type Key,
   type Keystroke,
   replayRun,
-  type Result,
   type RunConfig,
   type RunState,
 } from "typing-engine";
@@ -19,6 +17,12 @@ import type { Clock } from "@/components/run/clock-context";
 type DuelFound = Extract<ServerMessage, { type: "duel-found" }>;
 
 export type DuelOpponent = DuelFound["opponent"];
+
+type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
+
+// How the Duel ended for this User: their outcome, their Result and the opponent's, computed by
+// the server from the Keystrokes it accepted.
+export type DuelEnding = Omit<DuelEnded, "type"> & { opponent: DuelOpponent };
 
 // A Duel as this tab plays it. Both Runs are replayed by the engine: this User's from the
 // Keystrokes typed here, the opponent's from those the server relays.
@@ -40,7 +44,11 @@ export type DuelState =
   // Paired, typing blocked until the start.
   | { phase: "countdown"; duel: DuelPlay }
   | { phase: "running"; duel: DuelPlay }
-  | { phase: "ended"; duel: DuelPlay; result: Result }
+  // The time is up here: typing blocked until the server ends the Duel, once the last
+  // Keystrokes reached it.
+  | { phase: "finishing"; duel: DuelPlay }
+  // The server's verdict, the same on both screens.
+  | { phase: "ended"; ending: DuelEnding }
   // Another tab of the same User took the place.
   | { phase: "replaced" }
   | { phase: "disconnected" };
@@ -58,9 +66,9 @@ type DuelStore = {
   tick: (now: number) => void;
 };
 
-// The Duel being played or just ended, null outside one: for selectors.
+// The Duel being played, null outside one: for selectors.
 export const duelOf = (state: DuelState) =>
-  state.phase === "countdown" || state.phase === "running" || state.phase === "ended"
+  state.phase === "countdown" || state.phase === "running" || state.phase === "finishing"
     ? state.duel
     : null;
 
@@ -146,11 +154,28 @@ const withOpponentKeystrokes = (duel: DuelPlay, keystrokes: readonly Keystroke[]
   opponentKeystrokes: [...duel.opponentKeystrokes, ...keystrokes],
 });
 
-// Applies a change to the Duel while it is played; once ended, the Result stays as it is.
+// Applies a change to the Duel while it is played, up to the server's end.
 const updateDuel = (state: DuelState, update: (duel: DuelPlay) => DuelPlay): DuelState =>
-  state.phase === "countdown" || state.phase === "running"
+  state.phase === "countdown" || state.phase === "running" || state.phase === "finishing"
     ? { ...state, duel: update(state.duel) }
     : state;
+
+// The server ends the Duel, possibly before this tab's time is up: nothing typed here counts
+// anymore.
+const ended = (state: DuelState, { outcome, result, opponentResult }: DuelEnded): DuelState => {
+  const duel = duelOf(state);
+
+  if (duel === null) {
+    return state;
+  }
+
+  outbox = [];
+
+  return {
+    phase: "ended",
+    ending: { outcome, result, opponentResult, opponent: duel.opponent },
+  };
+};
 
 const stateAfter = (state: DuelState, message: ServerMessage): DuelState => {
   switch (message.type) {
@@ -162,6 +187,8 @@ const stateAfter = (state: DuelState, message: ServerMessage): DuelState => {
       return updateDuel(state, (duel) => withOpponentKeystrokes(duel, message.keystrokes));
     case "resync":
       return updateDuel(state, (duel) => resynced(duel, message));
+    case "duel-ended":
+      return ended(state, message);
     case "replaced":
       return { phase: "replaced" };
     case "invalid-message":
@@ -211,11 +238,7 @@ const ticked = (state: DuelState, now: number): DuelState => {
 
   flush();
 
-  return {
-    phase: "ended",
-    duel: state.duel,
-    result: computeResult(state.duel.config, state.duel.keystrokes, at),
-  };
+  return { phase: "finishing", duel: state.duel };
 };
 
 // The Duel connection, one per tab. Only the current socket's events count: a closed one

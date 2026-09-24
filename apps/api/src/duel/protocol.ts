@@ -33,6 +33,20 @@ export type ClientMessage = typeof ClientMessage.static;
 // with an HTTP error body, outside the protocol.
 export const clientMessage = TypeCompiler.Compile(ClientMessage);
 
+// A Result of typing-engine, computed by the server from the Keystrokes it accepted.
+const Result = t.Object({
+  wpm: t.Number(),
+  raw: t.Number(),
+  accuracy: t.Number(),
+  consistency: t.Number(),
+  chars: t.Object({
+    correct: t.Integer(),
+    incorrect: t.Integer(),
+    extra: t.Integer(),
+    missed: t.Integer(),
+  }),
+});
+
 const DuelOpponent = t.Object({ name: t.String(), image: t.Nullable(t.String()) });
 
 export const ServerMessage = t.Union([
@@ -62,6 +76,13 @@ export const ServerMessage = t.Union([
     keystrokes: t.Array(Keystroke),
     received: t.Integer(),
     opponentKeystrokes: t.Array(Keystroke),
+  }),
+  // The end, the same for both: each side gets its own outcome, its Result and the opponent's.
+  t.Object({
+    type: t.Literal("duel-ended"),
+    outcome: t.Union([t.Literal("win"), t.Literal("loss"), t.Literal("draw")]),
+    result: Result,
+    opponentResult: Result,
   }),
   // Another connection of the same User took its place; the server closes this one.
   t.Object({ type: t.Literal("replaced") }),

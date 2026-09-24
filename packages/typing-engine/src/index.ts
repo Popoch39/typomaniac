@@ -14,6 +14,8 @@ export {
 
 export { computeResult, liveWpm, type CharCounts, type Result } from "./result";
 
+export { duelOutcome, type Outcome } from "./outcome";
+
 export {
   acceptKeystroke,
   startReplay,

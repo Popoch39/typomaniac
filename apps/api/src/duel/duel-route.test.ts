@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
-import { currentWordListVersion } from "typing-engine";
+import { currentWordListVersion, generateText } from "typing-engine";
 
 import { createApp } from "../app";
-import { createTestAuth, signIn, type TestAuth, testConfig } from "../test-app";
+import { createTestAuth, manualClock, signIn, type TestAuth, testConfig } from "../test-app";
 import { type ClientMessage, MAX_DUEL_MESSAGE_SIZE, ServerMessage } from "./protocol";
 import { END_TOLERANCE_MS } from "./running-duel";
 
@@ -12,11 +12,26 @@ const NOW = 1_700_000_000_000;
 // A Duel paired at NOW starts after the 3 s Countdown and lasts 30 s.
 const STARTS_AT = NOW + 3000;
 
+// The server ends it once the last Keystrokes had the time to arrive.
+const ENDS_AT = STARTS_AT + 30_000 + END_TOLERANCE_MS;
+
 const char = (value: string, at: number) => ({ kind: "char" as const, char: value, at });
 
 const serverMessage = TypeCompiler.Compile(ServerMessage);
 
 const duelOf = (message: ServerMessage) => (message.type === "duel-found" ? message.duel : null);
+
+// The first word of the Duel's Text: typed right with its space, it is worth (length + 1) chars
+// in 30 s, so (length + 1) / 5 / 0.5 wpm.
+const firstWordOf = (message: ServerMessage) => {
+  const duel = duelOf(message);
+
+  return duel === null ? "" : (generateText(duel.seed, "en", duel.wordListVersion, 1)[0] ?? "");
+};
+
+// A word and its space, one Keystroke every 100 ms from `start`.
+const typed = (word: string, start: number) =>
+  [...`${word} `].map((value, i) => char(value, start + i * 100));
 
 const duelFound = (opponent: string) => ({
   type: "duel-found" as const,
@@ -89,12 +104,14 @@ describe("duel socket", () => {
   const clients: ReturnType<typeof openClient>[] = [];
 
   // The server's time, moved by hand.
-  let now = NOW;
+  let setNow: (time: number) => void;
 
   beforeEach(() => {
-    now = NOW;
+    const { clock, set } = manualClock(NOW);
+
+    setNow = set;
     auth = createTestAuth();
-    app = createApp(testConfig({ auth, clock: { now: () => now } })).listen(0);
+    app = createApp(testConfig({ auth, clock })).listen(0);
     url = `ws://localhost:${app.server?.port}/api/duel`;
   });
 
@@ -266,7 +283,7 @@ describe("duel socket", () => {
   test("relays the accepted Keystrokes to the opponent, not back to the sender", async () => {
     const { ada, alan } = await paired();
 
-    now = STARTS_AT + 300;
+    setNow(STARTS_AT + 300);
     ada.send({ type: "keystrokes", keystrokes: [char("s", 100), char("m", 250)] });
 
     expect(await alan.next()).toEqual({
@@ -279,7 +296,7 @@ describe("duel socket", () => {
   test("a Keystroke dated after its arrival is ignored, and its sender resynced", async () => {
     const { ada, alan } = await paired();
 
-    now = STARTS_AT + 1000;
+    setNow(STARTS_AT + 1000);
     alan.send({ type: "keystrokes", keystrokes: [char("h", 400)] });
     expect(await ada.next()).toMatchObject({ type: "opponent-keystrokes" });
 
@@ -301,7 +318,7 @@ describe("duel socket", () => {
   test("a Keystroke sent during the Countdown is ignored", async () => {
     const { ada, alan } = await paired();
 
-    now = STARTS_AT - 500;
+    setNow(STARTS_AT - 500);
     ada.send({ type: "keystrokes", keystrokes: [char("s", -600)] });
 
     expect(await ada.next()).toEqual({
@@ -316,7 +333,7 @@ describe("duel socket", () => {
   test("a Keystroke dated before the previous one is ignored", async () => {
     const { ada, alan } = await paired();
 
-    now = STARTS_AT + 1000;
+    setNow(STARTS_AT + 1000);
     ada.send({ type: "keystrokes", keystrokes: [char("s", 500)] });
     expect(await alan.next()).toMatchObject({ type: "opponent-keystrokes" });
 
@@ -326,18 +343,84 @@ describe("duel socket", () => {
     await alan.settle();
   });
 
-  test("a Keystroke arriving after the end plus the tolerance is ignored", async () => {
+  test("a Keystroke arriving within the tolerance after the end still counts", async () => {
     const { ada, alan } = await paired();
 
-    now = STARTS_AT + 30_000 + END_TOLERANCE_MS;
+    setNow(ENDS_AT - 1);
     ada.send({ type: "keystrokes", keystrokes: [char("s", 29_900)] });
-    expect(await alan.next()).toMatchObject({ type: "opponent-keystrokes" });
 
-    now += 1;
-    ada.send({ type: "keystrokes", keystrokes: [char("m", 29_950)] });
+    expect(await alan.next()).toEqual({
+      type: "opponent-keystrokes",
+      keystrokes: [char("s", 29_900)],
+    });
+    await ada.settle();
+  });
 
-    expect(await ada.next()).toMatchObject({ type: "resync", received: 2 });
+  test("the Duel ends for both at the end plus the tolerance, and Keystrokes past it are ignored", async () => {
+    const { ada, alan } = await paired();
+
+    setNow(ENDS_AT - 1);
+    await ada.settle();
     await alan.settle();
+
+    setNow(ENDS_AT);
+
+    expect(await ada.next()).toMatchObject({ type: "duel-ended" });
+    expect(await alan.next()).toMatchObject({ type: "duel-ended" });
+
+    ada.send({ type: "keystrokes", keystrokes: [char("s", 29_950)] });
+
+    await ada.settle();
+    await alan.settle();
+  });
+
+  test("the best wpm wins, and both see the same Results", async () => {
+    const ada = await queued(await signedIn("Ada"));
+    const alan = await queued(await signedIn("Alan"));
+    const [found] = await Promise.all([ada.next(), alan.next()]);
+    const word = firstWordOf(found);
+
+    setNow(STARTS_AT + 5000);
+    ada.send({ type: "keystrokes", keystrokes: typed(word, 1000) });
+    await alan.next();
+
+    setNow(ENDS_AT);
+
+    const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+    expect(forAda).toMatchObject({
+      type: "duel-ended",
+      outcome: "win",
+      result: { wpm: (word.length + 1) / 5 / 0.5, accuracy: 100 },
+      opponentResult: { wpm: 0, accuracy: 0 },
+    });
+    expect(forAlan).toMatchObject({ type: "duel-ended", outcome: "loss" });
+
+    const ended = [forAda, forAlan].map((message) =>
+      message.type === "duel-ended" ? message : null,
+    );
+
+    expect(ended[0]?.result).toEqual(ended[1]?.opponentResult);
+    expect(ended[0]?.opponentResult).toEqual(ended[1]?.result);
+  });
+
+  test("the same wpm and accuracy is a Draw for both", async () => {
+    const ada = await queued(await signedIn("Ada"));
+    const alan = await queued(await signedIn("Alan"));
+    const [found] = await Promise.all([ada.next(), alan.next()]);
+    const word = firstWordOf(found);
+
+    setNow(STARTS_AT + 5000);
+    ada.send({ type: "keystrokes", keystrokes: typed(word, 1000) });
+    alan.send({ type: "keystrokes", keystrokes: typed(word, 2000) });
+    await Promise.all([ada.next(), alan.next()]);
+
+    setNow(ENDS_AT);
+
+    const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+    expect(forAda).toMatchObject({ type: "duel-ended", outcome: "draw" });
+    expect(forAlan).toMatchObject({ type: "duel-ended", outcome: "draw" });
   });
 
   test("ignores Keystrokes from a User who is not in a Duel", async () => {
@@ -351,11 +434,20 @@ describe("duel socket", () => {
   test("a User in a Duel cannot join the Queue until the Duel is over", async () => {
     const { ada, alan } = await paired();
 
-    now = STARTS_AT + 10_000;
+    setNow(STARTS_AT + 10_000);
     ada.send({ type: "join-queue" });
     await ada.settle();
 
-    now = STARTS_AT + 30_000;
+    // The time is up, but the Duel waits for the last Keystrokes.
+    setNow(ENDS_AT - 1);
+    ada.send({ type: "join-queue" });
+    await ada.settle();
+
+    setNow(ENDS_AT);
+    expect(await ada.next()).toMatchObject({ type: "duel-ended" });
+    expect(await alan.next()).toMatchObject({ type: "duel-ended" });
+
+    // A new Duel.
     ada.send({ type: "join-queue" });
     expect(await ada.next()).toEqual({ type: "queued" });
 

@@ -82,7 +82,6 @@ export class DuelQueue {
 
     this.#connected.delete(userId);
     this.#queue.delete(userId);
-    this.#leaveOverDuel(userId);
   }
 
   #isCurrent(userId: string, connectionId: string) {
@@ -93,17 +92,13 @@ export class DuelQueue {
     this.#connected.get(userId)?.connection.send(message);
   }
 
-  // Frees the User's place in their Duel once it is over. False while it runs.
-  #leaveOverDuel(userId: string) {
-    const duel = this.#duels.get(userId);
-
-    if (duel && !duel.isOver(this.#clock.now())) {
-      return false;
+  // Both players get the same Results; once told, they are free to join the Queue again and
+  // their Keystrokes are ignored.
+  #end(duel: RunningDuel) {
+    for (const { userId, message } of duel.end()) {
+      this.#duels.delete(userId);
+      this.#send(userId, message);
     }
-
-    this.#duels.delete(userId);
-
-    return true;
   }
 
   // The accepted Keystrokes go to the opponent; a rejected one resyncs the sender.
@@ -127,7 +122,7 @@ export class DuelQueue {
 
   // A User in a running Duel keeps their place in it.
   #join(userId: string) {
-    if (!this.#leaveOverDuel(userId)) {
+    if (this.#duels.has(userId)) {
       return;
     }
 
@@ -169,6 +164,7 @@ export class DuelQueue {
 
     this.#duels.set(a.user.id, running);
     this.#duels.set(b.user.id, running);
+    this.#clock.at(running.endsAt, () => this.#end(running));
 
     a.connection.send({ type: "duel-found", duel, opponent: opponentOf(b.user), serverTime });
     b.connection.send({ type: "duel-found", duel, opponent: opponentOf(a.user), serverTime });
