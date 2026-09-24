@@ -2,7 +2,6 @@ import {
   acceptKeystroke,
   computeResult,
   computeScore,
-  defaultPace,
   duelOutcome,
   type DuelSide,
   type Keystroke,
@@ -25,6 +24,9 @@ const MAX_KEYSTROKES_PER_SECOND = 40;
 // A User as the Duel sees them: who they are and what the opponent is shown.
 export type User = { id: string; name: string; image: string | null };
 
+// A User paired into a Duel, with their Pace in wpm, frozen for it.
+export type PacedUser = { user: User; pace: number };
+
 export type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
 
 // The end of the Duel as one player is told it.
@@ -43,8 +45,7 @@ const OUTCOMES = {
 // What a player's opponent is shown of them.
 const profileOf = ({ name, image }: User) => ({ name, image });
 
-type Player = {
-  user: User;
+type Player = PacedUser & {
   replay: Replay;
   // Every Keystroke received from the player, accepted or not.
   received: number;
@@ -57,9 +58,13 @@ type Side = { result: Result; score: DuelScore };
 const judgedSide = ({ result, score }: Side): DuelSide => ({ result, score: score.score });
 
 // A player as the finished Duel is written: the Keystrokes that replay to their Result and Score.
-const playerRecord = ({ user, replay }: Player, { result, score }: Side): DuelPlayerRecord => ({
+const playerRecord = (
+  { user, pace, replay }: Player,
+  { result, score }: Side,
+): DuelPlayerRecord => ({
   userId: user.id,
   result,
+  pace,
   score,
   keystrokes: [...replay.keystrokes],
 });
@@ -85,7 +90,7 @@ export class RunningDuel {
 
   readonly #players: readonly [Player, Player];
 
-  constructor(duel: Duel, users: readonly [User, User]) {
+  constructor(duel: Duel, users: readonly [PacedUser, PacedUser]) {
     this.duel = duel;
     this.#config = {
       mode: "time",
@@ -100,8 +105,8 @@ export class RunningDuel {
     this.#players = [this.#newPlayer(first), this.#newPlayer(second)];
   }
 
-  #newPlayer(user: User): Player {
-    return { user, replay: startReplay(this.#config), received: 0 };
+  #newPlayer(paced: PacedUser): Player {
+    return { ...paced, replay: startReplay(this.#config), received: 0 };
   }
 
   get #durationMs() {
@@ -136,14 +141,14 @@ export class RunningDuel {
   }
 
   // A player's Result and Score over the whole time of the Duel, even when it ends by a Forfeit.
-  // Both players go at the default Pace for now.
-  #sideOf({ replay }: Player): Side {
+  // Their Bursts are judged against their own Pace.
+  #sideOf({ replay, pace }: Player): Side {
     const result = computeResult(this.#config, replay.keystrokes, this.#durationMs);
 
     const { score, bestCombo, bursts } = computeScore(
       this.#config,
       replay.keystrokes,
-      defaultPace,
+      pace,
       this.#durationMs,
     );
 
@@ -261,5 +266,10 @@ export class RunningDuel {
   // Who a player faces, as `duel-found` shows them.
   opponentProfileOf(userId: string) {
     return profileOf(this.#opponent(userId).user);
+  }
+
+  // A player's Pace and the opponent's, as `duel-found` and `duel-resumed` send them.
+  pacesOf(userId: string) {
+    return { pace: this.#player(userId).pace, opponentPace: this.#opponent(userId).pace };
   }
 }

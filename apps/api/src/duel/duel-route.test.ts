@@ -14,6 +14,7 @@ import {
   createTestAuth,
   manualClock,
   memoryDuelStore,
+  pastDuel,
   signIn,
   type TestAuth,
   testConfig,
@@ -94,6 +95,9 @@ const duelFound = (opponent: string) => ({
   duel: expect.any(Object),
   opponent: { name: opponent, image: `https://img/${opponent.toLowerCase()}` },
   serverTime: NOW,
+  // Neither User has played a Duel yet.
+  pace: defaultPace,
+  opponentPace: defaultPace,
 });
 
 // A browser tab on the Duel socket: every message it receives, read in order with next().
@@ -262,10 +266,63 @@ describe("duel socket", () => {
       },
       opponent: { name: "Ada", image: "https://img/ada" },
       serverTime: NOW,
+      pace: defaultPace,
+      opponentPace: defaultPace,
     });
     expect(forAda).toEqual(duelFound("Alan"));
     // The very same Duel (id, Seed, start), only the opponent differs.
     expect(duelOf(forAda)).toEqual(duelOf(forAlan));
+  });
+
+  test("each User's Pace is the median wpm of their last 10 Duels, sent to both players", async () => {
+    const adaUser = await signedInUser("Ada");
+    const alanUser = await signedInUser("Alan");
+
+    // Written in no particular order: the 10 most recent count, the 5 older ones do not.
+    const recent = [60, 90, 72, 65, 88, 70, 74, 61, 80, 77].map((wpm, i) =>
+      pastDuel(adaUser.id, wpm, NOW - 1000 * (i + 1)),
+    );
+
+    const older = [200, 200, 200, 200, 200].map((wpm, i) =>
+      pastDuel(adaUser.id, wpm, NOW - 100_000 * (i + 1)),
+    );
+
+    saved.push(...older.slice(0, 2), ...recent, ...older.slice(2));
+
+    const ada = await queued(adaUser.cookie);
+    const alan = await queued(alanUser.cookie);
+
+    const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+    // Sorted: 60 61 65 70 72 74 77 80 88 90.
+    expect(forAda).toMatchObject({ type: "duel-found", pace: 73, opponentPace: defaultPace });
+    expect(forAlan).toMatchObject({ type: "duel-found", pace: defaultPace, opponentPace: 73 });
+  });
+
+  test("a User's Pace counts the Duel they just finished", async () => {
+    const adaUser = await signedInUser("Ada");
+    const alanUser = await signedInUser("Alan");
+    const ada = await queued(adaUser.cookie);
+    const alan = await queued(alanUser.cookie);
+    const [found] = await Promise.all([ada.next(), alan.next()]);
+
+    setNow(STARTS_AT + 5000);
+    ada.send({ type: "keystrokes", keystrokes: typed(firstWordOf(found), 1000) });
+    await alan.next();
+    setNow(ENDS_AT);
+
+    const [ending] = await Promise.all([ada.next().then(endedOf), alan.next()]);
+
+    ada.send({ type: "join-queue" });
+    alan.send({ type: "join-queue" });
+    expect(await ada.next()).toEqual({ type: "queued" });
+    expect(await alan.next()).toEqual({ type: "queued" });
+
+    expect(await ada.next()).toMatchObject({
+      type: "duel-found",
+      pace: ending.result.wpm,
+      opponentPace: ending.opponentResult.wpm,
+    });
   });
 
   test("never pairs a User alone in the Queue", async () => {
@@ -343,6 +400,21 @@ describe("duel socket", () => {
 
     expect(await ada.closed).not.toBe(1000);
   });
+
+  // Ada and Alan paired at NOW, the Duel found read: their User ids, and the cookie Ada signed in
+  // with, to reconnect. Ada has finished a Duel at each of `adaWpms` before, the most recent first.
+  const pairedUsers = async ({ adaWpms = [] }: { adaWpms?: readonly number[] } = {}) => {
+    const adaUser = await signedInUser("Ada");
+    const alanUser = await signedInUser("Alan");
+
+    saved.push(...adaWpms.map((wpm, i) => pastDuel(adaUser.id, wpm, NOW - 1000 * (i + 1))));
+
+    const ada = await queued(adaUser.cookie);
+    const alan = await queued(alanUser.cookie);
+    const [found] = await Promise.all([ada.next(), alan.next()]);
+
+    return { ada, alan, adaId: adaUser.id, alanId: alanUser.id, cookie: adaUser.cookie, found };
+  };
 
   // Ada and Alan, paired at NOW, each Duel found read.
   const paired = async () => {
@@ -564,6 +636,42 @@ describe("duel socket", () => {
     expect(forAlan).toMatchObject({ type: "duel-ended", outcome: "draw" });
   });
 
+  test("a Burst is judged against the player's own Pace", async () => {
+    // Ada's Pace is 500 wpm: a Burst takes her 600 wpm. Alan's is 50: 60 wpm is enough.
+    const { ada, alan, found } = await pairedUsers({ adaWpms: [500] });
+    const duel = duelOf(found);
+    // Both type the same words the same way, at 480 wpm.
+    const keystrokes = typedWords(wordsOf(found, 10), 100, 25);
+
+    setNow(STARTS_AT + 5000);
+    ada.send({ type: "keystrokes", keystrokes });
+    alan.send({ type: "keystrokes", keystrokes });
+    await Promise.all([ada.next(), alan.next()]);
+
+    setNow(ENDS_AT);
+
+    const [forAda, forAlan] = await Promise.all([ada.next().then(endedOf), alan.next()]);
+
+    if (duel === null) {
+      throw new Error(`No Duel found: ${found.type}`);
+    }
+
+    const config = { mode: "time" as const, ...duel };
+
+    const scored = (pace: number) => {
+      const { score, bestCombo, bursts } = computeScore(config, keystrokes, pace, 30_000);
+
+      return { score, bestCombo, bursts };
+    };
+
+    expect(forAda.score).toEqual(scored(500));
+    expect(forAda.opponentScore).toEqual(scored(defaultPace));
+    expect(forAda.score.bursts).toBe(0);
+    expect(forAda.opponentScore.bursts).toBeGreaterThan(0);
+    expect(forAda.outcome).toBe("loss");
+    expect(forAlan).toMatchObject({ type: "duel-ended", outcome: "win" });
+  });
+
   test("ignores Keystrokes from a User who is not in a Duel", async () => {
     const ada = await queued(await signedIn("Ada"));
 
@@ -596,16 +704,6 @@ describe("duel socket", () => {
     expect(await alan.next()).toEqual({ type: "queued" });
     expect(await ada.next()).toMatchObject({ type: "duel-found", opponent: { name: "Alan" } });
   });
-
-  // Ada and Alan paired, and the cookie Ada signed in with, to reconnect.
-  const pairedWithCookie = async () => {
-    const cookie = await signedIn("Ada");
-    const ada = await queued(cookie);
-    const alan = await queued(await signedIn("Alan"));
-    const [found] = await Promise.all([ada.next(), alan.next()]);
-
-    return { cookie, ada, alan, found };
-  };
 
   // Ada's connection drops: Alan is told.
   const dropped = async (
@@ -674,7 +772,10 @@ describe("duel socket", () => {
   });
 
   test("a disconnected player back within 10 s resumes the Duel where it was", async () => {
-    const { cookie, ada, alan, found } = await pairedWithCookie();
+    const { cookie, ada, alan, adaId, found } = await pairedUsers({ adaWpms: [64, 80] });
+
+    // Written during the Duel: its Pace does not move.
+    saved.push(pastDuel(adaId, 300, STARTS_AT));
 
     setNow(STARTS_AT + 1000);
     ada.send({ type: "keystrokes", keystrokes: [char("s", 100), char("m", 2000)] });
@@ -704,6 +805,9 @@ describe("duel socket", () => {
       received: 2,
       opponentKeystrokes: [char("h", 400)],
       opponentConnected: true,
+      // Frozen at the pairing.
+      pace: 72,
+      opponentPace: defaultPace,
     });
     expect(await alan.next()).toEqual({ type: "opponent-reconnected" });
 
@@ -721,7 +825,7 @@ describe("duel socket", () => {
   });
 
   test("a disconnected player not back within 10 s forfeits, and learns it on their return", async () => {
-    const { cookie, ada, alan } = await pairedWithCookie();
+    const { cookie, ada, alan } = await pairedUsers();
 
     setNow(STARTS_AT + 1000);
     await dropped(ada, alan);
@@ -749,7 +853,7 @@ describe("duel socket", () => {
   });
 
   test("a second disconnection gets its own 10 s", async () => {
-    const { cookie, ada, alan } = await pairedWithCookie();
+    const { cookie, ada, alan } = await pairedUsers();
 
     setNow(STARTS_AT + 1000);
     await dropped(ada, alan);
@@ -773,7 +877,7 @@ describe("duel socket", () => {
   });
 
   test("the opponent resuming while the other is away sees them disconnected", async () => {
-    const { cookie, ada, alan } = await pairedWithCookie();
+    const { cookie, ada, alan } = await pairedUsers();
 
     setNow(STARTS_AT + 1000);
     await dropped(alan, ada);
@@ -786,7 +890,7 @@ describe("duel socket", () => {
   });
 
   test("a Duel whose end came while a player was away tells them on their return", async () => {
-    const { cookie, ada, alan } = await pairedWithCookie();
+    const { cookie, ada, alan } = await pairedUsers();
 
     setNow(ENDS_AT - 5000);
     await dropped(ada, alan);
@@ -805,7 +909,7 @@ describe("duel socket", () => {
   });
 
   test("a second tab during a Duel resumes it there, the opponent is not told", async () => {
-    const { cookie, ada, alan } = await pairedWithCookie();
+    const { cookie, ada, alan } = await pairedUsers();
 
     setNow(STARTS_AT + 1000);
 
@@ -848,17 +952,6 @@ describe("duel socket", () => {
     await ada.settle();
   });
 
-  // Ada and Alan paired, with their User ids and the Duel found.
-  const pairedUsers = async () => {
-    const adaUser = await signedInUser("Ada");
-    const alanUser = await signedInUser("Alan");
-    const ada = await queued(adaUser.cookie);
-    const alan = await queued(alanUser.cookie);
-    const [found] = await Promise.all([ada.next(), alan.next()]);
-
-    return { ada, alan, adaId: adaUser.id, alanId: alanUser.id, found };
-  };
-
   test("a Duel won at the end is written once, with both Results, Scores and Keystrokes", async () => {
     const { ada, alan, adaId, alanId, found } = await pairedUsers();
     const word = firstWordOf(found);
@@ -895,12 +988,14 @@ describe("duel socket", () => {
           {
             userId: adaId,
             result: resultOf(forAda),
+            pace: defaultPace,
             score: scoreOf(forAda),
             keystrokes: typed(word, 1000),
           },
           {
             userId: alanId,
             result: resultOf(forAlan),
+            pace: defaultPace,
             score: scoreOf(forAlan),
             keystrokes: [char("x", 3000)],
           },
@@ -915,7 +1010,7 @@ describe("duel socket", () => {
   });
 
   test("the written Keystrokes replay on the Duel's Text to the written Results", async () => {
-    const { ada, alan, found } = await pairedUsers();
+    const { ada, alan, found } = await pairedUsers({ adaWpms: [70] });
     const word = firstWordOf(found);
 
     setNow(STARTS_AT + 10_000);
@@ -936,7 +1031,8 @@ describe("duel socket", () => {
     setNow(ENDS_AT);
     await Promise.all([ada.next(), alan.next()]);
 
-    const [record] = saved;
+    // After Ada's past Duel.
+    const record = saved.at(-1);
 
     if (typeof record === "undefined") {
       throw new Error("No Duel written");
@@ -956,18 +1052,19 @@ describe("duel socket", () => {
 
     expect(replayed).toEqual(record.players.map((player) => player.result));
 
-    // Both players went at the Pace of 50 wpm for now.
+    // Each player went at their own Pace, written with them.
     const rescored = record.players.map((player) => {
       const { score, bestCombo, bursts } = computeScore(
         config,
         player.keystrokes,
-        defaultPace,
+        player.pace,
         record.seconds * 1000,
       );
 
       return { score, bestCombo, bursts };
     });
 
+    expect(record.players.map((player) => player.pace)).toEqual([70, defaultPace]);
     expect(rescored).toEqual(record.players.map((player) => player.score));
     // Not a trivial replay: both typed something that counts.
     expect(record.players.map((player) => player.result.wpm > 0)).toEqual([true, true]);
@@ -1032,24 +1129,66 @@ describe("duel socket", () => {
     ]);
   });
 
+  test("a Pace still being read holds up no one behind in the Queue", async () => {
+    const { clock } = manualClock(NOW);
+    const duels = memoryDuelStore();
+    const adaUser = await signedInUser("Ada");
+    const adaWpms = Promise.withResolvers<number[]>();
+
+    const slowForAda = {
+      ...duels.store,
+      recentWpms: (userId: string, count: number) =>
+        userId === adaUser.id ? adaWpms.promise : duels.store.recentWpms(userId, count),
+    };
+
+    await app.stop(true);
+    app = createApp(testConfig({ auth, clock, duelStore: slowForAda })).listen(0);
+    url = `ws://localhost:${app.server?.port}/api/duel`;
+
+    const ada = await queued(adaUser.cookie);
+    const alan = await queued(await signedIn("Alan"));
+    const grace = await queued(await signedIn("Grace"));
+
+    expect(await alan.next()).toMatchObject({ type: "duel-found", opponent: { name: "Grace" } });
+    expect(await grace.next()).toMatchObject({ type: "duel-found", opponent: { name: "Alan" } });
+    await ada.settle();
+
+    // Read at last: Ada waits for the next User.
+    adaWpms.resolve([80]);
+
+    const hopper = await queued(await signedIn("Hopper"));
+
+    expect(await hopper.next()).toMatchObject({ type: "duel-found", opponentPace: 80 });
+    expect(await ada.next()).toMatchObject({ type: "duel-found", pace: 80 });
+  });
+
   test("a Duel that cannot be written still ends for both players, and the failure is logged", async () => {
     const { clock, set } = manualClock(NOW);
     const logged: string[] = [];
     const logger = pino({ level: "error" }, { write: (line: string) => logged.push(line) });
-    const failing = { save: () => Promise.reject(new Error("database down")) };
+
+    const failing = {
+      save: () => Promise.reject(new Error("database down")),
+      recentWpms: () => Promise.reject(new Error("database down")),
+    };
 
     await app.stop(true);
     setNow = set;
     app = createApp(testConfig({ auth, clock, logger, duelStore: failing })).listen(0);
     url = `ws://localhost:${app.server?.port}/api/duel`;
 
-    const { ada, alan } = await paired();
+    const { ada, alan, found } = await paired();
+
+    // Without their history, both go at the default Pace.
+    expect(found).toMatchObject({ pace: defaultPace, opponentPace: defaultPace });
 
     setNow(ENDS_AT);
 
     expect(await ada.next()).toMatchObject({ type: "duel-ended" });
     expect(await alan.next()).toMatchObject({ type: "duel-ended" });
     expect(logged.map((line) => JSON.parse(line))).toMatchObject([
+      { msg: "pace not read", err: { message: "database down" } },
+      { msg: "pace not read", err: { message: "database down" } },
       { msg: "finished duel not saved", err: { message: "database down" } },
     ]);
   });

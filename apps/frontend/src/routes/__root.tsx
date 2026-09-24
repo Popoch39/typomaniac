@@ -4,6 +4,7 @@ import type { QueryClient } from "@tanstack/react-query";
 import { createRootRouteWithContext } from "@tanstack/react-router";
 
 import { meQueryOptions } from "@/api/me";
+import { paceQueryOptions } from "@/api/pace";
 import { RootLayout } from "@/pages/root-layout";
 
 type RouterContext = {
@@ -18,7 +19,12 @@ const RootSearchSchema = Type.Object({
 export const Route = createRootRouteWithContext<RouterContext>()({
   validateSearch: (search): typeof RootSearchSchema.static =>
     Value.Check(RootSearchSchema, search) ? { error: search.error } : {},
-  // Every page knows up front whether a User is signed in: no Visitor-then-User flash.
-  beforeLoad: ({ context }) => context.queryClient.ensureQueryData(meQueryOptions),
+  // Every page knows up front whether a User is signed in: no Visitor-then-User flash. And their
+  // Pace, for the solo Run.
+  beforeLoad: async ({ context }) => {
+    const me = await context.queryClient.ensureQueryData(meQueryOptions);
+
+    await context.queryClient.ensureQueryData(paceQueryOptions(me));
+  },
   component: RootLayout,
 });

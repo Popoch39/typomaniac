@@ -1,0 +1,1 @@
+ALTER TABLE "duel_player" ADD COLUMN "pace" double precision;

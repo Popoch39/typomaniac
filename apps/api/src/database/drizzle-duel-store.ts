@@ -1,12 +1,17 @@
+import { desc, eq } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 
 import type { DuelPlayerRecord, DuelStore } from "../duel/duel-store";
 import { duel, duelPlayer } from "./duel-schema";
 import type { Table } from "./schema";
 
-const playerRow = (duelId: string, { userId, result, score, keystrokes }: DuelPlayerRecord) => ({
+const playerRow = (
+  duelId: string,
+  { userId, result, pace, score, keystrokes }: DuelPlayerRecord,
+) => ({
   duelId,
   userId,
+  pace,
   wpm: result.wpm,
   raw: result.raw,
   accuracy: result.accuracy,
@@ -41,5 +46,16 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
         .insert(duelPlayer)
         .values(record.players.map((player) => playerRow(record.id, player)));
     });
+  },
+  recentWpms: async (userId, count) => {
+    const rows = await db
+      .select({ wpm: duelPlayer.wpm })
+      .from(duelPlayer)
+      .innerJoin(duel, eq(duel.id, duelPlayer.duelId))
+      .where(eq(duelPlayer.userId, userId))
+      .orderBy(desc(duel.endedAt))
+      .limit(count);
+
+    return rows.map((row) => row.wpm);
   },
 });

@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { testUtils } from "better-auth/plugins";
 import pino from "pino";
+import { currentWordListVersion, defaultPace } from "typing-engine";
 
 import type { AppConfig } from "./app";
 import { authOptions } from "./auth";
@@ -76,7 +77,8 @@ export const manualClock = (start: number) => {
   return { clock, set };
 };
 
-// The finished Duels, kept in `saved` in the order they were written.
+// The finished Duels, kept in `saved` in the order they were written: a test can write past Duels
+// there too.
 export const memoryDuelStore = () => {
   const saved: DuelRecord[] = [];
 
@@ -84,9 +86,47 @@ export const memoryDuelStore = () => {
     save: async (record) => {
       saved.push(record);
     },
+    recentWpms: async (userId, count) =>
+      saved
+        .toSorted((a, b) => b.endedAt - a.endedAt)
+        .flatMap((record) => record.players.filter((player) => player.userId === userId))
+        .slice(0, count)
+        .map((player) => player.result.wpm),
   };
 
   return { store, saved };
+};
+
+// A Duel `userId` finished at `endedAt`, typing at `wpm`, against a User who is not in the test:
+// only its end and that wpm count for the Pace.
+export const pastDuel = (userId: string, wpm: number, endedAt: number): DuelRecord => {
+  const player = (id: string) => ({
+    userId: id,
+    result: {
+      wpm,
+      raw: wpm,
+      accuracy: 100,
+      consistency: 80,
+      chars: { correct: wpm * 2.5, incorrect: 0, extra: 0, missed: 0 },
+    },
+    pace: defaultPace,
+    score: { score: 0, bestCombo: 0, bursts: 0 },
+    keystrokes: [],
+  });
+
+  return {
+    id: crypto.randomUUID(),
+    seed: 1,
+    language: "en",
+    wordListVersion: currentWordListVersion.en,
+    seconds: 30,
+    startsAt: endedAt - 30_000,
+    mode: "time",
+    endedAt,
+    outcome: "draw",
+    winnerId: null,
+    players: [player(userId), player("someone-else")],
+  };
 };
 
 export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({

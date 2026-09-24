@@ -1,10 +1,16 @@
 import type { Logger } from "pino";
-import { currentWordListVersion, type Keystroke } from "typing-engine";
+import { currentWordListVersion, defaultPace, type Keystroke } from "typing-engine";
 
 import type { Clock } from "../clock";
-import type { DuelStore } from "./duel-store";
+import { type DuelStore, readPace } from "./duel-store";
 import type { ClientMessage, ServerMessage } from "./protocol";
-import { type DuelEnded, type Finish, RunningDuel, type User } from "./running-duel";
+import {
+  type DuelEnded,
+  type Finish,
+  type PacedUser,
+  RunningDuel,
+  type User,
+} from "./running-duel";
 
 // Every Duel has the same format: `time` 30 s in English.
 const DUEL_LANGUAGE = "en";
@@ -40,8 +46,12 @@ export class DuelQueue {
 
   readonly #connected = new Map<string, { user: User; connection: Connection }>();
 
-  // User ids in arrival order. Queued Users are always connected: leaving drops them.
-  readonly #queue = new Set<string>();
+  // User ids in arrival order, each with their Pace once read from their history (null until
+  // then). Queued Users are always connected: leaving drops them.
+  readonly #queue = new Map<string, number | null>();
+
+  // The write of each User's last Duel, until it is done: their Pace waits for it.
+  readonly #saving = new Map<string, Promise<void>>();
 
   // The Duel of each User in one, until it is over.
   readonly #duels = new Map<string, RunningDuel>();
@@ -153,6 +163,7 @@ export class DuelQueue {
       serverTime: this.#clock.now(),
       ...duel.stateOf(userId),
       opponentConnected: this.#connected.has(opponentId),
+      ...duel.pacesOf(userId),
     });
 
     if (this.#away.delete(userId)) {
@@ -170,13 +181,19 @@ export class DuelQueue {
 
     const { endings, record } = finish(this.#clock.now());
 
-    this.#store.save(record).catch((error) => {
+    const saving = this.#store.save(record).catch((error) => {
       this.#logger.error({ err: error, duelId: record.id }, "finished duel not saved");
     });
 
     for (const { userId, message } of endings) {
       this.#duels.delete(userId);
       this.#away.delete(userId);
+      this.#saving.set(userId, saving);
+      void saving.then(() => {
+        if (this.#saving.get(userId) === saving) {
+          this.#saving.delete(userId);
+        }
+      });
 
       if (this.#connected.has(userId)) {
         this.#send(userId, message);
@@ -225,24 +242,60 @@ export class DuelQueue {
     }
   }
 
-  // A User in a running Duel keeps their place in it.
+  // A User in a running Duel keeps their place in it. Joining reads their Pace, frozen for their
+  // next Duel: they are paired once it is read.
   #join(userId: string) {
     if (this.#duels.has(userId)) {
       return;
     }
 
-    this.#queue.add(userId);
     this.#send(userId, { type: "queued" });
-    this.#pair();
+
+    if (this.#queue.has(userId)) {
+      return;
+    }
+
+    this.#queue.set(userId, null);
+    void this.#readPace(userId).then((pace) => {
+      if (this.#queue.get(userId) === null) {
+        this.#queue.set(userId, pace);
+        this.#pair();
+      }
+    });
   }
 
-  // FIFO: the two first Users of the Queue (a Set iterates in insertion order). They are
-  // distinct, the Queue holds User ids.
-  #pair() {
-    const [first, second] = this.#queue;
+  // The median wpm of the User's last Duels, once their last one is written (engine's paceOf).
+  // Unreadable, the default Pace: a Duel is never held up by the database.
+  async #readPace(userId: string) {
+    try {
+      await this.#saving.get(userId);
 
-    const a = typeof first === "undefined" ? undefined : this.#connected.get(first);
-    const b = typeof second === "undefined" ? undefined : this.#connected.get(second);
+      return await readPace(this.#store, userId);
+    } catch (error) {
+      this.#logger.error({ err: error, userId }, "pace not read");
+
+      return defaultPace;
+    }
+  }
+
+  // FIFO among the Users whose Pace is read: a Pace still being read holds up no one behind (a Map
+  // iterates in insertion order). They are distinct, the Queue holds User ids.
+  #pair() {
+    const ready: PacedUser[] = [];
+
+    for (const [userId, pace] of this.#queue) {
+      const connected = this.#connected.get(userId);
+
+      if (connected && pace !== null) {
+        ready.push({ user: connected.user, pace });
+      }
+
+      if (ready.length === 2) {
+        break;
+      }
+    }
+
+    const [a, b] = ready;
 
     if (!a || !b) {
       return;
@@ -262,7 +315,7 @@ export class DuelQueue {
         seconds: DUEL_SECONDS,
         startsAt: serverTime + COUNTDOWN_MS,
       },
-      [a.user, b.user],
+      [a, b],
     );
 
     this.#duels.set(a.user.id, duel);
@@ -275,6 +328,7 @@ export class DuelQueue {
         duel: duel.duel,
         opponent: duel.opponentProfileOf(user.id),
         serverTime,
+        ...duel.pacesOf(user.id),
       });
     }
   }

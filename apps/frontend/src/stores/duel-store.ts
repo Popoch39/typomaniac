@@ -2,7 +2,6 @@ import type { ClientMessage, ServerMessage } from "api";
 import {
   applyKeystroke,
   computeScore,
-  defaultPace,
   isFinished,
   type Key,
   type Keystroke,
@@ -37,6 +36,9 @@ export type DuelPlay = {
   config: RunConfig & { mode: "time" };
   // The start on this tab's clock: the server's `startsAt` shifted by the clock offset.
   startsAt: number;
+  // Each player's Pace, frozen by the server at the pairing: their Bursts are judged against it.
+  pace: number;
+  opponentPace: number;
   run: RunState;
   // Every Keystroke typed here, sent or not yet.
   keystrokes: readonly Keystroke[];
@@ -160,10 +162,10 @@ const configOf = ({ duel }: DuelFound | DuelResumed) =>
     seed: duel.seed,
   }) as const;
 
-// The Score of a player so far, as the server computes it from the same Keystrokes: both players
-// go at the default Pace for now. Up to the last Keystroke, the word in progress pays nothing yet.
-const scoreOf = (config: RunConfig, keystrokes: readonly Keystroke[]) =>
-  computeScore(config, keystrokes, defaultPace, keystrokes.at(-1)?.at ?? 0);
+// The Score of a player so far, as the server computes it from the same Keystrokes and Pace. Up to
+// the last Keystroke, the word in progress pays nothing yet.
+const scoreOf = (config: RunConfig, keystrokes: readonly Keystroke[], pace: number) =>
+  computeScore(config, keystrokes, pace, keystrokes.at(-1)?.at ?? 0);
 
 // The server's clock runs `serverTime - clock()` ahead of this tab's: its `startsAt` is shifted by
 // that much. The offset lags by the message's delay, so the Countdown never ends early.
@@ -189,12 +191,14 @@ const playing = (
       opponent: message.opponent,
       config,
       startsAt: localStart(message),
+      pace: message.pace,
+      opponentPace: message.opponentPace,
       run: replayRun(config, played.keystrokes),
       keystrokes: played.keystrokes,
-      score: scoreOf(config, played.keystrokes),
+      score: scoreOf(config, played.keystrokes, message.pace),
       opponentRun: replayRun(config, played.opponentKeystrokes),
       opponentKeystrokes: played.opponentKeystrokes,
-      opponentScore: scoreOf(config, played.opponentKeystrokes),
+      opponentScore: scoreOf(config, played.opponentKeystrokes, message.opponentPace),
       connected: true,
       opponentConnected: played.opponentConnected,
     },
@@ -222,10 +226,10 @@ const resynced = (
     ...duel,
     run: replayRun(duel.config, replayed),
     keystrokes: replayed,
-    score: scoreOf(duel.config, replayed),
+    score: scoreOf(duel.config, replayed, duel.pace),
     opponentRun: replayRun(duel.config, opponentKeystrokes),
     opponentKeystrokes,
-    opponentScore: scoreOf(duel.config, opponentKeystrokes),
+    opponentScore: scoreOf(duel.config, opponentKeystrokes, duel.opponentPace),
   };
 };
 
@@ -257,7 +261,7 @@ const withOpponentKeystrokes = (duel: DuelPlay, keystrokes: readonly Keystroke[]
     ...duel,
     opponentRun: keystrokes.reduce(applyKeystroke, duel.opponentRun),
     opponentKeystrokes,
-    opponentScore: scoreOf(duel.config, opponentKeystrokes),
+    opponentScore: scoreOf(duel.config, opponentKeystrokes, duel.opponentPace),
   };
 };
 
@@ -339,7 +343,7 @@ const pressed = (state: DuelState, key: Key, now: number): DuelState => {
       ...duel,
       run: applyKeystroke(duel.run, keystroke),
       keystrokes,
-      score: scoreOf(duel.config, keystrokes),
+      score: scoreOf(duel.config, keystrokes, duel.pace),
     },
   };
 };

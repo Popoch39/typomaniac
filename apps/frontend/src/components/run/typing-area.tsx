@@ -4,16 +4,22 @@ import { LiveScore } from "@/components/run/live-score";
 import { NextRunButton } from "@/components/run/next-run-button";
 import { RunProgress } from "@/components/run/run-progress";
 import { SoloText } from "@/components/run/solo-text";
+import { usePace } from "@/components/run/use-pace";
 import { useTypingFocus } from "@/components/run/use-typing-focus";
 import { useRunStore } from "@/stores/run-store";
 
 export const TypingArea = () => {
   const { inputRef, focused, setFocused, focus } = useTypingFocus();
   const press = useRunStore((state) => state.press);
+  const pace = usePace();
 
   return (
     <div className="flex flex-col gap-4">
-      <KeystrokeInput ref={inputRef} onFocusChange={setFocused} onPress={press} />
+      <KeystrokeInput
+        ref={inputRef}
+        onFocusChange={setFocused}
+        onPress={(key, now) => press(key, now, pace)}
+      />
       <div className="flex flex-wrap items-baseline justify-between gap-4">
         <RunProgress />
         <LiveScore />

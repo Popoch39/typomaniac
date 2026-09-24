@@ -24,6 +24,8 @@ export {
   type ScoreState,
 } from "./score";
 
+export { paceDuels, paceOf } from "./pace";
+
 export { duelOutcome, type DuelSide, type Outcome } from "./outcome";
 
 export {

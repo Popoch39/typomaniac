@@ -5,6 +5,7 @@ import type { OAuth2Tokens } from "better-auth/oauth2";
 import type { DiscordProfile, GithubProfile, GoogleProfile } from "better-auth/social-providers";
 import { status, t } from "elysia";
 import pino from "pino";
+import { defaultPace } from "typing-engine";
 
 import { createApp } from "./app";
 import { ApiError } from "./errors";
@@ -14,6 +15,8 @@ import { CLIENT_IP_HEADER } from "./plugins/client-ip";
 import {
   createTestAuth,
   FRONT_ORIGIN,
+  memoryDuelStore,
+  pastDuel,
   signIn as signInAs,
   testAuthOptions,
   testConfig,
@@ -483,6 +486,43 @@ describe("auth", () => {
 
     expect(response.headers.get("access-control-allow-origin")).toBe(FRONT_ORIGIN);
     expect(response.headers.get("access-control-allow-credentials")).toBe("true");
+  });
+});
+
+describe("pace", () => {
+  const auth = createTestAuth();
+  const duels = memoryDuelStore();
+  const paceApp = createApp(testConfig({ auth, duelStore: duels.store }));
+
+  const getPace = (cookie?: string) =>
+    paceApp.handle(
+      new Request("http://localhost/api/me/pace", { headers: cookie ? { cookie } : undefined }),
+    );
+
+  test("GET /api/me/pace without a Session answers 401", async () => {
+    await expectError(await getPace(), { status: 401, code: "UNAUTHORIZED" });
+  });
+
+  test("GET /api/me/pace is the default Pace for a User without any Duel", async () => {
+    const { cookie } = await signInAs(auth, { name: "Ada", email: "ada-new@example.com" });
+
+    const response = await getPace(cookie);
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ pace: defaultPace });
+  });
+
+  test("GET /api/me/pace is the median wpm of the User's last Duels", async () => {
+    const { user, cookie } = await signInAs(auth, { name: "Alan", email: "alan@example.com" });
+
+    duels.saved.push(
+      pastDuel(user.id, 60, 3000),
+      pastDuel(user.id, 90, 2000),
+      pastDuel(user.id, 81, 1000),
+      pastDuel("someone", 200, 4000),
+    );
+
+    expect(await (await getPace(cookie)).json()).toEqual({ pace: 81 });
   });
 });
 

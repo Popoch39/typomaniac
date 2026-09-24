@@ -5,7 +5,7 @@ import type { Logger } from "pino";
 import { API_PREFIX } from "./api-prefix";
 import type { Clock } from "./clock";
 import { duelRoute } from "./duel/duel-route";
-import type { DuelStore } from "./duel/duel-store";
+import { type DuelStore, readPace } from "./duel/duel-store";
 import { MAX_DUEL_MESSAGE_SIZE } from "./duel/protocol";
 import { apiDocs } from "./plugins/api-docs";
 import { type AuthHandler, authentication } from "./plugins/authentication";
@@ -41,6 +41,9 @@ const MeResponse = t.Object({
   image: t.Nullable(t.String()),
 });
 
+// In wpm: the median wpm of the User's last Duels, or the default Pace without any.
+const PaceResponse = t.Object({ pace: t.Number() });
+
 // Order matters: headers and the request id are set before anything can throw, and
 // the error handler is registered before the plugins that reject requests. The docs
 // come after the security headers: they loosen the CSP on their own page. The prefix
@@ -74,6 +77,15 @@ export const createApp = (config: AppConfig) =>
         detail: { summary: "The signed-in User", tags: ["Auth"] },
       },
     )
+    // The Pace of a solo Run: the one of the User's Duels.
+    .get("/me/pace", async ({ user }) => ({ pace: await readPace(config.duelStore, user.id) }), {
+      auth: true,
+      response: PaceResponse,
+      detail: {
+        summary: "The signed-in User's Pace: the median wpm of their last Duels",
+        tags: ["Duel"],
+      },
+    })
     .use(
       duelRoute({
         auth: config.auth,

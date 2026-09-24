@@ -25,6 +25,8 @@ type RunStore = {
   result: Result | null;
   // Live while the Run lasts, final once it is finished.
   score: ScoreState;
+  // In wpm, judges the Bursts: frozen at the first Keystroke.
+  pace: number;
   // Counts the Runs started: a new one remounts the typing area, fresh state and focus included.
   runNumber: number;
   start: (config: RunConfig) => void;
@@ -32,7 +34,8 @@ type RunStore = {
   next: () => void;
   // Rejouer: the same Seed, so exactly the same Text.
   replay: () => void;
-  press: (key: Key, now: number) => void;
+  // `pace` is the User's, or the default one for a Visitor: the first Keystroke freezes it.
+  press: (key: Key, now: number, pace: number) => void;
   // Ends a `time` Run once its time is up, even when no key is pressed. Called on every frame.
   tick: (now: number) => void;
 };
@@ -50,16 +53,14 @@ const configFrom = ({ mode, seconds, words, language }: Settings): RunConfig => 
   return mode === "time" ? { mode, seconds, ...textSource } : { mode, words, ...textSource };
 };
 
-// Every Run goes at the default Pace for now, a Visitor's as well as a User's.
-const scoreAt = (config: RunConfig, keystrokes: readonly Keystroke[], at: number) =>
-  computeScore(config, keystrokes, defaultPace, at);
-
+// Nothing typed yet: no Burst, whatever the Pace, until the first Keystroke sets it.
 const freshRun = (config: RunConfig) => ({
   run: createRun(config),
   keystrokes: [],
   startedAt: null,
   result: null,
-  score: scoreAt(config, [], 0),
+  score: computeScore(config, [], defaultPace, 0),
+  pace: defaultPace,
 });
 
 const newRun = (state: RunStore, config: RunConfig) => ({
@@ -78,13 +79,14 @@ export const useRunStore = create<RunStore>()((set) => ({
   start: (config) => set((state) => newRun(state, config)),
   next: () => set((state) => newRun(state, { ...state.run.config, seed: randomSeed() })),
   replay: () => set((state) => newRun(state, state.run.config)),
-  press: (key, now) =>
+  press: (key, now, pace) =>
     set((state) => {
       if (state.result !== null) {
         return state;
       }
 
       const startedAt = state.startedAt ?? now;
+      const runPace = state.startedAt === null ? pace : state.pace;
       const keystroke: Keystroke = { ...key, at: now - startedAt };
       const keystrokes = [...state.keystrokes, keystroke];
       const run = applyKeystroke(state.run, keystroke);
@@ -93,8 +95,9 @@ export const useRunStore = create<RunStore>()((set) => ({
         run,
         keystrokes,
         startedAt,
+        pace: runPace,
         result: resultAt(run, keystrokes, keystroke.at),
-        score: scoreAt(run.config, keystrokes, keystroke.at),
+        score: computeScore(run.config, keystrokes, runPace, keystroke.at),
       };
     }),
   tick: (now) =>
@@ -109,7 +112,7 @@ export const useRunStore = create<RunStore>()((set) => ({
       // The end of a `time` Run pays the word in progress.
       return result === null
         ? state
-        : { result, score: scoreAt(state.run.config, state.keystrokes, at) };
+        : { result, score: computeScore(state.run.config, state.keystrokes, state.pace, at) };
     }),
 }));
 

@@ -1,10 +1,17 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { currentWordListVersion, type Language, type RunConfig, wordList } from "typing-engine";
+import {
+  currentWordListVersion,
+  defaultPace,
+  type Language,
+  type RunConfig,
+  wordList,
+} from "typing-engine";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { meQueryOptions } from "@/api/me";
+import { type Me, meQueryOptions } from "@/api/me";
+import { paceQueryOptions } from "@/api/pace";
 import { ClockContext } from "@/components/run/clock-context";
 import { HomePage } from "@/pages/home-page";
 import { useAuthStore } from "@/stores/auth-store";
@@ -47,13 +54,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// Renders the page with a clock the test moves by hand, frames included. The Session cache is seeded
-// the way the root route's beforeLoad leaves it, for a Visitor.
-const renderPage = () => {
+// Renders the page with a clock the test moves by hand, frames included. The Session and Pace cache
+// is seeded the way the root route's beforeLoad leaves it, for a Visitor unless `me` is given.
+const renderPage = ({ me = null, pace = defaultPace }: { me?: Me | null; pace?: number } = {}) => {
   let now = 1_000;
   const queryClient = new QueryClient();
 
-  queryClient.setQueryData(meQueryOptions.queryKey, null);
+  queryClient.setQueryData(meQueryOptions.queryKey, me);
+  queryClient.setQueryData(paceQueryOptions(me).queryKey, pace);
 
   render(
     <QueryClientProvider client={queryClient}>
@@ -75,10 +83,10 @@ const renderPage = () => {
 };
 
 // Starts a fresh Run on Seed 42 (`words` 10 unless told otherwise), then renders the page.
-const renderRun = (config: RunConfig = words10) => {
+const renderRun = (config: RunConfig = words10, session: Parameters<typeof renderPage>[0] = {}) => {
   useRunStore.getState().start(config);
 
-  return renderPage();
+  return renderPage(session);
 };
 
 // A word is split into one element per letter: match the element that holds them all.
@@ -254,6 +262,21 @@ describe("HomePage", () => {
     expect(stat("bursts")).toBe("2");
     expect(isBurst("while")).toBe(true);
     expect(isBurst("small")).toBe(false);
+  });
+
+  test("a User's Bursts are judged against the Pace of their Duels", async () => {
+    const me = { id: "u1", name: "Ada", email: "ada@example.com", image: null };
+    // At a Pace of 500 wpm, a Burst takes 600 wpm: "help " in 150 ms, 400 wpm, is not one, when it
+    // would be at the default Pace.
+    const { user, advance } = renderRun(words10, { me, pace: 500 });
+
+    await user.keyboard("small ");
+    advance(150);
+    await user.keyboard("help ");
+
+    expect(stat("bursts")).toBe("1");
+    expect(isBurst("small")).toBe(true);
+    expect(isBurst("help")).toBe(false);
   });
 
   // Four words at x1 (22), then "letter " 7, "sell " 5, "driver " 7, "quiet " 6, "never " 6 at
@@ -479,6 +502,7 @@ const reload = async () => {
   const queryClient = new query.QueryClient();
 
   queryClient.setQueryData(meQueryOptions.queryKey, null);
+  queryClient.setQueryData(paceQueryOptions(null).queryKey, defaultPace);
 
   render(
     <query.QueryClientProvider client={queryClient}>

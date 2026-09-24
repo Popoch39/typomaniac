@@ -84,6 +84,9 @@ export const ServerMessage = t.Union([
     opponent: DuelOpponent,
     // The server's clock when it sent the message: the client derives its offset from it.
     serverTime: t.Number(),
+    // Each player's Pace, in wpm, frozen for the Duel: the client scores both sides with them.
+    pace: t.Number(),
+    opponentPace: t.Number(),
   }),
   // On connection, the User is in a Duel (back after a disconnection, a reload, another tab): the
   // Duel as `duel-found` gives it, plus the state that holds, as `resync` gives it.
@@ -97,6 +100,8 @@ export const ServerMessage = t.Union([
     opponentKeystrokes: t.Array(Keystroke),
     // False while the opponent is disconnected, within their time to come back.
     opponentConnected: t.Boolean(),
+    pace: t.Number(),
+    opponentPace: t.Number(),
   }),
   // The opponent's connection dropped: they have a few seconds to come back, or forfeit.
   t.Object({ type: t.Literal("opponent-disconnected") }),

@@ -52,6 +52,9 @@ export const duelPlayer = pgTable(
     incorrectChars: integer("incorrect_chars").notNull(),
     extraChars: integer("extra_chars").notNull(),
     missedChars: integer("missed_chars").notNull(),
+    // The Pace the Bursts were judged against, in wpm, null for the Duels written before it came
+    // from the history. Every Duel written since has one.
+    pace: doublePrecision("pace"),
     // The Score, null for the Duels written before it decided the winner: their outcome is still
     // the one of the time, by wpm. Every Duel written since has all three.
     score: integer("score"),

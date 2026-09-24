@@ -100,5 +100,5 @@ Un mot juste sans faute, d'au moins 4 lettres, tapé au moins 20 % plus vite que
 _Avoid_ : perfect, crit, rush
 
 **Pace** :
-La cadence de référence d'un User pour le Burst, figée au départ : le wpm médian de ses 10 derniers Duels, ou de ceux qu'il a s'il en a moins ; 50 wpm sans aucun Duel, et pour un Visitor. Elle vient de l'historique, pas du Duel en cours, pour qu'alterner mots lents et rapides ne rapporte rien. Pas encore construit.
+La cadence de référence d'un User pour le Burst, figée au départ : le wpm médian de ses 10 derniers Duels, ou de ceux qu'il a s'il en a moins ; 50 wpm sans aucun Duel, et pour un Visitor. Elle vient de l'historique, pas du Duel en cours, pour qu'alterner mots lents et rapides ne rapporte rien.
 _Avoid_ : moyenne, niveau, cadence
