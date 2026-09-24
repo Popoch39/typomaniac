@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DuelsRouteImport } from './routes/duels'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -17,6 +18,11 @@ import { Route as ProfileRouteImport } from './routes/profile'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DuelsRoute = DuelsRouteImport.update({
+  id: '/duels',
+  path: '/duels',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FriendsRoute = FriendsRouteImport.update({
@@ -37,12 +43,14 @@ const ProfileRoute = ProfileRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/duels': typeof DuelsRoute
   '/friends': typeof FriendsRoute
   '/health': typeof HealthRoute
   '/profile': typeof ProfileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/duels': typeof DuelsRoute
   '/friends': typeof FriendsRoute
   '/health': typeof HealthRoute
   '/profile': typeof ProfileRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/duels': typeof DuelsRoute
   '/friends': typeof FriendsRoute
   '/health': typeof HealthRoute
   '/profile': typeof ProfileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/friends' | '/health' | '/profile'
+  fullPaths: '/' | '/duels' | '/friends' | '/health' | '/profile'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/friends' | '/health' | '/profile'
-  id: '__root__' | '/' | '/friends' | '/health' | '/profile'
+  to: '/' | '/duels' | '/friends' | '/health' | '/profile'
+  id: '__root__' | '/' | '/duels' | '/friends' | '/health' | '/profile'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DuelsRoute: typeof DuelsRoute
   FriendsRoute: typeof FriendsRoute
   HealthRoute: typeof HealthRoute
   ProfileRoute: typeof ProfileRoute
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/duels': {
+      id: '/duels'
+      path: '/duels'
+      fullPath: '/duels'
+      preLoaderRoute: typeof DuelsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/friends': {
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DuelsRoute: DuelsRoute,
   FriendsRoute: FriendsRoute,
   HealthRoute: HealthRoute,
   ProfileRoute: ProfileRoute,

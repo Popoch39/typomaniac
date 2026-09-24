@@ -159,4 +159,8 @@ const ServerMessage = t.Union([
 export type ServerMessage = typeof ServerMessage.static;
 
 // The Duel protocol, both ways.
-export const DuelModel = { clientMessage: ClientMessage, serverMessage: ServerMessage };
+export const DuelModel = {
+  clientMessage: ClientMessage,
+  serverMessage: ServerMessage,
+  opponent: DuelOpponent,
+};

@@ -8,6 +8,7 @@ import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { ChallengeNotices } from "@/components/challenge/challenge-notices";
 import { DuelOnChallenge } from "@/components/challenge/duel-on-challenge";
 import { WaitingChallenges } from "@/components/challenge/waiting-challenges";
+import { DuelsNavLink } from "@/components/duel-history/duels-nav-link";
 import { FriendsNavLink } from "@/components/friends/friends-nav-link";
 import { LiveFriendLists } from "@/components/friends/live-friend-lists";
 import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
@@ -32,6 +33,7 @@ export const RootLayout = () => (
         >
           Accueil
         </Button>
+        <DuelsNavLink className={navLinkClassName} />
         <FriendsNavLink className={navLinkClassName} />
         <Button
           variant="ghost"

@@ -12,7 +12,13 @@ import type { AuthHandler } from "./modules/auth";
 import { authOptions } from "./modules/auth/service";
 import { type ChallengeMessage, ChallengeModel } from "./modules/challenge/model";
 import { type ClientMessage, DuelModel, type ServerMessage } from "./modules/duel/model";
-import type { DuelRecord, DuelStore } from "./modules/duel/store";
+import type {
+  DuelCursor,
+  DuelHistoryPlayer,
+  DuelPlayerRecord,
+  DuelRecord,
+  DuelStore,
+} from "./modules/duel/store";
 import { type FriendMessage, FriendLiveModel, type Relation } from "./modules/friend/model";
 import { type FriendStore, orderedPair } from "./modules/friend/store";
 import { authUsers, type HandleSearch, type UserRow } from "./modules/user/users";
@@ -87,10 +93,34 @@ export const manualClock = (start: number) => {
   return { clock, set };
 };
 
+const historyPlayer = ({ userId, result, score }: DuelPlayerRecord): DuelHistoryPlayer => ({
+  userId,
+  wpm: result.wpm,
+  score: score === null ? null : score.score,
+});
+
+// Most recent first, by end then by id, the way Postgres orders the Duel history.
+const byNewestDuel = (a: DuelCursor, b: DuelCursor) => {
+  if (a.endedAt !== b.endedAt) {
+    return b.endedAt - a.endedAt;
+  }
+
+  if (a.id === b.id) {
+    return 0;
+  }
+
+  return a.id < b.id ? 1 : -1;
+};
+
 // The finished Duels, kept in `saved` in the order they were written: a test can write past Duels
-// there too.
+// there too. `deleteUser` does what the cascade does in Postgres: that User's player rows go, and
+// they are no longer anyone's winner.
 export const memoryDuelStore = () => {
   const saved: DuelRecord[] = [];
+  const deleted = new Set<string>();
+
+  const playersOf = (record: DuelRecord) =>
+    record.players.filter((player) => !deleted.has(player.userId));
 
   const store: DuelStore = {
     save: async (record) => {
@@ -99,12 +129,43 @@ export const memoryDuelStore = () => {
     recentWpms: async (userId, count) =>
       saved
         .toSorted((a, b) => b.endedAt - a.endedAt)
-        .flatMap((record) => record.players.filter((player) => player.userId === userId))
+        .flatMap((record) => playersOf(record).filter((player) => player.userId === userId))
         .slice(0, count)
         .map((player) => player.result.wpm),
+    history: async (userId, { before, limit }) =>
+      saved
+        .filter((record) => before === null || byNewestDuel(before, record) < 0)
+        .toSorted(byNewestDuel)
+        .flatMap((record) => {
+          const players = playersOf(record);
+          const player = players.find((candidate) => candidate.userId === userId);
+
+          if (!player) {
+            return [];
+          }
+
+          const opponent = players.find((candidate) => candidate.userId !== userId);
+
+          return [
+            {
+              id: record.id,
+              endedAt: record.endedAt,
+              outcome: record.outcome,
+              winnerId:
+                record.winnerId === null || deleted.has(record.winnerId) ? null : record.winnerId,
+              player: historyPlayer(player),
+              opponent: opponent ? historyPlayer(opponent) : null,
+            },
+          ];
+        })
+        .slice(0, limit),
   };
 
-  return { store, saved };
+  const deleteUser = (userId: string) => {
+    deleted.add(userId);
+  };
+
+  return { store, saved, deleteUser };
 };
 
 // The Friend requests and the friendships in memory, in the order they were written.

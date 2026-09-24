@@ -9,7 +9,8 @@ export type DuelPlayerRecord = {
   result: Result;
   // The Pace their Bursts were judged against, frozen at the pairing, in wpm.
   pace: number;
-  score: DuelScore;
+  // Null for the Duels written before the Score: their outcome is the one of the time, by wpm.
+  score: DuelScore | null;
   keystrokes: readonly Keystroke[];
 };
 
@@ -28,6 +29,24 @@ export type DuelRecord = Duel & {
   players: readonly [DuelPlayerRecord, DuelPlayerRecord];
 };
 
+// Where a page of the Duel history starts: past the Duel that ended at `endedAt` with that id, the
+// id telling apart the Duels that ended at the same instant.
+export type DuelCursor = { endedAt: number; id: string };
+
+// A player of a Duel as the Duel history shows them.
+export type DuelHistoryPlayer = { userId: string; wpm: number; score: number | null };
+
+// A finished Duel of the Duel history, seen from the User who reads it (`player`). `opponent` is
+// null once their User is deleted: their player row goes with it.
+export type DuelHistoryRow = {
+  id: string;
+  endedAt: number;
+  outcome: DuelRecord["outcome"];
+  winnerId: string | null;
+  player: DuelHistoryPlayer;
+  opponent: DuelHistoryPlayer | null;
+};
+
 // Where finished Duels are written, injected through AppConfig: Drizzle in production, in memory
 // in the tests. A Duel still running when the API stops is never written.
 export type DuelStore = {
@@ -35,6 +54,12 @@ export type DuelStore = {
   // The wpm of the last `count` Duels a User finished, the most recent first: those written before
   // the Score too.
   recentWpms: (userId: string, count: number) => Promise<number[]>;
+  // A page of a User's Duel history: at most `limit` of their Duels, the most recent first (by end,
+  // then by id), those before `before` when given.
+  history: (
+    userId: string,
+    page: { before: DuelCursor | null; limit: number },
+  ) => Promise<DuelHistoryRow[]>;
 };
 
 // A User's Pace, from the wpm of their last Duels (the engine's paceOf).

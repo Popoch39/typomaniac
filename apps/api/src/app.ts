@@ -9,6 +9,7 @@ import { duelModule } from "./modules/duel";
 import { MAX_DUEL_MESSAGE_SIZE } from "./modules/duel/model";
 import { DuelQueue } from "./modules/duel/service";
 import type { DuelStore } from "./modules/duel/store";
+import { duelHistoryModule } from "./modules/duel-history";
 import { friendModule } from "./modules/friend";
 import { type FriendEvents, FriendsLive } from "./modules/friend/live";
 import type { FriendStore } from "./modules/friend/store";
@@ -125,6 +126,7 @@ export const createApp = (config: AppConfig) => {
         sendRateLimit: config.friendRequestRateLimit,
       }),
     )
+    .use(duelHistoryModule({ auth, trustProxy, store: duelStore, users }))
     .use(duelModule({ auth, trustProxy, queue: duelQueue, friendsLive }));
 };
 

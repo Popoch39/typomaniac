@@ -1,10 +1,5 @@
+import { outcomeHeadlines } from "@/components/duel/outcome-headlines";
 import type { DuelEnding } from "@/stores/duel-store";
-
-const headlines = {
-  win: "Victoire",
-  loss: "Défaite",
-  draw: "Draw",
-};
 
 const details = {
   win: (opponent: string) => `Tu bats ${opponent}.`,
@@ -24,7 +19,7 @@ type DuelOutcomeProps = Pick<DuelEnding, "outcome" | "forfeit"> & { opponent: st
 // Who won the Duel, from this User's side, and whether by Forfeit.
 export const DuelOutcome = ({ outcome, forfeit, opponent }: DuelOutcomeProps) => (
   <div className="flex flex-col gap-1">
-    <h2 className="text-5xl font-bold">{headlines[outcome]}</h2>
+    <h2 className="text-5xl font-bold">{outcomeHeadlines[outcome]}</h2>
     <p className="text-lg text-muted-foreground">
       {(forfeit ? forfeitDetails : details)[outcome](opponent)}
     </p>

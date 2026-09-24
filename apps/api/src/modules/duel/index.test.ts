@@ -1209,10 +1209,10 @@ describe("duel socket", () => {
     });
 
     expect(record.players.map((player) => player.pace)).toEqual([70, defaultPace]);
-    expect(rescored).toEqual(record.players.map((player) => player.score));
+    expect(record.players.map((player) => player.score)).toEqual(rescored);
     // Not a trivial replay: both typed something that counts.
     expect(record.players.map((player) => player.result.wpm > 0)).toEqual([true, true]);
-    expect(record.players.map((player) => player.score.score > 0)).toEqual([true, true]);
+    expect(record.players.map((player) => (player.score?.score ?? 0) > 0)).toEqual([true, true]);
   });
 
   test("a Draw is written with no winner", async () => {
@@ -1314,6 +1314,7 @@ describe("duel socket", () => {
     const failing = {
       save: () => Promise.reject(new Error("database down")),
       recentWpms: () => Promise.reject(new Error("database down")),
+      history: () => Promise.reject(new Error("database down")),
     };
 
     await app.stop(true);
