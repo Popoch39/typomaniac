@@ -30,6 +30,7 @@ const app = createApp({
       baseURL: env.BETTER_AUTH_URL,
       trustedOrigin: env.CORS_ORIGIN,
       socialProviders: env.socialProviders,
+      isProduction,
     },
     db,
   ),

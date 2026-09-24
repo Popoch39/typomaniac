@@ -7,8 +7,12 @@ Contexte unique du monorepo : le vocabulaire partagé par le front et l'API.
 ### Identité
 
 **User** :
-Une personne connue de typomaniac, identifiée par son email. C'est la seule entité qui porte l'identité et le profil ; il n'existe pas de profil séparé.
+Une personne connue de typomaniac, identifiée par son email. C'est la seule entité qui porte l'identité et le profil ; il n'existe pas de profil séparé. Les autres Users ne voient que son Handle et son avatar, jamais son email ni son name.
 _Avoid_ : compte, player, membre, profil
+
+**Handle** :
+Le nom public et unique d'un User, choisi par lui avant son premier Duel et modifiable à tout moment : de 3 à 20 caractères parmi `a-z`, `0-9` et `_`, sans distinction de casse. C'est par lui qu'on trouve un User et qu'on le désigne partout dans l'app. Changer de Handle libère l'ancien ; les Friends et l'historique tiennent au User, pas au Handle.
+_Avoid_ : pseudo, username, tag, name
 
 **Account** :
 Le lien entre un User et un fournisseur OAuth (GitHub, Google, Discord). Un User peut en avoir plusieurs ; deux Accounts dont l'email est vérifié par le fournisseur se rattachent au même User.
@@ -72,7 +76,7 @@ La régularité du raw d'une seconde à l'autre, de 0 à 100.
 ### Duel
 
 **Duel** :
-Deux Users qui tapent le même Text en même temps, au format fixe `time` 30 s en anglais, et dont chacun obtient un Result et un Score. Le meilleur Score gagne, départagé par l'accuracy ; sinon c'est un Draw. Les Duels joués avant le Score gardent leur issue d'origine, au wpm. Un Duel se termine aussi par un Forfeit.
+Deux Users, appariés par la Queue ou par un Challenge, qui tapent le même Text en même temps, au format fixe `time` 30 s en anglais, et dont chacun obtient un Result et un Score. Le meilleur Score gagne, départagé par l'accuracy ; sinon c'est un Draw. Les Duels joués avant le Score gardent leur issue d'origine, au wpm. Un Duel se termine aussi par un Forfeit.
 _Avoid_ : match, versus, 1v1, partie, race
 
 **Queue** :
@@ -106,3 +110,21 @@ _Avoid_ : perfect, crit, rush
 **Pace** :
 La cadence de référence d'un User pour le Burst, figée au départ : le wpm médian de ses 10 derniers Duels, ou de ceux qu'il a s'il en a moins ; 50 wpm sans aucun Duel, et pour un Visitor. Elle vient de l'historique, pas du Duel en cours, pour qu'alterner mots lents et rapides ne rapporte rien.
 _Avoid_ : moyenne, niveau, cadence
+
+### Social
+
+**Friend** :
+Un User lié à un autre par une amitié mutuelle, née d'une Friend request acceptée. Seul un Friend peut voir la Presence d'un User et lui lancer un Challenge. Chacun des deux peut y mettre fin à tout moment, sans l'accord de l'autre.
+_Avoid_ : ami, contact, buddy, follower
+
+**Friend request** :
+La demande d'un User à un autre de devenir Friends. Elle attend jusqu'à ce que le destinataire l'accepte ou la refuse, ou que l'envoyeur l'annule. Un refus n'est pas signalé à l'envoyeur, qui peut redemander. Deux Friend requests croisées font directement deux Friends.
+_Avoid_ : invitation, demande d'ami, invite
+
+**Presence** :
+Ce qu'un User laisse voir à ses Friends de sa disponibilité : en ligne (typomaniac ouvert, libre), en Duel, ou hors ligne. Être dans la Queue compte comme en ligne.
+_Avoid_ : statut, online, activité
+
+**Challenge** :
+L'invitation d'un User à l'un de ses Friends, en ligne, à jouer un Duel ensemble, hors de la Queue. Elle expire au bout de 30 secondes ; l'envoyeur peut l'annuler, le destinataire l'accepter ou la refuser. Accepter lance le Countdown du Duel, qui compte comme n'importe quel autre. Un User n'a qu'un Challenge envoyé à la fois.
+_Avoid_ : défi, invitation, invite, duel privé

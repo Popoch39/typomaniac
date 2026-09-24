@@ -55,20 +55,35 @@ export type AuthSettings = {
   // The front's origin: the only one allowed to start a flow and send the cookie.
   trustedOrigin: string;
   socialProviders: SocialProviders;
+  isProduction: boolean;
 };
 
+// The schema is only read server side (auth.api.generateOpenAPISchema) and merged into
+// our own spec, off in production: the plugin's routes answer 404 over HTTP.
+const OPEN_API_PATHS = ["/open-api/generate-schema", "/reference"];
+
+// Email and password is a dev tool to open several Users (ADR 0005): in production its
+// routes answer 404, like a provider that is not configured.
+const EMAIL_PASSWORD_PATHS = ["/sign-up/email", "/sign-in/email"];
+
 // Everything but the database, so tests run the same config on the memory adapter.
-export const authOptions = ({ secret, baseURL, trustedOrigin, socialProviders }: AuthSettings) =>
+export const authOptions = ({
+  secret,
+  baseURL,
+  trustedOrigin,
+  socialProviders,
+  isProduction,
+}: AuthSettings) =>
   ({
     secret,
     baseURL,
     basePath: AUTH_PATH,
     trustedOrigins: [trustedOrigin],
     socialProviders,
-    // The schema is only read server side (auth.api.generateOpenAPISchema) and merged
-    // into our own spec, off in production: the plugin's routes answer 404 over HTTP.
+    // No email is ever sent: the address is not checked, the User stays unverified.
+    emailAndPassword: { enabled: !isProduction },
     plugins: [openAPI({ disableDefaultReference: true })],
-    disabledPaths: ["/open-api/generate-schema", "/reference"],
+    disabledPaths: isProduction ? [...OPEN_API_PATHS, ...EMAIL_PASSWORD_PATHS] : OPEN_API_PATHS,
     // Signing in with a second provider finds the User with the same email. GitHub and
     // Google only hand out addresses they own or checked: trusted. Discord is linked
     // only when it marks the email verified, otherwise anyone could claim an address.

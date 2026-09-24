@@ -14,12 +14,13 @@ import type { DuelRecord, DuelStore } from "./duel/duel-store";
 export const FRONT_ORIGIN = "http://localhost:5173";
 
 // A function: each instance gets its own rate limit counters.
-export const testAuthOptions = () =>
+export const testAuthOptions = ({ isProduction = false } = {}) =>
   authOptions({
     secret: "a-test-secret-of-at-least-thirty-two-chars",
     baseURL: "http://localhost",
     trustedOrigin: FRONT_ORIGIN,
     socialProviders: {},
+    isProduction,
   });
 
 // The production auth options on Better Auth's in-memory database, plus its test

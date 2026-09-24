@@ -708,6 +708,77 @@ describe("sign-in rate limiting", () => {
   });
 });
 
+// The test options on the memory database, in or out of production. Better Auth's
+// sign-in limit would refuse the tests that share an instance: it has its own tests.
+const createEmailAuth = (isProduction: boolean) => {
+  const options = testAuthOptions({ isProduction });
+
+  return betterAuth({
+    ...options,
+    rateLimit: { ...options.rateLimit, enabled: false },
+    database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
+    logger: { disabled: true },
+  });
+};
+
+const emailRequest = (path: "sign-up" | "sign-in", body: Record<string, string>) =>
+  new Request(`http://localhost/api/auth/${path}/email`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: FRONT_ORIGIN },
+    body: JSON.stringify(body),
+  });
+
+const sessionCookie = (response: Response) =>
+  response.headers
+    .getSetCookie()
+    .map((cookie) => cookie.split(";")[0])
+    .join("; ");
+
+describe("email and password", () => {
+  const devApp = createApp(testConfig({ auth: createEmailAuth(false) }));
+  const credentials = { email: "bob@dev.test", password: "a-dev-password" };
+
+  const getMe = (cookie: string) =>
+    devApp.handle(new Request("http://localhost/api/me", { headers: { cookie } }));
+
+  test("signs up a User without any verification out of production", async () => {
+    const signUp = await devApp.handle(emailRequest("sign-up", { ...credentials, name: "bob" }));
+
+    expect(signUp.status).toBe(200);
+
+    const me = await getMe(sessionCookie(signUp));
+
+    expect(me.status).toBe(200);
+    expect(await me.json()).toMatchObject({ name: "bob", email: credentials.email });
+  });
+
+  test("signs that User back in with its password", async () => {
+    const signIn = await devApp.handle(emailRequest("sign-in", credentials));
+
+    expect(signIn.status).toBe(200);
+    expect((await getMe(sessionCookie(signIn))).status).toBe(200);
+  });
+
+  test("refuses a wrong password", async () => {
+    const signIn = await devApp.handle(
+      emailRequest("sign-in", { ...credentials, password: "not-the-password" }),
+    );
+
+    expect(signIn.status).toBe(401);
+  });
+
+  test("answers 404 on both routes in production", async () => {
+    const prodApp = createApp(testConfig({ auth: createEmailAuth(true) }));
+
+    const responses = await Promise.all([
+      prodApp.handle(emailRequest("sign-up", { ...credentials, name: "bob" })),
+      prodApp.handle(emailRequest("sign-in", credentials)),
+    ]);
+
+    expect(responses.map((response) => response.status)).toEqual([404, 404]);
+  });
+});
+
 describe("security headers", () => {
   test("are set on every response, errors included", async () => {
     const responses = await Promise.all(

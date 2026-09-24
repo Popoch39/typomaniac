@@ -1,6 +1,7 @@
 import { Loader2Icon } from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
+import { DevEmailSignIn } from "@/components/auth/dev-email-sign-in";
 import { DiscordIcon, GitHubIcon, GoogleIcon } from "@/components/auth/provider-icons";
 import {
   Dialog,
@@ -71,6 +72,7 @@ export const SignInDialog = () => {
         <p className="text-[0.7rem] text-muted-foreground">
           typomaniac ne récupère que ton nom, ton email et ton avatar.
         </p>
+        {import.meta.env.DEV ? <DevEmailSignIn /> : null}
       </DialogContent>
     </Dialog>
   );
