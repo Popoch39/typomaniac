@@ -1,19 +1,9 @@
-import { LiveStat } from "@/components/run/live-stat";
+import { ScoreStats } from "@/components/run/score-stats";
 import { useRunStore } from "@/stores/run-store";
 
 // The Score of the Run in progress, with the multiplier and the length of its Combo.
 export const LiveScore = () => {
-  const score = useRunStore((state) => state.score.score);
-  const multiplier = useRunStore((state) => state.score.multiplier);
-  const combo = useRunStore((state) => state.score.combo);
-  const bursts = useRunStore((state) => state.score.bursts);
+  const score = useRunStore((state) => state.score);
 
-  return (
-    <dl className="flex gap-6">
-      <LiveStat term="score">{score}</LiveStat>
-      <LiveStat term="multiplicateur">x{multiplier}</LiveStat>
-      <LiveStat term="combo">{combo}</LiveStat>
-      <LiveStat term="bursts">{bursts}</LiveStat>
-    </dl>
-  );
+  return <ScoreStats score={score} />;
 };

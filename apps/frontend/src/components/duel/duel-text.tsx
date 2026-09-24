@@ -1,9 +1,11 @@
 import { RunText } from "@/components/run/run-text";
 import { duelOf, useDuelStore } from "@/stores/duel-store";
 
-// The Duel's Text: this User's Run, and the opponent's caret where their Run stands.
+// The Duel's Text: this User's Run, the word of their last Burst highlighted, and the opponent's
+// caret where their Run stands.
 export const DuelText = () => {
   const run = useDuelStore((store) => duelOf(store.state)?.run ?? null);
+  const lastBurst = useDuelStore((store) => duelOf(store.state)?.score.lastBurst ?? null);
   const opponentWordIndex = useDuelStore((store) => duelOf(store.state)?.opponentRun.wordIndex);
   const opponentLetterIndex = useDuelStore((store) => duelOf(store.state)?.opponentRun.letterIndex);
 
@@ -19,7 +21,7 @@ export const DuelText = () => {
     <RunText
       run={run}
       opponent={{ wordIndex: opponentWordIndex, letterIndex: opponentLetterIndex }}
-      lastBurst={null}
+      lastBurst={lastBurst}
     />
   );
 };

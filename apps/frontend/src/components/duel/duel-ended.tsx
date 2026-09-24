@@ -6,7 +6,7 @@ import { type DuelEnding, useDuelStore } from "@/stores/duel-store";
 // Called once with the node on mount: the typing input is gone with the Duel.
 const focusOnMount = (node: HTMLElement | null) => node?.focus();
 
-// The server ended the Duel: its outcome and both Results, the same on both screens, then
+// The server ended the Duel: its outcome and both Scores and Results, the same on both screens, then
 // Nouveau Duel to join the Queue again.
 export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
   const joinQueue = useDuelStore((store) => store.joinQueue);
@@ -19,8 +19,13 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
         opponent={ending.opponent.name}
       />
       <div className="grid gap-8 md:grid-cols-2">
-        <PlayerResult name="Toi" result={ending.result} />
-        <PlayerResult name={ending.opponent.name} result={ending.opponentResult} opponent />
+        <PlayerResult name="Toi" result={ending.result} score={ending.score} />
+        <PlayerResult
+          name={ending.opponent.name}
+          result={ending.opponentResult}
+          score={ending.opponentScore}
+          opponent
+        />
       </div>
       <div>
         <Button variant="outline" onClick={joinQueue}>

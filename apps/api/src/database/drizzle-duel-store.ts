@@ -4,7 +4,7 @@ import type { DuelPlayerRecord, DuelStore } from "../duel/duel-store";
 import { duel, duelPlayer } from "./duel-schema";
 import type { Table } from "./schema";
 
-const playerRow = (duelId: string, { userId, result, keystrokes }: DuelPlayerRecord) => ({
+const playerRow = (duelId: string, { userId, result, score, keystrokes }: DuelPlayerRecord) => ({
   duelId,
   userId,
   wpm: result.wpm,
@@ -15,6 +15,9 @@ const playerRow = (duelId: string, { userId, result, keystrokes }: DuelPlayerRec
   incorrectChars: result.chars.incorrect,
   extraChars: result.chars.extra,
   missedChars: result.chars.missed,
+  score: score.score,
+  bestCombo: score.bestCombo,
+  bursts: score.bursts,
   keystrokes,
 });
 

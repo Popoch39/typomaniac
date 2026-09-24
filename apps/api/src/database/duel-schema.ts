@@ -52,6 +52,11 @@ export const duelPlayer = pgTable(
     incorrectChars: integer("incorrect_chars").notNull(),
     extraChars: integer("extra_chars").notNull(),
     missedChars: integer("missed_chars").notNull(),
+    // The Score, null for the Duels written before it decided the winner: their outcome is still
+    // the one of the time, by wpm. Every Duel written since has all three.
+    score: integer("score"),
+    bestCombo: integer("best_combo"),
+    bursts: integer("bursts"),
     keystrokes: jsonb("keystrokes").$type<readonly Keystroke[]>().notNull(),
   },
   (table) => [

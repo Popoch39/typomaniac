@@ -1,23 +1,20 @@
+import type { ScoreState } from "typing-engine";
+
 import { ResultStat } from "@/components/run/result-stat";
-import { useRunStore } from "@/stores/run-store";
 
-// The final Score of the finished Run and its best Combo.
-export const ScoreResult = () => {
-  const score = useRunStore((state) => state.score.score);
-  const bestCombo = useRunStore((state) => state.score.bestCombo);
-  const bursts = useRunStore((state) => state.score.bursts);
+type ScoreResultProps = { score: Pick<ScoreState, "score" | "bestCombo" | "bursts"> };
 
-  return (
-    <dl className="flex gap-12">
-      <ResultStat term="score" size="main">
-        {score}
-      </ResultStat>
-      <ResultStat term="meilleur combo" size="main">
-        {bestCombo}
-      </ResultStat>
-      <ResultStat term="bursts" size="main">
-        {bursts}
-      </ResultStat>
-    </dl>
-  );
-};
+// A final Score, its best Combo and its Bursts: of a Run, or of a player at the end of a Duel.
+export const ScoreResult = ({ score }: ScoreResultProps) => (
+  <dl className="flex gap-12">
+    <ResultStat term="score" size="main">
+      {score.score}
+    </ResultStat>
+    <ResultStat term="meilleur combo" size="main">
+      {score.bestCombo}
+    </ResultStat>
+    <ResultStat term="bursts" size="main">
+      {score.bursts}
+    </ResultStat>
+  </dl>
+);

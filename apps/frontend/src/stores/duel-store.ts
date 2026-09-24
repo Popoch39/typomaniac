@@ -1,12 +1,15 @@
 import type { ClientMessage, ServerMessage } from "api";
 import {
   applyKeystroke,
+  computeScore,
+  defaultPace,
   isFinished,
   type Key,
   type Keystroke,
   replayRun,
   type RunConfig,
   type RunState,
+  type ScoreState,
 } from "typing-engine";
 import { create } from "zustand";
 
@@ -22,12 +25,12 @@ export type DuelOpponent = DuelFound["opponent"];
 
 type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
 
-// How the Duel ended for this User: their outcome, whether it was a Forfeit, their Result and the
-// opponent's, computed by the server from the Keystrokes it accepted.
+// How the Duel ended for this User: their outcome, whether it was a Forfeit, their Result and
+// Score and the opponent's, computed by the server from the Keystrokes it accepted.
 export type DuelEnding = Omit<DuelEnded, "type">;
 
-// A Duel as this tab plays it. Both Runs are replayed by the engine: this User's from the
-// Keystrokes typed here, the opponent's from those the server relays.
+// A Duel as this tab plays it. Both Runs and both Scores are replayed by the engine: this User's
+// from the Keystrokes typed here, the opponent's from those the server relays.
 export type DuelPlay = {
   id: string;
   opponent: DuelOpponent;
@@ -37,8 +40,10 @@ export type DuelPlay = {
   run: RunState;
   // Every Keystroke typed here, sent or not yet.
   keystrokes: readonly Keystroke[];
+  score: ScoreState;
   opponentRun: RunState;
   opponentKeystrokes: readonly Keystroke[];
+  opponentScore: ScoreState;
   // False while this tab's connection is lost and being opened again.
   connected: boolean;
   // False while the opponent's connection is lost: they have a few seconds to come back.
@@ -155,6 +160,11 @@ const configOf = ({ duel }: DuelFound | DuelResumed) =>
     seed: duel.seed,
   }) as const;
 
+// The Score of a player so far, as the server computes it from the same Keystrokes: both players
+// go at the default Pace for now. Up to the last Keystroke, the word in progress pays nothing yet.
+const scoreOf = (config: RunConfig, keystrokes: readonly Keystroke[]) =>
+  computeScore(config, keystrokes, defaultPace, keystrokes.at(-1)?.at ?? 0);
+
 // The server's clock runs `serverTime - clock()` ahead of this tab's: its `startsAt` is shifted by
 // that much. The offset lags by the message's delay, so the Countdown never ends early.
 const localStart = ({ duel, serverTime }: DuelFound | DuelResumed) =>
@@ -181,8 +191,10 @@ const playing = (
       startsAt: localStart(message),
       run: replayRun(config, played.keystrokes),
       keystrokes: played.keystrokes,
+      score: scoreOf(config, played.keystrokes),
       opponentRun: replayRun(config, played.opponentKeystrokes),
       opponentKeystrokes: played.opponentKeystrokes,
+      opponentScore: scoreOf(config, played.opponentKeystrokes),
       connected: true,
       opponentConnected: played.opponentConnected,
     },
@@ -210,8 +222,10 @@ const resynced = (
     ...duel,
     run: replayRun(duel.config, replayed),
     keystrokes: replayed,
+    score: scoreOf(duel.config, replayed),
     opponentRun: replayRun(duel.config, opponentKeystrokes),
     opponentKeystrokes,
+    opponentScore: scoreOf(duel.config, opponentKeystrokes),
   };
 };
 
@@ -236,11 +250,16 @@ const resumed = (state: DuelState, message: DuelResumed): DuelState => {
   return playing(message, message);
 };
 
-const withOpponentKeystrokes = (duel: DuelPlay, keystrokes: readonly Keystroke[]) => ({
-  ...duel,
-  opponentRun: keystrokes.reduce(applyKeystroke, duel.opponentRun),
-  opponentKeystrokes: [...duel.opponentKeystrokes, ...keystrokes],
-});
+const withOpponentKeystrokes = (duel: DuelPlay, keystrokes: readonly Keystroke[]) => {
+  const opponentKeystrokes = [...duel.opponentKeystrokes, ...keystrokes];
+
+  return {
+    ...duel,
+    opponentRun: keystrokes.reduce(applyKeystroke, duel.opponentRun),
+    opponentKeystrokes,
+    opponentScore: scoreOf(duel.config, opponentKeystrokes),
+  };
+};
 
 // Applies a change to the Duel while it is played, up to the server's end.
 const updateDuel = (state: DuelState, update: (duel: DuelPlay) => DuelPlay): DuelState =>
@@ -250,10 +269,21 @@ const updateDuel = (state: DuelState, update: (duel: DuelPlay) => DuelPlay): Due
 
 // The server ends the Duel, possibly before this tab's time is up: nothing typed here counts
 // anymore. Also told on connection when the Duel ended while this User was away.
-const ended = ({ outcome, forfeit, result, opponentResult, opponent }: DuelEnded): DuelState => {
+const ended = ({
+  outcome,
+  forfeit,
+  result,
+  opponentResult,
+  score,
+  opponentScore,
+  opponent,
+}: DuelEnded): DuelState => {
   outbox = [];
 
-  return { phase: "ended", ending: { outcome, forfeit, result, opponentResult, opponent } };
+  return {
+    phase: "ended",
+    ending: { outcome, forfeit, result, opponentResult, score, opponentScore, opponent },
+  };
 };
 
 const stateAfter = (state: DuelState, message: ServerMessage): DuelState => {
@@ -301,12 +331,15 @@ const pressed = (state: DuelState, key: Key, now: number): DuelState => {
 
   queueKeystroke(keystroke);
 
+  const keystrokes = [...duel.keystrokes, keystroke];
+
   return {
     phase: "running",
     duel: {
       ...duel,
       run: applyKeystroke(duel.run, keystroke),
-      keystrokes: [...duel.keystrokes, keystroke],
+      keystrokes,
+      score: scoreOf(duel.config, keystrokes),
     },
   };
 };

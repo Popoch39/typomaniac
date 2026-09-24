@@ -68,7 +68,7 @@ La régularité du raw d'une seconde à l'autre, de 0 à 100.
 ### Duel
 
 **Duel** :
-Deux Users qui tapent le même Text en même temps, au format fixe `time` 30 s en anglais, et dont chacun obtient un Result. Le meilleur wpm gagne, départagé par l'accuracy ; sinon c'est un Draw. Un Duel se termine aussi par un Forfeit.
+Deux Users qui tapent le même Text en même temps, au format fixe `time` 30 s en anglais, et dont chacun obtient un Result et un Score. Le meilleur Score gagne, départagé par l'accuracy ; sinon c'est un Draw. Les Duels joués avant le Score gardent leur issue d'origine, au wpm. Un Duel se termine aussi par un Forfeit.
 _Avoid_ : match, versus, 1v1, partie, race
 
 **Queue** :
@@ -84,19 +84,19 @@ La fin d'un Duel perdu par abandon : départ volontaire, absence prolongée apr�
 _Avoid_ : abandon, ragequit, disqualification
 
 **Draw** :
-L'issue d'un Duel où les deux Users ont le même wpm et la même accuracy : aucun ne gagne.
+L'issue d'un Duel où les deux Users ont le même Score et la même accuracy : aucun ne gagne.
 _Avoid_ : égalité, nul, tie
 
 **Score** :
-Les points d'un User dans un Duel ou un Run : chaque mot juste rapporte ses caractères (espace compris), multipliés par son Combo, et doublés par un Burst. Un mot validé faux ne rapporte rien ; le mot en cours à la fin du temps rapporte ses lettres justes. Dans un Run, il ne sert qu'à s'entraîner. Pas encore construit : il remplacera le wpm pour désigner le vainqueur d'un Duel, départagé par l'accuracy.
+Les points d'un User dans un Duel ou un Run : chaque mot juste rapporte ses caractères (espace compris), multipliés par son Combo, et doublés par un Burst. Un mot validé faux ne rapporte rien ; le mot en cours à la fin du temps rapporte ses lettres justes. Il désigne le vainqueur d'un Duel, départagé par l'accuracy ; dans un Run, il ne sert qu'à s'entraîner.
 _Avoid_ : points, Result
 
 **Combo** :
-Le nombre de mots justes d'affilée tapés sans aucune faute, même corrigée. Il multiplie les points : x1, x2 dès 5 mots, x3 dès 10, x4 au plus dès 15. Une faute le casse dès qu'elle est tapée ; le mot, corrigé, repart à x1. Revenir corriger un mot validé faux ne le rétablit pas. Pas encore construit.
+Le nombre de mots justes d'affilée tapés sans aucune faute, même corrigée. Il multiplie les points : x1, x2 dès 5 mots, x3 dès 10, x4 au plus dès 15. Une faute le casse dès qu'elle est tapée ; le mot, corrigé, repart à x1. Revenir corriger un mot validé faux ne le rétablit pas.
 _Avoid_ : streak, série, chaîne
 
 **Burst** :
-Un mot juste sans faute, d'au moins 4 lettres, tapé au moins 20 % plus vite que la Pace du User, chronométré de l'espace qui le précède (ou du départ, pour le premier mot) à la frappe qui le valide (sa dernière lettre, pour le dernier mot d'un Run `words`). Ses points sont doublés. Le mot en cours à la fin du temps n'en est jamais un. Construit dans le Run solo, à la Pace par défaut ; pas encore dans le Duel.
+Un mot juste sans faute, d'au moins 4 lettres, tapé au moins 20 % plus vite que la Pace du User, chronométré de l'espace qui le précède (ou du départ, pour le premier mot) à la frappe qui le valide (sa dernière lettre, pour le dernier mot d'un Run `words`). Ses points sont doublés. Le mot en cours à la fin du temps n'en est jamais un.
 _Avoid_ : perfect, crit, rush
 
 **Pace** :

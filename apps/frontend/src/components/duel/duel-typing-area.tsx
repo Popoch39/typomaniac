@@ -1,6 +1,7 @@
 import { DuelClock } from "@/components/duel/duel-clock";
 import { DuelConnection } from "@/components/duel/duel-connection";
 import { DuelFound } from "@/components/duel/duel-found";
+import { DuelLiveScore } from "@/components/duel/duel-live-score";
 import { DuelText } from "@/components/duel/duel-text";
 import { OpponentWpm } from "@/components/duel/opponent-wpm";
 import { LeaveDuel } from "@/components/duel/leave-duel";
@@ -28,6 +29,10 @@ export const DuelTypingArea = ({ opponent, startsAt, seconds }: DuelTypingAreaPr
       <div className="flex items-baseline justify-between">
         <DuelClock elapsed={elapsed} seconds={seconds} />
         <OpponentWpm name={opponent.name} elapsed={elapsed} />
+      </div>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <DuelLiveScore name="Toi" />
+        <DuelLiveScore name={opponent.name} opponent />
       </div>
       <div className="relative">
         <DuelText />

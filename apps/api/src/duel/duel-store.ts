@@ -1,10 +1,15 @@
 import type { Keystroke, Result } from "typing-engine";
 
-import type { Duel } from "./protocol";
+import type { Duel, DuelScore } from "./protocol";
 
-// A player of a finished Duel: their Result and the Keystrokes the server accepted from them,
-// which replay to that Result on the Duel's Text.
-export type DuelPlayerRecord = { userId: string; result: Result; keystrokes: readonly Keystroke[] };
+// A player of a finished Duel: their Result, their Score and the Keystrokes the server accepted
+// from them, which replay to both on the Duel's Text.
+export type DuelPlayerRecord = {
+  userId: string;
+  result: Result;
+  score: DuelScore;
+  keystrokes: readonly Keystroke[];
+};
 
 // How a finished Duel ended, for both players: someone won, a Draw, or the loser forfeited.
 export const DUEL_OUTCOMES = ["win", "draw", "forfeit"] as const;

@@ -49,6 +49,16 @@ const Result = t.Object({
   }),
 });
 
+// A player's Score at the end of a Duel, computed by the server from the Keystrokes it accepted:
+// the points, the best Combo and how many Bursts.
+const DuelScore = t.Object({
+  score: t.Integer(),
+  bestCombo: t.Integer(),
+  bursts: t.Integer(),
+});
+
+export type DuelScore = typeof DuelScore.static;
+
 const DuelOpponent = t.Object({ name: t.String(), image: t.Nullable(t.String()) });
 
 const Duel = t.Object({
@@ -101,8 +111,9 @@ export const ServerMessage = t.Union([
     received: t.Integer(),
     opponentKeystrokes: t.Array(Keystroke),
   }),
-  // The end, the same for both: each side gets its own outcome, its Result and the opponent's.
-  // Sent on connection too to a User who missed the end of their Duel while disconnected.
+  // The end, the same for both: each side gets its own outcome, its Result and Score and the
+  // opponent's. Sent on connection too to a User who missed the end of their Duel while
+  // disconnected.
   t.Object({
     type: t.Literal("duel-ended"),
     outcome: t.Union([t.Literal("win"), t.Literal("loss"), t.Literal("draw")]),
@@ -110,6 +121,8 @@ export const ServerMessage = t.Union([
     forfeit: t.Boolean(),
     result: Result,
     opponentResult: Result,
+    score: DuelScore,
+    opponentScore: DuelScore,
     opponent: DuelOpponent,
   }),
   // Another connection of the same User took its place; the server closes this one.

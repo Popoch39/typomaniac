@@ -24,7 +24,7 @@ export {
   type ScoreState,
 } from "./score";
 
-export { duelOutcome, type Outcome } from "./outcome";
+export { duelOutcome, type DuelSide, type Outcome } from "./outcome";
 
 export {
   acceptKeystroke,

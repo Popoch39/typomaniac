@@ -1,7 +1,13 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import pino from "pino";
-import { computeResult, currentWordListVersion, generateText } from "typing-engine";
+import {
+  computeResult,
+  computeScore,
+  currentWordListVersion,
+  defaultPace,
+  generateText,
+} from "typing-engine";
 
 import { createApp } from "../app";
 import {
@@ -34,26 +40,48 @@ const serverMessage = TypeCompiler.Compile(ServerMessage);
 const duelOf = (message: ServerMessage) =>
   message.type === "duel-found" || message.type === "duel-resumed" ? message.duel : null;
 
-// The Result a player is told at the end of their Duel.
-const resultOf = (message: ServerMessage) => {
+// The end of their Duel as a player is told it.
+const endedOf = (message: ServerMessage) => {
   if (message.type !== "duel-ended") {
     throw new Error(`Not the end of a Duel: ${message.type}`);
   }
 
-  return message.result;
+  return message;
+};
+
+const resultOf = (message: ServerMessage) => endedOf(message).result;
+
+const scoreOf = (message: ServerMessage) => endedOf(message).score;
+
+// The first `count` words of the Duel's Text.
+const wordsOf = (message: ServerMessage, count: number) => {
+  const duel = duelOf(message);
+
+  return duel === null ? [] : generateText(duel.seed, "en", duel.wordListVersion, count);
 };
 
 // The first word of the Duel's Text: typed right with its space, it is worth (length + 1) chars
 // in 30 s, so (length + 1) / 5 / 0.5 wpm.
-const firstWordOf = (message: ServerMessage) => {
-  const duel = duelOf(message);
+const firstWordOf = (message: ServerMessage) => wordsOf(message, 1)[0] ?? "";
 
-  return duel === null ? "" : (generateText(duel.seed, "en", duel.wordListVersion, 1)[0] ?? "");
-};
+// A word and its space, one Keystroke every `every` ms from `start`.
+const typed = (word: string, start: number, every = 100) =>
+  [...`${word} `].map((value, i) => char(value, start + i * every));
 
-// A word and its space, one Keystroke every 100 ms from `start`.
-const typed = (word: string, start: number) =>
-  [...`${word} `].map((value, i) => char(value, start + i * 100));
+// Words typed right one after the other, one Keystroke every `every` ms from `start`.
+const typedWords = (words: readonly string[], start: number, every: number) =>
+  typed(words.join(" "), start, every);
+
+// Words each typed with a mistake first, erased, then right: one Keystroke every `every` ms. No
+// word goes into a Combo, each is paid x1.
+const sloppyWords = (words: readonly string[], start: number, every: number) =>
+  words
+    .flatMap((word) => ["#", "backspace", ...`${word} `])
+    .map((key, i) =>
+      key === "backspace"
+        ? { kind: "backspace" as const, at: start + i * every }
+        : char(key, start + i * every),
+    );
 
 // `count` Keystrokes, one every `every` ms from `start`: the letters of the alphabet in turn.
 const burst = (count: number, start: number, every: number) =>
@@ -321,9 +349,9 @@ describe("duel socket", () => {
     const ada = await queued(await signedIn("Ada"));
     const alan = await queued(await signedIn("Alan"));
 
-    await Promise.all([ada.next(), alan.next()]);
+    const [found] = await Promise.all([ada.next(), alan.next()]);
 
-    return { ada, alan };
+    return { ada, alan, found };
   };
 
   test("relays the accepted Keystrokes to the opponent, not back to the sender", async () => {
@@ -420,14 +448,15 @@ describe("duel socket", () => {
     await alan.settle();
   });
 
-  test("the best wpm wins, and both see the same Results", async () => {
+  test("the best Score wins, and both see the same Results and Scores", async () => {
     const ada = await queued(await signedIn("Ada"));
     const alan = await queued(await signedIn("Alan"));
     const [found] = await Promise.all([ada.next(), alan.next()]);
     const word = firstWordOf(found);
 
     setNow(STARTS_AT + 5000);
-    ada.send({ type: "keystrokes", keystrokes: typed(word, 1000) });
+    // Slower than the Pace: no Burst.
+    ada.send({ type: "keystrokes", keystrokes: typed(word, 2000, 250) });
     await alan.next();
 
     setNow(ENDS_AT);
@@ -440,6 +469,8 @@ describe("duel socket", () => {
       forfeit: false,
       result: { wpm: (word.length + 1) / 5 / 0.5, accuracy: 100 },
       opponentResult: { wpm: 0, accuracy: 0 },
+      score: { score: word.length + 1, bestCombo: 1, bursts: 0 },
+      opponentScore: { score: 0, bestCombo: 0, bursts: 0 },
       opponent: { name: "Alan", image: "https://img/alan" },
     });
     expect(forAlan).toMatchObject({
@@ -455,9 +486,44 @@ describe("duel socket", () => {
 
     expect(ended[0]?.result).toEqual(ended[1]?.opponentResult);
     expect(ended[0]?.opponentResult).toEqual(ended[1]?.result);
+    expect(ended[0]?.score).toEqual(ended[1]?.opponentScore);
+    expect(ended[0]?.opponentScore).toEqual(ended[1]?.score);
   });
 
-  test("the same wpm and accuracy is a Draw for both", async () => {
+  test("a slower player who keeps their Combo beats a faster one who makes mistakes", async () => {
+    const ada = await queued(await signedIn("Ada"));
+    const alan = await queued(await signedIn("Alan"));
+    const [found] = await Promise.all([ada.next(), alan.next()]);
+    const words = wordsOf(found, 11);
+
+    setNow(STARTS_AT + 29_000);
+    // Ada: 10 words without a mistake, the 5th to the 9th paid x2 and the 10th x3.
+    ada.send({ type: "keystrokes", keystrokes: typedWords(words.slice(0, 10), 2000, 250) });
+    await alan.next();
+
+    // Alan: one more word, but each corrected, all paid x1. Two batches: too many for one.
+    const sloppy = sloppyWords(words, 1000, 60);
+
+    alan.send({ type: "keystrokes", keystrokes: sloppy.slice(0, 60) });
+    alan.send({ type: "keystrokes", keystrokes: sloppy.slice(60) });
+    await ada.next();
+    await ada.next();
+
+    setNow(ENDS_AT);
+
+    const [forAda, forAlan] = await Promise.all([ada.next().then(endedOf), alan.next()]);
+
+    expect(forAda.opponentResult.wpm).toBeGreaterThan(forAda.result.wpm);
+    expect(forAda).toMatchObject({
+      outcome: "win",
+      score: { bestCombo: 10, bursts: 0 },
+      // A corrected word starts the Combo again at 1.
+      opponentScore: { bestCombo: 1, bursts: 0 },
+    });
+    expect(forAlan).toMatchObject({ type: "duel-ended", outcome: "loss" });
+  });
+
+  test("the same Score is won by the best accuracy", async () => {
     const ada = await queued(await signedIn("Ada"));
     const alan = await queued(await signedIn("Alan"));
     const [found] = await Promise.all([ada.next(), alan.next()]);
@@ -465,7 +531,29 @@ describe("duel socket", () => {
 
     setNow(STARTS_AT + 5000);
     ada.send({ type: "keystrokes", keystrokes: typed(word, 1000) });
-    alan.send({ type: "keystrokes", keystrokes: typed(word, 2000) });
+    // The same word at the same time, then a mistake that scores nothing.
+    alan.send({ type: "keystrokes", keystrokes: [...typed(word, 1000), char("#", 3000)] });
+    await Promise.all([ada.next(), alan.next()]);
+
+    setNow(ENDS_AT);
+
+    const [forAda, forAlan] = await Promise.all([ada.next().then(endedOf), alan.next()]);
+
+    expect(forAda.score.score).toBe(forAda.opponentScore.score);
+    expect(forAda.result.accuracy).toBeGreaterThan(forAda.opponentResult.accuracy);
+    expect(forAda.outcome).toBe("win");
+    expect(forAlan).toMatchObject({ type: "duel-ended", outcome: "loss" });
+  });
+
+  test("the same Score and accuracy is a Draw for both", async () => {
+    const ada = await queued(await signedIn("Ada"));
+    const alan = await queued(await signedIn("Alan"));
+    const [found] = await Promise.all([ada.next(), alan.next()]);
+    const word = firstWordOf(found);
+
+    setNow(STARTS_AT + 5000);
+    ada.send({ type: "keystrokes", keystrokes: typed(word, 1000) });
+    alan.send({ type: "keystrokes", keystrokes: typed(word, 1000) });
     await Promise.all([ada.next(), alan.next()]);
 
     setNow(ENDS_AT);
@@ -552,6 +640,21 @@ describe("duel socket", () => {
     setNow(ENDS_AT);
     await ada.settle();
     await alan.settle();
+  });
+
+  test("a Forfeit decides the Duel, whatever the Scores", async () => {
+    const { ada, alan, found } = await paired();
+
+    setNow(STARTS_AT + 5000);
+    ada.send({ type: "keystrokes", keystrokes: typed(firstWordOf(found), 1000) });
+    await alan.next();
+    ada.send({ type: "leave-duel" });
+
+    const [forAda, forAlan] = await Promise.all([ada.next().then(endedOf), alan.next()]);
+
+    expect(forAda.score.score).toBeGreaterThan(forAda.opponentScore.score);
+    expect(forAda).toMatchObject({ outcome: "loss", forfeit: true });
+    expect(forAlan).toMatchObject({ type: "duel-ended", outcome: "win", forfeit: true });
   });
 
   test("leaving the Duel during the Countdown is a Forfeit too", async () => {
@@ -756,7 +859,7 @@ describe("duel socket", () => {
     return { ada, alan, adaId: adaUser.id, alanId: alanUser.id, found };
   };
 
-  test("a Duel won at the end is written once, with both Results and Keystrokes", async () => {
+  test("a Duel won at the end is written once, with both Results, Scores and Keystrokes", async () => {
     const { ada, alan, adaId, alanId, found } = await pairedUsers();
     const word = firstWordOf(found);
 
@@ -792,11 +895,13 @@ describe("duel socket", () => {
           {
             userId: adaId,
             result: resultOf(forAda),
+            score: scoreOf(forAda),
             keystrokes: typed(word, 1000),
           },
           {
             userId: alanId,
             result: resultOf(forAlan),
+            score: scoreOf(forAlan),
             keystrokes: [char("x", 3000)],
           },
         ],
@@ -833,25 +938,40 @@ describe("duel socket", () => {
 
     const [record] = saved;
 
-    expect(record).toBeDefined();
+    if (typeof record === "undefined") {
+      throw new Error("No Duel written");
+    }
 
-    const replayed = record?.players.map((player) =>
-      computeResult(
-        {
-          mode: record.mode,
-          seconds: record.seconds,
-          language: record.language,
-          wordListVersion: record.wordListVersion,
-          seed: record.seed,
-        },
-        player.keystrokes,
-        record.seconds * 1000,
-      ),
+    const config = {
+      mode: record.mode,
+      seconds: record.seconds,
+      language: record.language,
+      wordListVersion: record.wordListVersion,
+      seed: record.seed,
+    };
+
+    const replayed = record.players.map((player) =>
+      computeResult(config, player.keystrokes, record.seconds * 1000),
     );
 
-    expect(replayed).toEqual(record?.players.map((player) => player.result));
+    expect(replayed).toEqual(record.players.map((player) => player.result));
+
+    // Both players went at the Pace of 50 wpm for now.
+    const rescored = record.players.map((player) => {
+      const { score, bestCombo, bursts } = computeScore(
+        config,
+        player.keystrokes,
+        defaultPace,
+        record.seconds * 1000,
+      );
+
+      return { score, bestCombo, bursts };
+    });
+
+    expect(rescored).toEqual(record.players.map((player) => player.score));
     // Not a trivial replay: both typed something that counts.
-    expect(record?.players.map((player) => player.result.wpm > 0)).toEqual([true, true]);
+    expect(record.players.map((player) => player.result.wpm > 0)).toEqual([true, true]);
+    expect(record.players.map((player) => player.score.score > 0)).toEqual([true, true]);
   });
 
   test("a Draw is written with no winner", async () => {
