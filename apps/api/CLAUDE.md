@@ -41,7 +41,7 @@ Lint et format se lancent depuis la racine du monorepo (voir le `CLAUDE.md` raci
 
 ## Logs et sécurité
 
-Plugins dans `src/plugins/`, montés par `createApp` dans cet ordre : request-id, request-logger, security-headers, cors, api-docs, error-handler, body-limit, rate-limit, authentication. L'error-handler doit rester avant les plugins qui rejettent des requêtes.
+Plugins dans `src/plugins/`, montés par `createApp` dans cet ordre : request-id, request-logger, security-headers, cors, api-docs, error-handler, body-limit, rate-limit, authentication (puis la route Duel, voir plus bas). L'error-handler doit rester avant les plugins qui rejettent des requêtes.
 
 - **Logger** : pino, créé dans `src/index.ts` (`src/logger.ts`) et injecté via `AppConfig.logger`. JSON sur stdout si `NODE_ENV=production`, sinon `pino-pretty` (transport worker, dev uniquement : il ne marche pas dans le binaire compilé). Niveau : `LOG_LEVEL`. Une ligne `request` par requête (méthode, path, status, durée, requestId). Dans un handler, utiliser `log` du contexte : il porte déjà le `requestId`.
 - **Request ID** : `X-Request-Id` repris s'il est sûr (`[\w.-]{1,128}`), sinon UUID ; renvoyé dans la réponse. `requestIdOf(request)` pour le lire hors contexte (hooks d'erreur).
@@ -62,6 +62,16 @@ Better Auth, OAuth uniquement (ADR `docs/adr/0001-…`, vocabulaire User / Accou
 - **Liaison de comptes** : se connecter avec un second fournisseur rattache un nouvel Account au User qui a le même email. GitHub et Google sont de confiance (`trustedProviders`) ; Discord n'est rattaché que s'il marque l'email vérifié, sinon la connexion est refusée. Le User existant doit lui-même avoir un email vérifié (`requireLocalEmailVerified`, défaut de Better Auth).
 - **Schéma** : `src/database/auth-schema.ts` est généré par la CLI (`bunx auth@latest generate`, avec une config qui construit l'instance) ; le régénérer quand les options ou les plugins changent, puis `db:generate`.
 - **Tests** : `betterAuth({ ...authOptions(…), database: memoryAdapter(…), plugins: [testUtils()] })`, puis `(await auth.$context).test.login({ userId })` pour obtenir le cookie d'une Session. Pour la connexion sociale et la liaison : des fournisseurs factices (`verifyIdToken` + `getUserInfo`) et `POST /api/auth/sign-in/social` avec `idToken`, qui passe par la vraie logique User / Account sans aller-retour OAuth. Toutes ces requêtes viennent de la même IP : une instance partagée par plusieurs tests de connexion désactive le rate limit de Better Auth (`rateLimit.enabled: false`), testé à part.
+
+## Duel (WebSocket)
+
+État temps réel en mémoire, une seule instance (ADR `docs/adr/0003-…`, vocabulaire Duel / Queue / Countdown dans `CONTEXT.md`).
+
+- **Route** : `src/duel/duel-route.ts`, WebSocket `/api/duel` monté en dernier par `createApp`. La macro `auth` s'applique à l'upgrade : sans Session valide, 401 au format API et pas de connexion.
+- **Service** : `DuelQueue` (`src/duel/duel-queue.ts`, la Queue et les Users connectés), indépendant d'Elysia (la route lui passe une `Connection`). Une place par User : une nouvelle connexion reçoit la place de l'ancienne, qui reçoit `replaced` puis est fermée ; seuls les messages de la connexion courante comptent. Appariement FIFO de deux Users distincts : Seed tirée par le serveur, anglais, Word list version courante, `startsAt` = maintenant + 3 s, `serverTime` pour le décalage d'horloge du client.
+- **Protocole** : `src/duel/protocol.ts`, schémas TypeBox, types `ClientMessage` / `ServerMessage` réexportés par `app.ts` pour le front. Les messages client sont validés à la main (`clientMessage.Check`), pas via le `body` de la route : Elysia répondrait un corps d'erreur HTTP hors protocole ; un message invalide reçoit `invalid-message`. Taille bornée par `websocket.maxPayloadLength` (`MAX_DUEL_MESSAGE_SIZE`, sur l'instance racine) : au-delà, Bun ferme la connexion.
+- **Horloge** : `AppConfig.clock` (`src/clock.ts`, `systemClock` en prod), une horloge fixe dans les tests.
+- **Tests** : `src/duel/duel-route.test.ts`, `createApp` sur un vrai `listen(0)`, Sessions via `signIn` (`src/test-app.ts`, helpers partagés avec `app.test.ts`) et le client `WebSocket` de Bun avec l'en-tête `cookie`. Pas de lib DOM dans `tsconfig.json` : elle masquerait la signature de Bun (`headers`). Pour prouver qu'aucun message n'arrive, `settle()` fait un aller-retour (message invalide → `invalid-message`) au lieu d'attendre.
 
 ## OpenAPI
 

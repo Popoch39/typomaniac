@@ -1,6 +1,8 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
+    "target": "ES2023",
+    // No DOM: Bun's globals only (its WebSocket client takes headers, the DOM's does not).
+    "lib": ["ES2023"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "moduleDetection": "force",

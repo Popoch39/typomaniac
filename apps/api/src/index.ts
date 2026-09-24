@@ -1,5 +1,6 @@
 import { createApp } from "./app";
 import { createAuth } from "./auth";
+import { systemClock } from "./clock";
 import { db, runMigrations } from "./database/client";
 import { env } from "./env";
 import { createLogger } from "./logger";
@@ -31,6 +32,7 @@ const app = createApp({
     },
     db,
   ),
+  clock: systemClock,
 }).listen({ port: env.PORT, maxRequestBodySize: HARD_REQUEST_BODY_SIZE });
 
 logger.info({ url: app.server?.url.href }, "server started");

@@ -1,19 +1,17 @@
-import { ResultScreen } from "@/components/run/result-screen";
+import { DuelArea } from "@/components/duel/duel-area";
+import { useInDuel } from "@/components/duel/use-in-duel";
 import { RunSettings } from "@/components/run/run-settings";
-import { TypingArea } from "@/components/run/typing-area";
-import { useRunStore } from "@/stores/run-store";
+import { SoloArea } from "@/components/run/solo-area";
 
-// The Run page: the settings, then the typing area while the Run lasts, then its Result. Each Run gets a fresh typing
-// area, so a Run started from within another one starts from scratch, focus included.
+// The play page: the settings, then the Solo Run or the Duel.
 export const HomePage = () => {
-  const result = useRunStore((state) => state.result);
-  const runNumber = useRunStore((state) => state.runNumber);
+  const inDuel = useInDuel();
 
   return (
     <section className="flex flex-col gap-4 py-12">
       <h1 className="sr-only">typomaniac</h1>
       <RunSettings />
-      {result === null ? <TypingArea key={runNumber} /> : <ResultScreen result={result} />}
+      {inDuel ? <DuelArea /> : <SoloArea />}
     </section>
   );
 };

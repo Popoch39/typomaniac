@@ -2,50 +2,22 @@ import { describe, expect, test } from "bun:test";
 import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import type { OAuth2Tokens } from "better-auth/oauth2";
-import { testUtils } from "better-auth/plugins";
 import type { DiscordProfile, GithubProfile, GoogleProfile } from "better-auth/social-providers";
 import { status, t } from "elysia";
 import pino from "pino";
 
-import { type AppConfig, createApp } from "./app";
-import { authOptions } from "./auth";
+import { createApp } from "./app";
 import { ApiError } from "./errors";
 import { DOCS_PATH, SPEC_PATH } from "./plugins/api-docs";
 import { MAX_REQUEST_BODY_SIZE } from "./plugins/body-limit";
 import { CLIENT_IP_HEADER } from "./plugins/client-ip";
-
-const FRONT_ORIGIN = "http://localhost:5173";
-
-// A function: each instance gets its own rate limit counters.
-const testAuthOptions = () =>
-  authOptions({
-    secret: "a-test-secret-of-at-least-thirty-two-chars",
-    baseURL: "http://localhost",
-    trustedOrigin: FRONT_ORIGIN,
-    socialProviders: {},
-  });
-
-// The production auth options on Better Auth's in-memory database, plus its test
-// helpers to open Sessions without going through an OAuth provider.
-const createTestAuth = () => {
-  const options = testAuthOptions();
-
-  return betterAuth({
-    ...options,
-    database: memoryAdapter({ user: [], session: [], account: [], verification: [] }),
-    plugins: [...options.plugins, testUtils()],
-  });
-};
-
-const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => ({
-  corsOrigin: FRONT_ORIGIN,
-  isProduction: false,
-  trustProxy: false,
-  rateLimit: { max: 1000, windowMs: 60_000 },
-  logger: pino({ level: "silent" }),
-  auth: createTestAuth(),
-  ...overrides,
-});
+import {
+  createTestAuth,
+  FRONT_ORIGIN,
+  signIn as signInAs,
+  testAuthOptions,
+  testConfig,
+} from "./test-app";
 
 const app = createApp(testConfig());
 
@@ -246,7 +218,9 @@ describe("error handling", () => {
 
     const body = await expectError(response, { status: 422, code: "VALIDATION_FAILED" });
 
-    expect(body.error.details).toContainEqual({ path: "/name", message: "Expected string" });
+    expect(body).toMatchObject({
+      error: { details: expect.arrayContaining([{ path: "/name", message: "Expected string" }]) },
+    });
   });
 
   test("renders malformed JSON as BAD_REQUEST", async () => {
@@ -369,20 +343,28 @@ describe("api docs", () => {
     const spec = await response.json();
 
     expect(response.status).toBe(200);
-    expect(spec.info.title).toBe("Typomaniac API");
-    expect(spec.paths["/api/health"].get).toMatchObject({ tags: ["System"] });
-    expect(spec.paths[DOCS_PATH]).toBeUndefined();
+    expect(spec).toMatchObject({
+      info: { title: "Typomaniac API" },
+      paths: { "/api/health": { get: { tags: ["System"] } } },
+    });
+    expect(spec).not.toHaveProperty(["paths", DOCS_PATH]);
   });
 
   test("documents GET /api/me and Better Auth's endpoints under the Auth tag", async () => {
     const spec = await (await app.handle(new Request(`http://localhost${SPEC_PATH}`))).json();
 
-    expect(spec.tags).toContainEqual(expect.objectContaining({ name: "Auth" }));
-    expect(spec.paths["/api/me"].get).toMatchObject({ tags: ["Auth"] });
-    expect(spec.paths["/api/auth/sign-in/social"].post).toMatchObject({ tags: ["Auth"] });
-    expect(spec.paths["/api/auth/get-session"].get).toMatchObject({ tags: ["Auth"] });
-    expect(spec.components.schemas.User).toBeDefined();
-    expect(spec.components.securitySchemes.apiKeyCookie).toBeDefined();
+    expect(spec).toMatchObject({
+      tags: expect.arrayContaining([expect.objectContaining({ name: "Auth" })]),
+      paths: {
+        "/api/me": { get: { tags: ["Auth"] } },
+        "/api/auth/sign-in/social": { post: { tags: ["Auth"] } },
+        "/api/auth/get-session": { get: { tags: ["Auth"] } },
+      },
+      components: {
+        schemas: { User: expect.anything() },
+        securitySchemes: { apiKeyCookie: expect.anything() },
+      },
+    });
   });
 
   test("leaves Better Auth's own schema and reference routes unreachable", async () => {
@@ -435,18 +417,8 @@ describe("auth", () => {
   const auth = createTestAuth();
   const authApp = createApp(testConfig({ auth }));
 
-  // A User with an open Session: the cookie a browser would hold after an OAuth callback.
-  const signIn = async () => {
-    const { test: helpers } = await auth.$context;
-
-    const user = await helpers.saveUser(
-      helpers.createUser({ name: "Ada", email: "ada@example.com", image: "https://img/ada" }),
-    );
-
-    const login = await helpers.login({ userId: user.id });
-
-    return { user, token: login.token, cookie: login.headers.get("cookie") ?? "" };
-  };
+  const signIn = () =>
+    signInAs(auth, { name: "Ada", email: "ada@example.com", image: "https://img/ada" });
 
   const getMe = (cookie?: string) =>
     authApp.handle(

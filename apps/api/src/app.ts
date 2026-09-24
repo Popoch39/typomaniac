@@ -3,6 +3,9 @@ import { Elysia, t } from "elysia";
 import type { Logger } from "pino";
 
 import { API_PREFIX } from "./api-prefix";
+import type { Clock } from "./clock";
+import { duelRoute } from "./duel/duel-route";
+import { MAX_DUEL_MESSAGE_SIZE } from "./duel/protocol";
 import { apiDocs } from "./plugins/api-docs";
 import { type AuthHandler, authentication } from "./plugins/authentication";
 import { bodyLimit } from "./plugins/body-limit";
@@ -14,6 +17,8 @@ import { securityHeaders } from "./plugins/security-headers";
 
 export type { ApiErrorBody, ErrorCode, ErrorDetail } from "./errors";
 
+export type { ClientMessage, ServerMessage } from "./duel/protocol";
+
 export type AppConfig = {
   corsOrigin: string;
   isProduction: boolean;
@@ -22,6 +27,8 @@ export type AppConfig = {
   logger: Logger;
   // Built by the entry point (src/auth.ts) from the env, like the logger.
   auth: AuthHandler;
+  // The Duel's time source (Countdown, server time sent to the clients).
+  clock: Clock;
 };
 
 const MeResponse = t.Object({
@@ -36,7 +43,7 @@ const MeResponse = t.Object({
 // come after the security headers: they loosen the CSP on their own page. The prefix
 // also applies to the routes of the plugins used here (the docs).
 export const createApp = (config: AppConfig) =>
-  new Elysia({ prefix: API_PREFIX })
+  new Elysia({ prefix: API_PREFIX, websocket: { maxPayloadLength: MAX_DUEL_MESSAGE_SIZE } })
     .use(requestId)
     .use(requestLogger(config.logger))
     .use(securityHeaders({ isProduction: config.isProduction }))
@@ -63,6 +70,7 @@ export const createApp = (config: AppConfig) =>
         response: MeResponse,
         detail: { summary: "The signed-in User", tags: ["Auth"] },
       },
-    );
+    )
+    .use(duelRoute({ auth: config.auth, trustProxy: config.trustProxy, clock: config.clock }));
 
 export type App = ReturnType<typeof createApp>;

@@ -1,10 +1,13 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { currentWordListVersion, type Language, type RunConfig, wordList } from "typing-engine";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { meQueryOptions } from "@/api/me";
 import { ClockContext } from "@/components/run/clock-context";
 import { HomePage } from "@/pages/home-page";
+import { useAuthStore } from "@/stores/auth-store";
 import { useRunStore } from "@/stores/run-store";
 import { useSettingsStore } from "@/stores/settings-store";
 
@@ -44,16 +47,22 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// Renders the page with a clock the test moves by hand, frames included.
+// Renders the page with a clock the test moves by hand, frames included. The Session cache is seeded
+// the way the root route's beforeLoad leaves it, for a Visitor.
 const renderPage = () => {
   let now = 1_000;
+  const queryClient = new QueryClient();
+
+  queryClient.setQueryData(meQueryOptions.queryKey, null);
 
   render(
-    <ClockContext value={() => now}>
-      {/* Stands for the header: its buttons come before the Run in the tab order. */}
-      <button type="button">en-tête</button>
-      <HomePage />
-    </ClockContext>,
+    <QueryClientProvider client={queryClient}>
+      <ClockContext value={() => now}>
+        {/* Stands for the header: its buttons come before the Run in the tab order. */}
+        <button type="button">en-tête</button>
+        <HomePage />
+      </ClockContext>
+    </QueryClientProvider>,
   );
 
   return {
@@ -398,8 +407,16 @@ const reload = async () => {
   cleanup();
   vi.resetModules();
   const { HomePage: ReloadedPage } = await import("@/pages/home-page");
+  const query = await import("@tanstack/react-query");
+  const queryClient = new query.QueryClient();
 
-  render(<ReloadedPage />);
+  queryClient.setQueryData(meQueryOptions.queryKey, null);
+
+  render(
+    <query.QueryClientProvider client={queryClient}>
+      <ReloadedPage />
+    </query.QueryClientProvider>,
+  );
 
   return { user: userEvent.setup() };
 };
@@ -437,6 +454,19 @@ describe("HomePage settings", () => {
     expect(setting("words")).toHaveAttribute("aria-pressed", "true");
     expect(setting(words)).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText(`0/${words}`)).toBeInTheDocument();
+  });
+
+  test("a Visitor who picks Duel is asked to sign in and stays in Solo", async () => {
+    useAuthStore.setState({ signInOpen: false });
+    const { user } = renderPage();
+
+    expect(setting("solo")).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(setting("duel"));
+
+    expect(useAuthStore.getState().signInOpen).toBe(true);
+    expect(setting("solo")).toHaveAttribute("aria-pressed", "true");
+    expect(setting("time")).toBeInTheDocument();
   });
 
   test("the settings are hidden during a Run and come back on its Result", async () => {
