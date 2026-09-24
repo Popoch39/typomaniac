@@ -2,6 +2,8 @@ import type { ClientMessage, ServerMessage } from "api";
 import {
   applyKeystroke,
   computeScore,
+  type Cue,
+  cuesOf,
   isFinished,
   type Key,
   type Keystroke,
@@ -14,6 +16,7 @@ import { create } from "zustand";
 
 import { api } from "@/api/client";
 import type { Clock } from "@/components/run/clock-context";
+import { emitCues } from "@/lib/cue-bus";
 import { markDuelInProgress } from "@/lib/duel-in-progress";
 
 type DuelFound = Extract<ServerMessage, { type: "duel-found" }>;
@@ -69,9 +72,11 @@ export type DuelState =
 
 type DuelStore = {
   state: DuelState;
+  // What the User's last Keystroke caused, never the opponent's (ADR 0006).
+  cues: readonly Cue[];
   // Opens the Duel socket: the server resumes the User's Duel, or they join the Queue. `clock`
-  // stamps the Keystrokes and the Countdown.
-  connect: (clock: Clock) => void;
+  // stamps the Keystrokes and the Countdown; `openSocket` opens it, and every reconnection's.
+  connect: (clock: Clock, openSocket?: OpenDuelSocket) => void;
   // Closes the socket: the server drops the User from the Queue. Leaving a Duel in play this way
   // is a Forfeit.
   disconnect: () => void;
@@ -90,7 +95,18 @@ export const duelOf = (state: DuelState) =>
     ? state.duel
     : null;
 
-type DuelSocket = ReturnType<typeof api.duel.subscribe>;
+// What the store uses of the Duel socket: the server's messages, the connection's loss, sending
+// and closing. Eden's socket in the app, a fake one in the tests.
+export type DuelSocket = {
+  subscribe: (listener: (event: { data: ServerMessage }) => void) => void;
+  on: (event: "close", listener: () => void) => void;
+  send: (message: ClientMessage) => void;
+  close: () => void;
+};
+
+type OpenDuelSocket = () => DuelSocket;
+
+const openApiSocket: OpenDuelSocket = () => api.duel.subscribe();
 
 // The Keystrokes are sent in small batches, at most this often.
 const BATCH_MS = 50;
@@ -105,6 +121,8 @@ const MAX_RECONNECTS = 15;
 let socket: DuelSocket | null = null;
 
 let clock: Clock = () => performance.now();
+
+let openSocket = openApiSocket;
 
 // Typed Keystrokes not sent yet, and the timer that will send them.
 let outbox: Keystroke[] = [];
@@ -320,9 +338,13 @@ const stateAfter = (state: DuelState, message: ServerMessage): DuelState => {
   }
 };
 
-const pressed = (state: DuelState, key: Key, now: number): DuelState => {
+// A key is a Keystroke only while the Duel runs: the Countdown and the end leave the store as is,
+// Cues included.
+const pressed = (store: DuelStore, key: Key, now: number): Pick<DuelStore, "state" | "cues"> => {
+  const { state } = store;
+
   if (state.phase !== "running") {
-    return state;
+    return store;
   }
 
   const { duel } = state;
@@ -330,21 +352,18 @@ const pressed = (state: DuelState, key: Key, now: number): DuelState => {
 
   // Past the end: the next frame ends the Duel.
   if (isFinished(duel.run, keystroke.at)) {
-    return state;
+    return store;
   }
 
   queueKeystroke(keystroke);
 
   const keystrokes = [...duel.keystrokes, keystroke];
+  const run = applyKeystroke(duel.run, keystroke);
+  const score = scoreOf(duel.config, keystrokes, duel.pace);
 
   return {
-    phase: "running",
-    duel: {
-      ...duel,
-      run: applyKeystroke(duel.run, keystroke),
-      keystrokes,
-      score: scoreOf(duel.config, keystrokes, duel.pace),
-    },
+    state: { phase: "running", duel: { ...duel, run, keystrokes, score } },
+    cues: cuesOf({ run: duel.run, score: duel.score }, keystroke, { run, score }),
   };
 };
 
@@ -373,7 +392,7 @@ const ticked = (state: DuelState, now: number): DuelState => {
 // a Duel is opened again, and the server resumes the Duel.
 export const useDuelStore = create<DuelStore>()((set, get) => {
   const open = () => {
-    const current = api.duel.subscribe();
+    const current = openSocket();
 
     socket = current;
 
@@ -406,11 +425,13 @@ export const useDuelStore = create<DuelStore>()((set, get) => {
 
   return {
     state: { phase: "connecting" },
-    connect: (tabClock) => {
+    cues: [],
+    connect: (tabClock, tabSocket = openApiSocket) => {
       socket?.close();
       stopReconnecting();
       clock = tabClock;
-      set({ state: { phase: "connecting" } });
+      openSocket = tabSocket;
+      set({ state: { phase: "connecting" }, cues: [] });
       open();
     },
     disconnect: () => {
@@ -430,7 +451,7 @@ export const useDuelStore = create<DuelStore>()((set, get) => {
     },
     joinQueue: () => send({ type: "join-queue" }),
     leave: () => send({ type: "leave-duel" }),
-    press: (key, now) => set((store) => ({ state: pressed(store.state, key, now) })),
+    press: (key, now) => set((store) => pressed(store, key, now)),
     tick: (now) =>
       set((store) => {
         const state = ticked(store.state, now);
@@ -438,6 +459,14 @@ export const useDuelStore = create<DuelStore>()((set, get) => {
         return state === store.state ? store : { state };
       }),
   };
+});
+
+// Only the User's Keystrokes leave new Cues: they go to the bus, outside of React. The opponent's,
+// a resync or a reconnection leave them as they are.
+useDuelStore.subscribe((store, previous) => {
+  if (store.cues !== previous.cues) {
+    emitCues(store.cues);
+  }
 });
 
 // A reload in the middle of a Duel reopens Duel, to resume it (play-store).

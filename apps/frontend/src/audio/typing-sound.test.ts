@@ -1,9 +1,18 @@
 import { type Cue, defaultPace, type Key, type RunConfig } from "typing-engine";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
-import { type AudioOutput, createAudioEngine } from "@/audio/audio-engine";
+import { createAudioEngine } from "@/audio/audio-engine";
 import { startSoundReactor } from "@/audio/sound-reactor";
 import { useRunStore } from "@/stores/run-store";
+import {
+  backspace,
+  decoded,
+  error,
+  fakeOutput,
+  key07,
+  middle,
+  space,
+} from "@/test/fake-audio-output";
 
 // Seed 42 in English, version 1, gives "small help while late…" (pinned in the typing-engine tests).
 const words10: RunConfig = {
@@ -13,32 +22,6 @@ const words10: RunConfig = {
   wordListVersion: 1,
   seed: 42,
 };
-
-type Played = { url: string; detune: number; gain: number };
-
-// An audio output that decodes every file at once, or never, and writes down what it plays.
-const fakeOutput = ({ decodes = true } = {}) => {
-  const played: Played[] = [];
-  const state = { volume: 1, resumed: 0 };
-
-  const output: AudioOutput<string> = {
-    decode: (url) => (decodes ? Promise.resolve(url) : new Promise<string>(() => {})),
-    play: (url, playback) => {
-      played.push({ url, ...playback });
-    },
-    resume: () => {
-      state.resumed++;
-    },
-    setVolume: (volume) => {
-      state.volume = volume;
-    },
-  };
-
-  return { output, played, state };
-};
-
-// The decoding of the pack is asynchronous: lets it settle before typing.
-const decoded = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const char = (c: string): Key => ({ kind: "char", char: c });
 
@@ -54,15 +37,6 @@ const press = (...keys: Key[]) => pressAt(defaultPace, keys);
 const type = (input: string, pace = defaultPace) => pressAt(pace, [...input].map(char));
 
 const kindsOf = (cues: readonly Cue[]) => cues.map((cue) => cue.kind);
-
-// Mid-range randomness: the 7th of the 12 key variants, not detuned.
-const middle = () => 0.5;
-
-const key07 = { url: "/sounds/tactile/key-07.mp3", detune: 0, gain: 1 };
-
-const space = { url: "/sounds/tactile/key-05.mp3", detune: -300, gain: 1 };
-
-const error = { url: "/sounds/tactile/error.mp3", detune: 0, gain: 0.5 };
 
 let stop = () => {};
 
@@ -137,10 +111,7 @@ describe("typing sound in a solo Run", () => {
     type("sm");
     press({ kind: "backspace" }, { kind: "deleteWord" });
 
-    expect(played.slice(2)).toEqual([
-      { url: "/sounds/tactile/backspace.mp3", detune: 0, gain: 0.9 },
-      { url: "/sounds/tactile/backspace.mp3", detune: 0, gain: 0.9 },
-    ]);
+    expect(played.slice(2)).toEqual([backspace, backspace]);
   });
 
   test("a key the engine ignores plays nothing", async () => {
