@@ -5,6 +5,7 @@ import { systemClock } from "./lib/clock";
 import { createLogger } from "./lib/logger";
 import { createAuth } from "./modules/auth/service";
 import { drizzleDuelStore } from "./modules/duel/drizzle-store";
+import { drizzleFriendStore } from "./modules/friend/drizzle-store";
 import { drizzleHandleSearch } from "./modules/user/drizzle-handle-search";
 import { authUsers } from "./modules/user/users";
 import { HARD_REQUEST_BODY_SIZE } from "./plugins/body-limit";
@@ -13,6 +14,9 @@ const isProduction = env.NODE_ENV === "production";
 
 // Per User: a search per pause in the typing (debounced), far from enough to dump the Handles.
 const SEARCH_RATE_LIMIT = { max: 30, windowMs: 60_000 };
+
+// Per User: a few Friend requests in a row are fine, spraying them at everyone is not.
+const FRIEND_REQUEST_RATE_LIMIT = { max: 20, windowMs: 60_000 };
 
 const logger = createLogger({ level: env.LOG_LEVEL, pretty: !isProduction });
 
@@ -45,6 +49,8 @@ const app = createApp({
   clock: systemClock,
   duelStore: drizzleDuelStore(db),
   searchRateLimit: SEARCH_RATE_LIMIT,
+  friendStore: drizzleFriendStore(db),
+  friendRequestRateLimit: FRIEND_REQUEST_RATE_LIMIT,
 }).listen({ port: env.PORT, maxRequestBodySize: HARD_REQUEST_BODY_SIZE });
 
 logger.info({ url: app.server?.url.href }, "server started");

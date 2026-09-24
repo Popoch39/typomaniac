@@ -1,7 +1,7 @@
 import { t } from "elysia";
 import { HANDLE_SEARCH_MIN_LENGTH } from "handle";
 
-import { RELATIONS } from "./service";
+import { FriendModel } from "../friend/model";
 
 export const UserModel = {
   searchQuery: t.Object({ handle: t.String({ minLength: HANDLE_SEARCH_MIN_LENGTH }) }),
@@ -11,7 +11,7 @@ export const UserModel = {
       id: t.String(),
       handle: t.String(),
       image: t.Nullable(t.String()),
-      relation: t.UnionEnum(RELATIONS),
+      relation: FriendModel.relation,
     }),
   ),
 };

@@ -8,6 +8,8 @@ import { type AuthHandler, authentication } from "./modules/auth";
 import { duelModule } from "./modules/duel";
 import { MAX_DUEL_MESSAGE_SIZE } from "./modules/duel/model";
 import type { DuelStore } from "./modules/duel/store";
+import { friendModule } from "./modules/friend";
+import type { FriendStore } from "./modules/friend/store";
 import { handleModule } from "./modules/handle";
 import { meModule } from "./modules/me";
 import { userModule } from "./modules/user";
@@ -23,6 +25,8 @@ import { securityHeaders } from "./plugins/security-headers";
 export type { ApiErrorBody, ErrorCode, ErrorDetail } from "./lib/errors";
 
 export type { ClientMessage, ServerMessage } from "./modules/duel/model";
+
+export type { FriendRefusal } from "./modules/friend/model";
 
 export type AppConfig = {
   corsOrigin: string;
@@ -40,6 +44,10 @@ export type AppConfig = {
   duelStore: DuelStore;
   // Per User, stricter than the global limit: the search must not dump the Handles.
   searchRateLimit: RateLimit;
+  // The Friend requests and the friendships: Drizzle in production, in memory in the tests.
+  friendStore: FriendStore;
+  // Per User, on sending a Friend request: nobody sprays them at everyone.
+  friendRequestRateLimit: RateLimit;
 };
 
 // Order matters: headers and the request id are set before anything can throw, and
@@ -48,7 +56,7 @@ export type AppConfig = {
 // also applies to the routes of the plugins used here (the docs). The feature modules
 // come last, each one from src/modules/.
 export const createApp = (config: AppConfig) => {
-  const { auth, trustProxy, users, duelStore } = config;
+  const { auth, trustProxy, users, duelStore, friendStore } = config;
 
   return new Elysia({
     prefix: API_PREFIX,
@@ -69,7 +77,24 @@ export const createApp = (config: AppConfig) => {
     .use(authentication(auth, { trustProxy }))
     .use(meModule({ auth, trustProxy, duelStore }))
     .use(handleModule({ auth, trustProxy, users }))
-    .use(userModule({ auth, trustProxy, users, searchRateLimit: config.searchRateLimit }))
+    .use(
+      userModule({
+        auth,
+        trustProxy,
+        users,
+        friendStore,
+        searchRateLimit: config.searchRateLimit,
+      }),
+    )
+    .use(
+      friendModule({
+        auth,
+        trustProxy,
+        users,
+        store: friendStore,
+        sendRateLimit: config.friendRequestRateLimit,
+      }),
+    )
     .use(
       duelModule({
         auth,

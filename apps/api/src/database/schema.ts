@@ -1,4 +1,5 @@
 import * as duelSchema from "../modules/duel/schema";
+import * as friendSchema from "../modules/friend/schema";
 import * as authSchema from "./auth-schema";
 
 // drizzle-kit reads the tables exported by this file, the client and the Better Auth
@@ -7,6 +8,8 @@ export * from "./auth-schema";
 
 export * from "../modules/duel/schema";
 
-export const table = { ...authSchema, ...duelSchema } as const;
+export * from "../modules/friend/schema";
+
+export const table = { ...authSchema, ...duelSchema, ...friendSchema } as const;
 
 export type Table = typeof table;

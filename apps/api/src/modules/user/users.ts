@@ -19,6 +19,8 @@ export type HandleSearch = (
 // tests, a test may wrap it to force a race.
 export type Users = {
   profileOf: (userId: string) => Promise<PublicProfile | null>;
+  // Those of `userIds` who have a Handle, in no given order: the Friends, the Friend requests.
+  profilesOf: (userIds: readonly string[]) => Promise<HandleMatch[]>;
   // The id of the User who holds this Handle, already lowercased, if any.
   idOfHandle: (handle: string) => Promise<string | null>;
   // Refused by the database's unique constraint when another User holds it.
@@ -53,6 +55,23 @@ export const authUsers = (
       const row = await findOne("id", userId);
 
       return row ? { handle: row.handle ?? null, image: row.image ?? null } : null;
+    },
+    profilesOf: async (userIds) => {
+      if (userIds.length === 0) {
+        return [];
+      }
+
+      const { adapter } = await auth.$context;
+
+      const rows = await adapter.findMany<UserRow>({
+        model: "user",
+        where: [{ field: "id", operator: "in", value: [...userIds] }],
+        limit: userIds.length,
+      });
+
+      return rows.flatMap(({ id, handle, image }) =>
+        handle ? [{ id, handle, image: image ?? null }] : [],
+      );
     },
     idOfHandle: async (handle) => (await findOne("handle", handle))?.id ?? null,
     setHandle: async (userId, handle) => {

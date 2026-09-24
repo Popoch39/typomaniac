@@ -1,19 +1,14 @@
 import type { UserFound } from "@/api/user-search";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { atHandle } from "@/lib/at-handle";
-import { initials } from "@/lib/initials";
+import { RelationActions } from "@/components/friends/relation-actions";
+import { UserRow } from "@/components/friends/user-row";
 
 type UserFoundItemProps = {
   user: UserFound;
 };
 
-// A User found by their Handle: their avatar and their Handle, nothing else of them.
+// A User found by their Handle, with what the searcher can do with them.
 export const UserFoundItem = ({ user }: UserFoundItemProps) => (
-  <li className="flex items-center gap-3 px-3 py-2">
-    <Avatar size="sm">
-      {user.image ? <AvatarImage src={user.image} alt="" /> : null}
-      <AvatarFallback>{initials(user.handle)}</AvatarFallback>
-    </Avatar>
-    <span className="truncate">{atHandle(user.handle)}</span>
-  </li>
+  <UserRow user={user}>
+    <RelationActions user={user} />
+  </UserRow>
 );

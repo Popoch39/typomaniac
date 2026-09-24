@@ -9,6 +9,8 @@ import { type Clock, systemClock } from "./lib/clock";
 import type { AuthHandler } from "./modules/auth";
 import { authOptions } from "./modules/auth/service";
 import type { DuelRecord, DuelStore } from "./modules/duel/store";
+import type { Relation } from "./modules/friend/model";
+import { type FriendStore, orderedPair } from "./modules/friend/store";
 import { authUsers, type HandleSearch, type UserRow } from "./modules/user/users";
 
 // Shared by the test files: the app's config with in-memory dependencies.
@@ -101,6 +103,105 @@ export const memoryDuelStore = () => {
   return { store, saved };
 };
 
+// The Friend requests and the friendships in memory, in the order they were written.
+export const memoryFriendStore = (): FriendStore => {
+  // Oldest first: read backwards for the newest first.
+  let requests: { senderId: string; recipientId: string }[] = [];
+  let friendships: { pair: [string, string] }[] = [];
+
+  const isRequest = (senderId: string, recipientId: string) =>
+    requests.some(
+      (request) => request.senderId === senderId && request.recipientId === recipientId,
+    );
+
+  const friendsOf = (userId: string) =>
+    friendships.flatMap(({ pair: [a, b] }) => {
+      if (a === userId) {
+        return [b];
+      }
+
+      return b === userId ? [a] : [];
+    });
+
+  const deleteRequest = (senderId: string, recipientId: string) => {
+    const before = requests.length;
+
+    requests = requests.filter(
+      (request) => request.senderId !== senderId || request.recipientId !== recipientId,
+    );
+
+    return requests.length < before;
+  };
+
+  return {
+    relationsWith: async (userId, otherIds) => {
+      const friends = new Set(friendsOf(userId));
+      const relations = new Map<string, Relation>();
+
+      for (const otherId of otherIds) {
+        if (friends.has(otherId)) {
+          relations.set(otherId, "friend");
+        } else if (isRequest(otherId, userId)) {
+          relations.set(otherId, "request-received");
+        } else if (isRequest(userId, otherId)) {
+          relations.set(otherId, "request-sent");
+        }
+      }
+
+      return relations;
+    },
+    friendIds: async (userId) => friendsOf(userId),
+    requestsOf: async (userId) => {
+      const newestFirst = requests.toReversed();
+
+      return {
+        received: newestFirst.flatMap((request) =>
+          request.recipientId === userId ? [request.senderId] : [],
+        ),
+        sent: newestFirst.flatMap((request) =>
+          request.senderId === userId ? [request.recipientId] : [],
+        ),
+      };
+    },
+    countFriends: async (userId) => friendsOf(userId).length,
+    countSentRequests: async (userId) =>
+      requests.filter((request) => request.senderId === userId).length,
+    addRequest: async (senderId, recipientId) => {
+      if (isRequest(recipientId, senderId)) {
+        return "crossed";
+      }
+
+      if (isRequest(senderId, recipientId)) {
+        return "exists";
+      }
+
+      requests = [...requests, { senderId, recipientId }];
+
+      return "added";
+    },
+    deleteRequest: async (...pair) => deleteRequest(...pair),
+    acceptRequest: async (senderId, recipientId) => {
+      if (!deleteRequest(senderId, recipientId)) {
+        return false;
+      }
+
+      if (!friendsOf(senderId).includes(recipientId)) {
+        friendships = [...friendships, { pair: orderedPair(senderId, recipientId) }];
+      }
+
+      return true;
+    },
+    deleteFriendship: async (userId, otherId) => {
+      const [a, b] = orderedPair(userId, otherId);
+      const before = friendships.length;
+
+      friendships = friendships.filter(({ pair }) => pair[0] !== a || pair[1] !== b);
+
+      return friendships.length < before;
+    },
+  };
+};
+
 // A Duel `userId` finished at `endedAt`, typing at `wpm`, against a User who is not in the test:
 // only its end and that wpm count for the Pace.
 export const pastDuel = (userId: string, wpm: number, endedAt: number): DuelRecord => {
@@ -171,6 +272,8 @@ export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => {
     clock: systemClock,
     duelStore: memoryDuelStore().store,
     searchRateLimit: { max: 1000, windowMs: 60_000 },
+    friendStore: memoryFriendStore(),
+    friendRequestRateLimit: { max: 1000, windowMs: 60_000 },
     ...overrides,
   };
 };
