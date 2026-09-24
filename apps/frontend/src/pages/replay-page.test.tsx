@@ -107,6 +107,16 @@ const statuses = (word: string) =>
 
 const timer = () => screen.getByRole("timer");
 
+// The slider hides its thumb until it has measured its track, which happy-dom never lays out: its
+// name is not computed then, so it is found by its label instead.
+const timeline = () => screen.getByLabelText("Temps du Replay", { selector: "input[type=range]" });
+
+// Moves the time bar with the keyboard: Home is the start, each arrow a tenth of a second.
+const seek = async (user: ReturnType<typeof userEvent.setup>, keys: string) => {
+  timeline().focus();
+  await user.keyboard(keys);
+};
+
 describe("DuelReplay", () => {
   test("shows against whom and how the Duel ended", async () => {
     await renderReplay(replayed({ outcome: "loss", forfeit: true }));
@@ -175,6 +185,105 @@ describe("DuelReplay", () => {
 
     expect(timer()).toHaveTextContent("30");
     expect(statuses("small")).toEqual(["pending", "pending", "pending", "pending", "pending"]);
+  });
+
+  test("the time bar follows the Replay", async () => {
+    const { advance } = await renderReplay(replayed());
+
+    expect(timeline()).toHaveAttribute("aria-valuenow", "0");
+
+    advance(3_050);
+
+    expect(timeline()).toHaveAttribute("aria-valuenow", "3050");
+    expect(timeline()).toHaveAttribute("aria-valuetext", "3,1 s sur 30 s");
+  });
+
+  test("a seek while paused shows the Run at that instant and stays there", async () => {
+    const { user, advance } = await renderReplay(replayed());
+
+    advance(850);
+    await user.click(screen.getByRole("button", { name: "Pause" }));
+    await seek(user, "{Home}");
+
+    expect(statuses("small")).toEqual(["pending", "pending", "pending", "pending", "pending"]);
+
+    await seek(user, "{ArrowRight>3/}");
+    advance(5_000);
+
+    expect(statuses("small")).toEqual(["correct", "correct", "incorrect", "pending", "pending"]);
+    expect(timeline()).toHaveAttribute("aria-valuenow", "300");
+    expect(screen.getByRole("button", { name: "Reprendre" })).toBeInTheDocument();
+  });
+
+  test("a seek while playing goes on playing from that instant", async () => {
+    const { user, advance } = await renderReplay(replayed());
+
+    advance(2_000);
+    await seek(user, "{Home}{ArrowRight>2/}");
+
+    expect(statuses("small")).toEqual(["correct", "correct", "pending", "pending", "pending"]);
+
+    advance(650);
+
+    expect(statuses("small")).toEqual(["correct", "correct", "correct", "correct", "correct"]);
+    expect(screen.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+  });
+
+  test("at 2×, the Replay goes twice as fast, from where it stood", async () => {
+    const { user, advance } = await renderReplay(replayed());
+
+    expect(screen.getByRole("radio", { name: "1×" })).toBeChecked();
+
+    advance(350);
+    await user.click(screen.getByRole("radio", { name: "2×" }));
+
+    expect(statuses("small")).toEqual(["correct", "correct", "incorrect", "pending", "pending"]);
+
+    advance(250);
+
+    expect(statuses("small")).toEqual(["correct", "correct", "correct", "correct", "correct"]);
+    expect(timeline()).toHaveAttribute("aria-valuenow", "850");
+  });
+
+  test("at 0,5×, the Replay goes half as fast", async () => {
+    const { user, advance } = await renderReplay(replayed());
+
+    await user.click(screen.getByRole("radio", { name: "0,5×" }));
+    advance(500);
+
+    expect(statuses("small")).toEqual(["correct", "correct", "pending", "pending", "pending"]);
+  });
+
+  test("the opponent's Run shows their letters and their mistakes, without stopping", async () => {
+    const { user, advance } = await renderReplay(
+      replayed({
+        opponent: player(
+          "alan",
+          [
+            { kind: "char", char: "s", at: 150 },
+            { kind: "char", char: "x", at: 250 },
+            { kind: "backspace", at: 600 },
+          ],
+          567,
+        ),
+      }),
+    );
+
+    expect(screen.getByRole("radio", { name: "Toi" })).toBeChecked();
+
+    advance(300);
+    await user.click(screen.getByRole("radio", { name: "@alan" }));
+
+    expect(statuses("small")).toEqual(["correct", "incorrect", "pending", "pending", "pending"]);
+
+    advance(400);
+
+    expect(statuses("small")).toEqual(["correct", "pending", "pending", "pending", "pending"]);
+    expect(timeline()).toHaveAttribute("aria-valuenow", "700");
+
+    await user.click(screen.getByRole("radio", { name: "Toi" }));
+
+    expect(statuses("small")).toEqual(["correct", "correct", "correct", "correct", "correct"]);
   });
 
   test("once the opponent's User is deleted, only the User's side plays", async () => {

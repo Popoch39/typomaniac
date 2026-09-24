@@ -1,18 +1,18 @@
 import type { ReplaySide } from "@/components/replay/replay-sides";
 import { RunText } from "@/components/run/run-text";
 
-type ReplayTextProps = { own: ReplaySide; opponent: ReplaySide | null };
+type ReplayTextProps = { shown: ReplaySide; caretSide: ReplaySide | null };
 
-// The Duel's Text as it showed in play: the User's Run, the word of their last Burst, and the
-// opponent's caret where their Run stood.
-export const ReplayText = ({ own, opponent }: ReplayTextProps) => (
+// The Duel's Text as it showed in play: the Run of the side shown, the word of their last Burst,
+// and the other side's caret where their Run stood.
+export const ReplayText = ({ shown, caretSide }: ReplayTextProps) => (
   <RunText
-    run={own.run}
+    run={shown.run}
     opponent={
-      opponent === null
+      caretSide === null
         ? null
-        : { wordIndex: opponent.run.wordIndex, letterIndex: opponent.run.letterIndex }
+        : { wordIndex: caretSide.run.wordIndex, letterIndex: caretSide.run.letterIndex }
     }
-    lastBurst={own.score?.lastBurst ?? null}
+    lastBurst={shown.score?.lastBurst ?? null}
   />
 );

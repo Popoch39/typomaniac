@@ -1,22 +1,27 @@
 import type { ReplayedDuel } from "@/api/duel-history";
 import { DuelClock } from "@/components/duel/duel-clock";
 import { ReplayScores } from "@/components/replay/replay-scores";
-import { sidesAt } from "@/components/replay/replay-sides";
+import { type ReplayView, sidesAt, viewedSides } from "@/components/replay/replay-sides";
 import { ReplayText } from "@/components/replay/replay-text";
 import { opponentName } from "@/lib/opponent-name";
 
-type ReplayPlaybackProps = { duel: ReplayedDuel; t: number };
+type ReplayPlaybackProps = { duel: ReplayedDuel; t: number; view: ReplayView };
 
-// The Duel at `t` ms, as it showed in play: its clock, both Scores, both Runs on its Text. Both
-// sides are rebuilt once per instant.
-export const ReplayPlayback = ({ duel, t }: ReplayPlaybackProps) => {
-  const { own, opponent } = sidesAt(duel, t);
+// The Duel at `t` ms, as it showed in play: its clock, both Scores, the Run of the side in `view`
+// on its Text. Both sides are rebuilt once per instant.
+export const ReplayPlayback = ({ duel, t, view }: ReplayPlaybackProps) => {
+  const sides = sidesAt(duel, t);
+  const { shown, caretSide } = viewedSides(sides, view);
 
   return (
     <>
       <DuelClock elapsed={t} seconds={duel.seconds} />
-      <ReplayScores own={own} opponent={opponent} opponentName={opponentName(duel.opponent)} />
-      <ReplayText own={own} opponent={opponent} />
+      <ReplayScores
+        own={sides.own}
+        opponent={sides.opponent}
+        opponentName={opponentName(duel.opponent)}
+      />
+      <ReplayText shown={shown} caretSide={caretSide} />
     </>
   );
 };

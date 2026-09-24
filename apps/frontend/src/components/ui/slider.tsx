@@ -12,15 +12,20 @@ const thumbCount = (value: SliderValue | undefined) => {
   return value === undefined ? 2 : 1;
 };
 
+type SliderProps<Value extends SliderValue> = SliderPrimitive.Root.Props<Value> &
+  Pick<SliderPrimitive.Thumb.Props, "getAriaValueText">;
+
 // Generic on the value, so a single-number slider hands a number to its callbacks.
+// `getAriaValueText` goes to each thumb: what a screen reader says of its value.
 function Slider<Value extends SliderValue>({
   className,
   defaultValue,
   value,
   min = 0,
   max = 100,
+  getAriaValueText,
   ...props
-}: SliderPrimitive.Root.Props<Value>) {
+}: SliderProps<Value>) {
   const thumbs = thumbCount(value ?? defaultValue);
 
   return (
@@ -48,6 +53,7 @@ function Slider<Value extends SliderValue>({
           <SliderPrimitive.Thumb
             data-slot="slider-thumb"
             key={index}
+            getAriaValueText={getAriaValueText}
             className="relative block size-3 shrink-0 rounded-none border border-ring bg-white ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-1 focus-visible:ring-1 focus-visible:outline-hidden active:ring-1 disabled:pointer-events-none disabled:opacity-50"
           />
         ))}

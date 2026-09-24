@@ -2,14 +2,17 @@ import { useEffect, useState } from "react";
 
 import {
   pauseReplay,
+  type ReplaySpeed,
   replayTime,
   resumeReplay,
+  seekReplay,
+  setReplaySpeed,
   startReplay,
 } from "@/components/replay/replay-clock";
 import { useClock } from "@/components/run/clock-context";
 
-// The Replay's time `t`, in ms from 0 to `duration`, playing from the mount on. The injected clock
-// is read on every animation frame while it plays; paused or at the end, nothing runs.
+// The Replay's time `t`, in ms from 0 to `duration`, playing from the mount on at 1×. The injected
+// clock is read on every animation frame while it plays; paused or at the end, nothing runs.
 export const useReplayClock = (duration: number) => {
   const clock = useClock();
   const [replay, setReplay] = useState(() => startReplay(clock()));
@@ -47,8 +50,12 @@ export const useReplayClock = (duration: number) => {
     t,
     playing,
     ended,
+    speed: replay.speed,
     pause: () => updateNow((current, time) => pauseReplay(current, time, duration)),
     resume: () => updateNow(resumeReplay),
-    restart: () => updateNow((_, time) => startReplay(time)),
+    restart: () => updateNow((current, time) => startReplay(time, current.speed)),
+    seek: (target: number) => updateNow((current, time) => seekReplay(current, time, target)),
+    setSpeed: (speed: ReplaySpeed) =>
+      updateNow((current, time) => setReplaySpeed(current, time, duration, speed)),
   };
 };

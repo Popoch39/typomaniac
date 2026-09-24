@@ -47,3 +47,15 @@ export const sidesAt = (duel: ReplayedDuel, t: number) => {
     opponent: duel.opponent ? sideAt(config, duel.opponent, t) : null,
   };
 };
+
+// Whose Run the Replay shows: the User's, with their opponent's caret, or the other way round.
+export type ReplayView = "own" | "opponent";
+
+// The side whose Run shows, and the one whose caret stands in it. Without an opponent, the User's.
+export const viewedSides = (
+  { own, opponent }: { own: ReplaySide; opponent: ReplaySide | null },
+  view: ReplayView,
+) =>
+  view === "opponent" && opponent !== null
+    ? { shown: opponent, caretSide: own }
+    : { shown: own, caretSide: opponent };
