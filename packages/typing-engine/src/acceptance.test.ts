@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { acceptKeystroke, type Keystroke, type Replay, type RunConfig, startReplay } from "./index";
+import {
+  acceptKeystroke,
+  type AcceptedRun,
+  type Keystroke,
+  type RunConfig,
+  startAcceptedRun,
+} from "./index";
 
 // A Duel's format on Seed 42, which starts with "small help while" (pinned in text.test.ts).
 const config: RunConfig = {
@@ -17,27 +23,30 @@ const char = (value: string, at: number): Keystroke => ({ kind: "char", char: va
 
 // Accepts each Keystroke on arrival, and fails the test on a rejection.
 const accepted = (keystrokes: readonly Keystroke[]) =>
-  keystrokes.reduce((replay: Replay, keystroke) => {
-    const acceptance = acceptKeystroke(replay, keystroke, { ...window, arrivedAt: keystroke.at });
+  keystrokes.reduce((acceptedRun: AcceptedRun, keystroke) => {
+    const acceptance = acceptKeystroke(acceptedRun, keystroke, {
+      ...window,
+      arrivedAt: keystroke.at,
+    });
 
     if (!acceptance.accepted) {
       throw new Error(`Rejected: ${acceptance.reason}`);
     }
 
-    return acceptance.replay;
-  }, startReplay(config));
+    return acceptance.acceptedRun;
+  }, startAcceptedRun(config));
 
 describe("acceptKeystroke", () => {
   test("an accepted Keystroke is applied to the Run and logged", () => {
-    const replay = accepted([char("s", 100), char("m", 250)]);
+    const acceptedRun = accepted([char("s", 100), char("m", 250)]);
 
-    expect(replay.keystrokes).toEqual([char("s", 100), char("m", 250)]);
-    expect(replay.run.words[0]?.typed).toBe("sm");
-    expect(replay.run.letterIndex).toBe(2);
+    expect(acceptedRun.keystrokes).toEqual([char("s", 100), char("m", 250)]);
+    expect(acceptedRun.run.words[0]?.typed).toBe("sm");
+    expect(acceptedRun.run.letterIndex).toBe(2);
   });
 
   test("a Keystroke dated before the start is rejected", () => {
-    const acceptance = acceptKeystroke(startReplay(config), char("s", -1), {
+    const acceptance = acceptKeystroke(startAcceptedRun(config), char("s", -1), {
       ...window,
       arrivedAt: 50,
     });
@@ -46,7 +55,7 @@ describe("acceptKeystroke", () => {
   });
 
   test("a Keystroke dated after its arrival is rejected", () => {
-    const acceptance = acceptKeystroke(startReplay(config), char("s", 501), {
+    const acceptance = acceptKeystroke(startAcceptedRun(config), char("s", 501), {
       ...window,
       arrivedAt: 500,
     });
@@ -68,7 +77,7 @@ describe("acceptKeystroke", () => {
   });
 
   test("a Keystroke typed before the end is accepted up to the end plus the tolerance", () => {
-    const acceptance = acceptKeystroke(startReplay(config), char("s", 29_999), {
+    const acceptance = acceptKeystroke(startAcceptedRun(config), char("s", 29_999), {
       ...window,
       arrivedAt: 31_000,
     });
@@ -77,7 +86,7 @@ describe("acceptKeystroke", () => {
   });
 
   test("a Keystroke arriving after the end plus the tolerance is rejected", () => {
-    const acceptance = acceptKeystroke(startReplay(config), char("s", 29_999), {
+    const acceptance = acceptKeystroke(startAcceptedRun(config), char("s", 29_999), {
       ...window,
       arrivedAt: 31_001,
     });
@@ -86,7 +95,7 @@ describe("acceptKeystroke", () => {
   });
 
   test("a Keystroke dated at the end or later is rejected", () => {
-    const acceptance = acceptKeystroke(startReplay(config), char("s", 30_000), {
+    const acceptance = acceptKeystroke(startAcceptedRun(config), char("s", 30_000), {
       ...window,
       arrivedAt: 30_100,
     });

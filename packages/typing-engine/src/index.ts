@@ -32,11 +32,11 @@ export { duelOutcome, type DuelSide, type Outcome } from "./outcome";
 
 export {
   acceptKeystroke,
-  startReplay,
+  startAcceptedRun,
   type Acceptance,
+  type AcceptedRun,
   type ArrivalWindow,
   type RejectReason,
-  type Replay,
 } from "./acceptance";
 
 export { currentWordListVersion, generateText, wordList, type Language } from "./text";

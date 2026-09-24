@@ -111,6 +111,14 @@ _Avoid_ : perfect, crit, rush
 La cadence de référence d'un User pour le Burst, figée au départ : le wpm médian de ses 10 derniers Duels, ou de ceux qu'il a s'il en a moins ; 50 wpm sans aucun Duel, et pour un Visitor. Elle vient de l'historique, pas du Duel en cours, pour qu'alterner mots lents et rapides ne rapporte rien.
 _Avoid_ : moyenne, niveau, cadence
 
+**Duel history** :
+Les Duels terminés d'un User, du plus récent au plus ancien.
+_Avoid_ : match history, historique de parties
+
+**Replay** :
+La relecture d'un Duel enregistré, à partir des Keystrokes des deux Users, au rythme où ils ont tapé.
+_Avoid_ : playback, rediffusion
+
 ### Social
 
 **Friend** :

@@ -1,15 +1,15 @@
 import {
   acceptKeystroke,
+  type AcceptedRun,
   computeResult,
   computeScore,
   duelOutcome,
   type DuelSide,
   type Keystroke,
   type Outcome,
-  type Replay,
   type Result,
   type RunConfig,
-  startReplay,
+  startAcceptedRun,
 } from "typing-engine";
 
 import type { Duel, DuelScore, ServerMessage } from "./model";
@@ -47,7 +47,7 @@ const OUTCOMES = {
 const profileOf = ({ handle, image }: User) => ({ handle, image });
 
 type Player = PacedUser & {
-  replay: Replay;
+  acceptedRun: AcceptedRun;
   // Every Keystroke received from the player, accepted or not.
   received: number;
 };
@@ -60,14 +60,14 @@ const judgedSide = ({ result, score }: Side): DuelSide => ({ result, score: scor
 
 // A player as the finished Duel is written: the Keystrokes that replay to their Result and Score.
 const playerRecord = (
-  { user, pace, replay }: Player,
+  { user, pace, acceptedRun }: Player,
   { result, score }: Side,
 ): DuelPlayerRecord => ({
   userId: user.id,
   result,
   pace,
   score,
-  keystrokes: [...replay.keystrokes],
+  keystrokes: [...acceptedRun.keystrokes],
 });
 
 // What became of a batch of Keystrokes: the accepted ones, to relay, whether any was rejected, and
@@ -75,14 +75,14 @@ const playerRecord = (
 type Batch = { accepted: Keystroke[]; rejected: boolean; flooded: boolean };
 
 // The last accepted Keystrokes are too close together: more than the cadence allows in a second.
-const isFlooding = ({ keystrokes }: Replay) => {
+const isFlooding = ({ keystrokes }: AcceptedRun) => {
   const last = keystrokes.at(-1);
   const first = keystrokes.at(-1 - MAX_KEYSTROKES_PER_SECOND);
 
   return typeof last !== "undefined" && typeof first !== "undefined" && last.at - first.at < 1000;
 };
 
-// A Duel between its Countdown and its end: the server replays each player's Keystrokes with the
+// A Duel between its Countdown and its end: the server judges each player's Keystrokes with the
 // engine and only keeps those whose date is plausible (ADR 0003).
 export class RunningDuel {
   readonly duel: Duel;
@@ -107,7 +107,7 @@ export class RunningDuel {
   }
 
   #newPlayer(paced: PacedUser): Player {
-    return { ...paced, replay: startReplay(this.#config), received: 0 };
+    return { ...paced, acceptedRun: startAcceptedRun(this.#config), received: 0 };
   }
 
   get #durationMs() {
@@ -143,12 +143,12 @@ export class RunningDuel {
 
   // A player's Result and Score over the whole time of the Duel, even when it ends by a Forfeit.
   // Their Bursts are judged against their own Pace.
-  #sideOf({ replay, pace }: Player): Side {
-    const result = computeResult(this.#config, replay.keystrokes, this.#durationMs);
+  #sideOf({ acceptedRun, pace }: Player): Side {
+    const result = computeResult(this.#config, acceptedRun.keystrokes, this.#durationMs);
 
     const { score, bestCombo, bursts } = computeScore(
       this.#config,
-      replay.keystrokes,
+      acceptedRun.keystrokes,
       pace,
       this.#durationMs,
     );
@@ -232,18 +232,18 @@ export class RunningDuel {
     };
 
     for (const keystroke of keystrokes) {
-      const acceptance = acceptKeystroke(player.replay, keystroke, window);
+      const acceptance = acceptKeystroke(player.acceptedRun, keystroke, window);
 
       player.received += 1;
 
       if (acceptance.accepted) {
-        player.replay = acceptance.replay;
+        player.acceptedRun = acceptance.acceptedRun;
         batch.accepted.push(keystroke);
       } else {
         batch.rejected = true;
       }
 
-      if (isFlooding(player.replay)) {
+      if (isFlooding(player.acceptedRun)) {
         batch.flooded = true;
 
         return batch;
@@ -258,9 +258,9 @@ export class RunningDuel {
     const player = this.#player(userId);
 
     return {
-      keystrokes: [...player.replay.keystrokes],
+      keystrokes: [...player.acceptedRun.keystrokes],
       received: player.received,
-      opponentKeystrokes: [...this.#opponent(userId).replay.keystrokes],
+      opponentKeystrokes: [...this.#opponent(userId).acceptedRun.keystrokes],
     };
   }
 
