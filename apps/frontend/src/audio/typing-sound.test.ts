@@ -1,4 +1,4 @@
-import { defaultPace, type Key, type RunConfig } from "typing-engine";
+import { type Cue, defaultPace, type Key, type RunConfig } from "typing-engine";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { type AudioOutput, createAudioEngine } from "@/audio/audio-engine";
@@ -42,19 +42,27 @@ const decoded = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const char = (c: string): Key => ({ kind: "char", char: c });
 
-// Presses the keys 100 ms apart, the way the typing area does.
-const press = (...keys: Key[]) => {
+// Presses the keys 100 ms apart at the `pace`, the way the typing area does.
+const pressAt = (pace: number, keys: Key[]) => {
   for (const [i, key] of keys.entries()) {
-    useRunStore.getState().press(key, 1_000 + i * 100, defaultPace);
+    useRunStore.getState().press(key, 1_000 + i * 100, pace);
   }
 };
 
-const type = (input: string) => press(...[...input].map(char));
+const press = (...keys: Key[]) => pressAt(defaultPace, keys);
+
+const type = (input: string, pace = defaultPace) => pressAt(pace, [...input].map(char));
+
+const kindsOf = (cues: readonly Cue[]) => cues.map((cue) => cue.kind);
 
 // Mid-range randomness: the 7th of the 12 key variants, not detuned.
 const middle = () => 0.5;
 
 const key07 = { url: "/sounds/tactile/key-07.mp3", detune: 0, gain: 1 };
+
+const space = { url: "/sounds/tactile/key-05.mp3", detune: -300, gain: 1 };
+
+const error = { url: "/sounds/tactile/error.mp3", detune: 0, gain: 0.5 };
 
 let stop = () => {};
 
@@ -112,7 +120,7 @@ describe("typing sound in a solo Run", () => {
 
     type("small ");
 
-    expect(played.at(-1)).toEqual({ url: "/sounds/tactile/key-05.mp3", detune: -300, gain: 1 });
+    expect(played.at(-1)).toEqual(space);
   });
 
   test("a mistake plays the key, then the error sound over it", async () => {
@@ -120,7 +128,7 @@ describe("typing sound in a solo Run", () => {
 
     type("x");
 
-    expect(played).toEqual([key07, { url: "/sounds/tactile/error.mp3", detune: 0, gain: 0.5 }]);
+    expect(played).toEqual([key07, error]);
   });
 
   test("a backspace plays the backspace sound, deleting a word too", async () => {
@@ -141,6 +149,25 @@ describe("typing sound in a solo Run", () => {
     press(char(" "), { kind: "backspace" });
 
     expect(played).toEqual([]);
+  });
+
+  // At 100 ms a char, every word goes at 120 wpm, far above a Pace of 10 wpm: the space after
+  // "late", the 4th right word, validates it, raises the Combo to x2 and wins a Burst.
+  test("the Cues of the word, the Combo and the Burst play nothing yet", async () => {
+    const { played } = await listen();
+    const typed = "small help while late ";
+
+    type(typed, 10);
+
+    expect(kindsOf(useRunStore.getState().cues)).toEqual(["hit", "word", "comboUp", "burst"]);
+    // One sound per key, none for the word, the Combo nor the Burst.
+    expect(played).toHaveLength(typed.length);
+    expect(played.at(-1)).toEqual(space);
+
+    press(char("x"));
+
+    expect(kindsOf(useRunStore.getState().cues)).toEqual(["miss", "comboBroken"]);
+    expect(played.slice(typed.length)).toEqual([key07, error]);
   });
 
   test("a sound whose file is not decoded yet is skipped, the Run goes on", async () => {
