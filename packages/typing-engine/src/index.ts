@@ -14,7 +14,14 @@ export {
   type RunWord,
 } from "./run";
 
-export { computeResult, liveWpm, type CharCounts, type Result } from "./result";
+export {
+  computeResult,
+  computeTimeline,
+  liveWpm,
+  type CharCounts,
+  type Result,
+  type TimelineEntry,
+} from "./result";
 
 export {
   burstMargin,

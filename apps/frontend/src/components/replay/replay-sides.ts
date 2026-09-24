@@ -12,7 +12,7 @@ import type { ReplayedDuel, ReplayedPlayer } from "@/api/duel-history";
 
 // The Duel's Text as it was drawn: its Seed, Language and Word list version, even an old one. A
 // Duel is always played in `time` Mode.
-const replayConfig = (duel: ReplayedDuel): RunConfig => ({
+export const replayConfig = (duel: ReplayedDuel): RunConfig => ({
   mode: "time",
   seconds: duel.seconds,
   language: duel.language,

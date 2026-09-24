@@ -98,23 +98,29 @@ export const liveWpm = (state: RunState, elapsed: number) => {
   return minutes === 0 ? 0 : correctChars(state) / 5 / minutes;
 };
 
-// The raw of each second of the Run. The last second can be shorter: its raw is taken over its own
-// length. A Keystroke stamped at the very end of the Run belongs to the last second.
+// How many seconds a Run of `durationMs` is cut into: the last one can be shorter.
+const secondsIn = (durationMs: number) => Math.ceil(durationMs / 1000);
+
+// The second, from 0, a Keystroke typed at `at` belongs to. A Keystroke stamped at the very end of
+// the Run belongs to the last second.
+const secondOf = (at: number, durationMs: number) =>
+  Math.min(Math.floor(at / 1000), secondsIn(durationMs) - 1);
+
+// A raw over the chars typed in `second`, taken over its own length.
+const rawOfSecond = (count: number, second: number, durationMs: number) =>
+  count / 5 / (Math.min(1000, durationMs - second * 1000) / 60_000);
+
+// The raw of each second of the Run.
 const rawPerSecond = (typedAt: readonly number[], durationMs: number) => {
-  const seconds = Math.ceil(durationMs / 1000);
-  const counts = Array.from({ length: seconds }, () => 0);
+  const counts = Array.from({ length: secondsIn(durationMs) }, () => 0);
 
   for (const at of typedAt) {
-    const second = Math.min(Math.floor(at / 1000), seconds - 1);
+    const second = secondOf(at, durationMs);
 
     counts[second] = (counts[second] ?? 0) + 1;
   }
 
-  return counts.map((count, second) => {
-    const minutes = Math.min(1000, durationMs - second * 1000) / 60_000;
-
-    return count / 5 / minutes;
-  });
+  return counts.map((count, second) => rawOfSecond(count, second, durationMs));
 };
 
 // Monkeytype's formula, from the coefficient of variation `c` of the raws: 100 when the raw stays
@@ -132,31 +138,34 @@ const consistency = (raws: readonly number[]) => {
   return 100 * (1 - Math.tanh(c + c ** 3 / 3 + c ** 5 / 5));
 };
 
+// A Keystroke of the log once judged: when it was typed, its verdict and the state it leaves.
+type JudgedKeystroke = { at: number; verdict: Verdict; state: RunState };
+
+// Replays the log from the start, judging each Keystroke against the state it is applied to.
+const judgeLog = (config: RunConfig, keystrokes: readonly Keystroke[]) => {
+  let state = createRun(config);
+  const log: JudgedKeystroke[] = [];
+
+  for (const keystroke of keystrokes) {
+    const verdict = judge(state, keystroke);
+
+    state = applyKeystroke(state, keystroke);
+    log.push({ at: keystroke.at, verdict, state });
+  }
+
+  return { log, state };
+};
+
 // Replays the log from the start: a Result never trusts anything but the Keystrokes (ADR 0002).
 export const computeResult = (
   config: RunConfig,
   keystrokes: readonly Keystroke[],
   endedAt: number,
 ): Result => {
-  let state = createRun(config);
+  const { log, state } = judgeLog(config, keystrokes);
   // When each char Keystroke that counts was typed.
-  const typedAt: number[] = [];
-  let rightChars = 0;
-
-  for (const keystroke of keystrokes) {
-    const verdict = judge(state, keystroke);
-
-    if (verdict !== "ignored") {
-      typedAt.push(keystroke.at);
-    }
-
-    if (verdict === "correct") {
-      rightChars++;
-    }
-
-    state = applyKeystroke(state, keystroke);
-  }
-
+  const typedAt = log.flatMap((step) => (step.verdict === "ignored" ? [] : [step.at]));
+  const rightChars = log.reduce((count, step) => count + (step.verdict === "correct" ? 1 : 0), 0);
   const durationMs = duration(config, endedAt);
   const minutes = durationMs / 60_000;
   const typedChars = typedAt.length;
@@ -168,4 +177,51 @@ export const computeResult = (
     consistency: consistency(rawPerSecond(typedAt, durationMs)),
     chars: countChars(state),
   };
+};
+
+// A second of a Run: `second` from 1, the wpm so far at its end, its own raw and its wrong char
+// Keystrokes, corrected or not.
+export type TimelineEntry = { second: number; wpm: number; raw: number; misses: number };
+
+// The char Keystrokes of a second, its wrong ones, and the state left by its last Keystroke, if any.
+type SecondTally = { typed: number; misses: number; state: RunState | null };
+
+// The Run second by second, rebuilt from its Keystrokes like its Result (ADR 0002). It stops at
+// `endedAt` when the Run ends before its duration (a Forfeit). The wpm of its last second is the
+// Result's, but after a Forfeit: the Result of a Duel covers its whole time.
+export const computeTimeline = (
+  config: RunConfig,
+  keystrokes: readonly Keystroke[],
+  endedAt: number,
+): TimelineEntry[] => {
+  const durationMs = Math.min(duration(config, endedAt), endedAt);
+
+  const seconds = Array.from({ length: secondsIn(durationMs) }, (): SecondTally => ({
+    typed: 0,
+    misses: 0,
+    state: null,
+  }));
+
+  for (const step of judgeLog(config, keystrokes).log) {
+    const second = seconds[secondOf(step.at, durationMs)];
+
+    if (second !== undefined) {
+      second.typed += step.verdict === "ignored" ? 0 : 1;
+      second.misses += step.verdict === "incorrect" ? 1 : 0;
+      second.state = step.state;
+    }
+  }
+
+  let state = createRun(config);
+
+  return seconds.map((second, index) => {
+    state = second.state ?? state;
+
+    return {
+      second: index + 1,
+      wpm: liveWpm(state, Math.min((index + 1) * 1000, durationMs)),
+      raw: rawOfSecond(second.typed, index, durationMs),
+      misses: second.misses,
+    };
+  });
 };

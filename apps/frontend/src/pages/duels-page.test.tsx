@@ -6,10 +6,17 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Suspense } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { type DuelHistoryPage, duelHistoryQueryOptions } from "@/api/duel-history";
+import {
+  type DuelHistoryPage,
+  duelHistoryQueryOptions,
+  type ReplayedDuel,
+  type ReplayedPlayer,
+  replayedDuelQueryOptions,
+} from "@/api/duel-history";
 import { type Me, meQueryOptions } from "@/api/me";
 import { DuelsPage } from "@/pages/duels-page";
 
@@ -36,6 +43,41 @@ const entry = (overrides: Partial<Entry>): Entry => ({
   ...overrides,
 });
 
+const player = (handle: string, score: number, pace: number | null): ReplayedPlayer => ({
+  handle,
+  image: null,
+  result: {
+    wpm: 42,
+    raw: 45,
+    accuracy: 96,
+    consistency: 80,
+    chars: { correct: 21, incorrect: 1, extra: 0, missed: 0 },
+  },
+  pace,
+  score: pace === null ? null : { score, bestCombo: 3, bursts: 0 },
+  // Seed 42 in English, version 1, starts with "small".
+  keystrokes: [
+    { kind: "char", char: "s", at: 100 },
+    { kind: "char", char: "x", at: 1_200 },
+  ],
+});
+
+// The whole Duel, as its Replay and its details read it.
+const replayed = (overrides: Partial<ReplayedDuel>): ReplayedDuel => ({
+  id: "duel-1",
+  seed: 42,
+  language: "en",
+  wordListVersion: 1,
+  seconds: 30,
+  startsAt: Date.UTC(2026, 8, 20, 18, 29, 30),
+  endedAt: Date.UTC(2026, 8, 20, 18, 30),
+  outcome: "win",
+  forfeit: false,
+  me: player("ada", 1234, 50),
+  opponent: player("alan", 567, 50),
+  ...overrides,
+});
+
 // Stands for the browser seeing the sentinel at the bottom of the list as soon as it is observed.
 class VisibleAtOnce {
   readonly #callback: (entries: { isIntersecting: boolean }[]) => void;
@@ -57,10 +99,15 @@ afterEach(() => {
 
 // The page with its first page of Duels in the cache, the way the route's loader leaves it, on a
 // router of its own: its rows are links.
-const renderPage = async (first: DuelHistoryPage) => {
+const renderPage = async (first: DuelHistoryPage, details: ReplayedDuel[] = []) => {
   const queryClient = new QueryClient();
 
   queryClient.setQueryData(meQueryOptions.queryKey, me);
+
+  for (const duel of details) {
+    queryClient.setQueryData(replayedDuelQueryOptions(duel.id).queryKey, duel);
+  }
+
   queryClient.setQueryData(duelHistoryQueryOptions.queryKey, {
     pages: [first],
     pageParams: [null],
@@ -86,6 +133,23 @@ const renderPage = async (first: DuelHistoryPage) => {
 
 const rows = () =>
   within(screen.getByRole("list", { name: "Duel history" })).getAllByRole("listitem");
+
+const row = (index: number) => {
+  const found = rows()[index];
+
+  if (found === undefined) {
+    throw new Error(`No Duel at row ${index}`);
+  }
+
+  return found;
+};
+
+// The row itself, which opens and closes the Duel's details.
+const toggle = (index: number) =>
+  within(row(index)).getByRole("button", { name: /@|User supprimé/ });
+
+// « Revoir », in the details of an open Duel: a link styled as a button.
+const replayLink = (index: number) => within(row(index)).queryByRole("button", { name: "Revoir" });
 
 describe("DuelsPage", () => {
   test("lists each Duel from the User's side: opponent, outcome, Scores and wpm", async () => {
@@ -123,13 +187,84 @@ describe("DuelsPage", () => {
     expect(deleted).toHaveTextContent("90 – — wpm");
   });
 
-  test("each Duel leads to its Replay", async () => {
-    await renderPage({ duels: [entry({ id: "won" }), entry({ id: "drawn" })], next: null });
+  test("a click opens the Duel in place: its detailed Results and the way to its Replay", async () => {
+    await renderPage({ duels: [entry({ id: "won" })], next: null }, [replayed({ id: "won" })]);
 
-    expect(rows().map((row) => within(row).getByRole("link").getAttribute("href"))).toEqual([
-      "/duels/won",
-      "/duels/drawn",
+    expect(replayLink(0)).not.toBeInTheDocument();
+
+    await userEvent.click(toggle(0));
+
+    expect(toggle(0)).toHaveAttribute("aria-expanded", "true");
+    expect(within(row(0)).getByRole("region", { name: "Toi" })).toHaveTextContent("1234");
+    expect(within(row(0)).getByRole("region", { name: "@alan" })).toHaveTextContent("567");
+    expect(replayLink(0)).toHaveAttribute("href", "/duels/won");
+  });
+
+  test("shows a loading state while the Duel loads", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Promise<Response>(() => {})),
+    );
+
+    await renderPage({ duels: [entry({ id: "won" })], next: null });
+
+    await userEvent.click(toggle(0));
+
+    expect(within(row(0)).getByText("Chargement…")).toBeInTheDocument();
+  });
+
+  test("one Duel open at a time, a second click closes it", async () => {
+    await renderPage({ duels: [entry({ id: "won" }), entry({ id: "lost" })], next: null }, [
+      replayed({ id: "won" }),
+      replayed({ id: "lost" }),
     ]);
+
+    await userEvent.click(toggle(0));
+    await userEvent.click(toggle(1));
+
+    expect(toggle(0)).toHaveAttribute("aria-expanded", "false");
+    expect(replayLink(0)).not.toBeInTheDocument();
+    expect(replayLink(1)).toHaveAttribute("href", "/duels/lost");
+
+    await userEvent.click(toggle(1));
+
+    expect(replayLink(1)).not.toBeInTheDocument();
+  });
+
+  test("a deleted opponent: the User's Results only, still marked deleted", async () => {
+    await renderPage(
+      {
+        duels: [entry({ id: "deleted", opponent: null, opponentScore: null, opponentWpm: null })],
+        next: null,
+      },
+      [replayed({ id: "deleted", opponent: null })],
+    );
+
+    await userEvent.click(toggle(0));
+
+    expect(row(0)).toHaveTextContent("User supprimé");
+    expect(
+      within(row(0))
+        .getAllByRole("region")
+        .map((region) => region.getAttribute("aria-label")),
+    ).toEqual(["Toi"]);
+  });
+
+  test("a Duel before the Score shows its Scores as dashes", async () => {
+    await renderPage(
+      { duels: [entry({ id: "old", score: null, opponentScore: null })], next: null },
+      [
+        replayed({
+          id: "old",
+          me: player("ada", 1234, null),
+          opponent: player("alan", 567, null),
+        }),
+      ],
+    );
+
+    await userEvent.click(toggle(0));
+
+    expect(within(row(0)).getByRole("region", { name: "Toi" })).toHaveTextContent("score—");
   });
 
   test("says the Duel history fills up by playing when there is none yet", async () => {
