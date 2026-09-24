@@ -1,15 +1,25 @@
+import { lazy, Suspense } from "react";
+
 import { DuelOutcome } from "@/components/duel/duel-outcome";
+import { NothingOnError } from "@/components/duel/nothing-on-error";
 import { PlayerResult } from "@/components/duel/player-result";
 import { ReplayDuelLink } from "@/components/duel/replay-duel-link";
 import { Button } from "@/components/ui/button";
 import { atHandle } from "@/lib/at-handle";
 import { type DuelEnding, useDuelStore } from "@/stores/duel-store";
 
+// recharts stays out of the home page's bundle until a Duel ends.
+const WrittenDuelChart = lazy(async () => {
+  const module = await import("@/components/duel/written-duel-chart");
+
+  return { default: module.WrittenDuelChart };
+});
+
 // Called once with the node on mount: the typing input is gone with the Duel.
 const focusOnMount = (node: HTMLElement | null) => node?.focus();
 
 // The server ended the Duel: its outcome and both Scores and Results, the same on both screens, then
-// Nouveau Duel to join the Queue again, and Revoir to replay it once written.
+// Nouveau Duel to join the Queue again. Once written, its Duel chart and Revoir to replay it.
 export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
   const joinQueue = useDuelStore((store) => store.joinQueue);
   const opponent = atHandle(ending.opponent.handle);
@@ -26,6 +36,13 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
           opponent
         />
       </div>
+      {ending.duelId === null ? null : (
+        <NothingOnError>
+          <Suspense fallback={<p className="text-[0.7rem] text-muted-foreground">Chargement…</p>}>
+            <WrittenDuelChart duelId={ending.duelId} />
+          </Suspense>
+        </NothingOnError>
+      )}
       <div className="flex gap-2">
         <Button variant="outline" onClick={joinQueue}>
           Nouveau Duel

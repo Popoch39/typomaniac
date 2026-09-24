@@ -72,24 +72,26 @@ export const DuelChart = ({ duel }: { duel: ReplayedDuel }) => {
       : { ...own, ...sideConfig("opponent", opponentName(duel.opponent)) };
 
   return (
-    <ChartContainer config={config} className="aspect-auto h-64 w-full">
-      <ComposedChart data={rows} margin={{ left: 0, right: 0 }}>
-        <CartesianGrid vertical={false} />
-        <XAxis dataKey="second" tickLine={false} axisLine={false} />
-        <YAxis yAxisId="speed" tickLine={false} axisLine={false} width={32} />
-        <YAxis
-          yAxisId="misses"
-          orientation="right"
-          allowDecimals={false}
-          tickLine={false}
-          axisLine={false}
-          width={24}
-        />
-        <ChartTooltip content={<ChartTooltipContent labelFormatter={secondLabel} />} />
-        <ChartLegend content={<ChartLegendContent />} />
-        {sideSeries("own")}
-        {duel.opponent === null ? null : sideSeries("opponent")}
-      </ComposedChart>
-    </ChartContainer>
+    <figure aria-label="Duel chart">
+      <ChartContainer config={config} className="aspect-auto h-64 w-full">
+        <ComposedChart data={rows} margin={{ left: 0, right: 0 }}>
+          <CartesianGrid vertical={false} />
+          <XAxis dataKey="second" tickLine={false} axisLine={false} />
+          <YAxis yAxisId="speed" tickLine={false} axisLine={false} width={32} />
+          <YAxis
+            yAxisId="misses"
+            orientation="right"
+            allowDecimals={false}
+            tickLine={false}
+            axisLine={false}
+            width={24}
+          />
+          <ChartTooltip content={<ChartTooltipContent labelFormatter={secondLabel} />} />
+          <ChartLegend content={<ChartLegendContent />} />
+          {sideSeries("own")}
+          {duel.opponent === null ? null : sideSeries("opponent")}
+        </ComposedChart>
+      </ChartContainer>
+    </figure>
   );
 };
