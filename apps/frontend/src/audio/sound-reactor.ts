@@ -5,25 +5,25 @@ import { packOf, type Sound, type SoundPack, soundsOf } from "@/audio/sound-pack
 import { onCues } from "@/lib/cue-bus";
 import { type SoundChoice, useSoundStore } from "@/stores/sound-store";
 
-// How far, in cents, a key is detuned at random either way.
-const detuneRange = 50;
-
 type Random = () => number;
 
 const play = (engine: AudioEngine, sound: Sound, detune = 0) =>
   engine.play(sound.url, { detune: sound.detune + detune, gain: sound.gain });
 
-// The space of the pack, or one of its keys at random, detuned at random.
+const pick = (sounds: readonly [Sound, ...Sound[]], random: Random) =>
+  sounds[Math.floor(random() * sounds.length)] ?? sounds[0];
+
+// One of the spaces of the pack, or one of its keys detuned, all at random.
 const playKey = (engine: AudioEngine, pack: SoundPack, char: string, random: Random) => {
   if (char === " ") {
-    play(engine, pack.space);
+    play(engine, pick(pack.spaces, random));
 
     return;
   }
 
-  const sound = pack.keys[Math.floor(random() * pack.keys.length)] ?? pack.keys[0];
+  const sound = pick(pack.keys, random);
 
-  play(engine, sound, (random() * 2 - 1) * detuneRange);
+  play(engine, sound, (random() * 2 - 1) * pack.detuneRange);
 };
 
 // The Cues of the word, the Combo and the Burst play nothing yet: the place for their sounds.

@@ -91,6 +91,33 @@ describe("sound picker", () => {
     expect(played).toEqual([key07]);
   });
 
+  test("every pack of the catalogue is offered, hovering one plays one of its own keys", async () => {
+    const { user, played } = await renderSetting();
+
+    await user.click(screen.getByRole("button", { name: "Son" }));
+
+    expect(screen.getAllByRole("radio")).toEqual(
+      ["Tactile", "Typewriter", "Office", "Keyboard", "off"].map((name) =>
+        screen.getByRole("radio", { name }),
+      ),
+    );
+
+    await user.hover(screen.getByText("Typewriter"));
+    await decoded();
+
+    expect(played).toEqual([{ url: "/sounds/typewriter/key-02.mp3", detune: 0, gain: 0.55 }]);
+  });
+
+  test("a pack other than the default, chosen with the mouse, survives a reload", async () => {
+    const { user } = await renderSetting();
+
+    await user.click(screen.getByRole("button", { name: "Son" }));
+    await user.click(screen.getByRole("radio", { name: "Office" }));
+    await reopen();
+
+    expect(screen.getByRole("radio", { name: "Office" })).toBeChecked();
+  });
+
   test("off, chosen with the mouse, crosses out the speaker; a pack chosen plays one of its keys", async () => {
     const { user, played } = await renderSetting();
 
@@ -115,6 +142,10 @@ describe("sound picker", () => {
     await user.click(screen.getByRole("button", { name: "Son" }));
     screen.getByRole("radio", { name: "Tactile" }).focus();
     await user.keyboard("{ArrowDown}");
+
+    expect(screen.getByRole("radio", { name: "Typewriter" })).toBeChecked();
+
+    await user.keyboard("{ArrowUp}{ArrowUp}");
 
     expect(screen.getByRole("radio", { name: "off" })).toBeChecked();
     expect(screen.getByRole("button", { name: "Son coupé" })).toBeInTheDocument();
@@ -145,7 +176,7 @@ describe("sound picker", () => {
   });
 
   test.each([
-    ["an unknown pack", { pack: "typewriter", volume: 0.2 }],
+    ["an unknown pack", { pack: "piano", volume: 0.2 }],
     ["a volume out of range", { pack: "off", volume: 2 }],
     ["a missing field", { pack: "off" }],
   ])("%s stored gives the defaults back", async (_, state) => {

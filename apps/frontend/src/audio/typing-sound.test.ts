@@ -166,6 +166,72 @@ describe("typing sound in a solo Run", () => {
   });
 });
 
+describe("Sound packs", () => {
+  // What each pack plays at mid-range randomness: its middle key, its space, its error, its
+  // backspace, at the gains that level it with the others.
+  test.each([
+    {
+      pack: "typewriter",
+      key: { url: "/sounds/typewriter/key-02.mp3", detune: 0, gain: 0.55 },
+      space: { url: "/sounds/typewriter/key-02.mp3", detune: -300, gain: 0.55 },
+      error: { url: "/sounds/typewriter/error.mp3", detune: 0, gain: 0.4 },
+      backspace: { url: "/sounds/typewriter/backspace.mp3", detune: 0, gain: 0.75 },
+    },
+    {
+      pack: "office",
+      key: { url: "/sounds/office/key-07.mp3", detune: 0, gain: 1 },
+      space: { url: "/sounds/office/key-05.mp3", detune: -300, gain: 1 },
+      error: { url: "/sounds/office/error.mp3", detune: 0, gain: 0.4 },
+      backspace: { url: "/sounds/office/key-09.mp3", detune: -500, gain: 0.8 },
+    },
+    {
+      pack: "keyboard",
+      key: { url: "/sounds/keyboard/key-03.mp3", detune: 0, gain: 1.2 },
+      space: { url: "/sounds/keyboard/space-02.mp3", detune: 0, gain: 1.2 },
+      error: { url: "/sounds/keyboard/error.mp3", detune: 0, gain: 0.45 },
+      backspace: { url: "/sounds/keyboard/backspace.mp3", detune: 0, gain: 0.8 },
+    },
+  ] as const)("the $pack pack plays its own sounds", async (sounds) => {
+    useSoundStore.getState().setPack(sounds.pack);
+
+    const { played, loaded } = await listen();
+
+    expect(loaded).toContain(sounds.key.url);
+
+    type("small ");
+    type("x");
+    press({ kind: "backspace" });
+
+    expect(played).toEqual([
+      ...Array.from({ length: 5 }, () => sounds.key),
+      sounds.space,
+      sounds.key,
+      sounds.error,
+      sounds.backspace,
+    ]);
+  });
+
+  test("the keyboard pack draws its space among its two space bars", async () => {
+    useSoundStore.getState().setPack("keyboard");
+
+    const { played } = await listen(fakeOutput(), () => 0);
+
+    type("small ");
+
+    expect(played.at(-1)).toEqual({ url: "/sounds/keyboard/space-01.mp3", detune: 0, gain: 1.2 });
+  });
+
+  test("the typewriter pack detunes its keys wider", async () => {
+    useSoundStore.getState().setPack("typewriter");
+
+    const { played } = await listen(fakeOutput(), () => 0);
+
+    type("s");
+
+    expect(played).toEqual([{ url: "/sounds/typewriter/key-01.mp3", detune: -100, gain: 0.55 }]);
+  });
+});
+
 describe("sound settings", () => {
   test("off plays no typing sound at all", async () => {
     const { played } = await listen();

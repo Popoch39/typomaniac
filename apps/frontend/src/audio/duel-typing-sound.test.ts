@@ -184,6 +184,17 @@ describe("typing sound in a Duel", () => {
     expect(played).toEqual([key07, key07, key07, key07, key07, space, key07, error, backspace]);
   });
 
+  test("the pack chosen plays in a Duel too", async () => {
+    useSoundStore.getState().setPack("keyboard");
+
+    const { played } = await listen();
+
+    running();
+    type("s");
+
+    expect(played).toEqual([{ url: "/sounds/keyboard/key-03.mp3", detune: 0, gain: 1.2 }]);
+  });
+
   test("off silences the User's keys in a Duel too", async () => {
     const { played } = await listen();
 
