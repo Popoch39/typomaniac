@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { replayedDuelQueryOptions } from "@/api/duel-history";
 import { ReplayControls } from "@/components/replay/replay-controls";
+import { ReplayForfeitMarker } from "@/components/replay/replay-forfeit-marker";
 import { ReplayHeader } from "@/components/replay/replay-header";
 import { ReplayPlayback } from "@/components/replay/replay-playback";
 import { ReplayResults } from "@/components/replay/replay-results";
@@ -15,7 +16,8 @@ import { opponentName } from "@/lib/opponent-name";
 
 // A finished Duel played again Keystroke by Keystroke, at the pace it was typed, from the start on:
 // both Runs rebuilt at each instant, all in the browser. The User moves through it with the time
-// bar, picks its speed and whose Run it shows. At the end, both Results and Scores.
+// bar, picks its speed and whose Run it shows. At the end, both Results and Scores. A forfeited Duel
+// stops at its Forfeit, marked under the time bar.
 export const DuelReplay = ({ duelId }: { duelId: string }) => {
   const { data: duel } = useSuspenseQuery(replayedDuelQueryOptions(duelId));
   const duration = replayDuration(duel);
@@ -29,7 +31,10 @@ export const DuelReplay = ({ duelId }: { duelId: string }) => {
     <div className="flex flex-col gap-6">
       <ReplayHeader duel={duel} />
       {ended ? <ReplayResults duel={duel} /> : <ReplayPlayback duel={duel} t={t} view={view} />}
-      <ReplayTimeline t={t} duration={duration} onSeek={seek} />
+      <div className="flex flex-col gap-2">
+        <ReplayTimeline t={t} duration={duration} onSeek={seek} />
+        <ReplayForfeitMarker duel={duel} />
+      </div>
       <div className="flex flex-wrap items-center gap-6">
         <ReplayControls
           playing={playing}

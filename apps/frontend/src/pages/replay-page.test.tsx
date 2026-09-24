@@ -52,6 +52,15 @@ const replayed = (overrides: Partial<ReplayedDuel> = {}): ReplayedDuel => ({
   ...overrides,
 });
 
+// The Duel of `replayed`, forfeited 0.55 s in by the side that did not win.
+const forfeitedAt = (outcome: "win" | "loss", overrides: Partial<ReplayedDuel> = {}) =>
+  replayed({
+    outcome,
+    forfeit: true,
+    endedAt: Date.UTC(2026, 8, 20, 12, 0, 0, 550),
+    ...overrides,
+  });
+
 // Simulated animation frames; the time comes from the injected clock.
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
@@ -107,6 +116,12 @@ const statuses = (word: string) =>
 
 const timer = () => screen.getByRole("timer");
 
+// The carets in the Text: `own` for the Run shown, `opponent` for the other side's.
+const carets = () =>
+  Array.from(document.querySelectorAll("[data-caret]"), (caret) =>
+    caret.getAttribute("data-caret"),
+  );
+
 // The slider hides its thumb until it has measured its track, which happy-dom never lays out: its
 // name is not computed then, so it is found by its label instead.
 const timeline = () => screen.getByLabelText("Temps du Replay", { selector: "input[type=range]" });
@@ -133,6 +148,7 @@ describe("DuelReplay", () => {
 
     expect(statuses("small")).toEqual(["pending", "pending", "pending", "pending", "pending"]);
     expect(timer()).toHaveTextContent("30");
+    expect(carets()).toEqual(["opponent", "own"]);
 
     advance(250);
 
@@ -286,6 +302,65 @@ describe("DuelReplay", () => {
     expect(statuses("small")).toEqual(["correct", "correct", "correct", "correct", "correct"]);
   });
 
+  test("when the User forfeited, their Run stops at the Forfeit, marked on the time bar", async () => {
+    const { advance } = await renderReplay(forfeitedAt("loss"));
+
+    expect(screen.getByText("Toi : abandon à 0,6 s")).toBeInTheDocument();
+
+    advance(540);
+
+    expect(statuses("small")).toEqual(["correct", "correct", "correct", "pending", "pending"]);
+
+    // The « l » typed at 0.6 s never shows: the Replay ends at the Forfeit.
+    advance(30_000);
+
+    expect(timeline()).toHaveAttribute("aria-valuenow", "550");
+    expect(screen.getByRole("region", { name: "Toi" })).toBeInTheDocument();
+    expect(screen.getByText("Toi : abandon à 0,6 s")).toBeInTheDocument();
+  });
+
+  test("when the opponent forfeited, their Run stops at the Forfeit, whichever Run shows", async () => {
+    const { user, advance } = await renderReplay(
+      forfeitedAt("win", {
+        opponent: player(
+          "alan",
+          [
+            { kind: "char", char: "s", at: 150 },
+            { kind: "char", char: "m", at: 500 },
+            { kind: "char", char: "a", at: 600 },
+          ],
+          567,
+        ),
+      }),
+    );
+
+    expect(screen.getByText("@alan : abandon à 0,6 s")).toBeInTheDocument();
+
+    advance(540);
+    await user.click(screen.getByRole("radio", { name: "@alan" }));
+
+    expect(statuses("small")).toEqual(["correct", "correct", "pending", "pending", "pending"]);
+    expect(screen.getByText("@alan : abandon à 0,6 s")).toBeInTheDocument();
+
+    advance(30_000);
+
+    expect(timeline()).toHaveAttribute("aria-valuenow", "550");
+    expect(screen.getByRole("region", { name: "@alan" })).toBeInTheDocument();
+    expect(screen.getByText("@alan : abandon à 0,6 s")).toBeInTheDocument();
+  });
+
+  test("an opponent who forfeited, then deleted their User, is marked as gone", async () => {
+    await renderReplay(forfeitedAt("win", { opponent: null }));
+
+    expect(screen.getByText("User supprimé : abandon à 0,6 s")).toBeInTheDocument();
+  });
+
+  test("a Duel ended by its time has no Forfeit marker", async () => {
+    await renderReplay(replayed());
+
+    expect(screen.queryByText(/abandon à/)).not.toBeInTheDocument();
+  });
+
   test("once the opponent's User is deleted, only the User's side plays", async () => {
     const { advance } = await renderReplay(replayed({ opponent: null }));
 
@@ -294,6 +369,9 @@ describe("DuelReplay", () => {
     advance(850);
 
     expect(statuses("small")).toEqual(["correct", "correct", "correct", "correct", "correct"]);
+    // Their own caret alone, and nothing to switch to.
+    expect(carets()).toEqual(["own"]);
+    expect(screen.queryByRole("radiogroup", { name: "Run affiché" })).not.toBeInTheDocument();
 
     advance(30_000);
 

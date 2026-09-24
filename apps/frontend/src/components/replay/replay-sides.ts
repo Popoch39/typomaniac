@@ -49,7 +49,20 @@ export const sidesAt = (duel: ReplayedDuel, t: number) => {
 };
 
 // Whose Run the Replay shows: the User's, with their opponent's caret, or the other way round.
-export type ReplayView = "own" | "opponent";
+export type ReplayView = DuelSide;
+
+// A side of the Duel: the User's own, or their opponent's.
+export type DuelSide = "own" | "opponent";
+
+// Who forfeited, the side that did not win, and when: the recorded end minus the start, where the
+// Replay ends (`replayDuration`), so no Run goes on past it. Null for a Duel ended by its time.
+export const replayForfeit = (duel: ReplayedDuel): { side: DuelSide; at: number } | null => {
+  if (!duel.forfeit) {
+    return null;
+  }
+
+  return { side: duel.outcome === "win" ? "opponent" : "own", at: replayDuration(duel) };
+};
 
 // The side whose Run shows, and the one whose caret stands in it. Without an opponent, the User's.
 export const viewedSides = (
