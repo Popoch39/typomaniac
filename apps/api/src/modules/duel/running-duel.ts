@@ -30,8 +30,9 @@ export type PacedUser = { user: User; pace: number };
 
 export type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
 
-// The end of the Duel as one player is told it.
-export type Ending = { userId: string; message: DuelEnded };
+// The end of the Duel as one player is told it, but for the id it is written under: known once
+// the write is done.
+export type Ending = { userId: string; message: Omit<DuelEnded, "duelId"> };
 
 // The end of the Duel: as each player is told it, and as it is written.
 export type Finish = { endings: Ending[]; record: DuelRecord };

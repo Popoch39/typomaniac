@@ -244,6 +244,7 @@ describe("typing sound in a Duel", () => {
 
     server().receive({
       type: "duel-ended",
+      duelId: "duel-1",
       outcome: "draw",
       forfeit: false,
       result: noResult,

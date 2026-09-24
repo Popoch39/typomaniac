@@ -22,6 +22,7 @@ import {
 } from "../../test-app";
 import { MAX_DUEL_MESSAGE_SIZE, type ServerMessage } from "./model";
 import { END_TOLERANCE_MS } from "./running-duel";
+import { SAVE_TIMEOUT_MS } from "./service";
 import type { DuelRecord } from "./store";
 
 const NOW = 1_700_000_000_000;
@@ -1147,6 +1148,10 @@ describe("duel socket", () => {
       },
     ]);
 
+    // Both are told the id it was written under: the Duel to replay.
+    expect(forAda).toMatchObject({ duelId: duel.id });
+    expect(forAlan).toMatchObject({ duelId: duel.id });
+
     // Ended once: written once.
     setNow(ENDS_AT + 60_000);
     await ada.settle();
@@ -1330,12 +1335,81 @@ describe("duel socket", () => {
 
     setNow(ENDS_AT);
 
-    expect(await ada.next()).toMatchObject({ type: "duel-ended" });
-    expect(await alan.next()).toMatchObject({ type: "duel-ended" });
+    // Nothing written: nothing to replay.
+    expect(await ada.next()).toMatchObject({ type: "duel-ended", duelId: null });
+    expect(await alan.next()).toMatchObject({ type: "duel-ended", duelId: null });
     expect(logged.map((line) => JSON.parse(line))).toMatchObject([
       { msg: "pace not read", err: { message: "database down" } },
       { msg: "pace not read", err: { message: "database down" } },
       { msg: "finished duel not saved", err: { message: "database down" } },
     ]);
+  });
+
+  test("a write that hangs does not hold the end: past its time, nothing to replay", async () => {
+    const { clock, set } = manualClock(NOW);
+    const logged: string[] = [];
+    const logger = pino({ level: "warn" }, { write: (line: string) => logged.push(line) });
+    const duels = memoryDuelStore();
+
+    const hanging = { ...duels.store, save: () => new Promise<void>(() => {}) };
+
+    await app.stop(true);
+    setNow = set;
+    app = createApp(testConfig({ auth, clock, logger, duelStore: hanging })).listen(0);
+    url = `ws://localhost:${app.server?.port}/api/duel`;
+
+    const { ada, alan } = await pairedUsers();
+
+    setNow(ENDS_AT);
+    await ada.settle();
+
+    setNow(ENDS_AT + SAVE_TIMEOUT_MS);
+
+    expect(await ada.next()).toMatchObject({ type: "duel-ended", duelId: null });
+    expect(await alan.next()).toMatchObject({ type: "duel-ended", duelId: null });
+    expect(logged.map((line) => JSON.parse(line))).toMatchObject([
+      { msg: "finished duel not saved in time" },
+    ]);
+  });
+
+  test("the end is told once the Duel is written: until then, the Duel is still the place", async () => {
+    const { clock, set } = manualClock(NOW);
+    const duels = memoryDuelStore();
+    const written = Promise.withResolvers<void>();
+
+    const slowToWrite = {
+      ...duels.store,
+      save: async (record: DuelRecord) => {
+        await written.promise;
+        await duels.store.save(record);
+      },
+    };
+
+    await app.stop(true);
+    setNow = set;
+    app = createApp(testConfig({ auth, clock, duelStore: slowToWrite })).listen(0);
+    url = `ws://localhost:${app.server?.port}/api/duel`;
+
+    const { ada, alan, cookie } = await pairedUsers();
+
+    setNow(ENDS_AT);
+    await ada.settle();
+
+    // Still being written: a tab opened now sees the Duel, joining the Queue is ignored.
+    const other = await connect(cookie);
+
+    expect(await other.next()).toEqual({ type: "elsewhere", place: "duel" });
+    ada.send({ type: "join-queue" });
+    await ada.settle();
+
+    written.resolve();
+
+    const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+    const duelId = duels.saved.at(0)?.id;
+
+    expect(duelId).toBeString();
+    expect(forAda).toMatchObject({ type: "duel-ended", duelId });
+    expect(forAlan).toMatchObject({ type: "duel-ended", duelId });
+    expect(await other.next()).toEqual({ type: "idle" });
   });
 });

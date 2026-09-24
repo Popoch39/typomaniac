@@ -6,7 +6,7 @@ import { type ChallengeArena, Challenges, type Seat } from "../challenge/service
 import type { FriendStore } from "../friend/store";
 import type { Users } from "../user/users";
 import type { ClientMessage, ServerMessage } from "./model";
-import { type DuelStore, readPace } from "./store";
+import { type DuelRecord, type DuelStore, readPace } from "./store";
 import {
   type DuelEnded,
   type Finish,
@@ -24,6 +24,9 @@ const COUNTDOWN_MS = 3000;
 
 // How long a player whose connection dropped has to come back before forfeiting.
 const RECONNECT_GRACE_MS = 10_000;
+
+// How long the end of a Duel waits for its write: past that, it is told without a Duel to replay.
+export const SAVE_TIMEOUT_MS = 5000;
 
 // One WebSocket, seen from the Queue: the route adapts Elysia's to it.
 export type Connection = {
@@ -77,11 +80,16 @@ export class DuelQueue implements ChallengeArena {
   // them.
   readonly #queue = new Map<string, QueueEntry>();
 
-  // The write of each User's last Duel, until it is done: their Pace waits for it.
-  readonly #saving = new Map<string, Promise<void>>();
+  // The write of each User's last Duel, until it is done: their Pace waits for it. It gives the id
+  // the Duel was written under, null if the write failed.
+  readonly #saving = new Map<string, Promise<string | null>>();
 
   // The Duel of each User in one, until it is over.
   readonly #duels = new Map<string, RunningDuel>();
+
+  // Players whose Duel is over but not written yet: they are told its end once it is, and until
+  // then the Duel is still their place.
+  readonly #beingWritten = new Set<string>();
 
   // Players of a Duel whose playing connection dropped, each with a token of that disconnection:
   // their time to come back only runs out if they are still away from that one.
@@ -201,9 +209,9 @@ export class DuelQueue implements ChallengeArena {
     return this.#connections.get(userId)?.get(connectionId);
   }
 
-  // From the pairing (Countdown included) to the end.
+  // From the pairing (Countdown included) to the end, told once the Duel is written.
   isInDuel(userId: string) {
-    return this.#duels.has(userId);
+    return this.#duels.has(userId) || this.#beingWritten.has(userId);
   }
 
   // Their Challenges between them are over.
@@ -232,7 +240,7 @@ export class DuelQueue implements ChallengeArena {
   // told is still their place: only a connection that resumes it is told the end. Still being
   // read, the Queue is no place yet: it becomes one with `queued`.
   #placeOf(userId: string): ServerMessage {
-    if (this.#duels.has(userId) || this.#missed.has(userId)) {
+    if (this.isInDuel(userId) || this.#missed.has(userId)) {
       return { type: "elsewhere", place: "duel" };
     }
 
@@ -283,7 +291,7 @@ export class DuelQueue implements ChallengeArena {
   // The same mechanism as a reconnection: the Duel goes on here, the connection that played it
   // until now is told, and the time to come back stops. A Duel that ended while no connection
   // played it: its end, told once, and the other connections that the User is idle. Otherwise,
-  // ignored.
+  // ignored. A Duel over but not written yet: its end is told here once it is.
   #resumeOn(userId: string, connection: Connection) {
     const duel = this.#duels.get(userId);
     const missed = this.#missed.get(userId);
@@ -291,6 +299,8 @@ export class DuelQueue implements ChallengeArena {
     if (duel) {
       this.#playOn(userId, connection);
       this.#resume(userId, duel);
+    } else if (this.#beingWritten.has(userId)) {
+      this.#playOn(userId, connection);
     } else if (missed) {
       this.#missed.delete(userId);
       this.#playOn(userId, connection);
@@ -318,10 +328,10 @@ export class DuelQueue implements ChallengeArena {
     }
   }
 
-  // Once a Duel is over, it is written, both players are free to join the Queue again and their
-  // Keystrokes are ignored. It ends once: at the end of its time, or on a Forfeit, whichever comes
-  // first. A failed write is logged: the players are told the end all the same, on the connection
-  // that plays (or the next one that resumes the Duel), their other connections that they are idle.
+  // Once a Duel is over, it is written, then both players are free to join the Queue again. Their
+  // Keystrokes are ignored from the end on. It ends once: at the end of its time, or on a Forfeit,
+  // whichever comes first. A failed write is logged: the players are told the end all the same,
+  // without a Duel to replay.
   #finish(duel: RunningDuel, finish: (now: number) => Finish) {
     if (duel.userIds.some((userId) => this.#duels.get(userId) !== duel)) {
       return;
@@ -329,28 +339,62 @@ export class DuelQueue implements ChallengeArena {
 
     const { endings, record } = finish(this.#clock.now());
 
-    const saving = this.#store.save(record).catch((error) => {
-      this.#logger.error({ err: error, duelId: record.id }, "finished duel not saved");
-    });
+    const saving = this.#write(record);
 
     for (const { userId, message } of endings) {
       this.#duels.delete(userId);
       this.#away.delete(userId);
-      this.#onDuel(userId, false);
+      this.#beingWritten.add(userId);
       this.#saving.set(userId, saving);
-      void saving.then(() => {
+      void saving.then((duelId) => {
         if (this.#saving.get(userId) === saving) {
           this.#saving.delete(userId);
         }
-      });
 
-      // Nobody plays it: the Duel stays their place until a connection resumes it.
-      if (this.#playing.has(userId)) {
-        this.#send(userId, message);
-        this.#tellOthers(userId);
-      } else {
-        this.#missed.set(userId, message);
-      }
+        this.#tellEnd(userId, { ...message, duelId });
+      });
+    }
+  }
+
+  // The id the Duel is written under, or null: the write failed, or took longer than
+  // SAVE_TIMEOUT_MS (the players are not held up by a database that hangs). Either is logged.
+  #write(record: DuelRecord) {
+    return new Promise<string | null>((resolve) => {
+      let settled = false;
+
+      const settle = (duelId: string | null) => {
+        settled = true;
+        resolve(duelId);
+      };
+
+      void this.#store.save(record).then(
+        () => settle(record.id),
+        (error) => {
+          this.#logger.error({ err: error, duelId: record.id }, "finished duel not saved");
+          settle(null);
+        },
+      );
+      this.#clock.at(this.#clock.now() + SAVE_TIMEOUT_MS, () => {
+        if (!settled) {
+          this.#logger.warn({ duelId: record.id }, "finished duel not saved in time");
+          settle(null);
+        }
+      });
+    });
+  }
+
+  // The end, told on the connection that plays (or the next one that resumes the Duel), and to
+  // their other connections that they are idle.
+  #tellEnd(userId: string, message: DuelEnded) {
+    this.#beingWritten.delete(userId);
+    this.#onDuel(userId, false);
+
+    // Nobody plays it: the Duel stays their place until a connection resumes it.
+    if (this.#playing.has(userId)) {
+      this.#send(userId, message);
+      this.#tellOthers(userId);
+    } else {
+      this.#missed.set(userId, message);
     }
   }
 
@@ -397,7 +441,7 @@ export class DuelQueue implements ChallengeArena {
   // Handle, they are refused. Then their Pace, frozen for their next Duel: they are paired once it
   // is read. Joining again while in the Queue keeps their place, played on `connection` from now on.
   #join(userId: string, connection: Connection) {
-    if (this.#duels.has(userId)) {
+    if (this.isInDuel(userId)) {
       return;
     }
 

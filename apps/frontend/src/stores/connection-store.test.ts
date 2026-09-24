@@ -60,6 +60,7 @@ const duelResumed: ServerMessage = {
 
 const duelEnded: ServerMessage = {
   type: "duel-ended",
+  duelId: "duel-1",
   outcome: "draw",
   forfeit: false,
   result: noResult,

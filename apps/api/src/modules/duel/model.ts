@@ -137,9 +137,11 @@ const ServerMessage = t.Union([
   }),
   // The end, the same for both: each side gets its own outcome, its Result and Score and the
   // opponent's. Sent on `resume-duel` too to a User who missed the end of their Duel while no
-  // connection of theirs played it: until then, their place is still the Duel.
+  // connection of theirs played it: until then, their place is still the Duel. Told once the Duel
+  // is written: `duelId` is the Duel to replay, null when the write failed (nothing to replay).
   t.Object({
     type: t.Literal("duel-ended"),
+    duelId: t.Union([t.String(), t.Null()]),
     outcome: t.Union([t.Literal("win"), t.Literal("loss"), t.Literal("draw")]),
     // The loser forfeited: left, did not come back in time, or typed at an inhuman rate.
     forfeit: t.Boolean(),
