@@ -88,9 +88,17 @@ L'issue d'un Duel où les deux Users ont le même wpm et la même accuracy : auc
 _Avoid_ : égalité, nul, tie
 
 **Score** :
-Les points d'un User dans un Duel, gagnés par ses mots justes et multipliés par ses Combos. Pas encore construit : il remplacera le wpm pour désigner le vainqueur.
+Les points d'un User dans un Duel ou un Run : chaque mot juste rapporte ses caractères (espace compris), multipliés par son Combo, et doublés par un Burst. Un mot validé faux ne rapporte rien ; le mot en cours à la fin du temps rapporte ses lettres justes. Dans un Run, il ne sert qu'à s'entraîner. Pas encore construit : il remplacera le wpm pour désigner le vainqueur d'un Duel, départagé par l'accuracy.
 _Avoid_ : points, Result
 
 **Combo** :
-Une suite ininterrompue de mots justes, qui fait grossir le Score. Une faute la casse. Pas encore construit.
+Le nombre de mots justes d'affilée tapés sans aucune faute, même corrigée. Il multiplie les points : x1, x2 dès 5 mots, x3 dès 10, x4 au plus dès 15. Une faute le casse dès qu'elle est tapée ; le mot, corrigé, repart à x1. Revenir corriger un mot validé faux ne le rétablit pas. Pas encore construit.
 _Avoid_ : streak, série, chaîne
+
+**Burst** :
+Un mot juste sans faute, d'au moins 4 lettres, tapé au moins 20 % plus vite que la Pace du User, chronométré de l'espace qui le précède à celui qui le valide. Ses points sont doublés. Pas encore construit.
+_Avoid_ : perfect, crit, rush
+
+**Pace** :
+La cadence de référence d'un User pour le Burst, figée au départ : le wpm médian de ses 10 derniers Duels, ou de ceux qu'il a s'il en a moins ; 50 wpm sans aucun Duel, et pour un Visitor. Elle vient de l'historique, pas du Duel en cours, pour qu'alterner mots lents et rapides ne rapporte rien. Pas encore construit.
+_Avoid_ : moyenne, niveau, cadence
