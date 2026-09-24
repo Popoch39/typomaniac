@@ -177,9 +177,10 @@ export class RunningDuel {
     };
   }
 
-  // The end once the time is up: the best Result wins (duelOutcome of the engine).
-  end(now: number) {
-    return this.#finish(now, false, duelOutcome);
+  // The end once the time is up: the best Result wins (duelOutcome of the engine). It ended when
+  // its time ran out, not when the server stopped waiting for the last Keystrokes.
+  end() {
+    return this.#finish(this.duel.startsAt + this.#durationMs, false, duelOutcome);
   }
 
   // `loserId` forfeits: the opponent wins, whatever the Results so far.

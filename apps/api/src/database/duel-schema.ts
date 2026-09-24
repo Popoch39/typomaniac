@@ -11,10 +11,11 @@ import {
 } from "drizzle-orm/pg-core";
 import type { Keystroke } from "typing-engine";
 
+import { DUEL_OUTCOMES } from "../duel/duel-store";
 import { user } from "./auth-schema";
 
 // A finished Duel: enough to replay it on its Text (Seed, Language, Word list version, Mode) and
-// its issue. A Duel still running when the API stops is never written (ADR 0003).
+// its outcome. A Duel still running when the API stops is never written (ADR 0003).
 export const duel = pgTable("duel", {
   id: text("id").primaryKey(),
   // A 32-bit unsigned Seed: past the range of a Postgres integer.
@@ -25,9 +26,10 @@ export const duel = pgTable("duel", {
   seconds: integer("seconds").notNull(),
   // The end of the Countdown.
   startedAt: timestamp("started_at").notNull(),
+  // The end of its time, or the moment of the Forfeit.
   endedAt: timestamp("ended_at").notNull(),
-  outcome: text("outcome", { enum: ["win", "draw", "forfeit"] }).notNull(),
-  // Null for a Draw.
+  outcome: text("outcome", { enum: DUEL_OUTCOMES }).notNull(),
+  // Null for a Draw, or once the winner's User is deleted.
   winnerId: text("winner_id").references(() => user.id, { onDelete: "set null" }),
 });
 

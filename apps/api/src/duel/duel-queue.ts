@@ -170,7 +170,7 @@ export class DuelQueue {
 
     const { endings, record } = finish(this.#clock.now());
 
-    this.#store.save(record).catch((error: Error) => {
+    this.#store.save(record).catch((error) => {
       this.#logger.error({ err: error, duelId: record.id }, "finished duel not saved");
     });
 
@@ -267,7 +267,7 @@ export class DuelQueue {
 
     this.#duels.set(a.user.id, duel);
     this.#duels.set(b.user.id, duel);
-    this.#clock.at(duel.endsAt, () => this.#finish(duel, (now) => duel.end(now)));
+    this.#clock.at(duel.endsAt, () => this.#finish(duel, () => duel.end()));
 
     for (const { user } of [a, b]) {
       this.#send(user.id, {

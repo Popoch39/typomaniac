@@ -21,8 +21,11 @@ const NOW = 1_700_000_000_000;
 // A Duel paired at NOW starts after the 3 s Countdown and lasts 30 s.
 const STARTS_AT = NOW + 3000;
 
+// Its time is up: the end written for a Duel that was not forfeited.
+const TIME_UP = STARTS_AT + 30_000;
+
 // The server ends it once the last Keystrokes had the time to arrive.
-const ENDS_AT = STARTS_AT + 30_000 + END_TOLERANCE_MS;
+const ENDS_AT = TIME_UP + END_TOLERANCE_MS;
 
 const char = (value: string, at: number) => ({ kind: "char" as const, char: value, at });
 
@@ -782,7 +785,7 @@ describe("duel socket", () => {
       {
         ...duel,
         mode: "time",
-        endedAt: ENDS_AT,
+        endedAt: TIME_UP,
         outcome: "win",
         winnerId: adaId,
         players: [
@@ -863,7 +866,7 @@ describe("duel socket", () => {
     setNow(ENDS_AT);
     await Promise.all([ada.next(), alan.next()]);
 
-    expect(saved).toMatchObject([{ outcome: "draw", winnerId: null, endedAt: ENDS_AT }]);
+    expect(saved).toMatchObject([{ outcome: "draw", winnerId: null, endedAt: TIME_UP }]);
   });
 
   test("leaving the Duel is written at once as a Forfeit won by the opponent", async () => {
