@@ -47,6 +47,17 @@ export type DuelHistoryRow = {
   opponent: DuelHistoryPlayer | null;
 };
 
+// A player of a finished Duel as it is read back: their Pace is null for the Duels written before
+// it came from the history.
+export type PlayedDuelPlayer = Omit<DuelPlayerRecord, "pace"> & { pace: number | null };
+
+// A finished Duel read back for one of its two Users (`player`), to replay it. `opponent` is null
+// once their User is deleted: their player row goes with it.
+export type PlayedDuel = Omit<DuelRecord, "players"> & {
+  player: PlayedDuelPlayer;
+  opponent: PlayedDuelPlayer | null;
+};
+
 // Where finished Duels are written, injected through AppConfig: Drizzle in production, in memory
 // in the tests. A Duel still running when the API stops is never written.
 export type DuelStore = {
@@ -60,6 +71,9 @@ export type DuelStore = {
     userId: string,
     page: { before: DuelCursor | null; limit: number },
   ) => Promise<DuelHistoryRow[]>;
+  // The Duel `duelId` as `userId` played it, whole: null when there is no such Duel or when that
+  // User did not play it.
+  playedDuel: (userId: string, duelId: string) => Promise<PlayedDuel | null>;
 };
 
 // A User's Pace, from the wpm of their last Duels (the engine's paceOf).

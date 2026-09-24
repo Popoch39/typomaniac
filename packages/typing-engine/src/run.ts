@@ -194,3 +194,13 @@ export const applyKeystroke = (state: RunState, keystroke: Keystroke): RunState 
 // The state a log of Keystrokes leads to, e.g. an opponent's Run rebuilt from the relayed ones.
 export const replayRun = (config: RunConfig, keystrokes: readonly Keystroke[]) =>
   keystrokes.reduce(applyKeystroke, createRun(config));
+
+// The Keystrokes typed by `t` ms since the start of the Run, `t` included. The caller gives `t`:
+// the engine never reads the time (ADR 0002).
+export const keystrokesUpTo = (keystrokes: readonly Keystroke[], t: number) =>
+  keystrokes.filter((keystroke) => keystroke.at <= t);
+
+// The Run at `t` ms since its start: every Keystroke dated `t` or earlier applied, e.g. a Duel's
+// Replay at the moment it shows.
+export const runAt = (config: RunConfig, keystrokes: readonly Keystroke[], t: number) =>
+  replayRun(config, keystrokesUpTo(keystrokes, t));

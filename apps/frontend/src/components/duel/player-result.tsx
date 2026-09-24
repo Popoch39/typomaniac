@@ -8,7 +8,8 @@ import { cn } from "cn";
 type PlayerResultProps = {
   name: string;
   result: Result;
-  score: DuelEnding["score"];
+  // Null for a Duel played before the Score, in its Replay.
+  score: DuelEnding["score"] | null;
   opponent?: boolean;
 };
 

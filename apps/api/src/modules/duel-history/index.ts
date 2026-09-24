@@ -4,7 +4,7 @@ import { type AuthHandler, authentication } from "../auth";
 import type { DuelStore } from "../duel/store";
 import type { Users } from "../user/users";
 import { DuelHistoryModel } from "./model";
-import { duelHistory } from "./service";
+import { duelHistory, replayedDuel } from "./service";
 
 export type DuelHistoryModuleConfig = {
   auth: AuthHandler;
@@ -25,4 +25,17 @@ export const duelHistoryModule = ({ auth, trustProxy, store, users }: DuelHistor
         summary: "The signed-in User's Duel history, the most recent first, 20 per page",
         tags: ["Duel"],
       },
-    });
+    })
+    .get(
+      "/duels/:duelId",
+      ({ user, params }) => replayedDuel({ store, users }, user.id, params.duelId),
+      {
+        auth: true,
+        params: DuelHistoryModel.duelParams,
+        response: DuelHistoryModel.duel,
+        detail: {
+          summary: "One of the signed-in User's finished Duels, whole, to replay it",
+          tags: ["Duel"],
+        },
+      },
+    );

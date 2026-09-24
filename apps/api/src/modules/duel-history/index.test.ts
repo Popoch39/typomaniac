@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
-import { currentWordListVersion, defaultPace } from "typing-engine";
+import { currentWordListVersion, defaultPace, type Keystroke } from "typing-engine";
 
 import { createApp } from "../../app";
 import { createTestAuth, memoryDuelStore, signIn, testConfig, testUsers } from "../../test-app";
@@ -9,7 +9,9 @@ import { DuelHistoryModel } from "./model";
 
 const historyPage = TypeCompiler.Compile(DuelHistoryModel.page);
 
-type Side = { userId: string; wpm: number; score: number | null };
+const replayedDuel = TypeCompiler.Compile(DuelHistoryModel.duel);
+
+type Side = { userId: string; wpm: number; score: number | null; keystrokes?: Keystroke[] };
 
 // A finished Duel between two Users: `outcome` and `winnerId` as the server wrote them.
 const finishedDuel = ({
@@ -25,7 +27,7 @@ const finishedDuel = ({
   winnerId?: string | null;
   players: [Side, Side];
 }): DuelRecord => {
-  const player = ({ userId, wpm, score }: Side): DuelPlayerRecord => ({
+  const player = ({ userId, wpm, score, keystrokes = [] }: Side): DuelPlayerRecord => ({
     userId,
     result: {
       wpm,
@@ -36,7 +38,7 @@ const finishedDuel = ({
     },
     pace: defaultPace,
     score: score === null ? null : { score, bestCombo: 10, bursts: 1 },
-    keystrokes: [],
+    keystrokes,
   });
 
   return {
@@ -95,10 +97,32 @@ const setup = () => {
       return body;
     };
 
-    return { id: user.id, image, cookie, page };
+    // Their Duel `duelId`, to replay it.
+    const replay = async (duelId: string) => {
+      const response = await duelResponse(cookie, duelId);
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+
+      if (!replayedDuel.Check(body)) {
+        throw new Error(`Not a replayed Duel: ${JSON.stringify(body)}`);
+      }
+
+      return body;
+    };
+
+    return { id: user.id, image, cookie, page, replay };
   };
 
-  return { auth, duels, history, newUser };
+  const duelResponse = (cookie: string | null, duelId: string) =>
+    app.handle(
+      new Request(`http://localhost/api/duels/${duelId}`, {
+        headers: cookie === null ? undefined : { cookie },
+      }),
+    );
+
+  return { auth, duels, history, duelResponse, newUser };
 };
 
 describe("GET /api/duels", () => {
@@ -370,5 +394,137 @@ describe("GET /api/duels", () => {
     expect(entry?.opponent).toEqual({ handle: "turing", image: alan.image });
     expect(JSON.stringify(entry)).not.toContain("User 2");
     expect(JSON.stringify(entry)).not.toContain("@example.com");
+  });
+});
+
+// A side of a replayed Duel as `finishedDuel` writes it, without its Keystrokes.
+const player = (image: string, handle: string, wpm: number, score: number) => ({
+  handle,
+  image,
+  result: {
+    wpm,
+    raw: wpm,
+    accuracy: 100,
+    consistency: 80,
+    chars: { correct: wpm * 2.5, incorrect: 0, extra: 0, missed: 0 },
+  },
+  pace: defaultPace,
+  score: { score, bestCombo: 10, bursts: 1 },
+});
+
+describe("GET /api/duels/:duelId", () => {
+  const adaTyped: Keystroke[] = [
+    { kind: "char", char: "s", at: 120 },
+    { kind: "char", char: "x", at: 250 },
+    { kind: "backspace", at: 400 },
+  ];
+
+  const alanTyped: Keystroke[] = [
+    { kind: "char", char: "s", at: 90 },
+    { kind: "deleteWord", at: 300 },
+  ];
+
+  // A Duel Ada won against Alan, then one between two other Users.
+  const withDuels = async () => {
+    const context = setup();
+    const ada = await context.newUser("ada");
+    const alan = await context.newUser("alan");
+    const grace = await context.newUser("grace");
+    const linus = await context.newUser("linus");
+
+    context.duels.saved.push(
+      finishedDuel({
+        id: "ada-alan",
+        endedAt: 1_030_000,
+        winnerId: ada.id,
+        players: [
+          { userId: ada.id, wpm: 90, score: 1200, keystrokes: adaTyped },
+          { userId: alan.id, wpm: 70, score: 800, keystrokes: alanTyped },
+        ],
+      }),
+      finishedDuel({
+        id: "grace-linus",
+        endedAt: 2_000_000,
+        outcome: "draw",
+        players: [
+          { userId: grace.id, wpm: 60, score: null },
+          { userId: linus.id, wpm: 60, score: null },
+        ],
+      }),
+    );
+
+    return { ...context, ada, alan, grace };
+  };
+
+  test("a player gets the whole Duel seen from them, both Users' Keystrokes included", async () => {
+    const { ada, alan } = await withDuels();
+
+    expect(await ada.replay("ada-alan")).toEqual({
+      id: "ada-alan",
+      seed: 1,
+      language: "en",
+      wordListVersion: currentWordListVersion.en,
+      seconds: 30,
+      startsAt: 1_000_000,
+      endedAt: 1_030_000,
+      outcome: "win",
+      forfeit: false,
+      me: { ...player(ada.image, "ada", 90, 1200), keystrokes: adaTyped },
+      opponent: { ...player(alan.image, "alan", 70, 800), keystrokes: alanTyped },
+    });
+
+    const fromAlan = await alan.replay("ada-alan");
+
+    expect(fromAlan.outcome).toBe("loss");
+    expect(fromAlan.me.keystrokes).toEqual(alanTyped);
+    expect(fromAlan.opponent?.handle).toBe("ada");
+    expect(fromAlan.opponent?.keystrokes).toEqual(adaTyped);
+  });
+
+  test("a Duel played before the Score has no Score", async () => {
+    const { grace } = await withDuels();
+
+    const duel = await grace.replay("grace-linus");
+
+    expect(duel.outcome).toBe("draw");
+    expect(duel.me.score).toBeNull();
+    expect(duel.opponent?.score).toBeNull();
+  });
+
+  test("a User who did not play the Duel gets 404, like for a Duel that does not exist", async () => {
+    const { ada, duelResponse } = await withDuels();
+
+    const responses = await Promise.all([
+      duelResponse(ada.cookie, "grace-linus"),
+      duelResponse(ada.cookie, "no-such-duel"),
+    ]);
+
+    expect(responses.map((response) => response.status)).toEqual([404, 404]);
+
+    // Nothing tells the Duel of others from one that does not exist.
+    for (const body of await Promise.all(responses.map((response) => response.json()))) {
+      expect(body).toMatchObject({ error: { code: "NOT_FOUND", message: "Duel not found" } });
+    }
+  });
+
+  test("a Visitor gets 401", async () => {
+    const { duelResponse } = await withDuels();
+
+    const response = await duelResponse(null, "ada-alan");
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ error: { code: "UNAUTHORIZED" } });
+  });
+
+  test("once the opponent's User is deleted, only the reader's side is left", async () => {
+    const { auth, duels, ada, alan } = await withDuels();
+
+    await (await auth.$context).internalAdapter.deleteUser(alan.id);
+    duels.deleteUser(alan.id);
+
+    const duel = await ada.replay("ada-alan");
+
+    expect(duel.opponent).toBeNull();
+    expect(duel.me.keystrokes).toEqual(adaTyped);
   });
 });

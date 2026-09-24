@@ -163,4 +163,8 @@ export const DuelModel = {
   clientMessage: ClientMessage,
   serverMessage: ServerMessage,
   opponent: DuelOpponent,
+  duel: Duel,
+  keystroke: Keystroke,
+  result: Result,
+  score: DuelScore,
 };

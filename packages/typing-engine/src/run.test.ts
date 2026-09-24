@@ -5,7 +5,9 @@ import {
   createRun,
   generateText,
   isFinished,
+  type Keystroke,
   type RunConfig,
+  runAt,
   type RunState,
 } from "./index";
 
@@ -25,6 +27,9 @@ const deleteWord = (state: RunState) => applyKeystroke(state, { kind: "deleteWor
 
 const statuses = (state: RunState, wordIndex: number) =>
   state.words[wordIndex]?.letters.map((letter) => letter.status);
+
+// What was typed in the first two words.
+const typed = (state: RunState) => state.words.slice(0, 2).map((word) => word.typed);
 
 describe("createRun", () => {
   test("starts on the first letter of the Text, every letter pending", () => {
@@ -250,5 +255,62 @@ describe("time Mode", () => {
     expect(applyKeystroke(run, { kind: "char", char: "l", at: 30_000 })).toEqual(run);
     expect(applyKeystroke(run, { kind: "backspace", at: 30_000 })).toEqual(run);
     expect(applyKeystroke(run, { kind: "char", char: "l", at: 29_999 }).letterIndex).toBe(4);
+  });
+});
+
+describe("runAt", () => {
+  // "sm", a wrong "x" erased, "all" then space at 500 ms, then "hx" wiped out by Ctrl+Backspace.
+  const log: Keystroke[] = [
+    { kind: "char", char: "s", at: 100 },
+    { kind: "char", char: "m", at: 200 },
+    { kind: "char", char: "x", at: 250 },
+    { kind: "backspace", at: 300 },
+    { kind: "char", char: "a", at: 400 },
+    { kind: "char", char: "l", at: 400 },
+    { kind: "char", char: "l", at: 400 },
+    { kind: "char", char: " ", at: 500 },
+    { kind: "char", char: "h", at: 600 },
+    { kind: "char", char: "x", at: 650 },
+    { kind: "deleteWord", at: 700 },
+  ];
+
+  test("at 0, before the first Keystroke, the Run has not started", () => {
+    expect(runAt(config, log, 0)).toEqual(createRun(config));
+  });
+
+  test("mid-typing, only the Keystrokes up to t count, one at t included", () => {
+    expect(typed(runAt(config, log, 199))).toEqual(["s", ""]);
+    expect(typed(runAt(config, log, 200))).toEqual(["sm", ""]);
+  });
+
+  test("a wrong letter shows until the backspace that erases it", () => {
+    expect(statuses(runAt(config, log, 250), 0)).toEqual([
+      "correct",
+      "correct",
+      "incorrect",
+      "pending",
+      "pending",
+    ]);
+    expect(typed(runAt(config, log, 300))).toEqual(["sm", ""]);
+  });
+
+  test("Keystrokes at the same instant all count at once", () => {
+    expect(typed(runAt(config, log, 399))).toEqual(["sm", ""]);
+    expect(typed(runAt(config, log, 400))).toEqual(["small", ""]);
+  });
+
+  test("a deleted word shows until Ctrl+Backspace wipes it out", () => {
+    const beforeDelete = runAt(config, log, 650);
+
+    expect(beforeDelete.wordIndex).toBe(1);
+    expect(typed(beforeDelete)).toEqual(["small", "hx"]);
+    expect(typed(runAt(config, log, 700))).toEqual(["small", ""]);
+  });
+
+  test("after the last Keystroke, the Run is the whole log replayed", () => {
+    const end = runAt(config, log, 30_000);
+
+    expect(end).toEqual(log.reduce(applyKeystroke, createRun(config)));
+    expect(end.validatedWords).toBe(1);
   });
 });

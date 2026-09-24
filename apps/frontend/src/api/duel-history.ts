@@ -1,4 +1,4 @@
-import { type InfiniteData, infiniteQueryOptions } from "@tanstack/react-query";
+import { type InfiniteData, infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
 
 import { api, unwrap } from "@/api/client";
 
@@ -25,3 +25,17 @@ export const duelHistoryQueryOptions = infiniteQueryOptions<
   initialPageParam: null,
   getNextPageParam: (page) => page.next,
 });
+
+const fetchReplayedDuel = async (duelId: string) => unwrap(await api.duels({ duelId }).get());
+
+// A finished Duel of the User, whole, seen from them: its Text, both sides and their Keystrokes.
+export type ReplayedDuel = Awaited<ReturnType<typeof fetchReplayedDuel>>;
+
+export type ReplayedPlayer = ReplayedDuel["me"];
+
+export const replayedDuelQueryOptions = (duelId: string) =>
+  queryOptions({
+    // Apart from the Duel history's key: invalidating it leaves the Replays be.
+    queryKey: ["duel", duelId],
+    queryFn: () => fetchReplayedDuel(duelId),
+  });

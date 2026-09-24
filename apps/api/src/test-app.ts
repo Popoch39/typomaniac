@@ -122,6 +122,9 @@ export const memoryDuelStore = () => {
   const playersOf = (record: DuelRecord) =>
     record.players.filter((player) => !deleted.has(player.userId));
 
+  const winnerOf = ({ winnerId }: DuelRecord) =>
+    winnerId === null || deleted.has(winnerId) ? null : winnerId;
+
   const store: DuelStore = {
     save: async (record) => {
       saved.push(record);
@@ -151,14 +154,36 @@ export const memoryDuelStore = () => {
               id: record.id,
               endedAt: record.endedAt,
               outcome: record.outcome,
-              winnerId:
-                record.winnerId === null || deleted.has(record.winnerId) ? null : record.winnerId,
+              winnerId: winnerOf(record),
               player: historyPlayer(player),
               opponent: opponent ? historyPlayer(opponent) : null,
             },
           ];
         })
         .slice(0, limit),
+    playedDuel: async (userId, duelId) => {
+      const record = saved.find((candidate) => candidate.id === duelId);
+
+      if (!record) {
+        return null;
+      }
+
+      const players = playersOf(record);
+      const player = players.find((candidate) => candidate.userId === userId);
+
+      if (!player) {
+        return null;
+      }
+
+      const { players: _, ...duel } = record;
+
+      return {
+        ...duel,
+        winnerId: winnerOf(record),
+        player,
+        opponent: players.find((candidate) => candidate.userId !== userId) ?? null,
+      };
+    },
   };
 
   const deleteUser = (userId: string) => {

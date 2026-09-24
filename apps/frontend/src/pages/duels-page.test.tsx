@@ -1,4 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { render, screen, within } from "@testing-library/react";
 import { Suspense } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
@@ -49,8 +55,9 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// The page with its first page of Duels in the cache, the way the route's loader leaves it.
-const renderPage = (first: DuelHistoryPage) => {
+// The page with its first page of Duels in the cache, the way the route's loader leaves it, on a
+// router of its own: its rows are links.
+const renderPage = async (first: DuelHistoryPage) => {
   const queryClient = new QueryClient();
 
   queryClient.setQueryData(meQueryOptions.queryKey, me);
@@ -59,21 +66,30 @@ const renderPage = (first: DuelHistoryPage) => {
     pageParams: [null],
   });
 
+  const router = createRouter({
+    routeTree: createRootRoute({ component: DuelsPage }),
+    history: createMemoryHistory({ initialEntries: ["/duels"] }),
+  });
+
+  await router.load();
+
   render(
     <QueryClientProvider client={queryClient}>
       <Suspense>
-        <DuelsPage />
+        <RouterProvider router={router} />
       </Suspense>
     </QueryClientProvider>,
   );
+
+  await screen.findByRole("heading", { name: "Duels" });
 };
 
 const rows = () =>
   within(screen.getByRole("list", { name: "Duel history" })).getAllByRole("listitem");
 
 describe("DuelsPage", () => {
-  test("lists each Duel from the User's side: opponent, outcome, Scores and wpm", () => {
-    renderPage({
+  test("lists each Duel from the User's side: opponent, outcome, Scores and wpm", async () => {
+    await renderPage({
       duels: [
         entry({ id: "won" }),
         entry({
@@ -107,8 +123,17 @@ describe("DuelsPage", () => {
     expect(deleted).toHaveTextContent("90 – — wpm");
   });
 
-  test("says the Duel history fills up by playing when there is none yet", () => {
-    renderPage({ duels: [], next: null });
+  test("each Duel leads to its Replay", async () => {
+    await renderPage({ duels: [entry({ id: "won" }), entry({ id: "drawn" })], next: null });
+
+    expect(rows().map((row) => within(row).getByRole("link").getAttribute("href"))).toEqual([
+      "/duels/won",
+      "/duels/drawn",
+    ]);
+  });
+
+  test("says the Duel history fills up by playing when there is none yet", async () => {
+    await renderPage({ duels: [], next: null });
 
     expect(screen.queryByRole("list", { name: "Duel history" })).not.toBeInTheDocument();
     expect(screen.getByText(/Aucun Duel pour l'instant/)).toBeInTheDocument();
@@ -129,7 +154,7 @@ describe("DuelsPage", () => {
     vi.stubGlobal("fetch", fetch);
     vi.stubGlobal("IntersectionObserver", VisibleAtOnce);
 
-    renderPage({ duels: [entry({ id: "recent" })], next: "1000:recent" });
+    await renderPage({ duels: [entry({ id: "recent" })], next: "1000:recent" });
 
     expect(await screen.findByText("@linus")).toBeInTheDocument();
     expect(rows()).toHaveLength(2);

@@ -4,7 +4,7 @@ import { alias } from "drizzle-orm/pg-core";
 
 import type { Table } from "../../database/schema";
 import { duel, duelPlayer } from "./schema";
-import type { DuelCursor, DuelPlayerRecord, DuelStore } from "./store";
+import type { DuelCursor, DuelPlayerRecord, DuelStore, PlayedDuelPlayer } from "./store";
 
 const playerRow = (
   duelId: string,
@@ -25,6 +25,29 @@ const playerRow = (
   bestCombo: score === null ? null : score.bestCombo,
   bursts: score === null ? null : score.bursts,
   keystrokes,
+});
+
+const playerOf = (row: typeof duelPlayer.$inferSelect): PlayedDuelPlayer => ({
+  userId: row.userId,
+  result: {
+    wpm: row.wpm,
+    raw: row.raw,
+    accuracy: row.accuracy,
+    consistency: row.consistency,
+    chars: {
+      correct: row.correctChars,
+      incorrect: row.incorrectChars,
+      extra: row.extraChars,
+      missed: row.missedChars,
+    },
+  },
+  pace: row.pace,
+  // All three or none: written together since the Score.
+  score:
+    row.score === null || row.bestCombo === null || row.bursts === null
+      ? null
+      : { score: row.score, bestCombo: row.bestCombo, bursts: row.bursts },
+  keystrokes: row.keystrokes,
 });
 
 // The other player of the Duel, next to the one who reads their Duel history.
@@ -105,5 +128,37 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
           ? null
           : { userId: row.opponentId, wpm: row.opponentWpm, score: row.opponentScore },
     }));
+  },
+  // The Duel and its player rows, one per User still there.
+  playedDuel: async (userId, duelId) => {
+    const rows = await db
+      .select()
+      .from(duel)
+      .innerJoin(duelPlayer, eq(duelPlayer.duelId, duel.id))
+      .where(eq(duel.id, duelId));
+
+    const own = rows.find((row) => row.duel_player.userId === userId);
+
+    if (!own) {
+      return null;
+    }
+
+    const opponent = rows.find((row) => row.duel_player.userId !== userId);
+    const { duel: played } = own;
+
+    return {
+      id: played.id,
+      seed: played.seed,
+      language: played.language,
+      wordListVersion: played.wordListVersion,
+      mode: played.mode,
+      seconds: played.seconds,
+      startsAt: played.startedAt.getTime(),
+      endedAt: played.endedAt.getTime(),
+      outcome: played.outcome,
+      winnerId: played.winnerId,
+      player: playerOf(own.duel_player),
+      opponent: opponent ? playerOf(opponent.duel_player) : null,
+    };
   },
 });
