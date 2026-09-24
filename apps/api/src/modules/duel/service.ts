@@ -27,7 +27,6 @@ const RECONNECT_GRACE_MS = 10_000;
 export type Connection = {
   id: string;
   send: (message: ServerMessage) => void;
-  close: () => void;
 };
 
 const randomSeed = () => crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
@@ -38,9 +37,10 @@ export type DuelQueueConfig = { clock: Clock; store: DuelStore; users: Users; lo
 // from their history. Replaced by a new entry when they leave and join again.
 type QueueEntry = { user: User | null; pace: number | null };
 
-// The Queue, the running Duels and the connected Users, in memory (ADR 0003). A User has one
-// place, in the Queue or in a Duel: a new connection replaces the previous one and takes over
-// its place. Only the current connection of a User is listened to.
+// The Queue, the running Duels and the connected Users, in memory (ADR 0003). A User can have many
+// connections (tabs, ADR 0007) but one place, in the Queue or in a Duel, played on one of them: the
+// one that joined the Queue or resumed the Duel. The others are told the place and can take it; the
+// Keystrokes and Duel actions they send are ignored.
 export class DuelQueue {
   readonly #clock: Clock;
 
@@ -52,9 +52,14 @@ export class DuelQueue {
 
   readonly #logger: Logger;
 
-  readonly #connected = new Map<string, Connection>();
+  // Every open connection of each User, by connection id.
+  readonly #connections = new Map<string, Map<string, Connection>>();
 
-  // User ids in arrival order. Queued Users are always connected: leaving drops them.
+  // The connection each User plays their place on, until another one takes it or it closes.
+  readonly #playing = new Map<string, Connection>();
+
+  // User ids in arrival order. Queued Users always have a connection that plays: its closing drops
+  // them.
   readonly #queue = new Map<string, QueueEntry>();
 
   // The write of each User's last Duel, until it is done: their Pace waits for it.
@@ -63,8 +68,8 @@ export class DuelQueue {
   // The Duel of each User in one, until it is over.
   readonly #duels = new Map<string, RunningDuel>();
 
-  // Players of a Duel whose connection dropped, each with a token of that disconnection: their
-  // time to come back only runs out if they are still away from that one.
+  // Players of a Duel whose playing connection dropped, each with a token of that disconnection:
+  // their time to come back only runs out if they are still away from that one.
   readonly #away = new Map<string, symbol>();
 
   // The end of a Duel told to a player who was away then, to tell them on their return.
@@ -77,44 +82,42 @@ export class DuelQueue {
     this.#logger = logger;
   }
 
-  // The new connection is told the User's place: in a Duel (resumed), in the Queue, or none. A
-  // Duel that ended in their absence is told first.
+  // The new connection plays nothing yet: it is told the User's place.
   connect(userId: string, connection: Connection) {
-    const previous = this.#connected.get(userId);
+    const connections = this.#connections.get(userId) ?? new Map<string, Connection>();
 
-    this.#connected.set(userId, connection);
-
-    if (previous) {
-      previous.send({ type: "replaced" });
-      previous.close();
-    }
-
-    const duel = this.#duels.get(userId);
-    const missed = this.#missed.get(userId);
-
-    if (duel) {
-      this.#resume(userId, duel);
-    } else if (missed) {
-      this.#missed.delete(userId);
-      connection.send(missed);
-    } else if (this.#queue.has(userId)) {
-      connection.send({ type: "queued" });
-    } else {
-      connection.send({ type: "idle" });
-    }
+    connections.set(connection.id, connection);
+    this.#connections.set(userId, connections);
+    connection.send(this.#placeOf(userId));
   }
 
+  // Any connection can take the place; only the one that plays it acts in the Queue or the Duel.
   receive(userId: string, connectionId: string, message: ClientMessage) {
-    if (!this.#isCurrent(userId, connectionId)) {
+    const connection = this.#connections.get(userId)?.get(connectionId);
+
+    if (!connection) {
+      return;
+    }
+
+    if (message.type === "join-queue") {
+      this.#join(userId, connection);
+
+      return;
+    }
+
+    if (message.type === "resume-duel") {
+      this.#resumeOn(userId, connection);
+
+      return;
+    }
+
+    if (this.#playing.get(userId) !== connection) {
       return;
     }
 
     switch (message.type) {
-      case "join-queue":
-        this.#join(userId);
-        break;
       case "leave-queue":
-        this.#queue.delete(userId);
+        this.#leaveQueue(userId);
         break;
       case "keystrokes":
         this.#type(userId, message.keystrokes);
@@ -125,15 +128,24 @@ export class DuelQueue {
     }
   }
 
-  // Also called for a replaced connection, once closed: it has no place left to free. A player in
-  // a Duel keeps their place for a while: the opponent is told, and the time to come back starts.
+  // Closing a connection that does not play changes nothing. Closing the one that plays leaves the
+  // Queue, but a player in a Duel keeps their place for a while: the opponent is told, and the time
+  // to come back starts, until one of the User's connections resumes it.
   disconnect(userId: string, connectionId: string) {
-    if (!this.#isCurrent(userId, connectionId)) {
+    const connections = this.#connections.get(userId);
+
+    connections?.delete(connectionId);
+
+    if (connections?.size === 0) {
+      this.#connections.delete(userId);
+    }
+
+    if (this.#playing.get(userId)?.id !== connectionId) {
       return;
     }
 
-    this.#connected.delete(userId);
-    this.#queue.delete(userId);
+    this.#playing.delete(userId);
+    this.#leaveQueue(userId);
 
     const duel = this.#duels.get(userId);
 
@@ -152,12 +164,80 @@ export class DuelQueue {
     });
   }
 
-  #isCurrent(userId: string, connectionId: string) {
-    return this.#connected.get(userId)?.id === connectionId;
+  // To the connection that plays the User's place.
+  #send(userId: string, message: ServerMessage) {
+    this.#playing.get(userId)?.send(message);
   }
 
-  #send(userId: string, message: ServerMessage) {
-    this.#connected.get(userId)?.send(message);
+  // The User's place as a connection that does not play it is told. A Duel whose end they were not
+  // told is still their place: only a connection that resumes it is told the end. Still being
+  // read, the Queue is no place yet: it becomes one with `queued`.
+  #placeOf(userId: string): ServerMessage {
+    if (this.#duels.has(userId) || this.#missed.has(userId)) {
+      return { type: "elsewhere", place: "duel" };
+    }
+
+    if (this.#queue.get(userId)?.user) {
+      return { type: "elsewhere", place: "queue" };
+    }
+
+    return { type: "idle" };
+  }
+
+  // The place changed: every connection of the User that does not play it is told. The one that
+  // plays learns it from its own messages.
+  #tellOthers(userId: string) {
+    const place = this.#placeOf(userId);
+    const playing = this.#playing.get(userId);
+
+    for (const connection of this.#connections.get(userId)?.values() ?? []) {
+      if (connection !== playing) {
+        connection.send(place);
+      }
+    }
+  }
+
+  // `connection` plays the User's place from now on: the one that played it until now is told
+  // where it went.
+  #playOn(userId: string, connection: Connection) {
+    const previous = this.#playing.get(userId);
+
+    this.#playing.set(userId, connection);
+
+    const place = this.#placeOf(userId);
+
+    if (previous && previous !== connection && place.type === "elsewhere") {
+      previous.send(place);
+    }
+  }
+
+  #leaveQueue(userId: string) {
+    const entry = this.#queue.get(userId);
+
+    this.#queue.delete(userId);
+
+    if (entry?.user) {
+      this.#tellOthers(userId);
+    }
+  }
+
+  // The same mechanism as a reconnection: the Duel goes on here, the connection that played it
+  // until now is told, and the time to come back stops. A Duel that ended while no connection
+  // played it: its end, told once, and the other connections that the User is idle. Otherwise,
+  // ignored.
+  #resumeOn(userId: string, connection: Connection) {
+    const duel = this.#duels.get(userId);
+    const missed = this.#missed.get(userId);
+
+    if (duel) {
+      this.#playOn(userId, connection);
+      this.#resume(userId, duel);
+    } else if (missed) {
+      this.#missed.delete(userId);
+      this.#playOn(userId, connection);
+      connection.send(missed);
+      this.#tellOthers(userId);
+    }
   }
 
   // Back in their Duel: the full state that holds, and the opponent is told if they were away.
@@ -170,7 +250,7 @@ export class DuelQueue {
       opponent: duel.opponentProfileOf(userId),
       serverTime: this.#clock.now(),
       ...duel.stateOf(userId),
-      opponentConnected: this.#connected.has(opponentId),
+      opponentConnected: this.#playing.has(opponentId),
       ...duel.pacesOf(userId),
     });
 
@@ -181,7 +261,8 @@ export class DuelQueue {
 
   // Once a Duel is over, it is written, both players are free to join the Queue again and their
   // Keystrokes are ignored. It ends once: at the end of its time, or on a Forfeit, whichever comes
-  // first. A failed write is logged: the players are told the end all the same.
+  // first. A failed write is logged: the players are told the end all the same, on the connection
+  // that plays (or the next one that resumes the Duel), their other connections that they are idle.
   #finish(duel: RunningDuel, finish: (now: number) => Finish) {
     if (duel.userIds.some((userId) => this.#duels.get(userId) !== duel)) {
       return;
@@ -203,8 +284,10 @@ export class DuelQueue {
         }
       });
 
-      if (this.#connected.has(userId)) {
+      // Nobody plays it: the Duel stays their place until a connection resumes it.
+      if (this.#playing.has(userId)) {
         this.#send(userId, message);
+        this.#tellOthers(userId);
       } else {
         this.#missed.set(userId, message);
       }
@@ -252,11 +335,15 @@ export class DuelQueue {
 
   // A User in a running Duel keeps their place in it. Joining reads their profile: without a
   // Handle, they are refused. Then their Pace, frozen for their next Duel: they are paired once it
-  // is read. Joining again while in the Queue keeps their place.
-  #join(userId: string) {
+  // is read. Joining again while in the Queue keeps their place, played on `connection` from now on.
+  #join(userId: string, connection: Connection) {
     if (this.#duels.has(userId)) {
       return;
     }
+
+    // Moving on: an end they were not told is not told anymore.
+    this.#missed.delete(userId);
+    this.#playOn(userId, connection);
 
     const queued = this.#queue.get(userId);
 
@@ -286,6 +373,7 @@ export class DuelQueue {
 
         entry.user = { id: userId, handle: profile.handle, image: profile.image };
         this.#send(userId, { type: "queued" });
+        this.#tellOthers(userId);
         void this.#readPace(userId).then((pace) => {
           if (this.#queue.get(userId) === entry) {
             entry.pace = pace;
@@ -324,7 +412,7 @@ export class DuelQueue {
     const ready: PacedUser[] = [];
 
     for (const [userId, { user, pace }] of this.#queue) {
-      if (this.#connected.has(userId) && user !== null && pace !== null) {
+      if (this.#playing.has(userId) && user !== null && pace !== null) {
         ready.push({ user, pace });
       }
 
@@ -368,6 +456,7 @@ export class DuelQueue {
         serverTime,
         ...duel.pacesOf(user.id),
       });
+      this.#tellOthers(user.id);
     }
   }
 }

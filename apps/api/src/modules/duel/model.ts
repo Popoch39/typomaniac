@@ -27,6 +27,9 @@ const ClientMessage = t.Union([
   }),
   // Leaving on purpose: a Forfeit.
   t.Object({ type: t.Literal("leave-duel") }),
+  // Plays the User's Duel on this connection from now on: after a reconnection, a reload, from
+  // another tab.
+  t.Object({ type: t.Literal("resume-duel") }),
 ]);
 
 export type ClientMessage = typeof ClientMessage.static;
@@ -75,9 +78,17 @@ const Duel = t.Object({
 
 export type Duel = typeof Duel.static;
 
+// Every connection of a User is told their place: the one that plays it by the messages below, the
+// others by `idle` and `elsewhere`, on connection and whenever it changes.
 const ServerMessage = t.Union([
-  // On connection, the User has no place: neither in the Queue nor in a Duel.
+  // The User has no place: neither in the Queue nor in a Duel. `duel-ended` makes them idle too.
   t.Object({ type: t.Literal("idle") }),
+  // The User has a place that this connection does not play: another one holds it, or none does
+  // while they come back to their Duel. `join-queue` or `resume-duel` plays it here.
+  t.Object({
+    type: t.Literal("elsewhere"),
+    place: t.Union([t.Literal("queue"), t.Literal("duel")]),
+  }),
   t.Object({ type: t.Literal("queued") }),
   // Refused the Queue: a Duel shows each player's Handle, and the User has none yet.
   t.Object({ type: t.Literal("handle-required") }),
@@ -91,8 +102,8 @@ const ServerMessage = t.Union([
     pace: t.Number(),
     opponentPace: t.Number(),
   }),
-  // On connection, the User is in a Duel (back after a disconnection, a reload, another tab): the
-  // Duel as `duel-found` gives it, plus the state that holds, as `resync` gives it.
+  // The User's Duel, played on this connection from now on (`resume-duel`): the Duel as
+  // `duel-found` gives it, plus the state that holds, as `resync` gives it.
   t.Object({
     type: t.Literal("duel-resumed"),
     duel: Duel,
@@ -120,8 +131,8 @@ const ServerMessage = t.Union([
     opponentKeystrokes: t.Array(Keystroke),
   }),
   // The end, the same for both: each side gets its own outcome, its Result and Score and the
-  // opponent's. Sent on connection too to a User who missed the end of their Duel while
-  // disconnected.
+  // opponent's. Sent on `resume-duel` too to a User who missed the end of their Duel while no
+  // connection of theirs played it: until then, their place is still the Duel.
   t.Object({
     type: t.Literal("duel-ended"),
     outcome: t.Union([t.Literal("win"), t.Literal("loss"), t.Literal("draw")]),
@@ -133,8 +144,6 @@ const ServerMessage = t.Union([
     opponentScore: DuelScore,
     opponent: DuelOpponent,
   }),
-  // Another connection of the same User took its place; the server closes this one.
-  t.Object({ type: t.Literal("replaced") }),
   t.Object({ type: t.Literal("invalid-message") }),
 ]);
 

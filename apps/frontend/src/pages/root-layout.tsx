@@ -8,6 +8,7 @@ import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { FriendsNavLink } from "@/components/friends/friends-nav-link";
 import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
 import { ModeToggle } from "@/components/mode-toggle";
+import { RealtimeConnection } from "@/components/realtime-connection";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -45,6 +46,7 @@ export const RootLayout = () => (
     <main>
       <Outlet />
     </main>
+    <RealtimeConnection />
     <SignInDialog />
     <HandleChoiceDialog />
     <OAuthErrorToast />

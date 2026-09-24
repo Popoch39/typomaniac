@@ -8,19 +8,19 @@ import { DuelTypingArea } from "@/components/duel/duel-typing-area";
 import { useClock } from "@/components/run/clock-context";
 import { useDuelStore } from "@/stores/duel-store";
 
-// In Duel, in place of the typing area: connected while shown, so leaving Duel (Annuler, Solo)
-// closes the socket and takes the User out of the Queue.
+// In Duel, in place of the typing area: takes the User's place while shown, so leaving Duel
+// (Annuler, Solo) takes the User out of the Queue. The connection stays open (RealtimeConnection).
 export const DuelArea = () => {
   const clock = useClock();
   const state = useDuelStore((store) => store.state);
-  const connect = useDuelStore((store) => store.connect);
-  const disconnect = useDuelStore((store) => store.disconnect);
+  const enter = useDuelStore((store) => store.enter);
+  const exit = useDuelStore((store) => store.exit);
 
   useEffect(() => {
-    connect(clock);
+    enter(clock);
 
-    return disconnect;
-  }, [clock, connect, disconnect]);
+    return exit;
+  }, [clock, enter, exit]);
 
   switch (state.phase) {
     case "connecting":
@@ -40,9 +40,16 @@ export const DuelArea = () => {
       );
     case "ended":
       return <DuelEnded ending={state.ending} />;
-    case "replaced":
-      return <DuelInterrupted message="Le Duel est ouvert dans un autre onglet." />;
+    case "elsewhere":
+      return (
+        <DuelInterrupted message="Le Duel est ouvert dans un autre onglet." action="Jouer ici" />
+      );
     case "disconnected":
-      return <DuelInterrupted message="La connexion au serveur a été perdue." />;
+      return (
+        <DuelInterrupted
+          message="La connexion au serveur a été perdue."
+          action="Chercher un Duel"
+        />
+      );
   }
 };

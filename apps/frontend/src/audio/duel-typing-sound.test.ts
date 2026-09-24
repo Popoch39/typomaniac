@@ -1,10 +1,11 @@
-import type { ClientMessage, ServerMessage } from "api";
+import type { ServerMessage } from "api";
 import type { Key, Keystroke } from "typing-engine";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { createAudioEngine } from "@/audio/audio-engine";
 import { startSoundReactor } from "@/audio/sound-reactor";
-import { type DuelSocket, useDuelStore } from "@/stores/duel-store";
+import { useConnectionStore } from "@/stores/connection-store";
+import { useDuelStore } from "@/stores/duel-store";
 import { useSoundStore } from "@/stores/sound-store";
 import {
   backspace,
@@ -15,6 +16,7 @@ import {
   middle,
   space,
 } from "@/test/fake-audio-output";
+import { fakeServer } from "@/test/fake-socket";
 
 // Seed 42 in English, version 1, gives "small help while late…" (pinned in the typing-engine tests).
 const duel = {
@@ -52,70 +54,19 @@ const startsAt = duel.startsAt;
 
 const endsAt = startsAt + duel.seconds * 1_000;
 
-// What the store listens to on its socket.
-type SocketListeners = {
-  message: (event: { data: ServerMessage }) => void;
-  close: () => void;
-};
+// Every socket the connection opens, the first one at the connection, then one per reconnection.
+let sockets = fakeServer();
 
-// A socket the test speaks for the server through: it hands the store the server's messages and
-// drops the connection.
-const fakeSocket = () => {
-  const sent: ClientMessage[] = [];
-  const listeners: SocketListeners = { message: () => {}, close: () => {} };
-
-  const socket: DuelSocket = {
-    subscribe: (listener) => {
-      listeners.message = listener;
-    },
-    on: (_, listener) => {
-      listeners.close = listener;
-    },
-    send: (message) => {
-      sent.push(message);
-    },
-    close: () => {},
-  };
-
-  return {
-    socket,
-    sent,
-    receive: (data: ServerMessage) => listeners.message({ data }),
-    drop: () => listeners.close(),
-  };
-};
-
-type FakeSocket = ReturnType<typeof fakeSocket>;
-
-// Every socket the store opens, the first one at the connection, then one per reconnection.
-let sockets: FakeSocket[] = [];
-
-const server = () => {
-  const current = sockets.at(-1);
-
-  if (typeof current === "undefined") {
-    throw new Error("No socket opened");
-  }
-
-  return current;
-};
+const server = () => sockets.server();
 
 let now = 0;
 
-// Connects to the Duel, the way the Duel page does: the store opens the fake sockets.
+// Duel shown on an open connection, the way the app does: the connection opens the fake sockets.
 const connect = () => {
-  sockets = [];
+  sockets = fakeServer();
   now = 0;
-  useDuelStore.getState().connect(
-    () => now,
-    () => {
-      const opened = fakeSocket();
-
-      sockets.push(opened);
-
-      return opened.socket;
-    },
-  );
+  useConnectionStore.getState().open(sockets.open);
+  useDuelStore.getState().enter(() => now);
 };
 
 const tick = (at: number) => {
@@ -149,7 +100,8 @@ beforeEach(() => {
 
 afterEach(() => {
   stop();
-  useDuelStore.getState().disconnect();
+  useDuelStore.getState().exit();
+  useConnectionStore.getState().close();
   vi.useRealTimers();
 });
 
@@ -245,6 +197,10 @@ describe("typing sound in a Duel", () => {
     type("sm");
     server().drop();
     vi.advanceTimersByTime(1_000);
+    server().receive({ type: "elsewhere", place: "duel" });
+
+    expect(server().sent).toEqual([{ type: "resume-duel" }]);
+
     server().receive({
       type: "duel-resumed",
       duel,
@@ -258,7 +214,7 @@ describe("typing sound in a Duel", () => {
       opponentPace: 40,
     });
 
-    expect(sockets).toHaveLength(2);
+    expect(sockets.sockets).toHaveLength(2);
     expect(played).toEqual([key07, key07]);
 
     type("a", now + 100);

@@ -392,25 +392,88 @@ describe("duel socket", () => {
     await alan.settle();
   });
 
-  test("a second tab takes the place of the first, which is closed", async () => {
+  test("two tabs of the same User stay open, only the one that joined the Queue plays", async () => {
     const cookie = await signedIn("Ada");
     const firstTab = await queued(cookie);
-
     const secondTab = await connect(cookie);
 
-    expect(await firstTab.next()).toEqual({ type: "replaced" });
-    expect(await firstTab.closed).toBe(1000);
-    expect(await secondTab.next()).toEqual({ type: "queued" });
+    expect(await secondTab.next()).toEqual({ type: "elsewhere", place: "queue" });
+    await firstTab.settle();
 
-    // Joining again from the second tab: still one place, never paired against herself.
+    // Leaving from the tab that does not play: ignored, she is still in the Queue.
+    secondTab.send({ type: "leave-queue" });
+    await secondTab.settle();
+
+    const alan = await queued(await signedIn("Alan"));
+
+    expect(await firstTab.next()).toEqual(duelFound("Alan"));
+    expect(await secondTab.next()).toEqual({ type: "elsewhere", place: "duel" });
+    expect(await alan.next()).toEqual(duelFound("Ada"));
+
+    // Its Keystrokes and its Forfeit are ignored too.
+    setNow(STARTS_AT + 1000);
+    secondTab.send({ type: "keystrokes", keystrokes: [char("s", 100)] });
+    secondTab.send({ type: "leave-duel" });
+    await secondTab.settle();
+    await alan.settle();
+
+    firstTab.send({ type: "keystrokes", keystrokes: [char("s", 100)] });
+    expect(await alan.next()).toMatchObject({ type: "opponent-keystrokes" });
+  });
+
+  test("joining the Queue from another tab plays it there, still one place", async () => {
+    const cookie = await signedIn("Ada");
+    const firstTab = await queued(cookie);
+    const secondTab = await connect(cookie);
+
+    expect(await secondTab.next()).toEqual({ type: "elsewhere", place: "queue" });
     secondTab.send({ type: "join-queue" });
     expect(await secondTab.next()).toEqual({ type: "queued" });
+    expect(await firstTab.next()).toEqual({ type: "elsewhere", place: "queue" });
+
+    // Never paired against herself.
     await secondTab.settle();
 
     const alan = await queued(await signedIn("Alan"));
 
     expect(await secondTab.next()).toEqual(duelFound("Alan"));
+    expect(await firstTab.next()).toEqual({ type: "elsewhere", place: "duel" });
     expect(await alan.next()).toEqual(duelFound("Ada"));
+  });
+
+  test("every tab is told the User's place when it changes", async () => {
+    const cookie = await signedIn("Ada");
+    const watching = await connect(cookie);
+
+    expect(await watching.next()).toEqual({ type: "idle" });
+
+    const playing = await queued(cookie);
+
+    expect(await watching.next()).toEqual({ type: "elsewhere", place: "queue" });
+
+    playing.send({ type: "leave-queue" });
+    expect(await watching.next()).toEqual({ type: "idle" });
+
+    playing.send({ type: "join-queue" });
+    expect(await playing.next()).toEqual({ type: "queued" });
+    expect(await watching.next()).toEqual({ type: "elsewhere", place: "queue" });
+
+    const alan = await queued(await signedIn("Alan"));
+
+    expect(await playing.next()).toMatchObject({ type: "duel-found" });
+    expect(await watching.next()).toEqual({ type: "elsewhere", place: "duel" });
+    await alan.next();
+
+    setNow(ENDS_AT);
+    expect(await playing.next()).toMatchObject({ type: "duel-ended" });
+    expect(await watching.next()).toEqual({ type: "idle" });
+
+    // Closing the tab that played while in the Queue: the others see her leave it.
+    playing.send({ type: "join-queue" });
+    expect(await playing.next()).toEqual({ type: "queued" });
+    expect(await watching.next()).toEqual({ type: "elsewhere", place: "queue" });
+    playing.socket.close();
+    expect(await watching.next()).toEqual({ type: "idle" });
   });
 
   test("tells a User with no place that they are idle on connection", async () => {
@@ -754,6 +817,16 @@ describe("duel socket", () => {
     expect(await alan.next()).toEqual({ type: "opponent-disconnected" });
   };
 
+  // A new socket of the User, as after a reload: told she is in a Duel, she plays it there.
+  const resumedOn = async (cookie: string) => {
+    const client = await connect(cookie);
+
+    expect(await client.next()).toEqual({ type: "elsewhere", place: "duel" });
+    client.send({ type: "resume-duel" });
+
+    return client;
+  };
+
   test("leaving the Duel is an immediate Forfeit, the opponent wins", async () => {
     const { ada, alan } = await paired();
 
@@ -828,8 +901,7 @@ describe("duel socket", () => {
     setNow(STARTS_AT + 1000 + 9999);
     await alan.settle();
 
-    // A new socket of the same User, as after a reload.
-    const back = await connect(cookie);
+    const back = await resumedOn(cookie);
 
     const resumed = await back.next();
 
@@ -877,7 +949,7 @@ describe("duel socket", () => {
       opponent: { handle: "ada" },
     });
 
-    const back = await connect(cookie);
+    const back = await resumedOn(cookie);
 
     expect(await back.next()).toMatchObject({
       type: "duel-ended",
@@ -887,8 +959,49 @@ describe("duel socket", () => {
     });
 
     // Told once: free for a new Duel.
+    const other = await connect(cookie);
+
+    expect(await other.next()).toEqual({ type: "idle" });
     back.send({ type: "join-queue" });
     expect(await back.next()).toEqual({ type: "queued" });
+  });
+
+  test("a missed end goes to the tab that resumes the Duel, not to any tab opened first", async () => {
+    const { cookie, ada, alan } = await pairedUsers();
+
+    setNow(STARTS_AT + 1000);
+    await dropped(ada, alan);
+    setNow(STARTS_AT + 11_000);
+    await alan.next();
+
+    // A tab opened elsewhere in the app: not told the end, the Duel still waits for her.
+    const elsewhere = await connect(cookie);
+
+    expect(await elsewhere.next()).toEqual({ type: "elsewhere", place: "duel" });
+
+    const back = await resumedOn(cookie);
+
+    expect(await back.next()).toMatchObject({ type: "duel-ended", outcome: "loss" });
+    expect(await elsewhere.next()).toEqual({ type: "idle" });
+  });
+
+  test("joining the Queue drops a missed end", async () => {
+    const { cookie, ada, alan } = await pairedUsers();
+
+    setNow(STARTS_AT + 1000);
+    await dropped(ada, alan);
+    setNow(STARTS_AT + 11_000);
+    await alan.next();
+
+    const back = await connect(cookie);
+
+    expect(await back.next()).toEqual({ type: "elsewhere", place: "duel" });
+    back.send({ type: "join-queue" });
+    expect(await back.next()).toEqual({ type: "queued" });
+
+    const later = await connect(cookie);
+
+    expect(await later.next()).toEqual({ type: "elsewhere", place: "queue" });
   });
 
   test("a second disconnection gets its own 10 s", async () => {
@@ -899,7 +1012,7 @@ describe("duel socket", () => {
 
     setNow(STARTS_AT + 5000);
 
-    const back = await connect(cookie);
+    const back = await resumedOn(cookie);
 
     expect(await back.next()).toMatchObject({ type: "duel-resumed" });
     expect(await alan.next()).toEqual({ type: "opponent-reconnected" });
@@ -923,7 +1036,7 @@ describe("duel socket", () => {
     ada.socket.close();
     await ada.closed;
 
-    const back = await connect(cookie);
+    const back = await resumedOn(cookie);
 
     expect(await back.next()).toMatchObject({ type: "duel-resumed", opponentConnected: false });
   });
@@ -941,30 +1054,83 @@ describe("duel socket", () => {
     setNow(ENDS_AT + 10_000);
     await alan.settle();
 
-    const back = await connect(cookie);
+    const back = await resumedOn(cookie);
 
     expect(await back.next()).toMatchObject({ type: "duel-ended", forfeit: false });
     await back.settle();
   });
 
-  test("a second tab during a Duel resumes it there, the opponent is not told", async () => {
+  test("another tab resumes the Duel there, the first one is told, the opponent is not", async () => {
     const { cookie, ada, alan } = await pairedUsers();
 
     setNow(STARTS_AT + 1000);
 
-    const secondTab = await connect(cookie);
+    const secondTab = await resumedOn(cookie);
 
-    expect(await ada.next()).toEqual({ type: "replaced" });
     expect(await secondTab.next()).toMatchObject({
       type: "duel-resumed",
       opponent: { handle: "alan" },
       opponentConnected: true,
     });
+    expect(await ada.next()).toEqual({ type: "elsewhere", place: "duel" });
     await alan.settle();
 
-    // The first tab is closed, but the User is still there: no Forfeit.
+    // Only the second tab plays now.
+    ada.send({ type: "keystrokes", keystrokes: [char("s", 100)] });
+    await ada.settle();
+    await alan.settle();
+    secondTab.send({ type: "keystrokes", keystrokes: [char("s", 100)] });
+    expect(await alan.next()).toMatchObject({ type: "opponent-keystrokes" });
+
+    // Closing the first tab is not a disconnection: no Forfeit.
+    ada.socket.close();
+    await ada.closed;
     setNow(STARTS_AT + 20_000);
     await alan.settle();
+  });
+
+  test("the time to come back runs once no tab plays, even with another one open", async () => {
+    const { cookie, ada, alan } = await pairedUsers();
+    const watching = await connect(cookie);
+
+    expect(await watching.next()).toEqual({ type: "elsewhere", place: "duel" });
+
+    setNow(STARTS_AT + 1000);
+    await dropped(ada, alan);
+    await watching.settle();
+
+    setNow(STARTS_AT + 11_000);
+    expect(await alan.next()).toMatchObject({ type: "duel-ended", outcome: "win", forfeit: true });
+    // The end waits for a tab that resumes the Duel: the open one, here.
+    await watching.settle();
+    watching.send({ type: "resume-duel" });
+    expect(await watching.next()).toMatchObject({ type: "duel-ended", outcome: "loss" });
+  });
+
+  test("another open tab can resume the Duel within the time to come back", async () => {
+    const { cookie, ada, alan } = await pairedUsers();
+    const watching = await connect(cookie);
+
+    expect(await watching.next()).toEqual({ type: "elsewhere", place: "duel" });
+
+    setNow(STARTS_AT + 1000);
+    await dropped(ada, alan);
+
+    setNow(STARTS_AT + 5000);
+    watching.send({ type: "resume-duel" });
+    expect(await watching.next()).toMatchObject({ type: "duel-resumed" });
+    expect(await alan.next()).toEqual({ type: "opponent-reconnected" });
+
+    setNow(STARTS_AT + 20_000);
+    await alan.settle();
+  });
+
+  test("resuming outside a Duel is ignored", async () => {
+    const ada = await connect(await signedIn("Ada"));
+
+    expect(await ada.next()).toEqual({ type: "idle" });
+    ada.send({ type: "resume-duel" });
+    await ada.settle();
   });
 
   test("typing more than 40 Keystrokes in a second is a Forfeit", async () => {

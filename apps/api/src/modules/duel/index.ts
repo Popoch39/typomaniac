@@ -6,8 +6,9 @@ import { DuelQueue, type DuelQueueConfig } from "./service";
 
 export type DuelModuleConfig = DuelQueueConfig & { auth: AuthHandler; trustProxy: boolean };
 
-// The Duel WebSocket, /api/duel. The `auth` macro runs on the upgrade request: without a
-// valid Session it throws, and the upgrade is answered with the API's 401.
+// The Duel WebSocket, /api/duel: the real-time connection of the whole app, one per open tab of a
+// User (ADR 0007). The `auth` macro runs on the upgrade request: without a valid Session it throws,
+// and the upgrade is answered with the API's 401.
 export const duelModule = ({ auth, trustProxy, ...queueConfig }: DuelModuleConfig) => {
   const queue = new DuelQueue(queueConfig);
 
@@ -21,7 +22,6 @@ export const duelModule = ({ auth, trustProxy, ...queueConfig }: DuelModuleConfi
         queue.connect(ws.data.user.id, {
           id: ws.id,
           send: (message) => ws.send(message),
-          close: () => ws.close(),
         });
       },
       message(ws, message) {
