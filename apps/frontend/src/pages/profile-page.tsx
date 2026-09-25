@@ -1,15 +1,17 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { suggestHandle } from "handle";
+import { Suspense } from "react";
 import { toast } from "sonner";
 
 import { meQueryOptions } from "@/api/me";
 import { HandleForm } from "@/components/handle/handle-form";
+import { ProfileStats } from "@/components/profile/profile-stats";
 import { atHandle } from "@/lib/at-handle";
 
 const onSaved = () => toast.success("Handle enregistré");
 
-// The signed-in User's profile: their Handle, changed at will. The previous one is freed at once;
-// their Duels stay theirs.
+// The signed-in User's profile: their Handle, changed at will, then their Stats. The previous
+// Handle is freed at once; their Duels stay theirs.
 export const ProfilePage = () => {
   const { data: me } = useSuspenseQuery(meQueryOptions);
 
@@ -37,6 +39,12 @@ export const ProfilePage = () => {
       <p className="text-[0.7rem] text-muted-foreground">
         Changer de Handle libère l'ancien aussitôt. Ton historique de Duels te suit.
       </p>
+      {me.handle === null ? null : (
+        // A new Handle reads the Stats again: the form above stays while they load.
+        <Suspense fallback={null}>
+          <ProfileStats handle={me.handle} />
+        </Suspense>
+      )}
     </section>
   );
 };

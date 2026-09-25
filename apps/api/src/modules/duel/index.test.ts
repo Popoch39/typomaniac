@@ -1321,6 +1321,7 @@ describe("duel socket", () => {
       recentWpms: () => Promise.reject(new Error("database down")),
       history: () => Promise.reject(new Error("database down")),
       playedDuel: () => Promise.reject(new Error("database down")),
+      stats: () => Promise.reject(new Error("database down")),
     };
 
     await app.stop(true);

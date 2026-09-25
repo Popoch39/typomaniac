@@ -112,6 +112,11 @@ const byNewestDuel = (a: DuelCursor, b: DuelCursor) => {
   return a.id < b.id ? 1 : -1;
 };
 
+const average = (values: number[]) =>
+  values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0) / values.length;
+
+const best = (values: number[]) => (values.length === 0 ? null : Math.max(...values));
+
 // The finished Duels, kept in `saved` in the order they were written: a test can write past Duels
 // there too. `deleteUser` does what the cascade does in Postgres: that User's player rows go, and
 // they are no longer anyone's winner.
@@ -182,6 +187,33 @@ export const memoryDuelStore = () => {
         winnerId: winnerOf(record),
         player,
         opponent: players.find((candidate) => candidate.userId !== userId) ?? null,
+      };
+    },
+    stats: async (userId) => {
+      const played = saved.flatMap((record) => {
+        const player = playersOf(record).find((candidate) => candidate.userId === userId);
+
+        return player ? [{ record, player }] : [];
+      });
+
+      const wins = played.filter(({ record }) => winnerOf(record) === userId).length;
+      const draws = played.filter(({ record }) => record.outcome === "draw").length;
+      const wpms = played.map(({ player }) => player.result.wpm);
+
+      const scores = played.flatMap(({ player }) => (player.score ? [player.score] : []));
+
+      return {
+        duels: played.length,
+        record: { wins, losses: played.length - wins - draws, draws },
+        averages: {
+          wpm: average(wpms),
+          accuracy: average(played.map(({ player }) => player.result.accuracy)),
+        },
+        records: {
+          wpm: best(wpms),
+          score: best(scores.map((score) => score.score)),
+          combo: best(scores.map((score) => score.bestCombo)),
+        },
       };
     },
   };

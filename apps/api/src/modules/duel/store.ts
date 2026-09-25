@@ -58,6 +58,16 @@ export type PlayedDuel = Omit<DuelRecord, "players"> & {
   opponent: PlayedDuelPlayer | null;
 };
 
+// The aggregates of a User's finished Duels, seen from them: their record (a Forfeit is a loss for
+// the one who did not win), their averages and their bests. The averages and the best wpm are null
+// without a Duel; the best Score and Combo also without a Duel written since the Score.
+export type DuelStats = {
+  duels: number;
+  record: { wins: number; losses: number; draws: number };
+  averages: { wpm: number | null; accuracy: number | null };
+  records: { wpm: number | null; score: number | null; combo: number | null };
+};
+
 // Where finished Duels are written, injected through AppConfig: Drizzle in production, in memory
 // in the tests. A Duel still running when the API stops is never written.
 export type DuelStore = {
@@ -74,6 +84,8 @@ export type DuelStore = {
   // The Duel `duelId` as `userId` played it, whole: null when there is no such Duel or when that
   // User did not play it.
   playedDuel: (userId: string, duelId: string) => Promise<PlayedDuel | null>;
+  // The Stats of a User's finished Duels, those whose opponent was deleted too.
+  stats: (userId: string) => Promise<DuelStats>;
 };
 
 // A User's Pace, from the wpm of their last Duels (the engine's paceOf).

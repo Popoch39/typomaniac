@@ -1,0 +1,273 @@
+import { describe, expect, test } from "bun:test";
+import { TypeCompiler } from "@sinclair/typebox/compiler";
+import { currentWordListVersion, defaultPace } from "typing-engine";
+
+import { createApp } from "../../app";
+import { createTestAuth, memoryDuelStore, signIn, testConfig, testUsers } from "../../test-app";
+import type { DuelPlayerRecord, DuelRecord } from "../duel/store";
+import { ProfileModel } from "./model";
+
+const profileBody = TypeCompiler.Compile(ProfileModel.profile);
+
+type Side = {
+  userId: string;
+  wpm: number;
+  accuracy?: number;
+  score: { score: number; bestCombo: number } | null;
+};
+
+let duelCount = 0;
+
+// A finished Duel between two Users: `outcome` and `winnerId` as the server wrote them.
+const finishedDuel = ({
+  outcome = "win",
+  winnerId = null,
+  players: [first, second],
+}: {
+  outcome?: DuelRecord["outcome"];
+  winnerId?: string | null;
+  players: [Side, Side];
+}): DuelRecord => {
+  const player = ({ userId, wpm, accuracy = 100, score }: Side): DuelPlayerRecord => ({
+    userId,
+    result: {
+      wpm,
+      raw: wpm,
+      accuracy,
+      consistency: 80,
+      chars: { correct: wpm * 2.5, incorrect: 0, extra: 0, missed: 0 },
+    },
+    pace: defaultPace,
+    score: score === null ? null : { ...score, bursts: 1 },
+    keystrokes: [],
+  });
+
+  duelCount += 1;
+
+  return {
+    id: `duel-${duelCount}`,
+    seed: 1,
+    language: "en",
+    wordListVersion: currentWordListVersion.en,
+    seconds: 30,
+    startsAt: duelCount * 60_000,
+    mode: "time",
+    endedAt: duelCount * 60_000 + 30_000,
+    outcome,
+    winnerId,
+    players: [player(first), player(second)],
+  };
+};
+
+// A fresh app per test: its Users and its Duels are its own.
+const setup = () => {
+  const auth = createTestAuth();
+  const duels = memoryDuelStore();
+  const users = testUsers(auth);
+  const app = createApp(testConfig({ auth, users, duelStore: duels.store }));
+
+  let count = 0;
+
+  const profileResponse = (cookie: string | null, handle: string) =>
+    app.handle(
+      new Request(`http://localhost/api/users/${handle}/profile`, {
+        headers: cookie === null ? undefined : { cookie },
+      }),
+    );
+
+  const newUser = async (handle: string) => {
+    count += 1;
+
+    const image = `https://example.com/${count}.png`;
+
+    const { user, cookie } = await signIn(auth, {
+      name: `User ${count}`,
+      email: `user-${count}@example.com`,
+      image,
+      handle,
+    });
+
+    return { id: user.id, image, cookie };
+  };
+
+  const profileOf = async (cookie: string, handle: string) => {
+    const response = await profileResponse(cookie, handle);
+
+    expect(response.status).toBe(200);
+
+    const body = await response.json();
+
+    if (!profileBody.Check(body)) {
+      throw new Error(`Not a Profile: ${JSON.stringify(body)}`);
+    }
+
+    return body;
+  };
+
+  return { duels, users, profileResponse, newUser, profileOf };
+};
+
+describe("GET /api/users/:handle/profile", () => {
+  test("needs a Session", async () => {
+    const { profileResponse, newUser } = setup();
+
+    await newUser("ada");
+
+    expect((await profileResponse(null, "ada")).status).toBe(401);
+  });
+
+  test("finds nobody behind an unknown Handle", async () => {
+    const { profileResponse, newUser } = setup();
+    const ada = await newUser("ada");
+
+    const response = await profileResponse(ada.cookie, "nobody");
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ error: { code: "NOT_FOUND" } });
+  });
+
+  test("finds the User whatever the case of the Handle", async () => {
+    const { newUser, profileOf } = setup();
+    const ada = await newUser("ada");
+    const alan = await newUser("alan");
+
+    const profile = await profileOf(ada.cookie, "ALan");
+
+    expect(profile.handle).toBe("alan");
+    expect(profile.image).toBe(alan.image);
+  });
+
+  test("finds nobody behind a Handle given up, the User behind their Handle of today", async () => {
+    const { users, profileResponse, newUser, profileOf } = setup();
+    const ada = await newUser("ada");
+    const alan = await newUser("alan");
+
+    await users.setHandle(alan.id, "turing");
+
+    expect((await profileResponse(ada.cookie, "alan")).status).toBe(404);
+    expect((await profileOf(ada.cookie, "turing")).handle).toBe("turing");
+  });
+
+  test("never shows the email nor the name", async () => {
+    const { newUser, profileOf } = setup();
+    const ada = await newUser("ada");
+
+    await newUser("alan");
+
+    const profile = await profileOf(ada.cookie, "alan");
+
+    expect(Object.keys(profile).toSorted()).toEqual(["handle", "image", "stats"]);
+    expect(JSON.stringify(profile)).not.toContain("@example.com");
+    expect(JSON.stringify(profile)).not.toContain("User 2");
+  });
+
+  test("Stats without a Duel: nothing played, nothing to average", async () => {
+    const { newUser, profileOf } = setup();
+    const ada = await newUser("ada");
+
+    expect((await profileOf(ada.cookie, "ada")).stats).toEqual({
+      duels: 0,
+      record: { wins: 0, losses: 0, draws: 0 },
+      averages: { wpm: null, accuracy: null },
+      records: { wpm: null, score: null, combo: null },
+    });
+  });
+
+  test("the record seen from the User, Forfeits included", async () => {
+    const { duels, newUser, profileOf } = setup();
+    const ada = await newUser("ada");
+    const alan = await newUser("alan");
+
+    const both = (adaWpm: number, alanWpm: number): [Side, Side] => [
+      { userId: ada.id, wpm: adaWpm, score: { score: 100, bestCombo: 5 } },
+      { userId: alan.id, wpm: alanWpm, score: { score: 50, bestCombo: 3 } },
+    ];
+
+    duels.saved.push(
+      finishedDuel({ winnerId: ada.id, players: both(90, 80) }),
+      finishedDuel({ outcome: "forfeit", winnerId: ada.id, players: both(70, 20) }),
+      finishedDuel({ outcome: "forfeit", winnerId: alan.id, players: both(10, 60) }),
+      finishedDuel({ outcome: "draw", players: both(80, 80) }),
+    );
+
+    const adaStats = (await profileOf(alan.cookie, "ada")).stats;
+
+    expect(adaStats.duels).toBe(4);
+    expect(adaStats.record).toEqual({ wins: 2, losses: 1, draws: 1 });
+    expect(adaStats.averages.wpm).toBe(62.5);
+    expect(adaStats.records.wpm).toBe(90);
+
+    expect((await profileOf(ada.cookie, "alan")).stats.record).toEqual({
+      wins: 1,
+      losses: 2,
+      draws: 1,
+    });
+  });
+
+  test("the best Score and Combo leave out the Duels before the Score", async () => {
+    const { duels, newUser, profileOf } = setup();
+    const ada = await newUser("ada");
+    const alan = await newUser("alan");
+
+    duels.saved.push(
+      finishedDuel({
+        winnerId: ada.id,
+        players: [
+          { userId: ada.id, wpm: 120, accuracy: 90, score: null },
+          { userId: alan.id, wpm: 60, score: null },
+        ],
+      }),
+    );
+
+    expect((await profileOf(ada.cookie, "ada")).stats.records).toEqual({
+      wpm: 120,
+      score: null,
+      combo: null,
+    });
+
+    duels.saved.push(
+      finishedDuel({
+        winnerId: ada.id,
+        players: [
+          { userId: ada.id, wpm: 80, accuracy: 100, score: { score: 900, bestCombo: 40 } },
+          { userId: alan.id, wpm: 60, score: { score: 400, bestCombo: 12 } },
+        ],
+      }),
+    );
+
+    const { averages, records } = (await profileOf(ada.cookie, "ada")).stats;
+
+    expect(records).toEqual({ wpm: 120, score: 900, combo: 40 });
+    expect(averages).toEqual({ wpm: 100, accuracy: 95 });
+  });
+
+  test("the Duels against a deleted User still count", async () => {
+    const { duels, newUser, profileOf } = setup();
+    const ada = await newUser("ada");
+    const alan = await newUser("alan");
+
+    duels.saved.push(
+      finishedDuel({
+        winnerId: alan.id,
+        players: [
+          { userId: ada.id, wpm: 70, score: { score: 300, bestCombo: 9 } },
+          { userId: alan.id, wpm: 90, score: { score: 800, bestCombo: 20 } },
+        ],
+      }),
+      finishedDuel({
+        winnerId: ada.id,
+        players: [
+          { userId: ada.id, wpm: 90, score: { score: 700, bestCombo: 15 } },
+          { userId: alan.id, wpm: 50, score: { score: 100, bestCombo: 4 } },
+        ],
+      }),
+    );
+
+    duels.deleteUser(alan.id);
+
+    const { stats } = await profileOf(ada.cookie, "ada");
+
+    expect(stats.duels).toBe(2);
+    expect(stats.record).toEqual({ wins: 1, losses: 1, draws: 0 });
+  });
+});

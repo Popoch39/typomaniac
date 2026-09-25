@@ -1,4 +1,4 @@
-import { and, desc, eq, lt, ne, or } from "drizzle-orm";
+import { and, count as countRows, desc, eq, lt, max, ne, or, sql } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import { alias } from "drizzle-orm/pg-core";
 
@@ -159,6 +159,43 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
       winnerId: played.winnerId,
       player: playerOf(own.duel_player),
       opponent: opponent ? playerOf(opponent.duel_player) : null,
+    };
+  },
+  // One pass over the User's player rows. A loss is neither a win nor a Draw: a deleted winner
+  // leaves `winner_id` null on a Duel that was not a Draw.
+  stats: async (userId) => {
+    const [row] = await db
+      .select({
+        duels: countRows(),
+        wins: sql<number>`count(*) filter (where ${duel.winnerId} = ${userId})`.mapWith(Number),
+        draws: sql<number>`count(*) filter (where ${duel.outcome} = 'draw')`.mapWith(Number),
+        wpm: sql<number | null>`avg(${duelPlayer.wpm})`.mapWith(Number),
+        accuracy: sql<number | null>`avg(${duelPlayer.accuracy})`.mapWith(Number),
+        bestWpm: max(duelPlayer.wpm),
+        bestScore: max(duelPlayer.score),
+        bestCombo: max(duelPlayer.bestCombo),
+      })
+      .from(duelPlayer)
+      .innerJoin(duel, eq(duel.id, duelPlayer.duelId))
+      .where(eq(duelPlayer.userId, userId));
+
+    const duels = row?.duels ?? 0;
+    const wins = row?.wins ?? 0;
+    const draws = row?.draws ?? 0;
+
+    return {
+      duels,
+      record: { wins, losses: duels - wins - draws, draws },
+      // `mapWith(Number)` would read the null average of no row as 0.
+      averages: {
+        wpm: duels === 0 ? null : (row?.wpm ?? null),
+        accuracy: duels === 0 ? null : (row?.accuracy ?? null),
+      },
+      records: {
+        wpm: row?.bestWpm ?? null,
+        score: row?.bestScore ?? null,
+        combo: row?.bestCombo ?? null,
+      },
     };
   },
 });

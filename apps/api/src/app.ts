@@ -15,6 +15,7 @@ import { type FriendEvents, FriendsLive } from "./modules/friend/live";
 import type { FriendStore } from "./modules/friend/store";
 import { handleModule } from "./modules/handle";
 import { meModule } from "./modules/me";
+import { profileModule } from "./modules/profile";
 import { userModule } from "./modules/user";
 import type { Users } from "./modules/user/users";
 import { apiDocs } from "./plugins/api-docs";
@@ -127,6 +128,7 @@ export const createApp = (config: AppConfig) => {
       }),
     )
     .use(duelHistoryModule({ auth, trustProxy, store: duelStore, users }))
+    .use(profileModule({ auth, trustProxy, store: duelStore, users }))
     .use(duelModule({ auth, trustProxy, queue: duelQueue, friendsLive }));
 };
 
