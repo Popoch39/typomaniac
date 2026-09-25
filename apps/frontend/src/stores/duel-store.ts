@@ -59,10 +59,21 @@ export type DuelPlay = {
   opponentConnected: boolean;
 };
 
+type QueueStatus = Extract<ServerMessage, { type: "queue-status" }>;
+
+// The Queue as the User waits in it, null until the server tells it: when they joined, on this
+// tab's clock, how many Users are in it, them included, and the Estimated wait in ms (null
+// without a recent pairing).
+export type QueueView = {
+  joinedAt: number;
+  size: number;
+  estimatedWait: number | null;
+};
+
 export type DuelState =
   // Waiting for the User's place, to join the Queue or resume their Duel here.
   | { phase: "connecting" }
-  | { phase: "queued" }
+  | { phase: "queued"; queue: QueueView | null }
   // Refused the Queue: the User has no Handle yet.
   | { phase: "handle-required" }
   // Paired, typing blocked until the start.
@@ -182,6 +193,20 @@ const scoreOf = (config: RunConfig, keystrokes: readonly Keystroke[], pace: numb
 // that much. The offset lags by the message's delay, so the Countdown never ends early.
 const localStart = ({ duel, serverTime }: DuelFound | DuelResumed) =>
   duel.startsAt - serverTime + clock();
+
+// The Queue's status, while waiting in it: its join time shifted onto this tab's clock as the
+// Duel's start is.
+const withQueueStatus = (state: DuelState, status: QueueStatus): DuelState =>
+  state.phase === "queued"
+    ? {
+        phase: "queued",
+        queue: {
+          joinedAt: status.joinedAt - status.serverTime + clock(),
+          size: status.size,
+          estimatedWait: status.estimatedWait,
+        },
+      }
+    : state;
 
 // The Duel from the server's state: Countdown first, the next frame starts it if already due.
 const playing = (
@@ -361,7 +386,9 @@ const stateAfter = (state: DuelState, message: ServerMessage): DuelState => {
     case "elsewhere":
       return elsewhere(state);
     case "queued":
-      return { phase: "queued" };
+      return { phase: "queued", queue: state.phase === "queued" ? state.queue : null };
+    case "queue-status":
+      return withQueueStatus(state, message);
     case "handle-required":
       return { phase: "handle-required" };
     case "duel-found":

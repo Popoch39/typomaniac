@@ -9,6 +9,7 @@ import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { BrandMark } from "@/components/brand-mark";
 import { ChallengeNotices } from "@/components/challenge/challenge-notices";
 import { DuelOnChallenge } from "@/components/challenge/duel-on-challenge";
+import { DesktopOnly } from "@/components/desktop-only";
 import { WaitingChallenges } from "@/components/challenge/waiting-challenges";
 import { DuelsNavLink } from "@/components/duel-history/duels-nav-link";
 import { FriendsNavLink } from "@/components/friends/friends-nav-link";
@@ -23,9 +24,9 @@ import { Toaster } from "@/components/ui/sonner";
 const homeActiveOptions = { exact: true };
 
 export const RootLayout = () => (
-  <div className="mx-auto flex min-h-svh w-full max-w-7xl flex-col gap-5 px-4 py-6 sm:px-8">
-    {/* Wraps below lg: the brand, the nav and the User chip only fit side by side on a desktop. */}
-    <header className="flex flex-wrap items-center gap-x-6 gap-y-3">
+  <div className="mx-auto flex min-h-svh w-full max-w-7xl flex-col gap-5 px-8 py-6">
+    <DesktopOnly />
+    <header className="flex items-center gap-6">
       <BrandMark />
       <NavPills label="Navigation principale">
         {/* Play only when on "/" itself: every path starts with it. */}

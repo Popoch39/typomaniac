@@ -1502,6 +1502,59 @@ describe("duel socket", () => {
     return { ada, alan };
   };
 
+  describe("Queue status", () => {
+    test("a User who joins is told when, how many wait, without an Estimated wait yet", async () => {
+      const ada = await queued(await signedIn("Ada"));
+
+      expect(await ada.nextQueueStatus()).toEqual({
+        type: "queue-status",
+        joinedAt: NOW,
+        serverTime: NOW,
+        size: 1,
+        estimatedWait: null,
+      });
+    });
+
+    test("the Users waiting are told of arrivals and departures, a second later at most", async () => {
+      const { ada, alan } = await queuedApart(1000, 1500);
+
+      expect(ada.queueStatuses().map(({ size }) => size)).toEqual([1]);
+      expect(alan.queueStatuses().map(({ size }) => size)).toEqual([2]);
+
+      setNow(NOW + 1000);
+      expect(await ada.nextQueueStatus()).toMatchObject({ size: 2, joinedAt: NOW });
+      expect(await alan.nextQueueStatus()).toMatchObject({ size: 2 });
+
+      alan.send({ type: "leave-queue" });
+      await alan.settle();
+      setNow(NOW + 2000);
+      expect(await ada.nextQueueStatus()).toMatchObject({ size: 1, serverTime: NOW + 2000 });
+      await alan.settle();
+      expect(alan.queueStatuses()).toEqual([]);
+    });
+
+    test("joining again keeps the time the User joined", async () => {
+      const ada = await queued(await signedIn("Ada"));
+
+      await ada.nextQueueStatus();
+      setNow(NOW + 7000);
+      ada.send({ type: "join-queue" });
+      expect(await ada.next()).toEqual({ type: "queued" });
+      expect(await ada.nextQueueStatus()).toMatchObject({ joinedAt: NOW, serverTime: NOW + 7000 });
+    });
+
+    test("the Estimated wait is the median wait of the last pairings", async () => {
+      const { ada, alan } = await queuedApart(1000, 1250);
+
+      setNow(NOW + 15_000);
+      await Promise.all([ada.next(), alan.next()]);
+
+      const grace = await queued(await signedIn("Grace"));
+
+      expect(await grace.nextQueueStatus()).toMatchObject({ size: 1, estimatedWait: 15_000 });
+    });
+  });
+
   describe("Queue window", () => {
     test("pairs at once two Users within ±100 MMR", async () => {
       const ada = await queued(await signedIn("Ada"));

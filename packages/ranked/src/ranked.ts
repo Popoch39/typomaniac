@@ -182,6 +182,26 @@ export const nextWidening = (waitMs: number) =>
     ? null
     : (Math.floor(waitMs / MATCH_WINDOW_STEP_MS) + 1) * MATCH_WINDOW_STEP_MS;
 
+// How many recent pairings the Estimated wait is drawn from.
+export const ESTIMATED_WAIT_PAIRINGS = 20;
+
+// The Estimated wait: the median of the recent waits, never past the wait at which anyone is
+// paired; null without any.
+export const estimatedWait = (waitsMs: readonly number[]) => {
+  const sorted = waitsMs.toSorted((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  const low = sorted[middle - 1];
+  const high = sorted[middle];
+
+  if (high === undefined) {
+    return null;
+  }
+
+  const median = sorted.length % 2 === 0 && low !== undefined ? (low + high) / 2 : high;
+
+  return Math.min(median, UNLIMITED_WINDOW_MS);
+};
+
 // A User's hidden MMR and visible rank, as a ranked Duel moves them.
 export type Rating = { mmr: number; rank: Rank };
 

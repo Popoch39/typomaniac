@@ -84,8 +84,12 @@ Deux Users, appariés par la Queue ou par un Challenge, qui tapent le même Text
 _Avoid_ : match, versus, 1v1, partie, race
 
 **Queue** :
-L'attente des Users qui veulent un Duel Ranked. Deux Users distincts y sont appariés quand leurs MMR sont assez proches : l'écart accepté part de ±100 et s'élargit avec l'attente, jusqu'à n'importe quel adversaire au bout de 30 secondes. Un User peut la quitter tant qu'il n'est pas apparié.
+L'attente des Users qui veulent un Duel Ranked. Deux Users distincts y sont appariés quand leurs MMR sont assez proches : l'écart accepté part de ±100 et s'élargit avec l'attente, jusqu'à n'importe quel adversaire au bout de 30 secondes. Un User peut la quitter tant qu'il n'est pas apparié. Il peut y attendre tout en lançant un Challenge : le premier qui aboutit l'emporte. Un Challenge accepté le sort de la Queue ; un appariement annule ses Challenges en attente, envoyés comme reçus. Pendant l'attente, il voit depuis quand il attend, combien de Users sont dans la Queue, lui compris, et l'Estimated wait.
 _Avoid_ : lobby, file, matchmaking, salle d'attente
+
+**Estimated wait** :
+L'attente probable dans la Queue : la médiane des attentes des 20 derniers appariements, toutes MMR confondues, jamais plus de 30 secondes. Sans appariement récent, il n'y en a pas.
+_Avoid_ : ETA, temps estimé
 
 **Countdown** :
 Les 3 secondes entre l'appariement et le départ d'un Duel, identiques pour les deux Users. La frappe y est bloquée.

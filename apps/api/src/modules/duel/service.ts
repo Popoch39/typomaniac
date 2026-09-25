@@ -1,5 +1,13 @@
 import type { Logger } from "pino";
-import { matchWindow, nextWidening, PLACEMENT_DUELS, type Rating, seedMmr } from "ranked";
+import {
+  ESTIMATED_WAIT_PAIRINGS,
+  estimatedWait,
+  matchWindow,
+  nextWidening,
+  PLACEMENT_DUELS,
+  type Rating,
+  seedMmr,
+} from "ranked";
 import { currentWordListVersion, defaultPace, type Keystroke } from "typing-engine";
 
 import type { Clock } from "../../lib/clock";
@@ -28,6 +36,9 @@ const RECONNECT_GRACE_MS = 10_000;
 
 // How long the end of a Duel waits for its write: past that, it is told without a Duel to replay.
 export const SAVE_TIMEOUT_MS = 5000;
+
+// The Queue's Users are told how it changed at most this often.
+export const QUEUE_STATUS_MS = 1000;
 
 // One WebSocket, seen from the Queue: the route adapts Elysia's to it.
 export type Connection = {
@@ -122,6 +133,13 @@ export class DuelQueue implements ChallengeArena {
 
   // When the Queue next tries its pairings again, as a window widens: null if nothing waits for it.
   #nextPairAt: number | null = null;
+
+  // How long each player of the last pairings of the Queue waited, the oldest first: the
+  // Estimated wait. Challenges do not count.
+  #recentWaits: number[] = [];
+
+  // Whether the Queue's Users are to be told how it changed, once QUEUE_STATUS_MS has passed.
+  #statusDue = false;
 
   constructor({ clock, store, users, friendStore, logger, onDuel, onDuelSaved }: DuelQueueConfig) {
     this.#clock = clock;
@@ -247,6 +265,10 @@ export class DuelQueue implements ChallengeArena {
   // connections (an end they were not told is not told anymore, as when joining the Queue).
   startDuel(seats: readonly [Seat, Seat]) {
     for (const { user, connection } of seats) {
+      if (this.#queue.get(user.id)?.user) {
+        this.#queueChanged();
+      }
+
       this.#queue.delete(user.id);
       this.#missed.delete(user.id);
       this.#playOn(user.id, connection);
@@ -309,7 +331,46 @@ export class DuelQueue implements ChallengeArena {
 
     if (entry?.user) {
       this.#tellOthers(userId);
+      this.#queueChanged();
     }
+  }
+
+  // The Queue as a User in it sees it: `entry` is theirs.
+  #statusOf(entry: QueueEntry): ServerMessage {
+    let size = 0;
+
+    for (const { user } of this.#queue.values()) {
+      if (user !== null) {
+        size += 1;
+      }
+    }
+
+    return {
+      type: "queue-status",
+      joinedAt: entry.joinedAt,
+      serverTime: this.#clock.now(),
+      size,
+      estimatedWait: estimatedWait(this.#recentWaits),
+    };
+  }
+
+  // Someone entered or left the Queue: its Users are told, once QUEUE_STATUS_MS has passed, of
+  // every change until then at once.
+  #queueChanged() {
+    if (this.#statusDue) {
+      return;
+    }
+
+    this.#statusDue = true;
+    this.#clock.at(this.#clock.now() + QUEUE_STATUS_MS, () => {
+      this.#statusDue = false;
+
+      for (const [userId, entry] of this.#queue) {
+        if (entry.user !== null) {
+          this.#send(userId, this.#statusOf(entry));
+        }
+      }
+    });
   }
 
   // The same mechanism as a reconnection: the Duel goes on here, the connection that played it
@@ -489,6 +550,7 @@ export class DuelQueue implements ChallengeArena {
     if (queued) {
       if (queued.user !== null) {
         this.#send(userId, { type: "queued" });
+        this.#send(userId, this.#statusOf(queued));
       }
 
       return;
@@ -512,7 +574,9 @@ export class DuelQueue implements ChallengeArena {
 
         entry.user = { id: userId, handle: profile.handle, image: profile.image };
         this.#send(userId, { type: "queued" });
+        this.#send(userId, this.#statusOf(entry));
         this.#tellOthers(userId);
+        this.#queueChanged();
         void this.readPace(userId).then(async (pace) => {
           const rating = await this.#readRating(userId, pace);
 
@@ -585,6 +649,9 @@ export class DuelQueue implements ChallengeArena {
       if (a) {
         this.#queue.delete(a.user.id);
         this.#queue.delete(b.user.id);
+        this.#recentWaits.push(now - a.joinedAt, now - b.joinedAt);
+        this.#recentWaits = this.#recentWaits.slice(-2 * ESTIMATED_WAIT_PAIRINGS);
+        this.#queueChanged();
         this.#start([a, b]);
       } else {
         waiting.push(b);

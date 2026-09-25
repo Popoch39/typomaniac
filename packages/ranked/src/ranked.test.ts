@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   applyTp,
   byStanding,
+  estimatedWait,
   expectedScore,
   matchWindow,
   nextMmr,
@@ -206,6 +207,21 @@ describe("matchWindow", () => {
 
   test("accepts any MMR after 30 seconds", () => {
     expect(matchWindow(30_000)).toBe(Infinity);
+  });
+});
+
+describe("estimatedWait", () => {
+  test("is the median of the recent waits", () => {
+    expect(estimatedWait([9000, 1000, 4000])).toBe(4000);
+    expect(estimatedWait([1000, 3000, 9000, 2000])).toBe(2500);
+  });
+
+  test("never passes 30 seconds", () => {
+    expect(estimatedWait([45_000])).toBe(30_000);
+  });
+
+  test("is null without a recent wait", () => {
+    expect(estimatedWait([])).toBeNull();
   });
 });
 

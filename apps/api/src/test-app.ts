@@ -13,7 +13,12 @@ import type { AuthHandler } from "./modules/auth";
 import { authOptions } from "./modules/auth/service";
 import { type ActivityMessage, ActivityModel, type ArrivalMessage } from "./modules/activity/model";
 import { type ChallengeMessage, ChallengeModel } from "./modules/challenge/model";
-import { type ClientMessage, DuelModel, type ServerMessage } from "./modules/duel/model";
+import {
+  type ClientMessage,
+  DuelModel,
+  type QueueStatus,
+  type ServerMessage,
+} from "./modules/duel/model";
 import type {
   DuelCursor,
   DuelHistoryPlayer,
@@ -482,6 +487,8 @@ const activityMessage = TypeCompiler.Compile(ActivityModel.activityMessage);
 
 const arrivalMessage = TypeCompiler.Compile(ActivityModel.arrivalMessage);
 
+const queueStatus = TypeCompiler.Compile(DuelModel.queueStatus);
+
 // Messages read in the order they arrived, with next(): waits for the next one when none is there.
 const mailbox = <T>() => {
   const inbox: T[] = [];
@@ -514,8 +521,8 @@ const mailbox = <T>() => {
 // A browser tab on the Duel socket: every message it receives, read in order with next(). What it
 // is told of its Friends goes apart, read with nextFriends(), of its Challenges, read with
 // nextChallenge(), of the Activity, read with nextActivity(), and of the Friends' arrivals, read
-// with nextArrival(): the Queue and the Duel are read
-// without them.
+// with nextArrival(), and the Queue's status, read with nextQueueStatus(): the Queue and the Duel
+// are read without them.
 export const openClient = (url: string, cookie?: string) => {
   const socket = new WebSocket(url, { headers: cookie ? { cookie } : {} });
   const place = mailbox<ServerMessage>();
@@ -523,6 +530,7 @@ export const openClient = (url: string, cookie?: string) => {
   const challenges = mailbox<ChallengeMessage>();
   const activities = mailbox<ActivityMessage>();
   const arrivals = mailbox<ArrivalMessage>();
+  const statuses = mailbox<QueueStatus>();
 
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(String(event.data));
@@ -539,6 +547,8 @@ export const openClient = (url: string, cookie?: string) => {
       activities.put(message);
     } else if (arrivalMessage.Check(message)) {
       arrivals.put(message);
+    } else if (queueStatus.Check(message)) {
+      statuses.put(message);
     } else {
       place.put(message);
     }
@@ -598,6 +608,9 @@ export const openClient = (url: string, cookie?: string) => {
     nextChallenge: challenges.next,
     nextActivity: activities.next,
     nextArrival: arrivals.next,
+    nextQueueStatus: statuses.next,
+    // Every Queue status received so far, the oldest first, taken out.
+    queueStatuses: () => statuses.inbox.splice(0),
     send,
     settle,
     settleFriends,

@@ -1,21 +1,21 @@
-import { Loader2Icon } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
+import { QueueFriends } from "@/components/duel/queue-friends";
+import { QueueSearch } from "@/components/duel/queue-search";
+import { useDuelStore } from "@/stores/duel-store";
 import { usePlayStore } from "@/stores/play-store";
 
-// Waiting in the Queue for an opponent. Annuler goes back to Solo, which leaves the Queue.
+// Waiting in the Queue for an opponent, with the Friends to challenge meanwhile. Annuler goes back
+// to Solo, which leaves the Queue.
 export const DuelQueue = () => {
   const setPlay = usePlayStore((state) => state.setPlay);
 
+  const queue = useDuelStore((store) =>
+    store.state.phase === "queued" ? store.state.queue : null,
+  );
+
   return (
-    <div className="flex flex-col items-center gap-6 rounded-card bg-card px-8 py-12">
-      <output className="flex items-center gap-2 text-muted-foreground">
-        <Loader2Icon className="size-4 motion-safe:animate-spin" aria-hidden="true" />
-        En attente d'un adversaire…
-      </output>
-      <Button variant="outline" onClick={() => setPlay("solo")}>
-        Annuler
-      </Button>
+    <div className="grid min-h-[34rem] grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-5">
+      <QueueSearch queue={queue} onCancel={() => setPlay("solo")} />
+      <QueueFriends />
     </div>
   );
 };

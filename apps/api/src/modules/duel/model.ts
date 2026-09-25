@@ -116,6 +116,16 @@ const Duel = t.Object({
 
 export type Duel = typeof Duel.static;
 
+const QueueStatus = t.Object({
+  type: t.Literal("queue-status"),
+  joinedAt: t.Number(),
+  serverTime: t.Number(),
+  size: t.Integer(),
+  estimatedWait: t.Nullable(t.Number()),
+});
+
+export type QueueStatus = typeof QueueStatus.static;
+
 // Every connection of a User is told their place: the one that plays it by the messages below, the
 // others by `idle` and `elsewhere`, on connection and whenever it changes.
 const ServerMessage = t.Union([
@@ -128,6 +138,10 @@ const ServerMessage = t.Union([
     place: t.Union([t.Literal("queue"), t.Literal("duel")]),
   }),
   t.Object({ type: t.Literal("queued") }),
+  // The Queue as its Users see it while they wait, after `queued` and whenever it changes (at most
+  // once a second): when they joined (server time, their wait survives a reload), how many Users
+  // are in it, them included, and the Estimated wait in ms, null without a recent pairing.
+  QueueStatus,
   // Refused the Queue: a Duel shows each player's Handle, and the User has none yet.
   t.Object({ type: t.Literal("handle-required") }),
   t.Object({
@@ -207,6 +221,7 @@ export type ServerMessage = typeof ServerMessage.static;
 export const DuelModel = {
   clientMessage: ClientMessage,
   serverMessage: ServerMessage,
+  queueStatus: QueueStatus,
   opponent: DuelOpponent,
   duel: Duel,
   keystroke: Keystroke,

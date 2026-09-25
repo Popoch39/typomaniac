@@ -60,6 +60,28 @@ describe("the Duel on the app's connection", () => {
     expect(phase()).toBe("queued");
   });
 
+  test("waiting in the Queue, knows since when on this tab's clock, how many wait and the Estimated wait", () => {
+    server().receive({ type: "idle" });
+    enter();
+    server().receive({ type: "queued" });
+    expect(useDuelStore.getState().state).toEqual({ phase: "queued", queue: null });
+
+    server().receive({
+      type: "queue-status",
+      joinedAt: 10_000,
+      serverTime: 17_000,
+      size: 3,
+      estimatedWait: 12_000,
+    });
+    expect(useDuelStore.getState().state).toEqual({
+      phase: "queued",
+      queue: { joinedAt: -7000, size: 3, estimatedWait: 12_000 },
+    });
+
+    server().receive({ type: "queued" });
+    expect(useDuelStore.getState().state).toMatchObject({ queue: { size: 3 } });
+  });
+
   test("shown before the place is known, takes it once told", () => {
     enter();
     expect(server().sent).toEqual([]);

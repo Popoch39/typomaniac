@@ -5,6 +5,8 @@ export {
   TIERS,
   applyTp,
   byStanding,
+  ESTIMATED_WAIT_PAIRINGS,
+  estimatedWait,
   expectedScore,
   matchWindow,
   nextMmr,
