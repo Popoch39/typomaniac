@@ -1,6 +1,7 @@
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { t } from "elysia";
 
+import { ActivityModel } from "../activity/model";
 import { ChallengeModel } from "../challenge/model";
 import { FriendLiveModel } from "../friend/model";
 
@@ -156,6 +157,8 @@ const ServerMessage = t.Union([
   FriendLiveModel.friendMessage,
   // And of their Challenges, sent and received.
   ChallengeModel.challengeMessage,
+  // And of their Friends' Activity.
+  ActivityModel.activityMessage,
 ]);
 
 export type ServerMessage = typeof ServerMessage.static;

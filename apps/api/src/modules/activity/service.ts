@@ -11,7 +11,7 @@ export type ActivityDeps = { duelStore: DuelStore; friendStore: FriendStore; use
 type Profiles = ReadonlyMap<string, HandleMatch>;
 
 // The Duel with a Friend of the reader first; left out when that Friend cannot be read.
-const duelActivity = (
+export const duelActivity = (
   duel: RecentDuel,
   friends: ReadonlySet<string>,
   profiles: Profiles,
@@ -42,7 +42,7 @@ const duelActivity = (
 };
 
 // The friendship with a Friend of the reader first: the reader's own friendships too.
-const friendshipActivity = (
+export const friendshipActivity = (
   { pair, createdAt }: Friendship,
   friends: ReadonlySet<string>,
   profiles: Profiles,

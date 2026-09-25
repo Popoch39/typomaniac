@@ -2,6 +2,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
+import { LiveActivity } from "@/components/activity/live-activity";
 import { AuthControl } from "@/components/auth/auth-control";
 import { OAuthErrorToast } from "@/components/auth/oauth-error-toast";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
@@ -41,6 +42,7 @@ export const RootLayout = () => (
     </main>
     <RealtimeConnection />
     <LiveFriendLists />
+    <LiveActivity />
     <WaitingChallenges />
     <ChallengeNotices />
     <DuelOnChallenge />

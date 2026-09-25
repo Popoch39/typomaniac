@@ -19,7 +19,10 @@ import {
 import { type Activity, activityQueryOptions } from "@/api/activity";
 import { type Me, meQueryOptions } from "@/api/me";
 import { type UserFound, userSearchQueryOptions } from "@/api/user-search";
+import { LiveActivity } from "@/components/activity/live-activity";
 import { FriendsPage } from "@/pages/friends-page";
+import { useConnectionStore } from "@/stores/connection-store";
+import { fakeServer } from "@/test/fake-socket";
 
 const me: Me = {
   id: "ada-id",
@@ -80,6 +83,7 @@ const renderPage = async (userFriends: Friend[] = friends, activity: Activity[] 
       <Suspense>
         <RouterProvider router={router} />
       </Suspense>
+      <LiveActivity />
     </QueryClientProvider>,
   );
 
@@ -147,5 +151,34 @@ describe("FriendsPage", () => {
     await userEvent.click(column.getByRole("button", { name: "Chercher un Friend" }));
 
     expect(screen.getByLabelText("Chercher un User")).toHaveFocus();
+  });
+
+  test("an Activity told by the real-time connection comes first, without a reload", async () => {
+    const sockets = fakeServer();
+
+    useConnectionStore.getState().open(sockets.open);
+    await renderPage();
+
+    sockets.server().receive({
+      type: "activity-added",
+      activity: {
+        type: "friendship",
+        id: "alan-id:grace-id",
+        at: Date.now(),
+        friend: alan,
+        other: { id: "grace-id", handle: "grace", image: null },
+      },
+    });
+
+    const column = within(screen.getByRole("region", { name: "Activity" }));
+
+    await column.findByText("@grace");
+    expect(column.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "A@alan et @grace sont maintenant Friendsà l'instant",
+      "A@alan a battu @turing par abandon72 wpm · 40 wpmil y a 5 minutes",
+      "A@alan et @ada sont maintenant Friendsavant-hier",
+    ]);
+
+    useConnectionStore.getState().close();
   });
 });

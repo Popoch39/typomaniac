@@ -1,12 +1,17 @@
 import type { Logger } from "pino";
 
+import type { Clock } from "../../lib/clock";
+import type { Activity, ActivityMessage } from "../activity/model";
+import { duelActivity, friendshipActivity } from "../activity/service";
+import type { DuelRecord } from "../duel/store";
+import type { HandleMatch, Users } from "../user/users";
 import type { FriendMessage, Presence } from "./model";
-import type { FriendStore } from "./store";
+import { type FriendStore, orderedPair } from "./store";
 
 // One WebSocket of a User, seen from their Friends: the Duel route hands its own to it.
 export type FriendConnection = {
   id: string;
-  send: (message: FriendMessage) => void;
+  send: (message: FriendMessage | ActivityMessage) => void;
 };
 
 // What the Friend routes tell once they wrote, for the Users concerned to be told live.
@@ -19,7 +24,7 @@ export type FriendEvents = {
   friendsRemoved: (a: string, b: string) => void;
 };
 
-export type FriendsLiveConfig = { store: FriendStore; logger: Logger };
+export type FriendsLiveConfig = { store: FriendStore; users: Users; clock: Clock; logger: Logger };
 
 // What the Duel socket tells: each connection, each Duel.
 export type PresenceEvents = Pick<FriendsLive, "connect" | "disconnect" | "setInDuel">;
@@ -40,6 +45,10 @@ type Change = { friendId: string; friends: boolean };
 // store on their first connection, then kept up to date by the Friend routes' notifications.
 export class FriendsLive implements FriendEvents {
   readonly #store: FriendStore;
+
+  readonly #users: Users;
+
+  readonly #clock: Clock;
 
   readonly #logger: Logger;
 
@@ -62,8 +71,10 @@ export class FriendsLive implements FriendEvents {
   // The messages of each User that need a read, sent in the order they were asked for.
   readonly #outbox = new Map<string, Promise<void>>();
 
-  constructor({ store, logger }: FriendsLiveConfig) {
+  constructor({ store, users, clock, logger }: FriendsLiveConfig) {
     this.#store = store;
+    this.#users = users;
+    this.#clock = clock;
     this.#logger = logger;
   }
 
@@ -157,6 +168,29 @@ export class FriendsLive implements FriendEvents {
         });
       });
     }
+
+    const friendship = { pair: orderedPair(a, b), createdAt: this.#clock.now() };
+
+    this.#tellActivity([a, b], (friends, profiles) =>
+      friendshipActivity(friendship, friends, profiles),
+    );
+  }
+
+  // A finished Duel once written, to the Friends of either player: those of both once, each player
+  // too when the other is their Friend.
+  duelSaved(record: DuelRecord) {
+    const duel = {
+      id: record.id,
+      endedAt: record.endedAt,
+      outcome: record.outcome,
+      winnerId: record.winnerId,
+      players: record.players.map(({ userId, result }) => ({ userId, wpm: result.wpm })),
+    };
+
+    this.#tellActivity(
+      duel.players.map((player) => player.userId),
+      (friends, profiles) => duelActivity(duel, friends, profiles),
+    );
   }
 
   friendsRemoved(a: string, b: string) {
@@ -187,7 +221,7 @@ export class FriendsLive implements FriendEvents {
     return this.#connections.get(userId)?.get(connection.id) === connection;
   }
 
-  #sendTo(userId: string, message: FriendMessage) {
+  #sendTo(userId: string, message: FriendMessage | ActivityMessage) {
     for (const connection of this.#connections.get(userId)?.values() ?? []) {
       connection.send(message);
     }
@@ -206,6 +240,39 @@ export class FriendsLive implements FriendEvents {
     for (const watcherId of this.#watchers.get(userId) ?? []) {
       this.#sendTo(watcherId, message);
     }
+  }
+
+  // An Activity of `userIds`, to each connected User who watches one of them (their Friends), seen
+  // from them: the profiles are read once for all. A failed read is logged.
+  #tellActivity(
+    userIds: readonly string[],
+    activityFor: (
+      friends: ReadonlySet<string>,
+      profiles: ReadonlyMap<string, HandleMatch>,
+    ) => Activity[],
+  ) {
+    const watchers = new Set(userIds.flatMap((userId) => [...(this.#watchers.get(userId) ?? [])]));
+
+    if (watchers.size === 0) {
+      return;
+    }
+
+    this.#users.profilesOf(userIds).then(
+      (found) => {
+        const profiles = new Map(found.map((user) => [user.id, user]));
+
+        for (const watcherId of watchers) {
+          const friends = this.#friends.get(watcherId);
+
+          for (const activity of friends ? activityFor(friends, profiles) : []) {
+            this.#sendTo(watcherId, { type: "activity-added", activity });
+          }
+        }
+      },
+      (error) => {
+        this.#logger.error({ err: error, userIds }, "activity not told");
+      },
+    );
   }
 
   #tellIfChanged(userId: string, before: Presence) {

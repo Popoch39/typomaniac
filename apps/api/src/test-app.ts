@@ -10,6 +10,7 @@ import type { AppConfig } from "./app";
 import { type Clock, systemClock } from "./lib/clock";
 import type { AuthHandler } from "./modules/auth";
 import { authOptions } from "./modules/auth/service";
+import { type ActivityMessage, ActivityModel } from "./modules/activity/model";
 import { type ChallengeMessage, ChallengeModel } from "./modules/challenge/model";
 import { type ClientMessage, DuelModel, type ServerMessage } from "./modules/duel/model";
 import type {
@@ -441,6 +442,8 @@ const friendMessage = TypeCompiler.Compile(FriendLiveModel.friendMessage);
 
 const challengeMessage = TypeCompiler.Compile(ChallengeModel.challengeMessage);
 
+const activityMessage = TypeCompiler.Compile(ActivityModel.activityMessage);
+
 // Messages read in the order they arrived, with next(): waits for the next one when none is there.
 const mailbox = <T>() => {
   const inbox: T[] = [];
@@ -471,13 +474,15 @@ const mailbox = <T>() => {
 };
 
 // A browser tab on the Duel socket: every message it receives, read in order with next(). What it
-// is told of its Friends goes apart, read with nextFriends(), and of its Challenges, read with
-// nextChallenge(): the Queue and the Duel are read without them.
+// is told of its Friends goes apart, read with nextFriends(), of its Challenges, read with
+// nextChallenge(), and of the Activity, read with nextActivity(): the Queue and the Duel are read
+// without them.
 export const openClient = (url: string, cookie?: string) => {
   const socket = new WebSocket(url, { headers: cookie ? { cookie } : {} });
   const place = mailbox<ServerMessage>();
   const friends = mailbox<FriendMessage>();
   const challenges = mailbox<ChallengeMessage>();
+  const activities = mailbox<ActivityMessage>();
 
   socket.addEventListener("message", (event) => {
     const message = JSON.parse(String(event.data));
@@ -490,6 +495,8 @@ export const openClient = (url: string, cookie?: string) => {
       friends.put(message);
     } else if (challengeMessage.Check(message)) {
       challenges.put(message);
+    } else if (activityMessage.Check(message)) {
+      activities.put(message);
     } else {
       place.put(message);
     }
@@ -528,6 +535,12 @@ export const openClient = (url: string, cookie?: string) => {
     expect(challenges.inbox).toEqual([]);
   };
 
+  // The same, of the Activity too.
+  const settleActivity = async () => {
+    await settle();
+    expect(activities.inbox).toEqual([]);
+  };
+
   return {
     socket,
     opened,
@@ -535,10 +548,12 @@ export const openClient = (url: string, cookie?: string) => {
     next: place.next,
     nextFriends: friends.next,
     nextChallenge: challenges.next,
+    nextActivity: activities.next,
     send,
     settle,
     settleFriends,
     settleChallenges,
+    settleActivity,
   };
 };
 

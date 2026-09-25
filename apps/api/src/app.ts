@@ -69,9 +69,15 @@ export const createApp = (config: AppConfig) => {
 
   // The Presence and the live Friend events, in memory: told by the Friend routes once they wrote,
   // and by the Duel socket of each connection and each Duel.
-  const friendsLive = new FriendsLive({ store: friendStore, logger: config.logger });
+  const friendsLive = new FriendsLive({
+    store: friendStore,
+    users,
+    clock: config.clock,
+    logger: config.logger,
+  });
 
-  // The Queue, the Duels and the Challenges, in memory: each Duel is a Presence for the Friends.
+  // The Queue, the Duels and the Challenges, in memory: each Duel is a Presence for the Friends,
+  // and once written an Activity.
   const duelQueue = new DuelQueue({
     clock: config.clock,
     store: duelStore,
@@ -79,6 +85,7 @@ export const createApp = (config: AppConfig) => {
     friendStore,
     logger: config.logger,
     onDuel: (userId, inDuel) => friendsLive.setInDuel(userId, inDuel),
+    onDuelSaved: (record) => friendsLive.duelSaved(record),
   });
 
   // The Friend routes tell both: an ended friendship also ends the Challenges between the two.

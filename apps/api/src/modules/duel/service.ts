@@ -46,6 +46,8 @@ export type DuelQueueConfig = {
   // Told when a User's Duel starts (at the pairing, Countdown included) and when it ends: their
   // Presence.
   onDuel: (userId: string, inDuel: boolean) => void;
+  // Told once a finished Duel is written, never when the write failed or ran out of time.
+  onDuelSaved: (record: DuelRecord) => void;
 };
 
 // A User in the Queue: their profile once read (they have a Handle), then their Pace once read
@@ -69,6 +71,8 @@ export class DuelQueue implements ChallengeArena {
   readonly #logger: Logger;
 
   readonly #onDuel: DuelQueueConfig["onDuel"];
+
+  readonly #onDuelSaved: DuelQueueConfig["onDuelSaved"];
 
   // Every open connection of each User, by connection id.
   readonly #connections = new Map<string, Map<string, Connection>>();
@@ -100,12 +104,13 @@ export class DuelQueue implements ChallengeArena {
 
   readonly #challenges: Challenges;
 
-  constructor({ clock, store, users, friendStore, logger, onDuel }: DuelQueueConfig) {
+  constructor({ clock, store, users, friendStore, logger, onDuel, onDuelSaved }: DuelQueueConfig) {
     this.#clock = clock;
     this.#store = store;
     this.#users = users;
     this.#logger = logger;
     this.#onDuel = onDuel;
+    this.#onDuelSaved = onDuelSaved;
     this.#challenges = new Challenges({ clock, users, friendStore, logger, arena: this });
   }
 
@@ -340,6 +345,12 @@ export class DuelQueue implements ChallengeArena {
     const { endings, record } = finish(this.#clock.now());
 
     const saving = this.#write(record);
+
+    void saving.then((duelId) => {
+      if (duelId !== null) {
+        this.#onDuelSaved(record);
+      }
+    });
 
     for (const { userId, message } of endings) {
       this.#duels.delete(userId);
