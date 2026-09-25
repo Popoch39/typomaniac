@@ -48,6 +48,9 @@ export const useReplayClock = (duration: number) => {
 
   return {
     t,
+    // The Replay's time read live from the clock, for what animates on its own ticks between
+    // renders (the Face-off lab's timeline). A new one on each action.
+    playhead: () => replayTime(replay, clock(), duration),
     playing,
     ended,
     speed: replay.speed,
