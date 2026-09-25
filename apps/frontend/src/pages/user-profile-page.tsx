@@ -14,7 +14,9 @@ export const UserProfilePage = () => {
   const handle = useParams({ from: "/u/$handle", select: (params) => params.handle });
 
   if (me === null) {
-    return <SignInInvitation />;
+    return (
+      <SignInInvitation title="Profile" reason="Connecte-toi pour voir le Profile de ce User." />
+    );
   }
 
   return (

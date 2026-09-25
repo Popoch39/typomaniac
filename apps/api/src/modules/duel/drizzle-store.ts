@@ -1,9 +1,22 @@
-import { and, count as countRows, desc, eq, inArray, lt, max, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count as countRows,
+  desc,
+  eq,
+  gte,
+  inArray,
+  lt,
+  max,
+  ne,
+  or,
+  sql,
+} from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import { alias } from "drizzle-orm/pg-core";
 
 import type { Table } from "../../database/schema";
-import { DIVISIONS, PLACEMENT_DUELS, type Rating } from "ranked";
+import { DIVISIONS, PLACEMENT_DUELS, type Rating, TIERS } from "ranked";
 
 import { duel, duelPlayer, rankedRating } from "./schema";
 import type { DuelCursor, DuelPlayerRecord, DuelStore, PlayedDuelPlayer } from "./store";
@@ -40,6 +53,16 @@ const ratingOf = (row: typeof rankedRating.$inferSelect): Rating => {
 
   return { mmr, rank: { tier, division: known, tp, shielded } };
 };
+
+const pastPlacement = gte(rankedRating.placementsPlayed, PLACEMENT_DUELS);
+
+// `stepOf` of the ranked package in SQL: 4 steps per Tier, the Division within it, Maître last.
+const tierList = sql.raw(`array[${TIERS.map((tier) => `'${tier}'`).join(", ")}]::text[]`);
+
+const step = sql`(array_position(${tierList}, ${rankedRating.tier}) - 1) * 4 + coalesce(4 - ${rankedRating.division}, 0)`;
+
+// `byStanding` of the ranked package, ties by User id: the memory store sorts the same way.
+const classementOrder = [desc(step), desc(rankedRating.tp), asc(rankedRating.userId)];
 
 const playerRow = (
   duelId: string,
@@ -152,6 +175,41 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
     }
 
     return ratingOf(row);
+  },
+  leaderboard: async (limit) => {
+    const rows = await db
+      .select()
+      .from(rankedRating)
+      .where(pastPlacement)
+      .orderBy(...classementOrder)
+      .limit(limit);
+
+    return rows.flatMap((row, index) => {
+      const { rank } = ratingOf(row);
+
+      return "placementsLeft" in rank
+        ? []
+        : [{ userId: row.userId, position: index + 1, standing: rank }];
+    });
+  },
+  leaderboardPosition: async (userId) => {
+    const classement = db
+      .select({
+        userId: rankedRating.userId,
+        position: sql<number>`row_number() over (order by ${sql.join(classementOrder, sql`, `)})`
+          .mapWith(Number)
+          .as("position"),
+      })
+      .from(rankedRating)
+      .where(pastPlacement)
+      .as("classement");
+
+    const [row] = await db
+      .select({ position: classement.position })
+      .from(classement)
+      .where(eq(classement.userId, userId));
+
+    return row?.position ?? null;
   },
   rankOf: async (userId) => {
     const [row] = await db.select().from(rankedRating).where(eq(rankedRating.userId, userId));

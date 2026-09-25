@@ -121,6 +121,7 @@ export const apiDocs = ({ enabled, auth }: ApiDocsOptions) => {
               { name: "Duel", description: "The Duel socket, and the signed-in User's Pace" },
               { name: "Friends", description: "Finding other Users by their Handle" },
               { name: "Profile", description: "A User's Profile and their Stats" },
+              { name: "Leaderboard", description: "The Classement of the ranked Users" },
             ],
           },
         }),

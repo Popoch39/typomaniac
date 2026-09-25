@@ -71,9 +71,9 @@ export type DuelScore = typeof DuelScore.static;
 // What a player sees of the other: their Handle of the moment and their avatar, never their name.
 const DuelOpponent = t.Object({ handle: t.String(), image: t.Nullable(t.String()) });
 
-// A User's visible rank (ranked package): a Tier and Division with TP, Maître without Division, or
-// the Placement Duels still to play. Never the MMR.
-const Rank = t.Union([
+// A User's visible rank past Placement (ranked package): a Tier and Division with TP, Maître
+// without Division. Never the MMR.
+const Standing = t.Union([
   t.Object({
     tier: t.Union([
       t.Literal("fer"),
@@ -88,8 +88,10 @@ const Rank = t.Union([
     shielded: t.Boolean(),
   }),
   t.Object({ tier: t.Literal("maitre"), tp: t.Integer(), shielded: t.Boolean() }),
-  t.Object({ placementsLeft: t.Integer() }),
 ]);
+
+// A Standing, or the Placement Duels still to play.
+const Rank = t.Union([...Standing.anyOf, t.Object({ placementsLeft: t.Integer() })]);
 
 // What a ranked Duel did to one User's rank: the TP it moved (null in Placement), their rank
 // before and after.
@@ -211,4 +213,5 @@ export const DuelModel = {
   result: Result,
   score: DuelScore,
   rank: Rank,
+  standing: Standing,
 };

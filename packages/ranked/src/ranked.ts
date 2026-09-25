@@ -101,6 +101,9 @@ export const stepOf = (standing: Standing) =>
       DIVISIONS_PER_TIER -
       standing.division;
 
+// The Classement's order: the higher step first, then the more TP. Maître is ordered by TP alone.
+export const byStanding = (a: Standing, b: Standing) => stepOf(b) - stepOf(a) || b.tp - a.tp;
+
 const standingAt = (step: number, tp: number, shielded: boolean): Standing => {
   if (step >= MAITRE_STEP) {
     return { tier: "maitre", tp, shielded };

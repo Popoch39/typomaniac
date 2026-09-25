@@ -1,4 +1,4 @@
-import type { Rank, Rating } from "ranked";
+import type { Rank, Rating, Standing } from "ranked";
 import { type Keystroke, paceDuels, paceOf, type Result } from "typing-engine";
 
 import type { Duel, DuelScore } from "./model";
@@ -93,6 +93,9 @@ export type RecentDuel = {
   players: { userId: string; wpm: number }[];
 };
 
+// A User of the Classement: their place in it, from 1, and their rank, never their MMR.
+export type LeaderboardRow = { userId: string; position: number; standing: Standing };
+
 // Where finished Duels are written, injected through AppConfig: Drizzle in production, in memory
 // in the tests. A Duel still running when the API stops is never written.
 export type DuelStore = {
@@ -103,6 +106,11 @@ export type DuelStore = {
   ensureRating: (userId: string, initial: Rating) => Promise<Rating>;
   // The User's visible rank, never their MMR: null until they first join the Queue.
   rankOf: (userId: string) => Promise<Rank | null>;
+  // The first `limit` Users of the Classement, past Placement, in its order (`byStanding` of the
+  // ranked package, ties by User id).
+  leaderboard: (limit: number) => Promise<LeaderboardRow[]>;
+  // Where the User stands in that same order, from 1: null in Placement or without a Rating.
+  leaderboardPosition: (userId: string) => Promise<number | null>;
   // The wpm of the last `count` Duels a User finished, the most recent first: those written before
   // the Score too.
   recentWpms: (userId: string, count: number) => Promise<number[]>;

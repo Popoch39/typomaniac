@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   applyTp,
+  byStanding,
   expectedScore,
   matchWindow,
   nextMmr,
@@ -20,6 +21,25 @@ const standing = (over: Partial<Standing> = {}): Standing => ({
   tp: 50,
   shielded: false,
   ...over,
+});
+
+describe("byStanding", () => {
+  test("orders by Tier, then Division, then TP, Maître first by its TP", () => {
+    const orIIIat10 = standing({ division: 3, tp: 10 });
+    const orIVat90 = standing({ tp: 90 });
+    const orIVat20 = standing({ tp: 20 });
+    const platineIV = standing({ tier: "platine", tp: 0 });
+    const maitreAt5: Standing = { tier: "maitre", tp: 5, shielded: false };
+    const maitreAt300: Standing = { tier: "maitre", tp: 300, shielded: false };
+
+    expect(
+      [orIVat20, maitreAt5, orIIIat10, platineIV, maitreAt300, orIVat90].toSorted(byStanding),
+    ).toEqual([maitreAt300, maitreAt5, platineIV, orIIIat10, orIVat90, orIVat20]);
+  });
+
+  test("ties an equal step and TP", () => {
+    expect(byStanding(standing(), standing({ shielded: true }))).toBe(0);
+  });
 });
 
 describe("seedMmr", () => {

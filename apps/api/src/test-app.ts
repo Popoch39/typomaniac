@@ -4,7 +4,7 @@ import { betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { testUtils } from "better-auth/plugins";
 import pino from "pino";
-import type { Rating } from "ranked";
+import { byStanding, type Rating } from "ranked";
 import { currentWordListVersion, defaultPace } from "typing-engine";
 
 import type { AppConfig } from "./app";
@@ -20,6 +20,7 @@ import type {
   DuelPlayerRecord,
   DuelRecord,
   DuelStore,
+  LeaderboardRow,
 } from "./modules/duel/store";
 import { type FriendMessage, FriendLiveModel, type Relation } from "./modules/friend/model";
 import { type Friendship, type FriendStore, orderedPair } from "./modules/friend/store";
@@ -157,6 +158,19 @@ export const memoryDuelStore = () => {
     return limit === null ? points : points.slice(-limit);
   };
 
+  // The Users past Placement in the Classement's order, as the Drizzle store sorts them.
+  const classement = (): LeaderboardRow[] =>
+    [...ratings]
+      .flatMap(([userId, { rank }]) =>
+        "placementsLeft" in rank || deleted.has(userId) ? [] : [{ userId, standing: rank }],
+      )
+      .toSorted(
+        (a, b) =>
+          byStanding(a.standing, b.standing) ||
+          (a.userId < b.userId ? -1 : Number(a.userId > b.userId)),
+      )
+      .map(({ userId, standing }, index) => ({ userId, position: index + 1, standing }));
+
   const store: DuelStore = {
     progression,
     recentDuelsOf: async (userIds, limit) =>
@@ -197,6 +211,9 @@ export const memoryDuelStore = () => {
       return rating;
     },
     rankOf: async (userId) => ratings.get(userId)?.rank ?? null,
+    leaderboard: async (limit) => classement().slice(0, limit),
+    leaderboardPosition: async (userId) =>
+      classement().find((row) => row.userId === userId)?.position ?? null,
     recentWpms: async (userId, count) =>
       saved
         .toSorted((a, b) => b.endedAt - a.endedAt)
