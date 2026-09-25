@@ -20,6 +20,11 @@ const EXIT_S = 0.5;
 // The overlay stays this long past the start, for its exit.
 export const EXIT_MS = EXIT_S * 1000;
 
+// How far the Handles' rows drift over the whole Face-off, in their own font size: the same speed
+// whatever the Handle's length or the screen's size. Fast as the panels come in, slowing down
+// through the 3-2-1.
+const MARQUEE_DRIFT = "3em";
+
 // The digits of the 3-2-1 in the disc, drawn by FaceOffCount: each slams in on its second of the
 // Countdown and shrinks away as the next one comes. GO follows, at the start.
 export const DIGITS = [
@@ -52,13 +57,16 @@ const shake = () => [
 
 // The whole Face-off overlay on a single timeline, paused: its time is the time since the pairing,
 // set from the Duel's clock (never GSAP's own), so a seek lands anywhere. Transforms and opacity
-// only; the diagonal cut is a static clip-path, the Handles' marquee a CSS animation.
+// only; the diagonal cut is a static clip-path.
 export const faceOffTimeline = () => {
   const timeline = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+  const marquee = { duration: COUNTDOWN_S + EXIT_S, ease: "power2.out" };
 
   timeline
     .addLabel("entrance", 0)
     .set(PANELS, { willChange: "transform" }, "entrance")
+    .fromTo(part("marquee-forward"), { x: 0 }, { x: `-${MARQUEE_DRIFT}`, ...marquee }, "entrance")
+    .fromTo(part("marquee-backward"), { x: `-${MARQUEE_DRIFT}` }, { x: 0, ...marquee }, "entrance")
     .fromTo(
       part("own"),
       { xPercent: -100 },

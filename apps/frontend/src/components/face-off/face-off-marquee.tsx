@@ -1,6 +1,4 @@
-import { cn } from "cn";
-
-// Enough rows to cover the height of the screen, at the rows' size, each running the other way
+// Enough rows to cover the height of the screen, at the rows' size, each drifting the other way
 // from the one above.
 const ROWS = [
   { id: 1, backward: false },
@@ -14,12 +12,13 @@ const ROWS = [
 type FaceOffMarqueeProps = {
   // Null while this User's is being read: the panel stays plain.
   handle: string | null;
-  // The opponent's rows run the other way from this User's.
+  // The opponent's rows drift the other way from this User's.
   reversed: boolean;
 };
 
-// A player's Handle, giant and faint, repeated on rows that slide one way then the other behind
-// their panel. Each row is two identical halves: sliding by half of it loops without a seam.
+// A player's Handle, giant and faint, repeated on rows that drift one way then the other behind
+// their panel, moved by the timeline. Each row is far longer than the panel: its drift never
+// shows its end.
 export const FaceOffMarquee = ({ handle, reversed }: FaceOffMarqueeProps) => (
   <div
     aria-hidden
@@ -30,10 +29,7 @@ export const FaceOffMarquee = ({ handle, reversed }: FaceOffMarqueeProps) => (
       : ROWS.map(({ id, backward }) => (
           <div
             key={id}
-            className={cn(
-              "motion-safe:animate-face-off-marquee",
-              backward !== reversed && "[animation-direction:reverse]",
-            )}
+            data-face-off={backward === reversed ? "marquee-forward" : "marquee-backward"}
           >
             {`${handle} · `.repeat(8)}
           </div>
