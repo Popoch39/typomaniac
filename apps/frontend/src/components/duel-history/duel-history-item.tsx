@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import type { DuelHistoryEntry } from "@/api/duel-history";
 import { DuelDetails } from "@/components/duel-chart/duel-details";
 import { DuelDetailsSkeleton } from "@/components/duel-chart/duel-details-skeleton";
+import { DuelHistoryTp } from "@/components/duel-history/duel-history-tp";
 import { DuelOpponentLabel } from "@/components/duel-history/duel-opponent-label";
 import { FinishedDuelOutcome } from "@/components/duel-history/finished-duel-outcome";
 import { opponentName } from "@/lib/opponent-name";
@@ -37,6 +38,7 @@ export const DuelHistoryItem = ({ duel, open, onToggle }: DuelHistoryItemProps) 
           <span className="text-caret">{orDash(duel.wpm)}</span> –{" "}
           <span className="text-opponent-caret">{orDash(duel.opponentWpm)}</span> wpm
         </span>
+        <DuelHistoryTp tp={duel.tp} />
       </button>
     </div>
     {open ? (

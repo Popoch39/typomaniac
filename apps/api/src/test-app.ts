@@ -242,6 +242,7 @@ export const memoryDuelStore = () => {
               winnerId: winnerOf(record),
               player: historyPlayer(player),
               opponent: opponent ? historyPlayer(opponent) : null,
+              tp: player.rated?.tp ?? null,
             },
           ];
         })

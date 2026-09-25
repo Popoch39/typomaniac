@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
+import type { Rating } from "ranked";
 import { currentWordListVersion, defaultPace, type Keystroke } from "typing-engine";
 
 import { createApp } from "../../app";
@@ -11,7 +12,19 @@ const historyPage = TypeCompiler.Compile(DuelHistoryModel.page);
 
 const replayedDuel = TypeCompiler.Compile(DuelHistoryModel.duel);
 
-type Side = { userId: string; wpm: number; score: number | null; keystrokes?: Keystroke[] };
+// `rated` for a Duel of the Queue: the TP it moved, null in Placement.
+type Side = {
+  userId: string;
+  wpm: number;
+  score: number | null;
+  keystrokes?: Keystroke[];
+  rated?: { tp: number | null };
+};
+
+const RATING: Rating = {
+  mmr: 1000,
+  rank: { tier: "or", division: 2, tp: 40, shielded: false },
+};
 
 // A finished Duel between two Users: `outcome` and `winnerId` as the server wrote them.
 const finishedDuel = ({
@@ -27,7 +40,7 @@ const finishedDuel = ({
   winnerId?: string | null;
   players: [Side, Side];
 }): DuelRecord => {
-  const player = ({ userId, wpm, score, keystrokes = [] }: Side): DuelPlayerRecord => ({
+  const player = ({ userId, wpm, score, keystrokes = [], rated }: Side): DuelPlayerRecord => ({
     userId,
     result: {
       wpm,
@@ -39,7 +52,7 @@ const finishedDuel = ({
     pace: defaultPace,
     score: score === null ? null : { score, bestCombo: 10, bursts: 1 },
     keystrokes,
-    rated: null,
+    rated: rated ? { before: RATING, after: RATING, tp: rated.tp } : null,
   });
 
   return {
@@ -156,10 +169,61 @@ describe("GET /api/duels", () => {
           opponentScore: 800,
           wpm: 90,
           opponentWpm: 70,
+          tp: null,
         },
       ],
       next: null,
     });
+  });
+
+  test("a ranked Duel shows the TP it moved for the reader, not for a Challenge nor in Placement", async () => {
+    const { duels, newUser } = setup();
+    const ada = await newUser("ada");
+    const alan = await newUser("alan");
+
+    duels.saved.push(
+      finishedDuel({
+        id: "ranked",
+        endedAt: 3000,
+        winnerId: ada.id,
+        players: [
+          { userId: ada.id, wpm: 90, score: 1200, rated: { tp: 18 } },
+          { userId: alan.id, wpm: 70, score: 800, rated: { tp: -15 } },
+        ],
+      }),
+      finishedDuel({
+        id: "placement",
+        endedAt: 2000,
+        winnerId: ada.id,
+        players: [
+          { userId: ada.id, wpm: 90, score: 1200, rated: { tp: null } },
+          { userId: alan.id, wpm: 70, score: 800, rated: { tp: -12 } },
+        ],
+      }),
+      finishedDuel({
+        id: "challenge",
+        endedAt: 1000,
+        winnerId: ada.id,
+        players: [
+          { userId: ada.id, wpm: 90, score: 1200 },
+          { userId: alan.id, wpm: 70, score: 800 },
+        ],
+      }),
+    );
+
+    const tps = async (user: typeof ada) =>
+      (await user.page()).duels.map(({ id, tp }) => ({ id, tp }));
+
+    expect(await tps(ada)).toEqual([
+      { id: "ranked", tp: 18 },
+      { id: "placement", tp: null },
+      { id: "challenge", tp: null },
+    ]);
+    expect(await tps(alan)).toEqual([
+      { id: "ranked", tp: -15 },
+      { id: "placement", tp: -12 },
+      { id: "challenge", tp: null },
+    ]);
   });
 
   test("a Visitor gets 401", async () => {
@@ -363,6 +427,7 @@ describe("GET /api/duels", () => {
           outcome: "loss",
           forfeit: false,
           score: 500,
+          tp: null,
           opponentScore: null,
           wpm: 60,
           opponentWpm: null,

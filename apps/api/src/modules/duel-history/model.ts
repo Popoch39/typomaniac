@@ -21,6 +21,9 @@ const duelHistoryEntry = t.Object({
   wpm: t.Number(),
   // Null once the opponent's User is deleted, with their Score.
   opponentWpm: t.Nullable(t.Number()),
+  // The TP the Duel moved for the reader, never the MMR: null for a Challenge, a Duel in Placement
+  // or one played before the ranked.
+  tp: t.Nullable(t.Integer()),
 });
 
 export type DuelHistoryEntry = typeof duelHistoryEntry.static;

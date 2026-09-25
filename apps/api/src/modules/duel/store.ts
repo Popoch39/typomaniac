@@ -51,6 +51,8 @@ export type DuelHistoryRow = {
   winnerId: string | null;
   player: DuelHistoryPlayer;
   opponent: DuelHistoryPlayer | null;
+  // The TP the Duel moved for the reader: null for a Challenge, in Placement and before the ranked.
+  tp: number | null;
 };
 
 // A player of a finished Duel as it is read back: their Pace is null for the Duels written before

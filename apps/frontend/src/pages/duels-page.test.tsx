@@ -41,6 +41,7 @@ const entry = (overrides: Partial<Entry>): Entry => ({
   opponentScore: 800,
   wpm: 90,
   opponentWpm: 70,
+  tp: null,
   ...overrides,
 });
 
@@ -304,6 +305,21 @@ describe("DuelsPage", () => {
     await userEvent.click(toggle(0));
 
     expect(within(row(0)).getByRole("region", { name: "Toi" })).toHaveTextContent("score—");
+  });
+
+  test("a ranked Duel shows the TP it moved, a Challenge or an older Duel none", async () => {
+    await renderPage({
+      duels: [
+        entry({ id: "won", tp: 18 }),
+        entry({ id: "lost", outcome: "loss", tp: -15 }),
+        entry({ id: "challenge" }),
+      ],
+      next: null,
+    });
+
+    expect(row(0)).toHaveTextContent("+18 TP");
+    expect(row(1)).toHaveTextContent("−15 TP");
+    expect(row(2)).not.toHaveTextContent("TP");
   });
 
   test("says the Duel history fills up by playing when there is none yet", async () => {

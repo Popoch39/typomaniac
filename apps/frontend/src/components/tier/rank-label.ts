@@ -2,6 +2,9 @@ import type { Rank } from "ranked";
 
 import { standingName } from "@/components/tier/tier";
 
+// The TP a ranked Duel moved, signed: "+18 TP", "−15 TP".
+export const signedTp = (tp: number) => `${tp >= 0 ? "+" : "−"}${Math.abs(tp)} TP`;
+
 // A rank in words, never the MMR: "Or II · 42 TP", "Maître · 250 TP", or the Placement Duels left.
 export const rankLabel = (rank: Rank) => {
   if ("placementsLeft" in rank) {

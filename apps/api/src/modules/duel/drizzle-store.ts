@@ -237,6 +237,7 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
         winnerId: duel.winnerId,
         wpm: duelPlayer.wpm,
         score: duelPlayer.score,
+        tp: duelPlayer.tpDelta,
         opponentId: opponentPlayer.userId,
         opponentWpm: opponentPlayer.wpm,
         opponentScore: opponentPlayer.score,
@@ -261,6 +262,7 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
         row.opponentId === null || row.opponentWpm === null
           ? null
           : { userId: row.opponentId, wpm: row.opponentWpm, score: row.opponentScore },
+      tp: row.tp,
     }));
   },
   // The Duel and its player rows, one per User still there.
