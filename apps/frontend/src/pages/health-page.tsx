@@ -8,17 +8,21 @@ export const HealthPage = () => {
   const { data } = useSuspenseQuery(healthQueryOptions);
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-4 rounded-card bg-card p-6">
       <h1 className="font-heading text-2xl font-bold">Santé de l'API</h1>
-      <p>Statut : {data.status}</p>
+      <p className="text-muted-foreground">
+        Statut : <span className="font-mono font-semibold text-foreground">{data.status}</span>
+      </p>
     </section>
   );
 };
 
 export const HealthError = ({ error, reset }: ErrorComponentProps) => (
-  <section role="alert" className="flex flex-col items-start gap-4">
+  <section role="alert" className="flex flex-col items-start gap-4 rounded-card bg-card p-6">
     <h1 className="font-heading text-2xl font-bold text-destructive">API injoignable</h1>
-    <p>{error instanceof Error ? error.message : "Erreur inconnue"}</p>
+    <p className="text-muted-foreground">
+      {error instanceof Error ? error.message : "Erreur inconnue"}
+    </p>
     <Button variant="outline" onClick={reset}>
       Réessayer
     </Button>

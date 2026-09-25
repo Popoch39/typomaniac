@@ -1,5 +1,5 @@
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { Link, Outlet } from "@tanstack/react-router";
+import { Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
 import { AuthControl } from "@/components/auth/auth-control";
@@ -13,36 +13,25 @@ import { FriendsNavLink } from "@/components/friends/friends-nav-link";
 import { LiveFriendLists } from "@/components/friends/live-friend-lists";
 import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
 import { RealtimeConnection } from "@/components/realtime-connection";
-import { Button } from "@/components/ui/button";
+import { NavPill } from "@/components/ui/nav-pill";
+import { NavPills } from "@/components/ui/nav-pills";
 import { Toaster } from "@/components/ui/sonner";
 
-// TanStack Link sets data-status="active" on the current route.
-const navLinkClassName = "data-[status=active]:bg-muted";
+const homeActiveOptions = { exact: true };
 
 export const RootLayout = () => (
-  <div className="mx-auto flex min-h-svh max-w-5xl flex-col gap-6 p-4">
+  <div className="mx-auto flex min-h-svh max-w-5xl flex-col gap-8 px-4 py-5">
     {/* Wraps on a phone: the nav and the controls do not fit side by side under ~360px. */}
-    <header className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
-      <nav className="flex gap-1">
-        <Button
-          variant="ghost"
-          nativeButton={false}
-          className={navLinkClassName}
-          render={<Link to="/" />}
-        >
+    <header className="flex flex-wrap items-center justify-between gap-3">
+      <NavPills label="Navigation principale">
+        {/* Home only when on "/" itself: every path starts with it. */}
+        <NavPill to="/" activeOptions={homeActiveOptions}>
           Accueil
-        </Button>
-        <DuelsNavLink className={navLinkClassName} />
-        <FriendsNavLink className={navLinkClassName} />
-        <Button
-          variant="ghost"
-          nativeButton={false}
-          className={navLinkClassName}
-          render={<Link to="/health" />}
-        >
-          Santé de l'API
-        </Button>
-      </nav>
+        </NavPill>
+        <DuelsNavLink />
+        <FriendsNavLink />
+        <NavPill to="/health">Santé de l'API</NavPill>
+      </NavPills>
       <div className="flex items-center gap-2">
         <AuthControl />
       </div>

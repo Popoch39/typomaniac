@@ -1,28 +1,18 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 
 import { meQueryOptions } from "@/api/me";
 import { FriendRequestsBadge } from "@/components/friends/friend-requests-badge";
-import { Button } from "@/components/ui/button";
-
-type FriendsNavLinkProps = {
-  className: string;
-};
+import { NavPill } from "@/components/ui/nav-pill";
 
 // The way to the Friends, for a User with a Session only: a Visitor has none. With a Handle, the
 // number of Friend requests received.
-export const FriendsNavLink = ({ className }: FriendsNavLinkProps) => {
+export const FriendsNavLink = () => {
   const { data: me } = useSuspenseQuery(meQueryOptions);
 
   return me ? (
-    <Button
-      variant="ghost"
-      nativeButton={false}
-      className={className}
-      render={<Link to="/friends" />}
-    >
+    <NavPill to="/friends">
       Friends
       {me.handle === null ? null : <FriendRequestsBadge />}
-    </Button>
+    </NavPill>
   ) : null;
 };
