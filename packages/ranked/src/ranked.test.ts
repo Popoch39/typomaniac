@@ -5,6 +5,7 @@ import {
   expectedScore,
   matchWindow,
   nextMmr,
+  nextWidening,
   PLACEMENT_DUELS,
   rankFromMmr,
   rateDuel,
@@ -185,6 +186,16 @@ describe("matchWindow", () => {
 
   test("accepts any MMR after 30 seconds", () => {
     expect(matchWindow(30_000)).toBe(Infinity);
+  });
+});
+
+describe("nextWidening", () => {
+  test("is the wait at which the window widens next", () => {
+    expect([0, 4999, 5000, 27_000].map(nextWidening)).toEqual([5000, 5000, 10_000, 30_000]);
+  });
+
+  test("is null once the window is unlimited", () => {
+    expect(nextWidening(30_000)).toBeNull();
   });
 });
 

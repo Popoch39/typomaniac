@@ -173,6 +173,12 @@ export const matchWindow = (waitMs: number) =>
     ? Infinity
     : MATCH_WINDOW + Math.floor(waitMs / MATCH_WINDOW_STEP_MS) * MATCH_WINDOW_STEP;
 
+// The wait at which the window of `matchWindow` widens next, null once it is unlimited.
+export const nextWidening = (waitMs: number) =>
+  waitMs >= UNLIMITED_WINDOW_MS
+    ? null
+    : (Math.floor(waitMs / MATCH_WINDOW_STEP_MS) + 1) * MATCH_WINDOW_STEP_MS;
+
 // A User's hidden MMR and visible rank, as a ranked Duel moves them.
 export type Rating = { mmr: number; rank: Rank };
 

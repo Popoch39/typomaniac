@@ -7,6 +7,7 @@ export {
   expectedScore,
   matchWindow,
   nextMmr,
+  nextWidening,
   rankFromMmr,
   rateDuel,
   seedMmr,

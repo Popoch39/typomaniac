@@ -1,5 +1,5 @@
 import type { Logger } from "pino";
-import { PLACEMENT_DUELS, type Rating, seedMmr } from "ranked";
+import { matchWindow, nextWidening, PLACEMENT_DUELS, type Rating, seedMmr } from "ranked";
 import { currentWordListVersion, defaultPace, type Keystroke } from "typing-engine";
 
 import type { Clock } from "../../lib/clock";
@@ -53,8 +53,22 @@ export type DuelQueueConfig = {
 
 // A User in the Queue: their profile once read (they have a Handle), then their Pace once read
 // from their history, with their Rating (null when it could not be read: their Duel is not
-// ranked). Replaced by a new entry when they leave and join again.
-type QueueEntry = { user: User | null; paced: { pace: number; rating: Rating | null } | null };
+// ranked), and when they joined: their wait widens the MMR window. Replaced by a new entry when
+// they leave and join again.
+type QueueEntry = {
+  user: User | null;
+  paced: { pace: number; rating: Rating | null } | null;
+  joinedAt: number;
+};
+
+type ReadyUser = PacedUser & { joinedAt: number };
+
+// Two Users can face each other once their MMR gap fits the window of whichever has waited
+// longer. Without a Rating, the Duel is not ranked: any MMR fits.
+const fits = (a: ReadyUser, b: ReadyUser, now: number) =>
+  a.rating === null ||
+  b.rating === null ||
+  Math.abs(a.rating.mmr - b.rating.mmr) <= matchWindow(now - Math.min(a.joinedAt, b.joinedAt));
 
 // The Queue, the running Duels, the Challenges and the connected Users, in memory (ADR 0003). A User
 // can have many connections (tabs, ADR 0007) but one place, in the Queue or in a Duel, played on
@@ -105,6 +119,9 @@ export class DuelQueue implements ChallengeArena {
   readonly #missed = new Map<string, DuelEnded>();
 
   readonly #challenges: Challenges;
+
+  // When the Queue next tries its pairings again, as a window widens: null if nothing waits for it.
+  #nextPairAt: number | null = null;
 
   constructor({ clock, store, users, friendStore, logger, onDuel, onDuelSaved }: DuelQueueConfig) {
     this.#clock = clock;
@@ -477,7 +494,7 @@ export class DuelQueue implements ChallengeArena {
       return;
     }
 
-    const entry: QueueEntry = { user: null, paced: null };
+    const entry: QueueEntry = { user: null, paced: null, joinedAt: this.#clock.now() };
 
     this.#queue.set(userId, entry);
     void this.#users.profileOf(userId).then(
@@ -545,30 +562,61 @@ export class DuelQueue implements ChallengeArena {
     }
   }
 
-  // FIFO among the Users whose profile, Pace and Rating are read: one still being read holds up no
-  // one behind (a Map iterates in insertion order). They are distinct, the Queue holds User ids.
+  // Among the Users whose profile, Pace and Rating are read, in arrival order (a Map iterates in
+  // insertion order): each one is paired with the first after them whose MMR fits the window. One
+  // still being read holds up no one behind. They are distinct, the Queue holds User ids. Those
+  // left unpaired are tried again when the next window widens.
   #pair() {
-    const ready: PacedUser[] = [];
+    const now = this.#clock.now();
+    const ready: ReadyUser[] = [];
 
-    for (const [userId, { user, paced }] of this.#queue) {
+    for (const [userId, { user, paced, joinedAt }] of this.#queue) {
       if (this.#playing.has(userId) && user !== null && paced !== null) {
-        ready.push({ user, ...paced });
-      }
-
-      if (ready.length === 2) {
-        break;
+        ready.push({ user, ...paced, joinedAt });
       }
     }
 
-    const [a, b] = ready;
+    const waiting: ReadyUser[] = [];
 
-    if (!a || !b) {
+    for (const b of ready) {
+      const index = waiting.findIndex((a) => fits(a, b, now));
+      const [a] = index === -1 ? [] : waiting.splice(index, 1);
+
+      if (a) {
+        this.#queue.delete(a.user.id);
+        this.#queue.delete(b.user.id);
+        this.#start([a, b]);
+      } else {
+        waiting.push(b);
+      }
+    }
+
+    if (waiting.length > 1) {
+      this.#pairAgain(waiting, now);
+    }
+  }
+
+  // At the next widening of any window among `waiting`, unless a try is already set by then.
+  #pairAgain(waiting: readonly ReadyUser[], now: number) {
+    const widenings = waiting.flatMap(({ joinedAt }) => {
+      const wait = nextWidening(now - joinedAt);
+
+      return wait === null ? [] : [joinedAt + wait];
+    });
+
+    const at = Math.min(...widenings);
+
+    if (!Number.isFinite(at) || (this.#nextPairAt !== null && this.#nextPairAt <= at)) {
       return;
     }
 
-    this.#queue.delete(a.user.id);
-    this.#queue.delete(b.user.id);
-    this.#start([a, b]);
+    this.#nextPairAt = at;
+    this.#clock.at(at, () => {
+      if (this.#nextPairAt === at) {
+        this.#nextPairAt = null;
+        this.#pair();
+      }
+    });
   }
 
   // Seed drawn here, same format for every Duel, the Countdown starting now. Each player is told on

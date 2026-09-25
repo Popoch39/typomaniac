@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import pino from "pino";
-import type { Rating } from "ranked";
+import { PLACEMENT_DUELS, type Rating, seedMmr } from "ranked";
 import {
   computeResult,
   computeScore,
@@ -192,6 +192,18 @@ describe("duel socket", () => {
     return client;
   };
 
+  // Queued 30 s before NOW: whoever joins at NOW is paired with them, whatever their MMRs.
+  const queuedLongAgo = async (cookie: string) => {
+    setNow(NOW - 30_000);
+
+    const client = await queued(cookie);
+
+    await client.settle();
+    setNow(NOW);
+
+    return client;
+  };
+
   test("refuses the upgrade without a valid Session", async () => {
     const client = openClient(url);
 
@@ -293,7 +305,8 @@ describe("duel socket", () => {
 
     saved.push(...older.slice(0, 2), ...recent, ...older.slice(2));
 
-    const ada = await queued(adaUser.cookie);
+    // Her Pace seeds an MMR far from Alan's: she waited long enough for any.
+    const ada = await queuedLongAgo(adaUser.cookie);
     const alan = await queued(alanUser.cookie);
 
     const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
@@ -476,7 +489,7 @@ describe("duel socket", () => {
 
     saved.push(...adaWpms.map((wpm, i) => pastDuel(adaUser.id, wpm, NOW - 1000 * (i + 1))));
 
-    const ada = await queued(adaUser.cookie);
+    const ada = await queuedLongAgo(adaUser.cookie);
     const alan = await queued(alanUser.cookie);
     const [found] = await Promise.all([ada.next(), alan.next()]);
 
@@ -1310,6 +1323,12 @@ describe("duel socket", () => {
     const adaUser = await signedInUser("Ada");
     const adaWpms = Promise.withResolvers<number[]>();
 
+    // The MMR of the default Pace, whatever hers: Hopper's window fits her.
+    duels.ratings.set(adaUser.id, {
+      mmr: seedMmr(defaultPace),
+      rank: { placementsLeft: PLACEMENT_DUELS },
+    });
+
     const slowForAda = {
       ...duels.store,
       recentWpms: (userId: string, count: number) =>
@@ -1453,12 +1472,106 @@ describe("duel socket", () => {
     ratings.set(adaUser.id, adaRating);
     ratings.set(alanUser.id, alanRating);
 
-    const ada = await queued(adaUser.cookie);
+    const ada = await queuedLongAgo(adaUser.cookie);
     const alan = await queued(alanUser.cookie);
     const [found] = await Promise.all([ada.next(), alan.next()]);
 
     return { ada, alan, adaId: adaUser.id, alanId: alanUser.id, found };
   };
+
+  // Ada and Alan queued at NOW with these MMRs, neither paired yet.
+  const queuedApart = async (adaMmr: number, alanMmr: number) => {
+    const adaUser = await signedInUser("Ada");
+    const alanUser = await signedInUser("Alan");
+
+    ratings.set(adaUser.id, { mmr: adaMmr, rank: orIv(50) });
+    ratings.set(alanUser.id, { mmr: alanMmr, rank: orIv(50) });
+
+    const ada = await queued(adaUser.cookie);
+    const alan = await queued(alanUser.cookie);
+
+    await Promise.all([ada.settle(), alan.settle()]);
+
+    return { ada, alan };
+  };
+
+  describe("Queue window", () => {
+    test("pairs at once two Users within ±100 MMR", async () => {
+      const ada = await queued(await signedIn("Ada"));
+      const alan = await queued(await signedIn("Alan"));
+
+      // Both at the default Pace: the same MMR.
+      expect(await ada.next()).toEqual(duelFound("Alan"));
+      expect(await alan.next()).toEqual(duelFound("Ada"));
+    });
+
+    test("holds two Users too far apart until the window widens to their gap", async () => {
+      const { ada, alan } = await queuedApart(1000, 1250);
+
+      // 150 after 5 s, 200 after 10 s: still too far apart.
+      setNow(NOW + 10_000);
+      await Promise.all([ada.settle(), alan.settle()]);
+
+      // 250 after 15 s.
+      setNow(NOW + 15_000);
+
+      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+      expect(forAda).toMatchObject({ type: "duel-found", serverTime: NOW + 15_000 });
+      expect(forAlan).toMatchObject({ type: "duel-found", serverTime: NOW + 15_000 });
+    });
+
+    test("pairs any two Users after 30 s of waiting", async () => {
+      const { ada, alan } = await queuedApart(600, 1800);
+
+      setNow(NOW + 29_999);
+      await Promise.all([ada.settle(), alan.settle()]);
+      setNow(NOW + 30_000);
+
+      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+      expect(forAda).toMatchObject({ type: "duel-found", serverTime: NOW + 30_000 });
+      expect(forAlan).toMatchObject({ type: "duel-found", serverTime: NOW + 30_000 });
+    });
+
+    test("the window is the one of the User who waited longer", async () => {
+      const adaUser = await signedInUser("Ada");
+      const alanUser = await signedInUser("Alan");
+
+      ratings.set(adaUser.id, { mmr: 1000, rank: orIv(50) });
+      ratings.set(alanUser.id, { mmr: 1200, rank: orIv(50) });
+
+      const ada = await queued(adaUser.cookie);
+
+      // Ada has waited 10 s: her window is 200, Alan's first one only 100.
+      setNow(NOW + 10_000);
+
+      const alan = await queued(alanUser.cookie);
+
+      expect(await ada.next()).toMatchObject({ type: "duel-found", serverTime: NOW + 10_000 });
+      expect(await alan.next()).toMatchObject({ type: "duel-found" });
+    });
+
+    test("pairs the first User who fits, not the first in the Queue", async () => {
+      const [adaUser, alanUser, graceUser] = await Promise.all([
+        signedInUser("Ada"),
+        signedInUser("Alan"),
+        signedInUser("Grace"),
+      ]);
+
+      ratings.set(adaUser.id, { mmr: 1000, rank: orIv(50) });
+      ratings.set(alanUser.id, { mmr: 1500, rank: orIv(50) });
+      ratings.set(graceUser.id, { mmr: 1050, rank: orIv(50) });
+
+      const ada = await queued(adaUser.cookie);
+      const alan = await queued(alanUser.cookie);
+      const grace = await queued(graceUser.cookie);
+
+      expect(await ada.next()).toEqual(duelFound("Grace"));
+      expect(await grace.next()).toEqual(duelFound("Ada"));
+      await alan.settle();
+    });
+  });
 
   describe("ranked", () => {
     test("a first join of the Queue seeds the Rating from the Pace, in Placement", async () => {
