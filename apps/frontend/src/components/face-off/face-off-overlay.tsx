@@ -2,6 +2,7 @@ import { type MouseEvent, useRef } from "react";
 
 import { FaceOffAnnouncer } from "@/components/face-off/face-off-announcer";
 import { FaceOffCount } from "@/components/face-off/face-off-count";
+import { FaceOffMute } from "@/components/face-off/face-off-mute";
 import { FaceOffOpponent } from "@/components/face-off/face-off-opponent";
 import type { FaceOffPairing } from "@/components/face-off/face-off-pairing";
 import { FaceOffSelf } from "@/components/face-off/face-off-self";
@@ -42,6 +43,7 @@ export const FaceOffOverlay = ({ opponent, pairing, startsAt, elapsed }: FaceOff
         />
         <FaceOffCount />
       </div>
+      <FaceOffMute />
       <FaceOffAnnouncer elapsed={elapsed} opponentHandle={opponent.handle} />
     </div>
   );

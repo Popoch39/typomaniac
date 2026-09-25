@@ -1,5 +1,7 @@
 import { gsap } from "gsap";
 
+import type { FaceOffSound } from "@/audio/face-off-sounds";
+
 // The server's Countdown, from the pairing to the start: the Face-off, then the 3-2-1.
 export const COUNTDOWN_S = 4.5;
 
@@ -43,6 +45,31 @@ const DIGIT_HOLD_S = 0.8;
 
 // The `data-face-off` of a digit's element.
 export const digitName = (mark: string) => `digit-${mark}`;
+
+// The label of the timeline each sound plays on.
+const SOUNDS = new Map<string, FaceOffSound>([
+  ["entrance", "whoosh"],
+  ["impact", "impact"],
+  ...DIGITS.map(({ mark }): [string, FaceOffSound] => [digitName(mark), "beep"]),
+  ["go", "go"],
+]);
+
+// A sound whose label was passed longer ago than this is left out: on a resume or a slow first
+// frame, it would play out of step with the overlay.
+const LATE_S = 0.15;
+
+// The sounds of the timeline's `labels` passed since `heard` (the time up to which they were
+// played) up to `at`, in their order.
+export const soundsPassed = (labels: Readonly<Record<string, number>>, heard: number, at: number) =>
+  Object.entries(labels)
+    .toSorted(([, a], [, b]) => a - b)
+    .flatMap(([label, time]) => {
+      const sound = SOUNDS.get(label);
+
+      return typeof sound === "undefined" || time <= heard || time > at || at - time > LATE_S
+        ? []
+        : [sound];
+    });
 
 // A part of the overlay, found by its `data-face-off` inside the overlay (the useGSAP scope).
 const part = (name: string) => `[data-face-off="${name}"]`;
@@ -130,6 +157,7 @@ export const faceOffTimeline = () => {
 
   for (const { mark, at } of DIGITS) {
     timeline
+      .addLabel(digitName(mark), at)
       .fromTo(
         part(digitName(mark)),
         { scale: 2.4, autoAlpha: 0 },
@@ -151,6 +179,7 @@ export const faceOffTimeline = () => {
     .addLabel("exit", COUNTDOWN_S)
     .to(part("own"), { yPercent: -105, duration: EXIT_S, ease: "power3.in" }, "exit")
     .to(part("opponent"), { yPercent: 105, duration: EXIT_S, ease: "power3.in" }, "exit")
+    .to(part("mute"), { autoAlpha: 0, duration: 0.15 }, "exit")
     .to(part("disc"), { scale: 1.2, duration: 0.15 }, "exit")
     .to(part("disc"), { autoAlpha: 0, duration: 0.33, ease: "power2.in" }, "exit+=0.15");
 };

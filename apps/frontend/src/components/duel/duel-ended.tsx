@@ -5,11 +5,12 @@ import { DuelRank } from "@/components/duel/duel-rank";
 import { NothingOnError } from "@/components/duel/nothing-on-error";
 import { PlayerResult } from "@/components/duel/player-result";
 import { ReplayDuelLink } from "@/components/duel/replay-duel-link";
+import { useSearchDuel } from "@/components/duel/use-search-duel";
 import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { DuelChartSkeleton } from "@/components/duel-chart/duel-chart-skeleton";
 import { atHandle } from "@/lib/at-handle";
-import { type DuelEnding, useDuelStore } from "@/stores/duel-store";
+import type { DuelEnding } from "@/stores/duel-store";
 
 // recharts stays out of the home page's bundle until a Duel ends.
 const WrittenDuelChart = lazy(async () => {
@@ -24,7 +25,7 @@ const focusOnMount = (node: HTMLElement | null) => node?.focus();
 // The server ended the Duel: its outcome, what it did to the rank when ranked, and both Scores and
 // Results, the same on both screens, then Nouveau Duel to join the Queue again. Once written, its Duel chart and Revoir to replay it.
 export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
-  const joinQueue = useDuelStore((store) => store.joinQueue);
+  const searchDuel = useSearchDuel();
   const opponent = atHandle(ending.opponent.handle);
 
   return (
@@ -54,7 +55,7 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
         </NothingOnError>
       )}
       <div className="flex gap-2">
-        <Button variant="outline" onClick={joinQueue}>
+        <Button variant="outline" onClick={searchDuel}>
           Nouveau Duel
         </Button>
         {ending.duelId === null ? null : <ReplayDuelLink duelId={ending.duelId} />}

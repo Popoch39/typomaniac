@@ -24,12 +24,19 @@ type FaceOffLabStageProps = { onClose: () => void };
 export const FaceOffLabStage = ({ onClose }: FaceOffLabStageProps) => {
   const replay = useReplayClock(DURATION);
   const [pairing, setPairing] = useState<LabPairing>("ranked");
+  // Each restart is a new Face-off: its sounds play again (a Face-off never replays one it played).
+  const [take, setTake] = useState(0);
+
+  const restart = () => {
+    replay.restart();
+    setTake((previous) => previous + 1);
+  };
 
   return createPortal(
     <>
       <ClockContext value={replay.playhead}>
         <FaceOffOverlay
-          key={pairing}
+          key={`${pairing}-${take}`}
           opponent={LAB_OPPONENT}
           pairing={LAB_PAIRINGS[pairing]}
           startsAt={STARTS_AT}
@@ -45,7 +52,7 @@ export const FaceOffLabStage = ({ onClose }: FaceOffLabStageProps) => {
         pairing={pairing}
         onPause={replay.pause}
         onResume={replay.resume}
-        onRestart={replay.restart}
+        onRestart={restart}
         onSeek={replay.seek}
         onSpeed={replay.setSpeed}
         onPairing={setPairing}
