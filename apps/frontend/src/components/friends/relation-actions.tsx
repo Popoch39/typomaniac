@@ -50,7 +50,11 @@ export const RelationActions = ({ user }: RelationActionsProps) => {
     }
 
     case "friend": {
-      return <span className="text-[0.7rem] text-muted-foreground uppercase">Friend</span>;
+      return (
+        <span className="rounded-full bg-secondary px-2.5 py-1 text-[0.7rem] text-muted-foreground uppercase">
+          Friend
+        </span>
+      );
     }
   }
 };

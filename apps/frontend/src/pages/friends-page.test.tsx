@@ -38,11 +38,11 @@ const requests: FriendRequests = {
 const found: UserFound[] = [{ id: "barbara-id", handle: "barbara", image: null, relation: "none" }];
 
 // The page with the User's lists and a search already in the cache, on a router of its own.
-const renderPage = async () => {
+const renderPage = async (userFriends: Friend[] = friends) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
 
   queryClient.setQueryData(meQueryOptions.queryKey, me);
-  queryClient.setQueryData(friendsQueryOptions.queryKey, friends);
+  queryClient.setQueryData(friendsQueryOptions.queryKey, userFriends);
   queryClient.setQueryData(friendRequestsQueryOptions.queryKey, requests);
   queryClient.setQueryData(userSearchQueryOptions("bar").queryKey, found);
 
@@ -91,5 +91,13 @@ describe("FriendsPage", () => {
         name: "Envoyer une Friend request à @barbara",
       }),
     ).toBeInTheDocument();
+  });
+
+  test("without a Friend, the empty list brings the User to the search", async () => {
+    await renderPage([]);
+
+    await userEvent.click(screen.getByRole("button", { name: "Chercher un User" }));
+
+    expect(screen.getByLabelText("Chercher un User")).toHaveFocus();
   });
 });

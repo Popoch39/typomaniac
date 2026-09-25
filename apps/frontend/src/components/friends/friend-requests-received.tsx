@@ -17,7 +17,9 @@ export const FriendRequestsReceived = () => {
     <FriendsListSection
       title="Friend requests reçues"
       count={received.length}
-      empty="Aucune Friend request en attente."
+      empty={
+        <p className="px-1 text-sm text-muted-foreground">Aucune Friend request en attente.</p>
+      }
     >
       {received.map((user) => (
         <UserRow key={user.id} user={user}>

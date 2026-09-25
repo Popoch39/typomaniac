@@ -10,9 +10,9 @@ const LABELS: Record<Presence, string> = {
 };
 
 const DOTS: Record<Presence, string> = {
-  online: "bg-emerald-500",
+  online: "bg-emerald-400",
   "in-duel": "bg-caret",
-  offline: "bg-muted-foreground/40",
+  offline: "bg-faint",
 };
 
 type FriendPresenceProps = {
@@ -26,7 +26,7 @@ export const FriendPresence = ({ userId }: FriendPresenceProps) => {
   );
 
   return presence === null ? null : (
-    <span className="flex shrink-0 items-center gap-1.5 text-[0.7rem] text-muted-foreground">
+    <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-[0.7rem] text-muted-foreground">
       <span aria-hidden className={cn("size-2 rounded-full", DOTS[presence])} />
       {LABELS[presence]}
     </span>

@@ -14,8 +14,8 @@ type UserRowProps = {
 
 // Another User in a list: their avatar and their Handle, nothing else of them.
 export const UserRow = ({ user, aside, children }: UserRowProps) => (
-  <li className="flex items-center gap-3 px-3 py-2">
-    <Avatar size="sm">
+  <li className="flex items-center gap-3 px-5 py-3">
+    <Avatar>
       {user.image ? <AvatarImage src={user.image} alt="" /> : null}
       <AvatarFallback>{initials(user.handle)}</AvatarFallback>
     </Avatar>
@@ -23,6 +23,6 @@ export const UserRow = ({ user, aside, children }: UserRowProps) => (
       <HandleLink handle={user.handle} />
     </span>
     {aside}
-    {children ? <div className="flex shrink-0 gap-1">{children}</div> : null}
+    {children ? <div className="flex shrink-0 gap-2">{children}</div> : null}
   </li>
 );

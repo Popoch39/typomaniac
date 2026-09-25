@@ -4,6 +4,7 @@ import { HANDLE_SEARCH_MIN_LENGTH } from "handle";
 import { ApiError } from "@/api/client";
 import { userSearchQueryOptions } from "@/api/user-search";
 import { UserFoundItem } from "@/components/friends/user-found-item";
+import { UserRowsSkeleton } from "@/components/friends/user-rows-skeleton";
 
 type UserSearchResultsProps = {
   // The start of a Handle, once the User has paused typing.
@@ -42,17 +43,21 @@ export const UserSearchResults = ({ handle }: UserSearchResultsProps) => {
   }
 
   if (search.isPending) {
-    return <p className="text-muted-foreground">Recherche…</p>;
+    return <UserRowsSkeleton label="Recherche des Users" rows={2} />;
   }
 
   if (search.data.length === 0) {
-    return <p className="text-muted-foreground">Aucun User dont le Handle commence ainsi.</p>;
+    return (
+      <p className="px-1 text-sm text-muted-foreground">
+        Aucun User dont le Handle commence ainsi.
+      </p>
+    );
   }
 
   return (
     <ul
       aria-busy={search.isPlaceholderData}
-      className="flex flex-col divide-y border border-foreground/15"
+      className="flex flex-col divide-y divide-border overflow-hidden rounded-card bg-card"
     >
       {search.data.map((user) => (
         <UserFoundItem key={user.id} user={user} />
