@@ -13,7 +13,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as DuelsRouteImport } from './routes/duels'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as HealthRouteImport } from './routes/health'
+import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ThemesRouteImport } from './routes/themes'
 import { Route as DuelsDuelIdRouteImport } from './routes/duels_.$duelId'
 import { Route as UHandleRouteImport } from './routes/u.$handle'
 
@@ -37,9 +39,19 @@ const HealthRoute = HealthRouteImport.update({
   path: '/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LeaderboardRoute = LeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ThemesRoute = ThemesRouteImport.update({
+  id: '/themes',
+  path: '/themes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DuelsDuelIdRoute = DuelsDuelIdRouteImport.update({
@@ -58,7 +70,9 @@ export interface FileRoutesByFullPath {
   '/duels': typeof DuelsRoute
   '/friends': typeof FriendsRoute
   '/health': typeof HealthRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
+  '/themes': typeof ThemesRoute
   '/duels/$duelId': typeof DuelsDuelIdRoute
   '/u/$handle': typeof UHandleRoute
 }
@@ -67,7 +81,9 @@ export interface FileRoutesByTo {
   '/duels': typeof DuelsRoute
   '/friends': typeof FriendsRoute
   '/health': typeof HealthRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
+  '/themes': typeof ThemesRoute
   '/duels/$duelId': typeof DuelsDuelIdRoute
   '/u/$handle': typeof UHandleRoute
 }
@@ -77,7 +93,9 @@ export interface FileRoutesById {
   '/duels': typeof DuelsRoute
   '/friends': typeof FriendsRoute
   '/health': typeof HealthRoute
+  '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
+  '/themes': typeof ThemesRoute
   '/duels_/$duelId': typeof DuelsDuelIdRoute
   '/u/$handle': typeof UHandleRoute
 }
@@ -88,7 +106,9 @@ export interface FileRouteTypes {
     | '/duels'
     | '/friends'
     | '/health'
+    | '/leaderboard'
     | '/profile'
+    | '/themes'
     | '/duels/$duelId'
     | '/u/$handle'
   fileRoutesByTo: FileRoutesByTo
@@ -97,7 +117,9 @@ export interface FileRouteTypes {
     | '/duels'
     | '/friends'
     | '/health'
+    | '/leaderboard'
     | '/profile'
+    | '/themes'
     | '/duels/$duelId'
     | '/u/$handle'
   id:
@@ -106,7 +128,9 @@ export interface FileRouteTypes {
     | '/duels'
     | '/friends'
     | '/health'
+    | '/leaderboard'
     | '/profile'
+    | '/themes'
     | '/duels_/$duelId'
     | '/u/$handle'
   fileRoutesById: FileRoutesById
@@ -116,7 +140,9 @@ export interface RootRouteChildren {
   DuelsRoute: typeof DuelsRoute
   FriendsRoute: typeof FriendsRoute
   HealthRoute: typeof HealthRoute
+  LeaderboardRoute: typeof LeaderboardRoute
   ProfileRoute: typeof ProfileRoute
+  ThemesRoute: typeof ThemesRoute
   DuelsDuelIdRoute: typeof DuelsDuelIdRoute
   UHandleRoute: typeof UHandleRoute
 }
@@ -151,11 +177,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/leaderboard': {
+      id: '/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/leaderboard'
+      preLoaderRoute: typeof LeaderboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/themes': {
+      id: '/themes'
+      path: '/themes'
+      fullPath: '/themes'
+      preLoaderRoute: typeof ThemesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/duels_/$duelId': {
@@ -180,7 +220,9 @@ const rootRouteChildren: RootRouteChildren = {
   DuelsRoute: DuelsRoute,
   FriendsRoute: FriendsRoute,
   HealthRoute: HealthRoute,
+  LeaderboardRoute: LeaderboardRoute,
   ProfileRoute: ProfileRoute,
+  ThemesRoute: ThemesRoute,
   DuelsDuelIdRoute: DuelsDuelIdRoute,
   UHandleRoute: UHandleRoute,
 }

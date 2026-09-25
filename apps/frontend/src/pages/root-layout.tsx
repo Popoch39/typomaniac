@@ -6,6 +6,7 @@ import { LiveActivity } from "@/components/activity/live-activity";
 import { AuthControl } from "@/components/auth/auth-control";
 import { OAuthErrorToast } from "@/components/auth/oauth-error-toast";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
+import { BrandMark } from "@/components/brand-mark";
 import { ChallengeNotices } from "@/components/challenge/challenge-notices";
 import { DuelOnChallenge } from "@/components/challenge/duel-on-challenge";
 import { WaitingChallenges } from "@/components/challenge/waiting-challenges";
@@ -13,6 +14,7 @@ import { DuelsNavLink } from "@/components/duel-history/duels-nav-link";
 import { FriendsNavLink } from "@/components/friends/friends-nav-link";
 import { LiveFriendLists } from "@/components/friends/live-friend-lists";
 import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
+import { ProfileNavLink } from "@/components/profile/profile-nav-link";
 import { RealtimeConnection } from "@/components/realtime-connection";
 import { NavPill } from "@/components/ui/nav-pill";
 import { NavPills } from "@/components/ui/nav-pills";
@@ -21,23 +23,26 @@ import { Toaster } from "@/components/ui/sonner";
 const homeActiveOptions = { exact: true };
 
 export const RootLayout = () => (
-  <div className="mx-auto flex min-h-svh max-w-5xl flex-col gap-8 px-4 py-5">
-    {/* Wraps on a phone: the nav and the controls do not fit side by side under ~360px. */}
-    <header className="flex flex-wrap items-center justify-between gap-3">
+  <div className="mx-auto flex min-h-svh w-full max-w-7xl flex-col gap-5 px-4 py-6 sm:px-8">
+    {/* Wraps below lg: the brand, the nav and the User chip only fit side by side on a desktop. */}
+    <header className="flex flex-wrap items-center gap-x-6 gap-y-3">
+      <BrandMark />
       <NavPills label="Navigation principale">
-        {/* Home only when on "/" itself: every path starts with it. */}
+        {/* Play only when on "/" itself: every path starts with it. */}
         <NavPill to="/" activeOptions={homeActiveOptions}>
-          Accueil
+          Jouer
         </NavPill>
+        <NavPill to="/leaderboard">Classement</NavPill>
         <DuelsNavLink />
         <FriendsNavLink />
-        <NavPill to="/health">Santé de l'API</NavPill>
+        <ProfileNavLink />
+        <NavPill to="/themes">Thèmes</NavPill>
       </NavPills>
-      <div className="flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-2">
         <AuthControl />
       </div>
     </header>
-    <main>
+    <main className="flex flex-1 flex-col">
       <Outlet />
     </main>
     <RealtimeConnection />

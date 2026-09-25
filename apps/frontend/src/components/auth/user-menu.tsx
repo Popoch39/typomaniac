@@ -42,12 +42,19 @@ export const UserMenu = ({ me }: UserMenuProps) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={<Button variant="ghost" size="icon" aria-label={`Menu de ${me.name}`} />}
+        render={
+          <Button
+            variant="ghost"
+            aria-label={`Menu de ${me.name}`}
+            className="h-11 gap-2.5 rounded-2xl bg-card py-1 pr-3.5 pl-1"
+          />
+        }
       >
-        <Avatar size="sm">
+        <Avatar size="lg" className="size-9">
           {me.image ? <AvatarImage src={me.image} alt="" /> : null}
           <AvatarFallback>{initials(me.name)}</AvatarFallback>
         </Avatar>
+        <span className="max-w-32 truncate text-sm font-bold">{me.handle ?? me.name}</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-56">
         <DropdownMenuGroup>
