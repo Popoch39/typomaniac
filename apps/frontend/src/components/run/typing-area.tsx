@@ -24,7 +24,7 @@ export const TypingArea = () => {
         <RunProgress />
         <LiveScore />
       </div>
-      <div className="relative">
+      <div className="relative rounded-card bg-card px-8 py-6">
         <SoloText />
         {focused ? null : <FocusOverlay onResume={focus} />}
       </div>

@@ -4,7 +4,7 @@ import type { DuelOpponent } from "@/stores/duel-store";
 
 // Who the opponent is, above the Duel's Text: their Handle and avatar, never their name.
 export const DuelFound = ({ opponent }: { opponent: DuelOpponent }) => (
-  <output className="flex items-center justify-center gap-3">
+  <output className="flex items-center justify-center gap-3 self-center rounded-full bg-card py-2 pr-5 pl-2">
     <Avatar>
       {opponent.image ? <AvatarImage src={opponent.image} alt="" /> : null}
       <AvatarFallback>{opponent.handle.charAt(0).toUpperCase()}</AvatarFallback>

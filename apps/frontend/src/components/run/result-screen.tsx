@@ -16,7 +16,11 @@ export const ResultScreen = ({ result }: { result: Result }) => {
   const score = useRunStore((state) => state.score);
 
   return (
-    <div ref={focusOnMount} tabIndex={-1} className="flex flex-col gap-8 outline-none">
+    <div
+      ref={focusOnMount}
+      tabIndex={-1}
+      className="flex flex-col gap-8 rounded-card bg-card p-8 outline-none"
+    >
       <ScoreResult score={score} />
       <RunResult result={result} />
       <div className="flex gap-2">

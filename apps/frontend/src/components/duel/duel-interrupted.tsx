@@ -7,7 +7,7 @@ export const DuelInterrupted = ({ message, action }: { message: string; action: 
   const claim = useDuelStore((store) => store.claim);
 
   return (
-    <div className="flex flex-col items-center gap-6 py-12">
+    <div className="flex flex-col items-center gap-6 rounded-card bg-card px-8 py-12">
       <output className="text-muted-foreground">{message}</output>
       <Button variant="outline" onClick={claim}>
         {action}

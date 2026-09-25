@@ -16,7 +16,7 @@ export const DuelHandleRequired = () => {
   const handle = me?.handle ?? null;
 
   return (
-    <div className="flex flex-col items-center gap-6 py-12 text-center">
+    <div className="flex flex-col items-center gap-6 rounded-card bg-card px-8 py-12 text-center">
       <output className="text-muted-foreground">
         {handle === null
           ? "En Duel, ton adversaire te voit par ton Handle : choisis-en un pour jouer. Les Runs solo restent ouverts sans."

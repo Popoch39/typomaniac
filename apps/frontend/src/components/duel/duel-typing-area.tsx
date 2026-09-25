@@ -36,7 +36,7 @@ export const DuelTypingArea = ({ opponent, startsAt, seconds }: DuelTypingAreaPr
         <DuelLiveScore name="Toi" />
         <DuelLiveScore name={opponentLabel} opponent />
       </div>
-      <div className="relative">
+      <div className="relative rounded-card bg-card px-8 py-6">
         <DuelText />
         {focused ? null : <FocusOverlay onResume={focus} />}
       </div>

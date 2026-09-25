@@ -9,7 +9,7 @@ export const SettingsBar = () => {
   const inDuel = useInDuel();
 
   return (
-    <fieldset className="flex min-w-0 flex-wrap items-center justify-center gap-x-6 gap-y-2">
+    <fieldset className="flex min-w-0 flex-wrap items-center justify-center gap-3">
       <legend className="sr-only">Réglages</legend>
       <PlaySetting />
       {inDuel ? <DuelFormat /> : <SoloSettings />}

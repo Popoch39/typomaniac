@@ -8,7 +8,13 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 export const SoundSetting = () => (
   <Popover>
     <PopoverTrigger
-      render={<Button variant="ghost" size="icon-sm" className="text-muted-foreground" />}
+      render={
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="size-13 rounded-full bg-card text-muted-foreground"
+        />
+      }
     >
       <SoundIcon />
     </PopoverTrigger>

@@ -3,7 +3,7 @@ export const FocusOverlay = ({ onResume }: { onResume: () => void }) => (
   <button
     type="button"
     onClick={onResume}
-    className="absolute inset-0 flex cursor-default items-center justify-center text-lg backdrop-blur-sm"
+    className="absolute inset-0 flex cursor-default items-center justify-center rounded-card text-lg font-semibold backdrop-blur-sm"
   >
     clique ou tape pour reprendre
   </button>
