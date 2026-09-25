@@ -20,7 +20,7 @@ type LiveStatProps = {
 export const LiveStat = ({ term, children, tone = "own" }: LiveStatProps) => (
   <div className="flex items-baseline gap-2">
     <dt className="text-sm text-muted-foreground">{term}</dt>
-    <dd className={cn("text-xl tabular-nums transition-colors", toneClassNames[tone])}>
+    <dd className={cn("text-xl font-mono tabular-nums transition-colors", toneClassNames[tone])}>
       {children}
     </dd>
   </div>

@@ -16,7 +16,7 @@ export const FriendsListSection = ({ title, count, empty, children }: FriendsLis
     <section aria-labelledby={titleId} className="flex flex-col gap-3">
       <h2
         id={titleId}
-        className="text-[0.7rem] font-medium text-muted-foreground uppercase tabular-nums"
+        className="text-[0.7rem] font-medium text-muted-foreground uppercase font-mono tabular-nums"
       >
         {title} ({count})
       </h2>

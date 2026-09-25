@@ -7,7 +7,6 @@ import { createAudioEngine } from "@/audio/audio-engine";
 import { previewSound, startSoundReactor } from "@/audio/sound-reactor";
 import { openWebAudio } from "@/audio/web-audio-output";
 import { type SoundPreview, SoundPreviewContext } from "@/components/sound/sound-preview-context";
-import { ThemeProvider } from "@/components/theme-provider";
 import "@/index.css";
 import { queryClient } from "@/query-client";
 import { router } from "@/router";
@@ -27,12 +26,10 @@ const preview: SoundPreview = (choice) => previewSound(audioEngine, choice);
 
 createRoot(rootElement).render(
   <StrictMode>
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <SoundPreviewContext value={preview}>
-          <RouterProvider router={router} />
-        </SoundPreviewContext>
-      </QueryClientProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <SoundPreviewContext value={preview}>
+        <RouterProvider router={router} />
+      </SoundPreviewContext>
+    </QueryClientProvider>
   </StrictMode>,
 );

@@ -18,7 +18,10 @@ type ResultStatProps = {
 export const ResultStat = ({ term, children, size, description }: ResultStatProps) => (
   <div className="flex flex-col gap-1">
     <dt className="text-lg text-muted-foreground">{term}</dt>
-    <dd title={description} className={`text-caret tabular-nums ${valueClassNames[size]}`}>
+    <dd
+      title={description}
+      className={`text-caret font-mono tabular-nums ${valueClassNames[size]}`}
+    >
       {children}
     </dd>
   </div>

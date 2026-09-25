@@ -45,7 +45,7 @@ export const ProgressionChart = ({
     return (
       <>
         <div>{dateFormat.format(point.endedAt)}</div>
-        <div className="font-normal text-muted-foreground tabular-nums">
+        <div className="font-normal text-muted-foreground font-mono tabular-nums">
           {`${round(point.wpm)} wpm · ${round(point.raw)} raw · ${round(point.accuracy)} % acc · ${round(point.consistency)} % cons`}
         </div>
       </>

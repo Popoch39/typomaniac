@@ -9,7 +9,7 @@ export const FriendRequestsBadge = () => {
   return count > 0 ? (
     <span
       aria-label={`${count} Friend requests en attente`}
-      className="min-w-4 bg-caret px-1 text-center text-[0.65rem] leading-4 font-bold text-background tabular-nums"
+      className="min-w-4 bg-caret px-1 text-center text-[0.65rem] leading-4 font-bold text-background font-mono tabular-nums"
     >
       {count}
     </span>

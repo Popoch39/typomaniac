@@ -8,8 +8,6 @@ import {
 import type { CSSProperties } from "react";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
 
-import { useTheme } from "@/components/theme-context";
-
 // Sonner's own CSS variables are not in React's CSSProperties type.
 type SonnerStyle = CSSProperties & {
   "--normal-bg": string;
@@ -22,7 +20,7 @@ const style: SonnerStyle = {
   "--normal-bg": "var(--popover)",
   "--normal-text": "var(--popover-foreground)",
   "--normal-border": "var(--border)",
-  "--border-radius": "0",
+  "--border-radius": "16px",
 };
 
 const icons = {
@@ -35,18 +33,14 @@ const icons = {
 
 const toastOptions = { classNames: { toast: "cn-toast" } };
 
-// Follows the app theme (theme-context) instead of next-themes, which the shadcn template assumes.
-export const Toaster = (props: ToasterProps) => {
-  const { theme } = useTheme();
-
-  return (
-    <Sonner
-      theme={theme}
-      className="toaster group"
-      icons={icons}
-      style={style}
-      toastOptions={toastOptions}
-      {...props}
-    />
-  );
-};
+// The app is dark only (Social style), so the toasts are too.
+export const Toaster = (props: ToasterProps) => (
+  <Sonner
+    theme="dark"
+    className="toaster group"
+    icons={icons}
+    style={style}
+    toastOptions={toastOptions}
+    {...props}
+  />
+);

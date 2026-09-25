@@ -8,5 +8,5 @@ type ChallengeTimeLeftProps = {
 export const ChallengeTimeLeft = ({ expiresAt }: ChallengeTimeLeftProps) => {
   const left = useSecondsLeft(expiresAt);
 
-  return <span className="text-muted-foreground tabular-nums">{left} s</span>;
+  return <span className="text-muted-foreground font-mono tabular-nums">{left} s</span>;
 };

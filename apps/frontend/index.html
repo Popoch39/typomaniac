@@ -1,24 +1,17 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
-    <script>
-      // Apply the theme before first paint to avoid a flash. Mirrors src/components/theme-provider.tsx:
-      // "light" / "dark" are applied as-is, "system" or nothing stored follows the OS preference.
-      (() => {
-        let theme;
-        try {
-          theme = localStorage.getItem("vite-ui-theme");
-        } catch {}
-        if (theme !== "light" && theme !== "dark") {
-          theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-        }
-        document.documentElement.classList.add(theme);
-      })();
-    </script>
+    <meta name="color-scheme" content="dark" />
+    <title>typomaniac</title>
+    <!-- The ink of the Social style (src/index.css), painted before the CSS loads: no white flash. -->
+    <style>
+      html {
+        background: #15141c;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

@@ -8,7 +8,7 @@ export const OpponentWpm = ({ name, elapsed }: { name: string; elapsed: number }
   const wpm = opponentRun === null ? 0 : liveWpm(opponentRun, Math.max(0, elapsed));
 
   return (
-    <p className="text-xl text-opponent-caret tabular-nums">
+    <p className="text-xl text-opponent-caret font-mono tabular-nums">
       <span className="sr-only">wpm de {name} : </span>
       {Math.round(wpm)} <span aria-hidden="true">wpm</span>
     </p>

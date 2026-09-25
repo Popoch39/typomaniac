@@ -6,7 +6,7 @@ export const WordCounter = () => {
   const total = useRunStore((state) => state.run.words.length);
 
   return (
-    <p className="text-xl text-caret tabular-nums">
+    <p className="text-xl text-caret font-mono tabular-nums">
       {validated}/{total}
     </p>
   );

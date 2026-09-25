@@ -65,7 +65,7 @@ function ChartTooltipContent({ active, payload, label, labelFormatter }: ChartTo
   }
 
   return (
-    <div className="grid min-w-32 items-start gap-1.5 rounded-none border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+    <div className="grid min-w-32 items-start gap-1.5 rounded-xl border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
       <div className="font-medium">{labelFormatter ? labelFormatter(label) : label}</div>
       <div className="grid gap-1.5">
         {payload.map((item) => {
@@ -79,7 +79,7 @@ function ChartTooltipContent({ active, payload, label, labelFormatter }: ChartTo
               />
               <div className="flex flex-1 items-center justify-between gap-4 leading-none">
                 <span className="text-muted-foreground">{config[key]?.label ?? key}</span>
-                <span className="font-medium text-foreground tabular-nums">
+                <span className="font-medium text-foreground font-mono tabular-nums">
                   {String(item.value)}
                 </span>
               </div>

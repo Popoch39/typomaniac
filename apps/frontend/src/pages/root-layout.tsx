@@ -12,7 +12,6 @@ import { DuelsNavLink } from "@/components/duel-history/duels-nav-link";
 import { FriendsNavLink } from "@/components/friends/friends-nav-link";
 import { LiveFriendLists } from "@/components/friends/live-friend-lists";
 import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
-import { ModeToggle } from "@/components/mode-toggle";
 import { RealtimeConnection } from "@/components/realtime-connection";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
@@ -46,7 +45,6 @@ export const RootLayout = () => (
       </nav>
       <div className="flex items-center gap-2">
         <AuthControl />
-        <ModeToggle />
       </div>
     </header>
     <main>

@@ -29,7 +29,7 @@ export const RunText = ({ run, tone, other, lastBurst }: RunTextProps) => {
   );
 
   return (
-    <div className="h-[3lh] overflow-hidden text-2xl leading-relaxed">
+    <div className="h-[3lh] overflow-hidden font-mono text-2xl leading-relaxed">
       <div ref={scrollRef} className="relative">
         {other === null ? null : (
           <RunCaret ref={opponentCaretRef} tone={other.tone} label={other.label} />

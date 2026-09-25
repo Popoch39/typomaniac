@@ -26,11 +26,11 @@ export const DuelHistoryItem = ({ duel, open, onToggle }: DuelHistoryItemProps) 
       >
         <span className="sr-only">Duel contre {opponentName(duel.opponent)}</span>
         <FinishedDuelOutcome outcome={duel.outcome} forfeit={duel.forfeit} />
-        <span className="tabular-nums">
+        <span className="font-mono tabular-nums">
           <span className="text-[0.7rem] text-muted-foreground">Score </span>
           {orDash(duel.score)} – {orDash(duel.opponentScore)}
         </span>
-        <span className="text-muted-foreground tabular-nums">
+        <span className="text-muted-foreground font-mono tabular-nums">
           {orDash(duel.wpm)} – {orDash(duel.opponentWpm)} wpm
         </span>
       </button>

@@ -8,7 +8,7 @@ export const DuelClock = ({ elapsed, seconds }: DuelClockProps) => {
     <p
       role="timer"
       aria-label={counting ? "départ dans" : "temps restant"}
-      className="text-xl text-caret tabular-nums"
+      className="text-xl text-caret font-mono tabular-nums"
     >
       {counting ? Math.ceil(-elapsed / 1000) : Math.max(0, Math.ceil(seconds - elapsed / 1000))}
     </p>
