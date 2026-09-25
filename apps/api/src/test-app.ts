@@ -20,7 +20,7 @@ import type {
   DuelStore,
 } from "./modules/duel/store";
 import { type FriendMessage, FriendLiveModel, type Relation } from "./modules/friend/model";
-import { type FriendStore, orderedPair } from "./modules/friend/store";
+import { type Friendship, type FriendStore, orderedPair } from "./modules/friend/store";
 import { authUsers, type HandleSearch, type UserRow } from "./modules/user/users";
 
 // Shared by the test files: the app's config with in-memory dependencies.
@@ -155,6 +155,27 @@ export const memoryDuelStore = () => {
 
   const store: DuelStore = {
     progression,
+    recentDuelsOf: async (userIds, limit) =>
+      saved
+        .toSorted(byNewestDuel)
+        .flatMap((record) => {
+          const players = playersOf(record);
+
+          if (!players.some((player) => userIds.includes(player.userId))) {
+            return [];
+          }
+
+          return [
+            {
+              id: record.id,
+              endedAt: record.endedAt,
+              outcome: record.outcome,
+              winnerId: winnerOf(record),
+              players: players.map(({ userId, result }) => ({ userId, wpm: result.wpm })),
+            },
+          ];
+        })
+        .slice(0, limit),
     save: async (record) => {
       saved.push(record);
     },
@@ -249,11 +270,12 @@ export const memoryDuelStore = () => {
   return { store, saved, deleteUser };
 };
 
-// The Friend requests and the friendships in memory, in the order they were written.
-export const memoryFriendStore = (): FriendStore => {
+// The Friend requests and the friendships in memory, in the order they were written. `now` dates
+// each friendship: a test may pass its own to order them.
+export const memoryFriendStore = ({ now = Date.now } = {}): FriendStore => {
   // Oldest first: read backwards for the newest first.
   let requests: { senderId: string; recipientId: string }[] = [];
-  let friendships: { pair: [string, string] }[] = [];
+  let friendships: Friendship[] = [];
 
   const isRequest = (senderId: string, recipientId: string) =>
     requests.some(
@@ -332,7 +354,10 @@ export const memoryFriendStore = (): FriendStore => {
       }
 
       if (!friendsOf(senderId).includes(recipientId)) {
-        friendships = [...friendships, { pair: orderedPair(senderId, recipientId) }];
+        friendships = [
+          ...friendships,
+          { pair: orderedPair(senderId, recipientId), createdAt: now() },
+        ];
       }
 
       return true;
@@ -345,6 +370,13 @@ export const memoryFriendStore = (): FriendStore => {
 
       return friendships.length < before;
     },
+    // The newest first: the last written first among those of the same instant.
+    recentFriendshipsOf: async (userIds, limit) =>
+      friendships
+        .toReversed()
+        .filter(({ pair: [a, b] }) => userIds.includes(a) || userIds.includes(b))
+        .toSorted((x, y) => y.createdAt - x.createdAt)
+        .slice(0, limit),
   };
 };
 

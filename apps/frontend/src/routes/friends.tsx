@@ -1,5 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
+import { activityQueryOptions } from "@/api/activity";
 import { friendRequestsQueryOptions, friendsQueryOptions } from "@/api/friends";
 import { meQueryOptions } from "@/api/me";
 import { FriendsPage } from "@/pages/friends-page";
@@ -19,6 +20,8 @@ export const Route = createFileRoute("/friends")({
   },
   loader: async ({ context }) => {
     if (context.hasHandle) {
+      // Started, never awaited: the Activity has its own Skeleton.
+      void context.queryClient.prefetchQuery(activityQueryOptions);
       await Promise.all([
         context.queryClient.ensureQueryData(friendsQueryOptions),
         context.queryClient.ensureQueryData(friendRequestsQueryOptions),

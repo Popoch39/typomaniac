@@ -161,4 +161,23 @@ export const drizzleFriendStore = (db: BunSQLDatabase<Table>): FriendStore => ({
 
     return deleted.length > 0;
   },
+  recentFriendshipsOf: async (userIds, limit) => {
+    if (userIds.length === 0) {
+      return [];
+    }
+
+    const ids = [...userIds];
+
+    const rows = await db
+      .select()
+      .from(friendship)
+      .where(or(inArray(friendship.userAId, ids), inArray(friendship.userBId, ids)))
+      .orderBy(desc(friendship.createdAt), desc(friendship.userAId), desc(friendship.userBId))
+      .limit(limit);
+
+    return rows.map(({ userAId, userBId, createdAt }) => ({
+      pair: [userAId, userBId],
+      createdAt: createdAt.getTime(),
+    }));
+  },
 });

@@ -4,6 +4,7 @@ import type { Logger } from "pino";
 
 import { API_PREFIX } from "./lib/api-prefix";
 import type { Clock } from "./lib/clock";
+import { activityModule } from "./modules/activity";
 import { type AuthHandler, authentication } from "./modules/auth";
 import { duelModule } from "./modules/duel";
 import { MAX_DUEL_MESSAGE_SIZE } from "./modules/duel/model";
@@ -31,6 +32,8 @@ export type { ApiErrorBody, ErrorCode, ErrorDetail } from "./lib/errors";
 export type { ClientMessage, ServerMessage } from "./modules/duel/model";
 
 export type { FriendRefusal, Presence } from "./modules/friend/model";
+
+export type { Activity } from "./modules/activity/model";
 
 export type { ChallengeEnding, ChallengeRefusal } from "./modules/challenge/model";
 
@@ -129,6 +132,7 @@ export const createApp = (config: AppConfig) => {
     )
     .use(duelHistoryModule({ auth, trustProxy, store: duelStore, users }))
     .use(profileModule({ auth, trustProxy, store: duelStore, users }))
+    .use(activityModule({ auth, trustProxy, duelStore, friendStore, users }))
     .use(duelModule({ auth, trustProxy, queue: duelQueue, friendsLive }));
 };
 

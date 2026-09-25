@@ -2,6 +2,7 @@ import { Type } from "@sinclair/typebox";
 import { Value } from "@sinclair/typebox/value";
 import { queryOptions } from "@tanstack/react-query";
 
+import { activityQueryOptions } from "@/api/activity";
 import { api, unwrap } from "@/api/client";
 import { USER_SEARCH_KEY } from "@/api/user-search";
 
@@ -25,11 +26,13 @@ export const friendRequestsQueryOptions = queryOptions({
   queryFn: fetchFriendRequests,
 });
 
-// What one of the User's actions may change: their lists, and the relations the search shows.
+// What one of the User's actions may change: their lists, the relations the search shows, and
+// the Activity (a new Friend brings theirs, an ex-Friend takes it away).
 export const FRIEND_QUERY_KEYS = [
   friendsQueryOptions.queryKey,
   friendRequestsQueryOptions.queryKey,
   USER_SEARCH_KEY,
+  activityQueryOptions.queryKey,
 ] as const;
 
 // Each action on the other User answers where the signed-in User then stands with them.

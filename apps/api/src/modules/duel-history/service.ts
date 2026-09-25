@@ -1,5 +1,11 @@
 import { ApiError } from "../../lib/errors";
-import type { DuelCursor, DuelHistoryRow, DuelStore, PlayedDuelPlayer } from "../duel/store";
+import {
+  type DuelCursor,
+  type DuelHistoryRow,
+  type DuelStore,
+  outcomeFor,
+  type PlayedDuelPlayer,
+} from "../duel/store";
 import type { HandleMatch, Users } from "../user/users";
 import type { DuelHistoryEntry, DuelHistoryPage, ReplayedDuel, ReplayedPlayer } from "./model";
 
@@ -20,19 +26,6 @@ const parseCursor = (cursor: string): DuelCursor => {
   }
 
   return { endedAt, id: cursor.slice(colon + 1) };
-};
-
-// The outcome seen from the reader: the winner won, the other lost, whether by Score or by Forfeit
-// (the one who forfeited is the one who did not win).
-const outcomeFor = (
-  userId: string,
-  { outcome, winnerId }: Pick<DuelHistoryRow, "outcome" | "winnerId">,
-) => {
-  if (outcome === "draw") {
-    return "draw";
-  }
-
-  return winnerId === userId ? "win" : "loss";
 };
 
 const entryOf = (

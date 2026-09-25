@@ -77,6 +77,16 @@ export type ProgressionPoint = {
   consistency: number;
 };
 
+// A finished Duel as the Activity shows it: its players still there (a deleted User's row goes
+// with them) and their wpm.
+export type RecentDuel = {
+  id: string;
+  endedAt: number;
+  outcome: DuelRecord["outcome"];
+  winnerId: string | null;
+  players: { userId: string; wpm: number }[];
+};
+
 // Where finished Duels are written, injected through AppConfig: Drizzle in production, in memory
 // in the tests. A Duel still running when the API stops is never written.
 export type DuelStore = {
@@ -98,6 +108,22 @@ export type DuelStore = {
   // The Progression of a User: their last `limit` finished Duels but the Forfeits (all of them when
   // null), the oldest first.
   progression: (userId: string, limit: number | null) => Promise<ProgressionPoint[]>;
+  // The last `limit` finished Duels played by any of `userIds`, each once, the most recent first
+  // (by end, then by id).
+  recentDuelsOf: (userIds: readonly string[], limit: number) => Promise<RecentDuel[]>;
+};
+
+// The outcome seen from `userId`: the winner won, the other lost, whether by Score or by Forfeit
+// (the one who forfeited is the one who did not win).
+export const outcomeFor = (
+  userId: string,
+  { outcome, winnerId }: Pick<DuelRecord, "outcome" | "winnerId">,
+) => {
+  if (outcome === "draw") {
+    return "draw";
+  }
+
+  return winnerId === userId ? "win" : "loss";
 };
 
 // A User's Pace, from the wpm of their last Duels (the engine's paceOf).

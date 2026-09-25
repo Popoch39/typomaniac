@@ -1,5 +1,8 @@
 import type { Relation } from "./model";
 
+// A friendship and when it began, in ms since the epoch: the pair ordered, the smaller id first.
+export type Friendship = { pair: [string, string]; createdAt: number };
+
 // The Friend requests waiting and the friendships, injected through AppConfig: Drizzle in
 // production, in memory in the tests. It only reads and writes: the rules live in the service.
 export type FriendStore = {
@@ -19,6 +22,8 @@ export type FriendStore = {
   acceptRequest: (senderId: string, recipientId: string) => Promise<boolean>;
   // False when they were not Friends.
   deleteFriendship: (userId: string, otherId: string) => Promise<boolean>;
+  // The last `limit` friendships of any of `userIds`, each once, the newest first.
+  recentFriendshipsOf: (userIds: readonly string[], limit: number) => Promise<Friendship[]>;
 };
 
 // A friendship is written once per pair, the smaller id first.

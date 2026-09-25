@@ -1,4 +1,4 @@
-import { and, count as countRows, desc, eq, lt, max, ne, or, sql } from "drizzle-orm";
+import { and, count as countRows, desc, eq, inArray, lt, max, ne, or, sql } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import { alias } from "drizzle-orm/pg-core";
 
@@ -184,6 +184,49 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
       raw,
       accuracy,
       consistency,
+    }));
+  },
+  // The Duels first, then the player rows of those Duels.
+  recentDuelsOf: async (userIds, limit) => {
+    if (userIds.length === 0) {
+      return [];
+    }
+
+    const duels = await db
+      .selectDistinct({
+        id: duel.id,
+        endedAt: duel.endedAt,
+        outcome: duel.outcome,
+        winnerId: duel.winnerId,
+      })
+      .from(duel)
+      .innerJoin(duelPlayer, eq(duelPlayer.duelId, duel.id))
+      .where(inArray(duelPlayer.userId, [...userIds]))
+      .orderBy(desc(duel.endedAt), desc(duel.id))
+      .limit(limit);
+
+    if (duels.length === 0) {
+      return [];
+    }
+
+    const players = await db
+      .select({ duelId: duelPlayer.duelId, userId: duelPlayer.userId, wpm: duelPlayer.wpm })
+      .from(duelPlayer)
+      .where(
+        inArray(
+          duelPlayer.duelId,
+          duels.map((row) => row.id),
+        ),
+      );
+
+    return duels.map((row) => ({
+      id: row.id,
+      endedAt: row.endedAt.getTime(),
+      outcome: row.outcome,
+      winnerId: row.winnerId,
+      players: players.flatMap(({ duelId, userId, wpm }) =>
+        duelId === row.id ? [{ userId, wpm }] : [],
+      ),
     }));
   },
   // One pass over the User's player rows. A loss is neither a win nor a Draw: a deleted winner

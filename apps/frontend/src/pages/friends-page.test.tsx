@@ -16,6 +16,7 @@ import {
   friendRequestsQueryOptions,
   friendsQueryOptions,
 } from "@/api/friends";
+import { type Activity, activityQueryOptions } from "@/api/activity";
 import { type Me, meQueryOptions } from "@/api/me";
 import { type UserFound, userSearchQueryOptions } from "@/api/user-search";
 import { FriendsPage } from "@/pages/friends-page";
@@ -35,13 +36,34 @@ const requests: FriendRequests = {
   sent: [{ id: "linus-id", handle: "linus", image: null }],
 };
 
+const alan = { id: "alan-id", handle: "alan", image: null };
+
+const activities: Activity[] = [
+  {
+    type: "duel",
+    id: "duel-1",
+    at: Date.now() - 5 * 60_000,
+    forfeit: true,
+    friend: { ...alan, wpm: 72.4, outcome: "win" },
+    opponent: { id: "turing-id", handle: "turing", image: null, wpm: 40, outcome: "loss" },
+  },
+  {
+    type: "friendship",
+    id: "ada-id:alan-id",
+    at: Date.now() - 2 * 86_400_000,
+    friend: alan,
+    other: { id: "ada-id", handle: "ada", image: null },
+  },
+];
+
 const found: UserFound[] = [{ id: "barbara-id", handle: "barbara", image: null, relation: "none" }];
 
 // The page with the User's lists and a search already in the cache, on a router of its own.
-const renderPage = async (userFriends: Friend[] = friends) => {
+const renderPage = async (userFriends: Friend[] = friends, activity: Activity[] = activities) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
 
   queryClient.setQueryData(meQueryOptions.queryKey, me);
+  queryClient.setQueryData(activityQueryOptions.queryKey, activity);
   queryClient.setQueryData(friendsQueryOptions.queryKey, userFriends);
   queryClient.setQueryData(friendRequestsQueryOptions.queryKey, requests);
   queryClient.setQueryData(userSearchQueryOptions("bar").queryKey, found);
@@ -66,7 +88,7 @@ const renderPage = async (userFriends: Friend[] = friends) => {
 
 describe("FriendsPage", () => {
   test("each Handle leads to its User's Profile: Friends and Friend requests", async () => {
-    await renderPage();
+    await renderPage(friends, []);
 
     for (const handle of ["alan", "grace", "linus"]) {
       expect(screen.getByRole("link", { name: `@${handle}` })).toHaveAttribute(
@@ -97,6 +119,32 @@ describe("FriendsPage", () => {
     await renderPage([]);
 
     await userEvent.click(screen.getByRole("button", { name: "Chercher un User" }));
+
+    expect(screen.getByLabelText("Chercher un User")).toHaveFocus();
+  });
+
+  test("the Activity column tells the Friends' Duels and friendships, newest first", async () => {
+    await renderPage();
+
+    const column = within(screen.getByRole("region", { name: "Activity" }));
+    const items = column.getAllByRole("listitem");
+
+    // Each row opens on the Friend's avatar, their initial without an image.
+    expect(items.map((item) => item.textContent)).toEqual([
+      "A@alan a battu @turing par abandon72 wpm · 40 wpmil y a 5 minutes",
+      "A@alan et @ada sont maintenant Friendsavant-hier",
+    ]);
+    expect(column.getByRole("link", { name: "@turing" })).toHaveAttribute("href", "/u/turing");
+  });
+
+  test("without Activity, the column brings the User to the search", async () => {
+    await renderPage(friends, []);
+
+    const column = within(screen.getByRole("region", { name: "Activity" }));
+
+    expect(column.getByText("Pas encore d'Activity")).toBeInTheDocument();
+
+    await userEvent.click(column.getByRole("button", { name: "Chercher un Friend" }));
 
     expect(screen.getByLabelText("Chercher un User")).toHaveFocus();
   });

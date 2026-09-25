@@ -7,8 +7,12 @@ Contexte unique du monorepo : le vocabulaire partagé par le front et l'API.
 ### Identité
 
 **User** :
-Une personne connue de typomaniac, identifiée par son email. C'est la seule entité qui porte l'identité et le profil ; il n'existe pas de profil séparé. Les autres Users ne voient que son Handle et son avatar, jamais son email ni son name.
-_Avoid_ : compte, player, membre, profil
+Une personne connue de typomaniac, identifiée par son email. C'est la seule entité qui porte l'identité ; son Profile n'est qu'une page qui le montre, pas une entité séparée. Les autres Users ne voient que son Handle, son avatar et ses Stats, jamais son email ni son name.
+_Avoid_ : compte, player, membre
+
+**Profile** :
+La page d'un User, trouvée par son Handle, que tout User connecté peut voir : son Handle, son avatar et ses Stats. Sa Duel history, ses Duel charts et ses Replays n'y figurent pas.
+_Avoid_ : fiche, page perso, compte
 
 **Handle** :
 Le nom public et unique d'un User, choisi par lui avant son premier Duel et modifiable à tout moment : de 3 à 20 caractères parmi `a-z`, `0-9` et `_`, sans distinction de casse. C'est par lui qu'on trouve un User et qu'on le désigne partout dans l'app. Changer de Handle libère l'ancien ; les Friends et l'historique tiennent au User, pas au Handle.
@@ -119,6 +123,18 @@ _Avoid_ : match history, historique de parties
 La relecture d'un Duel enregistré, à partir des Keystrokes des deux Users, au rythme où ils ont tapé.
 _Avoid_ : playback, rediffusion
 
+**Duel chart** :
+Le graph d'un Duel terminé, seconde par seconde, pour chacun des deux Users : son wpm cumulé, son raw de chaque seconde et ses Misses. Seuls les deux Users du Duel le voient.
+_Avoid_ : graph, courbe, timeline
+
+**Stats** :
+Les agrégats des Duels terminés d'un User : son bilan (victoires, défaites, Draws), ses moyennes, ses records et sa Progression. Les Runs n'y comptent pas.
+_Avoid_ : statistiques, Result, score
+
+**Progression** :
+L'évolution Duel après Duel du wpm, du raw, de l'accuracy et de la consistency d'un User. Les Duels terminés par un Forfeit n'y figurent pas, parce que leur Result ne couvre pas tout le temps.
+_Avoid_ : évolution, historique, courbe
+
 ### Social
 
 **Friend** :
@@ -136,3 +152,7 @@ _Avoid_ : statut, online, activité
 **Challenge** :
 L'invitation d'un User à l'un de ses Friends, en ligne, à jouer un Duel ensemble, hors de la Queue. Elle expire au bout de 30 secondes ; l'envoyeur peut l'annuler, le destinataire l'accepter ou la refuser. Accepter lance le Countdown du Duel, qui compte comme n'importe quel autre. Un User n'a qu'un Challenge envoyé à la fois.
 _Avoid_ : défi, invitation, invite, duel privé
+
+**Activity** :
+Ce qu'un User voit de ses Friends actuels : leurs Duels terminés, contre n'importe qui, et leurs nouvelles amitiés, avec n'importe qui. Elle découle des Duels et des amitiés : quand une amitié prend fin, les Activities de l'ex-Friend disparaissent. L'arrivée en ligne d'un Friend y apparaît sur le moment, sans être conservée.
+_Avoid_ : feed, fil, timeline, fil d'actualité
