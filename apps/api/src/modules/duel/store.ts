@@ -1,7 +1,7 @@
 import type { Rank, Rating, Standing } from "ranked";
 import { type Keystroke, paceDuels, paceOf, type Result } from "typing-engine";
 
-import type { Duel, DuelScore } from "./model";
+import type { Duel, DuelScore, Form } from "./model";
 
 // A player of a finished Duel: their Result, their Pace and Score and the Keystrokes the server
 // accepted from them, which replay to both on the Duel's Text.
@@ -95,6 +95,9 @@ export type RecentDuel = {
   players: { userId: string; wpm: number }[];
 };
 
+// A finished Ranked Duel as the Form reads it: how it ended and the reader's wpm.
+export type RankedDuelRow = Pick<DuelRecord, "outcome" | "winnerId"> & { wpm: number };
+
 // A User of the Classement: their place in it, from 1, and their rank, never their MMR.
 export type LeaderboardRow = { userId: string; position: number; standing: Standing };
 
@@ -116,6 +119,9 @@ export type DuelStore = {
   // The wpm of the last `count` Duels a User finished, the most recent first: those written before
   // the Score too.
   recentWpms: (userId: string, count: number) => Promise<number[]>;
+  // The last `count` Ranked Duels a User finished, the most recent first (by end, then by id):
+  // neither the Challenges nor the Duels played before ranked existed.
+  recentRankedDuels: (userId: string, count: number) => Promise<RankedDuelRow[]>;
   // A page of a User's Duel history: at most `limit` of their Duels, the most recent first (by end,
   // then by id), those before `before` when given.
   history: (
@@ -151,3 +157,20 @@ export const outcomeFor = (
 // A User's Pace, from the wpm of their last Duels (the engine's paceOf).
 export const readPace = async (store: DuelStore, userId: string) =>
   paceOf(await store.recentWpms(userId, paceDuels));
+
+// How many Ranked Duels the Form shows.
+export const FORM_DUELS = 5;
+
+// A User's Form, from their last Ranked Duels: null without one.
+export const readForm = async (store: DuelStore, userId: string): Promise<Form | null> => {
+  const duels = await store.recentRankedDuels(userId, FORM_DUELS);
+
+  if (duels.length === 0) {
+    return null;
+  }
+
+  return {
+    avgWpm: duels.reduce((sum, { wpm }) => sum + wpm, 0) / duels.length,
+    outcomes: duels.map((duel) => outcomeFor(userId, duel)),
+  };
+};

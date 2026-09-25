@@ -35,7 +35,7 @@ export const DuelArea = () => {
         <DuelTypingArea
           id={state.duel.id}
           opponent={state.duel.opponent}
-          opponentRank={state.duel.opponentRank}
+          pairing={state.duel}
           startsAt={state.duel.startsAt}
           seconds={state.duel.config.seconds}
         />

@@ -7,6 +7,7 @@ import {
   memoryDuelStore,
   memoryFriendStore,
   openClient,
+  rankedPastDuel,
   signIn,
   type TestAuth,
   type TestClient,
@@ -202,6 +203,8 @@ describe("Challenges, on the socket", () => {
     const alan = await newUser("Alan");
 
     await befriend(ada, alan);
+    // Ada's Form from the Queue is shown in a Challenge all the same.
+    duels.saved.push(rankedPastDuel(ada.id, 64, NOW - 1000, "win"));
 
     const adaTab = await tab(ada);
     const alanTab = await tab(alan);
@@ -220,7 +223,10 @@ describe("Challenges, on the socket", () => {
       opponent: { handle: "ada", image: ada.image },
       serverTime: NOW,
       // Never ranked: no rank to show.
+      selfRank: null,
       opponentRank: null,
+      selfForm: null,
+      opponentForm: { avgWpm: 64, outcomes: ["win"] },
     });
     expect(adaFound).toMatchObject({ type: "duel-found", opponent: { handle: "alan" } });
 
@@ -229,7 +235,8 @@ describe("Challenges, on the socket", () => {
     clock.set(NOW + 4500 + 30_000 + 1000);
     expect(await alanTab.next()).toMatchObject({ type: "duel-ended", ranked: null });
     expect(await adaTab.next()).toMatchObject({ type: "duel-ended", ranked: null });
-    expect(duels.saved).toMatchObject([{ players: [{ rated: null }, { rated: null }] }]);
+    expect(duels.saved).toHaveLength(2);
+    expect(duels.saved.at(-1)).toMatchObject({ players: [{ rated: null }, { rated: null }] });
     expect(duels.ratings.size).toBe(0);
   });
 

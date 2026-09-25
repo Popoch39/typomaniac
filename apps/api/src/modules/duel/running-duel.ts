@@ -14,7 +14,7 @@ import {
 
 import { type RankedOutcome, type Rating, rateDuel } from "ranked";
 
-import type { Duel, DuelScore, ServerMessage } from "./model";
+import type { Duel, DuelScore, Form, ServerMessage } from "./model";
 import type { DuelPlayerRecord, DuelRecord, RatedPlayer } from "./store";
 
 // How late past the end a Keystroke may still arrive: the network delay of the last ones.
@@ -27,9 +27,9 @@ const MAX_KEYSTROKES_PER_SECOND = 40;
 // the Queue. Only a User with a Handle plays.
 export type User = { id: string; handle: string; image: string | null };
 
-// A User paired into a Duel, with their Pace in wpm, frozen for it, and their Rating when the Duel
-// is ranked (from the Queue): null for a Challenge, never ranked.
-export type PacedUser = { user: User; pace: number; rating: Rating | null };
+// A User paired into a Duel, with their Pace in wpm and their Form, both frozen for it, and their
+// Rating when the Duel is ranked (from the Queue): null for a Challenge, never ranked.
+export type PacedUser = { user: User; pace: number; form: Form | null; rating: Rating | null };
 
 export type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
 
@@ -307,15 +307,19 @@ export class RunningDuel {
     return profileOf(this.#opponent(userId).user);
   }
 
-  // A player's Pace and the opponent's, with the opponent's rank before the Duel (never the MMR),
-  // as `duel-found` and `duel-resumed` send them.
+  // A player's Pace, rank before the Duel (never the MMR) and Form, and the opponent's, as
+  // `duel-found` and `duel-resumed` send them.
   pairingOf(userId: string) {
+    const player = this.#player(userId);
     const opponent = this.#opponent(userId);
 
     return {
-      pace: this.#player(userId).pace,
+      pace: player.pace,
       opponentPace: opponent.pace,
+      selfRank: player.rating?.rank ?? null,
       opponentRank: opponent.rating?.rank ?? null,
+      selfForm: player.form,
+      opponentForm: opponent.form,
     };
   }
 }

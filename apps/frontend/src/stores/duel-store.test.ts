@@ -1,26 +1,35 @@
-import type { ServerMessage } from "api";
+import type { Form, ServerMessage } from "api";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
 import { fakeServer } from "@/test/fake-socket";
 
+const duel = {
+  id: "duel-1",
+  seed: 42,
+  language: "en",
+  wordListVersion: 1,
+  seconds: 30,
+  startsAt: 3_000,
+} as const;
+
 const duelFound: ServerMessage = {
   type: "duel-found",
-  duel: {
-    id: "duel-1",
-    seed: 42,
-    language: "en",
-    wordListVersion: 1,
-    seconds: 30,
-    startsAt: 3_000,
-  },
+  duel,
   opponent: { handle: "ada", image: null },
   serverTime: 0,
   pace: 40,
   opponentPace: 40,
+  selfRank: { placementsLeft: 5 },
   opponentRank: { placementsLeft: 5 },
+  selfForm: null,
+  opponentForm: null,
 };
+
+const orIv = { tier: "or", division: 4, tp: 50, shielded: false } as const;
+
+const adaForm: Form = { avgWpm: 72.4, outcomes: ["win", "loss", "draw"] };
 
 let sockets = fakeServer();
 
@@ -162,6 +171,49 @@ describe("the Duel on the app's connection", () => {
     server().receive({ type: "elsewhere", place: "duel" });
 
     expect(server().sent).toEqual([{ type: "resume-duel" }]);
+  });
+
+  test("paired, shows both ranks and both Forms in the Countdown", () => {
+    server().receive({ type: "idle" });
+    enter();
+    server().receive({
+      ...duelFound,
+      selfRank: null,
+      opponentRank: orIv,
+      selfForm: null,
+      opponentForm: adaForm,
+    });
+
+    expect(useDuelStore.getState().state).toMatchObject({
+      phase: "countdown",
+      duel: { selfRank: null, opponentRank: orIv, selfForm: null, opponentForm: adaForm },
+    });
+  });
+
+  test("resumed after a reload, shows both ranks and both Forms in the Countdown", () => {
+    enter();
+    server().receive({ type: "elsewhere", place: "duel" });
+    server().receive({
+      type: "duel-resumed",
+      duel,
+      opponent: { handle: "ada", image: null },
+      serverTime: 1_000,
+      keystrokes: [],
+      received: 0,
+      opponentKeystrokes: [],
+      opponentConnected: true,
+      pace: 40,
+      opponentPace: 40,
+      selfRank: orIv,
+      opponentRank: null,
+      selfForm: adaForm,
+      opponentForm: null,
+    });
+
+    expect(useDuelStore.getState().state).toMatchObject({
+      phase: "countdown",
+      duel: { selfRank: orIv, opponentRank: null, selfForm: adaForm, opponentForm: null },
+    });
   });
 
   test("back from a lost connection with the Duel gone, says it was lost", () => {

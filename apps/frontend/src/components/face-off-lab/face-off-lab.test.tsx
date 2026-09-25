@@ -37,7 +37,8 @@ describe("FaceOffLab", () => {
     await userEvent.click(screen.getByRole("button", { name: "Face-off" }));
     await userEvent.click(screen.getByRole("button", { name: "Challenge" }));
 
-    expect(screen.getByText("Challenge", { selector: "span" })).toBeInTheDocument();
+    // On both sides: a Challenge is ranked for neither.
+    expect(screen.getAllByText("Challenge", { selector: "span" })).toHaveLength(2);
     expect(screen.queryByText("Or II · 42 TP")).not.toBeInTheDocument();
   });
 

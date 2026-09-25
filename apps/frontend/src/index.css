@@ -20,6 +20,7 @@
   --color-tier-diamond: var(--tier-diamond);
   --color-tier-iron: var(--tier-iron);
   --color-tier-master: var(--tier-master);
+  --color-win: var(--win);
   --animate-tp-fill: tp-fill 900ms ease-out both;
   --animate-tp-pop: tp-pop 500ms ease-out both;
   --animate-caret-blink: caret-blink 1.1s steps(1) infinite;
@@ -112,6 +113,8 @@
   --tier-platinum: #6fd1c0;
   --tier-diamond: #9db4ff;
   --tier-master: var(--brand);
+  /* A won Duel's mark; a lost one is --destructive. */
+  --win: #7ee2a8;
 
   --background: var(--ink);
   --foreground: var(--text);

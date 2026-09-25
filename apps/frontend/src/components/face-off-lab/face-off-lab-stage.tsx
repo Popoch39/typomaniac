@@ -3,10 +3,10 @@ import { createPortal } from "react-dom";
 
 import { FaceOffLabControls } from "@/components/face-off-lab/face-off-lab-controls";
 import {
-  type LabRank,
+  type LabPairing,
   LAB_OPPONENT,
-  LAB_RANKS,
-} from "@/components/face-off-lab/face-off-lab-ranks";
+  LAB_PAIRINGS,
+} from "@/components/face-off-lab/face-off-lab-pairings";
 import { FaceOffOverlay } from "@/components/face-off/face-off-overlay";
 import { COUNTDOWN_S, EXIT_MS } from "@/components/face-off/face-off-timeline";
 import { useReplayClock } from "@/components/replay/use-replay-clock";
@@ -23,15 +23,15 @@ type FaceOffLabStageProps = { onClose: () => void };
 // mount on, paused, scrubbed or slowed down, never tied to a Duel.
 export const FaceOffLabStage = ({ onClose }: FaceOffLabStageProps) => {
   const replay = useReplayClock(DURATION);
-  const [rank, setRank] = useState<LabRank>("ranked");
+  const [pairing, setPairing] = useState<LabPairing>("ranked");
 
   return createPortal(
     <>
       <ClockContext value={replay.playhead}>
         <FaceOffOverlay
-          key={rank}
+          key={pairing}
           opponent={LAB_OPPONENT}
-          opponentRank={LAB_RANKS[rank]}
+          pairing={LAB_PAIRINGS[pairing]}
           startsAt={STARTS_AT}
           elapsed={replay.t - STARTS_AT}
         />
@@ -42,13 +42,13 @@ export const FaceOffLabStage = ({ onClose }: FaceOffLabStageProps) => {
         playing={replay.playing}
         ended={replay.ended}
         speed={replay.speed}
-        rank={rank}
+        pairing={pairing}
         onPause={replay.pause}
         onResume={replay.resume}
         onRestart={replay.restart}
         onSeek={replay.seek}
         onSpeed={replay.setSpeed}
-        onRank={setRank}
+        onPairing={setPairing}
         onClose={onClose}
       />
     </>,

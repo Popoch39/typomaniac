@@ -16,6 +16,7 @@ import { type ChallengeMessage, ChallengeModel } from "./modules/challenge/model
 import {
   type ClientMessage,
   DuelModel,
+  type DuelOutcome,
   type QueueStatus,
   type ServerMessage,
 } from "./modules/duel/model";
@@ -225,6 +226,18 @@ export const memoryDuelStore = () => {
         .flatMap((record) => playersOf(record).filter((player) => player.userId === userId))
         .slice(0, count)
         .map((player) => player.result.wpm),
+    // Ranked as the Drizzle store writes it: both players rated.
+    recentRankedDuels: async (userId, count) =>
+      saved
+        .toSorted(byNewestDuel)
+        .flatMap((record) => {
+          const player = playersOf(record).find((candidate) => candidate.userId === userId);
+
+          return player && record.players.every(({ rated }) => rated !== null)
+            ? [{ outcome: record.outcome, winnerId: winnerOf(record), wpm: player.result.wpm }]
+            : [];
+        })
+        .slice(0, count),
     history: async (userId, { before, limit }) =>
       saved
         .filter((record) => before === null || byNewestDuel(before, record) < 0)
@@ -451,6 +464,33 @@ export const pastDuel = (userId: string, wpm: number, endedAt: number): DuelReco
     outcome: "draw",
     winnerId: null,
     players: [player(userId), player("someone-else")],
+  };
+};
+
+const RANKED_WINNERS = { win: "self", loss: "other", draw: null } as const;
+
+// A ranked Duel of the Queue that `userId` finished at `wpm` at `endedAt`, won, lost or drawn by
+// them: both players rated, in Placement.
+export const rankedPastDuel = (
+  userId: string,
+  wpm: number,
+  endedAt: number,
+  outcome: DuelOutcome,
+): DuelRecord => {
+  const past = pastDuel(userId, wpm, endedAt);
+  const [self, other] = past.players;
+  const placement: Rating = { mmr: 1000, rank: { placementsLeft: 5 } };
+  const rated = { before: placement, after: placement, tp: null };
+  const winner = RANKED_WINNERS[outcome];
+
+  return {
+    ...past,
+    outcome: winner === null ? "draw" : "win",
+    winnerId: winner === null ? null : { self, other }[winner].userId,
+    players: [
+      { ...self, rated },
+      { ...other, rated },
+    ],
   };
 };
 

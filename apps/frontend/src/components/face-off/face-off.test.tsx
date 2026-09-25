@@ -4,6 +4,7 @@ import { describe, expect, test } from "vitest";
 
 import { type Me, meQueryOptions } from "@/api/me";
 import { FaceOff } from "@/components/face-off/face-off";
+import type { FaceOffPairing } from "@/components/face-off/face-off-pairing";
 import { ClockContext } from "@/components/run/clock-context";
 
 const STARTS_AT = 10_000;
@@ -23,8 +24,16 @@ let now = 0;
 
 const clock = () => now;
 
+// A Challenge: ranked for neither, Ada's Form from the Queue, none for Alan.
+const challenge: FaceOffPairing = {
+  selfRank: null,
+  opponentRank: null,
+  selfForm: { avgWpm: 80, outcomes: ["win", "loss"] },
+  opponentForm: null,
+};
+
 // The Face-off as the Duel shows it, `elapsed` ms into the Duel, the tab's clock on the same time.
-const faceOffAt = (elapsed: number) => {
+const faceOffAt = (elapsed: number, pairing = challenge) => {
   const queryClient = new QueryClient();
 
   queryClient.setQueryData(meQueryOptions.queryKey, me);
@@ -33,7 +42,7 @@ const faceOffAt = (elapsed: number) => {
   const face = (at: number) => (
     <QueryClientProvider client={queryClient}>
       <ClockContext value={clock}>
-        <FaceOff opponent={alan} opponentRank={null} startsAt={STARTS_AT} elapsed={at} />
+        <FaceOff opponent={alan} pairing={pairing} startsAt={STARTS_AT} elapsed={at} />
       </ClockContext>
     </QueryClientProvider>
   );
@@ -49,12 +58,28 @@ const faceOffAt = (elapsed: number) => {
 };
 
 describe("FaceOff", () => {
-  test("shows both players during the Countdown, the opponent's Challenge badge included", () => {
+  test("shows both players during the Countdown, with the Challenge badge on each side", () => {
     faceOffAt(-4500);
 
     expect(screen.getByText("@ada")).toBeInTheDocument();
     expect(screen.getByText("@alan")).toBeInTheDocument();
-    expect(screen.getByText("Challenge")).toBeInTheDocument();
+    expect(screen.getAllByText("Challenge")).toHaveLength(2);
+  });
+
+  test("shows each player's rank and Form, absent for one without a Ranked Duel", () => {
+    faceOffAt(-4500, {
+      selfRank: { tier: "or", division: 2, tp: 42, shielded: false },
+      opponentRank: { placementsLeft: 3 },
+      selfForm: { avgWpm: 80, outcomes: ["win", "loss"] },
+      opponentForm: null,
+    });
+
+    expect(screen.getByText("Or II · 42 TP")).toBeInTheDocument();
+    expect(screen.getByText("Placement · 3 Duels restants")).toBeInTheDocument();
+    expect(screen.getByText("Victoire")).toBeInTheDocument();
+    expect(screen.getByText("Défaite")).toBeInTheDocument();
+    expect(screen.getByText("80 wpm")).toBeInTheDocument();
+    expect(screen.getByText("Aucun Duel classé")).toBeInTheDocument();
   });
 
   test("slides each player's Handle, repeated, behind their panel", () => {

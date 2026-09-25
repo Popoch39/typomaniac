@@ -30,7 +30,7 @@ import { securityHeaders } from "./plugins/security-headers";
 
 export type { ApiErrorBody, ErrorCode, ErrorDetail } from "./lib/errors";
 
-export type { ClientMessage, ServerMessage } from "./modules/duel/model";
+export type { ClientMessage, DuelOutcome, Form, ServerMessage } from "./modules/duel/model";
 
 export type { FriendRefusal, Presence } from "./modules/friend/model";
 

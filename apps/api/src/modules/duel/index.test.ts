@@ -16,6 +16,7 @@ import {
   memoryDuelStore,
   openClient,
   pastDuel,
+  rankedPastDuel,
   signIn,
   type TestAuth,
   type TestClient,
@@ -102,8 +103,11 @@ const duelFound = (opponent: string) => ({
   // Neither User has played a Duel yet.
   pace: defaultPace,
   opponentPace: defaultPace,
-  // Both in their first Placement.
+  // Both in their first Placement, without a ranked Duel yet: no Form.
+  selfRank: { placementsLeft: 5 },
   opponentRank: { placementsLeft: 5 },
+  selfForm: null,
+  opponentForm: null,
 });
 
 // Or IV expects an MMR of 1000, Diamant IV one of 1400: at those, no catch-up moves the TP.
@@ -138,6 +142,9 @@ describe("duel socket", () => {
   // Each User's Rating, as the server writes it.
   let ratings: Map<string, Rating>;
 
+  // What deleting a User does to the Duels written.
+  let deleteUser: (userId: string) => void;
+
   beforeEach(() => {
     const { clock, set } = manualClock(NOW);
     const duels = memoryDuelStore();
@@ -145,6 +152,7 @@ describe("duel socket", () => {
     setNow = set;
     saved = duels.saved;
     ratings = duels.ratings;
+    deleteUser = duels.deleteUser;
     auth = createTestAuth();
     app = createApp(testConfig({ auth, clock, duelStore: duels.store })).listen(0);
     url = `ws://localhost:${app.server?.port}/api/duel`;
@@ -252,7 +260,10 @@ describe("duel socket", () => {
       serverTime: NOW,
       pace: defaultPace,
       opponentPace: defaultPace,
+      selfRank: { placementsLeft: 5 },
       opponentRank: { placementsLeft: 5 },
+      selfForm: null,
+      opponentForm: null,
     });
     expect(forAda).toEqual(duelFound("Alan"));
     // The very same Duel (id, Seed, start), only the opponent differs.
@@ -914,7 +925,10 @@ describe("duel socket", () => {
       // Frozen at the pairing.
       pace: 72,
       opponentPace: defaultPace,
+      selfRank: { placementsLeft: 5 },
       opponentRank: { placementsLeft: 5 },
+      selfForm: null,
+      opponentForm: null,
     });
     expect(await alan.next()).toEqual({ type: "opponent-reconnected" });
 
@@ -1398,6 +1412,7 @@ describe("duel socket", () => {
       stats: () => Promise.reject(new Error("database down")),
       progression: () => Promise.reject(new Error("database down")),
       recentDuelsOf: () => Promise.reject(new Error("database down")),
+      recentRankedDuels: () => Promise.reject(new Error("database down")),
       rankOf: () => Promise.reject(new Error("database down")),
       leaderboard: () => Promise.reject(new Error("database down")),
       leaderboardPosition: () => Promise.reject(new Error("database down")),
@@ -1410,8 +1425,15 @@ describe("duel socket", () => {
 
     const { ada, alan, found } = await paired();
 
-    // Without their history, both go at the default Pace.
-    expect(found).toMatchObject({ pace: defaultPace, opponentPace: defaultPace });
+    // Without their history, both go at the default Pace, without a rank or a Form to show.
+    expect(found).toMatchObject({
+      pace: defaultPace,
+      opponentPace: defaultPace,
+      selfRank: null,
+      opponentRank: null,
+      selfForm: null,
+      opponentForm: null,
+    });
 
     setNow(ENDS_AT);
 
@@ -1421,8 +1443,10 @@ describe("duel socket", () => {
     expect(logged.map((line) => JSON.parse(line))).toMatchObject([
       { msg: "pace not read", err: { message: "database down" } },
       { msg: "rating not read", err: { message: "database down" } },
+      { msg: "form not read", err: { message: "database down" } },
       { msg: "pace not read", err: { message: "database down" } },
       { msg: "rating not read", err: { message: "database down" } },
+      { msg: "form not read", err: { message: "database down" } },
       { msg: "finished duel not saved", err: { message: "database down" } },
     ]);
   });
@@ -1651,8 +1675,16 @@ describe("duel socket", () => {
       const alan = await queued(alanUser.cookie);
       const grace = await queued(graceUser.cookie);
 
-      expect(await ada.next()).toEqual({ ...duelFound("Grace"), opponentRank: orIv(50) });
-      expect(await grace.next()).toEqual({ ...duelFound("Ada"), opponentRank: orIv(50) });
+      expect(await ada.next()).toEqual({
+        ...duelFound("Grace"),
+        selfRank: orIv(50),
+        opponentRank: orIv(50),
+      });
+      expect(await grace.next()).toEqual({
+        ...duelFound("Ada"),
+        selfRank: orIv(50),
+        opponentRank: orIv(50),
+      });
       await alan.settle();
     });
   });
@@ -1690,6 +1722,86 @@ describe("duel socket", () => {
       const again = await resumedOn(adaUser.cookie);
 
       expect(await again.next()).toMatchObject({ type: "duel-resumed", opponentRank: orIv(20) });
+    });
+
+    test("each User is told both ranks and both Forms: the last 5 ranked Duels, the most recent first", async () => {
+      const adaUser = await signedInUser("Ada");
+      const alanUser = await signedInUser("Alan");
+
+      ratings.set(adaUser.id, { mmr: 1000, rank: orIv(50) });
+      ratings.set(alanUser.id, { mmr: 1050, rank: diamantIv(10) });
+      // Written in no particular order. A Challenge, the most recent, and a 6th ranked Duel, the
+      // oldest, do not count.
+      saved.push(
+        rankedPastDuel(adaUser.id, 90, NOW - 4000, "win"),
+        pastDuel(adaUser.id, 300, NOW - 500),
+        rankedPastDuel(adaUser.id, 80, NOW - 1000, "win"),
+        rankedPastDuel(adaUser.id, 200, NOW - 6000, "win"),
+        rankedPastDuel(adaUser.id, 50, NOW - 5000, "loss"),
+        rankedPastDuel(adaUser.id, 60, NOW - 2000, "loss"),
+        rankedPastDuel(adaUser.id, 70, NOW - 3000, "draw"),
+      );
+
+      const ada = await queued(adaUser.cookie);
+      const alan = await queued(alanUser.cookie);
+      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+      const adaForm = { avgWpm: 70, outcomes: ["win", "loss", "draw", "win", "loss"] };
+
+      expect(forAda).toMatchObject({
+        selfRank: orIv(50),
+        opponentRank: diamantIv(10),
+        selfForm: adaForm,
+        // No ranked Duel yet.
+        opponentForm: null,
+      });
+      expect(forAlan).toMatchObject({
+        selfRank: diamantIv(10),
+        opponentRank: orIv(50),
+        selfForm: null,
+        opponentForm: adaForm,
+      });
+    });
+
+    test("a Duel lost to a deleted User stays a loss in the Form", async () => {
+      const adaUser = await signedInUser("Ada");
+      const alanUser = await signedInUser("Alan");
+
+      saved.push(rankedPastDuel(adaUser.id, 60, NOW - 1000, "loss"));
+      deleteUser("someone-else");
+
+      // Her Pace seeds an MMR far from Alan's: she waited long enough for any.
+      const ada = await queuedLongAgo(adaUser.cookie);
+      const alan = await queued(alanUser.cookie);
+
+      await alan.next();
+      expect(await ada.next()).toMatchObject({ selfForm: { avgWpm: 60, outcomes: ["loss"] } });
+    });
+
+    test("both ranks and both Forms come back with the resumed Duel, as they were at the pairing", async () => {
+      const adaUser = await signedInUser("Ada");
+      const alanUser = await signedInUser("Alan");
+
+      ratings.set(adaUser.id, { mmr: 1000, rank: orIv(50) });
+      ratings.set(alanUser.id, { mmr: 1000, rank: orIv(20) });
+      saved.push(rankedPastDuel(alanUser.id, 64, NOW - 1000, "win"));
+
+      const ada = await queued(adaUser.cookie);
+      const alan = await queued(alanUser.cookie);
+
+      await Promise.all([ada.next(), alan.next()]);
+      // Written during the Duel: the Forms do not move.
+      saved.push(rankedPastDuel(adaUser.id, 100, NOW + 1000, "win"));
+
+      const again = await resumedOn(adaUser.cookie);
+
+      expect(await again.next()).toMatchObject({
+        type: "duel-resumed",
+        selfRank: orIv(50),
+        opponentRank: orIv(20),
+        selfForm: null,
+        opponentForm: { avgWpm: 64, outcomes: ["win"] },
+      });
     });
 
     test("a first join of the Queue seeds the Rating from the Pace, in Placement", async () => {

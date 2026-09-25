@@ -38,7 +38,10 @@ const duelFound: ServerMessage = {
   serverTime: 0,
   pace: 40,
   opponentPace: 40,
+  selfRank: null,
   opponentRank: null,
+  selfForm: null,
+  opponentForm: null,
 };
 
 const noResult = {
@@ -213,7 +216,10 @@ describe("typing sound in a Duel", () => {
       opponentConnected: true,
       pace: 40,
       opponentPace: 40,
+      selfRank: null,
       opponentRank: null,
+      selfForm: null,
+      opponentForm: null,
     });
 
     expect(sockets.sockets).toHaveLength(2);

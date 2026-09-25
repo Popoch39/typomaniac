@@ -43,7 +43,10 @@ const duelFound: ServerMessage = {
   serverTime: 0,
   pace: 40,
   opponentPace: 40,
+  selfRank: null,
   opponentRank: null,
+  selfForm: null,
+  opponentForm: null,
 };
 
 const duelResumed: ServerMessage = {
@@ -57,7 +60,10 @@ const duelResumed: ServerMessage = {
   opponentConnected: true,
   pace: 40,
   opponentPace: 40,
+  selfRank: null,
   opponentRank: null,
+  selfForm: null,
+  opponentForm: null,
 };
 
 const duelEnded: ServerMessage = {

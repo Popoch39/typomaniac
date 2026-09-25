@@ -43,9 +43,13 @@ export type DuelPlay = {
   // Each player's Pace, frozen by the server at the pairing: their Bursts are judged against it.
   pace: number;
   opponentPace: number;
-  // The opponent's rank at the pairing, never their MMR; null for a Challenge or when the server could
-  // not read their Rating.
+  // Each player's rank at the pairing, never their MMR; null for a Challenge or when the server
+  // could not read their Rating.
+  selfRank: DuelFound["selfRank"];
   opponentRank: DuelFound["opponentRank"];
+  // Each player's Form at the pairing; null without a Ranked Duel.
+  selfForm: DuelFound["selfForm"];
+  opponentForm: DuelFound["opponentForm"];
   run: RunState;
   // Every Keystroke typed here, sent or not yet.
   keystrokes: readonly Keystroke[];
@@ -229,7 +233,10 @@ const playing = (
       startsAt: localStart(message),
       pace: message.pace,
       opponentPace: message.opponentPace,
+      selfRank: message.selfRank,
       opponentRank: message.opponentRank,
+      selfForm: message.selfForm,
+      opponentForm: message.opponentForm,
       run: replayRun(config, played.keystrokes),
       keystrokes: played.keystrokes,
       score: scoreOf(config, played.keystrokes, message.pace),

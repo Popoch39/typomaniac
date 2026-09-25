@@ -1,16 +1,16 @@
 import { type MouseEvent, useRef } from "react";
-import type { Rank } from "ranked";
 
 import { FaceOffAnnouncer } from "@/components/face-off/face-off-announcer";
 import { FaceOffCount } from "@/components/face-off/face-off-count";
 import { FaceOffOpponent } from "@/components/face-off/face-off-opponent";
+import type { FaceOffPairing } from "@/components/face-off/face-off-pairing";
 import { FaceOffSelf } from "@/components/face-off/face-off-self";
 import { useFaceOffTimeline } from "@/components/face-off/use-face-off-timeline";
 import type { DuelOpponent } from "@/stores/duel-store";
 
 type FaceOffOverlayProps = {
   opponent: DuelOpponent;
-  opponentRank: Rank | null;
+  pairing: FaceOffPairing;
   startsAt: number;
   elapsed: number;
 };
@@ -21,12 +21,7 @@ const keepFocus = (event: MouseEvent) => event.preventDefault();
 // The Face-off, over the whole app (navigation included): this User on the left, the opponent on
 // the right, the VS, then the 3-2-1, on the Duel's clock. The stage shakes at the impact; the two
 // panels cover the page until they split away on GO.
-export const FaceOffOverlay = ({
-  opponent,
-  opponentRank,
-  startsAt,
-  elapsed,
-}: FaceOffOverlayProps) => {
+export const FaceOffOverlay = ({ opponent, pairing, startsAt, elapsed }: FaceOffOverlayProps) => {
   const scope = useRef<HTMLDivElement>(null);
 
   useFaceOffTimeline(scope, startsAt);
@@ -39,8 +34,12 @@ export const FaceOffOverlay = ({
       onMouseDown={keepFocus}
     >
       <div data-face-off="stage" className="absolute inset-0">
-        <FaceOffSelf />
-        <FaceOffOpponent opponent={opponent} rank={opponentRank} />
+        <FaceOffSelf rank={pairing.selfRank} form={pairing.selfForm} />
+        <FaceOffOpponent
+          opponent={opponent}
+          rank={pairing.opponentRank}
+          form={pairing.opponentForm}
+        />
         <FaceOffCount />
       </div>
       <FaceOffAnnouncer elapsed={elapsed} opponentHandle={opponent.handle} />

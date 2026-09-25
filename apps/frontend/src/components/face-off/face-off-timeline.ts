@@ -14,6 +14,11 @@ const IMPACT_S = 0.35;
 // Each player's avatar, Handle and rank rise into their panel this long after the pairing.
 const REVEAL_S = 0.5;
 
+// Then each player's Form comes in, one Ranked Duel after the other, then the average wpm.
+const CASCADE_S = REVEAL_S + 0.22;
+
+const CASCADE_STAGGER_S = 0.07;
+
 // The halves split out on GO, up and down, and are gone this long after.
 const EXIT_S = 0.5;
 
@@ -101,6 +106,25 @@ export const faceOffTimeline = () => {
       { autoAlpha: 1, y: 0, duration: 0.34 },
       "reveal",
     )
+    .addLabel("cascade", CASCADE_S);
+
+  // Both sides at once, each in its own order.
+  for (const side of ["own", "opponent"]) {
+    timeline.fromTo(
+      `${part(side)} ${part("form-item")}`,
+      { scale: 0.4, autoAlpha: 0 },
+      {
+        scale: 1,
+        autoAlpha: 1,
+        duration: 0.2,
+        ease: "back.out(2.4)",
+        stagger: CASCADE_STAGGER_S,
+      },
+      "cascade",
+    );
+  }
+
+  timeline
     .addLabel("count", FACE_OFF_S)
     .to(part("vs"), { scale: 0.6, autoAlpha: 0, duration: 0.2 }, "count");
 

@@ -227,6 +227,14 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
 
     return rows.map((row) => row.wpm);
   },
+  recentRankedDuels: async (userId, count) =>
+    db
+      .select({ outcome: duel.outcome, winnerId: duel.winnerId, wpm: duelPlayer.wpm })
+      .from(duelPlayer)
+      .innerJoin(duel, eq(duel.id, duelPlayer.duelId))
+      .where(and(eq(duelPlayer.userId, userId), eq(duel.ranked, true)))
+      .orderBy(desc(duel.endedAt), desc(duel.id))
+      .limit(count),
   // Served by the player index on the User: a User's Duels are few enough to sort.
   history: async (userId, page) => {
     const rows = await db

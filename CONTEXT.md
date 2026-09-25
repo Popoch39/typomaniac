@@ -96,8 +96,12 @@ Les 4,5 secondes entre l'appariement et le départ d'un Duel, identiques pour le
 _Avoid_ : timer, décompte, compte à rebours
 
 **Face-off** :
-Les 1,5 premières secondes du Countdown, les deux Users face à face en plein écran : le User à gauche, son adversaire à droite, avec son rang (ou « Challenge » quand le Duel n'est pas Ranked).
+Les 1,5 premières secondes du Countdown, les deux Users face à face en plein écran : le User à gauche, son adversaire à droite, chacun avec son rang (ou « Challenge » quand le Duel n'est pas Ranked) et sa Form.
 _Avoid_ : match trouvé, VS screen, écran de versus
+
+**Form** :
+Les 5 derniers Duels Ranked terminés d'un User, montrés au Face-off : l'issue de chacun, du plus récent au plus ancien (victoire, défaite ou Draw), et son wpm moyen sur ces Duels. Les Challenges n'y comptent pas ; sans Duel Ranked, elle est absente, jamais à zéro.
+_Avoid_ : forme, stats, bilan, historique récent
 
 **Forfeit** :
 La fin d'un Duel perdu par abandon : départ volontaire, absence prolongée après une déconnexion, ou frappe à une cadence inhumaine. L'adversaire gagne.

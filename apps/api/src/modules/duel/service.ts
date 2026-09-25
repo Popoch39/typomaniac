@@ -14,8 +14,8 @@ import type { Clock } from "../../lib/clock";
 import { type ChallengeArena, Challenges, type Seat } from "../challenge/service";
 import type { FriendStore } from "../friend/store";
 import type { Users } from "../user/users";
-import type { ClientMessage, ServerMessage } from "./model";
-import { type DuelRecord, type DuelStore, readPace } from "./store";
+import type { ClientMessage, Form, ServerMessage } from "./model";
+import { type DuelRecord, type DuelStore, readForm, readPace } from "./store";
 import {
   type DuelEnded,
   type Finish,
@@ -63,13 +63,13 @@ export type DuelQueueConfig = {
   onDuelSaved: (record: DuelRecord) => void;
 };
 
-// A User in the Queue: their profile once read (they have a Handle), then their Pace once read
-// from their history, with their Rating (null when it could not be read: their Duel is not
+// A User in the Queue: their profile once read (they have a Handle), then their Pace and Form once
+// read from their history, with their Rating (null when it could not be read: their Duel is not
 // ranked), and when they joined: their wait widens the MMR window. Replaced by a new entry when
 // they leave and join again.
 type QueueEntry = {
   user: User | null;
-  paced: { pace: number; rating: Rating | null } | null;
+  paced: { pace: number; form: Form | null; rating: Rating | null } | null;
   joinedAt: number;
 };
 
@@ -579,10 +579,13 @@ export class DuelQueue implements ChallengeArena {
         this.#tellOthers(userId);
         this.#queueChanged();
         void this.readPace(userId).then(async (pace) => {
-          const rating = await this.#readRating(userId, pace);
+          const [rating, form] = await Promise.all([
+            this.#readRating(userId, pace),
+            this.readForm(userId),
+          ]);
 
           if (this.#queue.get(userId) === entry) {
-            entry.paced = { pace, rating };
+            entry.paced = { pace, form, rating };
             this.#pair();
           }
         });
@@ -609,6 +612,20 @@ export class DuelQueue implements ChallengeArena {
       this.#logger.error({ err: error, userId }, "pace not read");
 
       return defaultPace;
+    }
+  }
+
+  // The User's Form, once their last Duel is written, as the Pace. Unreadable, null: shown as
+  // absent, the Duel is played.
+  async readForm(userId: string) {
+    try {
+      await this.#saving.get(userId);
+
+      return await readForm(this.#store, userId);
+    } catch (error) {
+      this.#logger.error({ err: error, userId }, "form not read");
+
+      return null;
     }
   }
 

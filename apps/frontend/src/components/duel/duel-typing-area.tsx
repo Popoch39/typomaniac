@@ -6,6 +6,7 @@ import { OpponentWpm } from "@/components/duel/opponent-wpm";
 import { LeaveDuel } from "@/components/duel/leave-duel";
 import { useDuelElapsed } from "@/components/duel/use-duel-elapsed";
 import { FaceOff } from "@/components/face-off/face-off";
+import type { FaceOffPairing } from "@/components/face-off/face-off-pairing";
 import { FocusOverlay } from "@/components/run/focus-overlay";
 import { KeystrokeInput } from "@/components/run/keystroke-input";
 import { useTypingFocus } from "@/components/run/use-typing-focus";
@@ -13,7 +14,8 @@ import { atHandle } from "@/lib/at-handle";
 import type { DuelPlay } from "@/stores/duel-store";
 import { useDuelStore } from "@/stores/duel-store";
 
-type DuelTypingAreaProps = Pick<DuelPlay, "id" | "opponent" | "opponentRank" | "startsAt"> & {
+type DuelTypingAreaProps = Pick<DuelPlay, "id" | "opponent" | "startsAt"> & {
+  pairing: FaceOffPairing;
   seconds: number;
 };
 
@@ -23,7 +25,7 @@ type DuelTypingAreaProps = Pick<DuelPlay, "id" | "opponent" | "opponentRank" | "
 export const DuelTypingArea = ({
   id,
   opponent,
-  opponentRank,
+  pairing,
   startsAt,
   seconds,
 }: DuelTypingAreaProps) => {
@@ -37,7 +39,7 @@ export const DuelTypingArea = ({
       <FaceOff
         key={id}
         opponent={opponent}
-        opponentRank={opponentRank}
+        pairing={pairing}
         startsAt={startsAt}
         elapsed={elapsed}
       />

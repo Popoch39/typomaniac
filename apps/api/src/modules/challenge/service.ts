@@ -1,6 +1,7 @@
 import type { Logger } from "pino";
 
 import type { Clock } from "../../lib/clock";
+import type { Form } from "../duel/model";
 import type { PacedUser, User } from "../duel/running-duel";
 import type { Connection } from "../duel/service";
 import type { FriendStore } from "../friend/store";
@@ -18,13 +19,14 @@ export const CHALLENGE_MS = 30_000;
 // A player of a Duel started by a Challenge, with the connection that plays it.
 export type Seat = PacedUser & { connection: Connection };
 
-// What the Challenges need of the Duels: the Users' connections, who is in a Duel, their Pace, and
-// starting one. The Duel Queue.
+// What the Challenges need of the Duels: the Users' connections, who is in a Duel, their Pace and
+// Form, and starting one. The Duel Queue.
 export type ChallengeArena = {
   connectionsOf: (userId: string) => Connection[];
   connectionOf: (userId: string, connectionId: string) => Connection | undefined;
   isInDuel: (userId: string) => boolean;
   readPace: (userId: string) => Promise<number>;
+  readForm: (userId: string) => Promise<Form | null>;
   // Out of the Queue if they were in it, the Duel played on the seats' connections.
   startDuel: (seats: readonly [Seat, Seat]) => void;
 };
@@ -335,8 +337,10 @@ export class Challenges {
       this.#friendStore.relationsWith(from.id, [to.id]),
       this.#arena.readPace(from.id),
       this.#arena.readPace(to.id),
+      this.#arena.readForm(from.id),
+      this.#arena.readForm(to.id),
     ]).then(
-      ([relations, fromPace, toPace]) => {
+      ([relations, fromPace, toPace, fromForm, toForm]) => {
         if (this.#challenges.get(challengeId) !== challenge) {
           return;
         }
@@ -361,8 +365,8 @@ export class Challenges {
         this.#end(challenge, "accepted");
         // A Challenge is never ranked: no Rating.
         this.#arena.startDuel([
-          { user: from, pace: fromPace, rating: null, connection: fromConnection },
-          { user: to, pace: toPace, rating: null, connection: toConnection },
+          { user: from, pace: fromPace, form: fromForm, rating: null, connection: fromConnection },
+          { user: to, pace: toPace, form: toForm, rating: null, connection: toConnection },
         ]);
       },
       (error) => {

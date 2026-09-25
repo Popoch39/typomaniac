@@ -103,6 +103,20 @@ const DuelRanked = t.Object({
 
 export type DuelRanked = typeof DuelRanked.static;
 
+// How a Duel ended for one of its players.
+const DuelOutcome = t.Union([t.Literal("win"), t.Literal("loss"), t.Literal("draw")]);
+
+export type DuelOutcome = typeof DuelOutcome.static;
+
+// A User's Form, shown in the Face-off: the outcomes of their last Ranked Duels, the most recent
+// first, and their average wpm over those.
+const Form = t.Object({
+  avgWpm: t.Number(),
+  outcomes: t.Array(DuelOutcome),
+});
+
+export type Form = typeof Form.static;
+
 const Duel = t.Object({
   id: t.String(),
   seed: t.Integer(),
@@ -153,9 +167,14 @@ const ServerMessage = t.Union([
     // Each player's Pace, in wpm, frozen for the Duel: the client scores both sides with them.
     pace: t.Number(),
     opponentPace: t.Number(),
-    // The opponent's rank, shown during the Countdown, never their MMR; null for a Challenge
-    // (never ranked) or when their Rating could not be read.
+    // Each player's rank at the pairing, shown in the Face-off, never their MMR; null for a
+    // Challenge (never ranked) or when their Rating could not be read.
+    selfRank: t.Nullable(Rank),
     opponentRank: t.Nullable(Rank),
+    // Each player's Form at the pairing, a Challenge's too; null without a Ranked Duel or when
+    // their Duels could not be read.
+    selfForm: t.Nullable(Form),
+    opponentForm: t.Nullable(Form),
   }),
   // The User's Duel, played on this connection from now on (`resume-duel`): the Duel as
   // `duel-found` gives it, plus the state that holds, as `resync` gives it.
@@ -171,7 +190,10 @@ const ServerMessage = t.Union([
     opponentConnected: t.Boolean(),
     pace: t.Number(),
     opponentPace: t.Number(),
+    selfRank: t.Nullable(Rank),
     opponentRank: t.Nullable(Rank),
+    selfForm: t.Nullable(Form),
+    opponentForm: t.Nullable(Form),
   }),
   // The opponent's connection dropped: they have a few seconds to come back, or forfeit.
   t.Object({ type: t.Literal("opponent-disconnected") }),
@@ -193,7 +215,7 @@ const ServerMessage = t.Union([
   t.Object({
     type: t.Literal("duel-ended"),
     duelId: t.Union([t.String(), t.Null()]),
-    outcome: t.Union([t.Literal("win"), t.Literal("loss"), t.Literal("draw")]),
+    outcome: DuelOutcome,
     // The loser forfeited: left, did not come back in time, or typed at an inhuman rate.
     forfeit: t.Boolean(),
     result: Result,
