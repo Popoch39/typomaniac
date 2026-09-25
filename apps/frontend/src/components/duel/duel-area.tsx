@@ -33,6 +33,7 @@ export const DuelArea = () => {
     case "finishing":
       return (
         <DuelTypingArea
+          id={state.duel.id}
           opponent={state.duel.opponent}
           opponentRank={state.duel.opponentRank}
           startsAt={state.duel.startsAt}

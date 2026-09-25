@@ -92,8 +92,12 @@ L'attente probable dans la Queue : la médiane des attentes des 20 derniers appa
 _Avoid_ : ETA, temps estimé
 
 **Countdown** :
-Les 3 secondes entre l'appariement et le départ d'un Duel, identiques pour les deux Users. La frappe y est bloquée.
+Les 4,5 secondes entre l'appariement et le départ d'un Duel, identiques pour les deux Users : le Face-off, puis le 3-2-1. La frappe y est bloquée tout du long.
 _Avoid_ : timer, décompte, compte à rebours
+
+**Face-off** :
+Les 1,5 premières secondes du Countdown, les deux Users face à face en plein écran : le User à gauche, son adversaire à droite, avec son rang (ou « Challenge » quand le Duel n'est pas Ranked).
+_Avoid_ : match trouvé, VS screen, écran de versus
 
 **Forfeit** :
 La fin d'un Duel perdu par abandon : départ volontaire, absence prolongée après une déconnexion, ou frappe à une cadence inhumaine. L'adversaire gagne.

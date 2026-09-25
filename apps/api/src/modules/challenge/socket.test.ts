@@ -216,7 +216,7 @@ describe("Challenges, on the socket", () => {
 
     expect(alanFound).toMatchObject({
       type: "duel-found",
-      duel: { language: "en", seconds: 30, startsAt: NOW + 3000 },
+      duel: { language: "en", seconds: 30, startsAt: NOW + 4500 },
       opponent: { handle: "ada", image: ada.image },
       serverTime: NOW,
       // Never ranked: no rank to show.
@@ -226,7 +226,7 @@ describe("Challenges, on the socket", () => {
 
     // It counts like any Duel: written at its end. But it is never ranked: no Rating moves, none
     // is even created.
-    clock.set(NOW + 3000 + 30_000 + 1000);
+    clock.set(NOW + 4500 + 30_000 + 1000);
     expect(await alanTab.next()).toMatchObject({ type: "duel-ended", ranked: null });
     expect(await adaTab.next()).toMatchObject({ type: "duel-ended", ranked: null });
     expect(duels.saved).toMatchObject([{ players: [{ rated: null }, { rated: null }] }]);

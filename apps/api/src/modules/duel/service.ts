@@ -29,7 +29,8 @@ const DUEL_LANGUAGE = "en";
 
 const DUEL_SECONDS = 30;
 
-const COUNTDOWN_MS = 3000;
+// The Face-off (1.5 s), then the 3-2-1: typing is blocked all along.
+const COUNTDOWN_MS = 4500;
 
 // How long a player whose connection dropped has to come back before forfeiting.
 const RECONNECT_GRACE_MS = 10_000;

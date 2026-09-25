@@ -28,8 +28,10 @@ import type { DuelRecord } from "./store";
 
 const NOW = 1_700_000_000_000;
 
-// A Duel paired at NOW starts after the 3 s Countdown and lasts 30 s.
-const STARTS_AT = NOW + 3000;
+// A Duel paired at NOW starts after the 4.5 s Countdown (Face-off, then 3-2-1) and lasts 30 s.
+const COUNTDOWN_MS = 4500;
+
+const STARTS_AT = NOW + COUNTDOWN_MS;
 
 // Its time is up: the end written for a Duel that was not forfeited.
 const TIME_UP = STARTS_AT + 30_000;
@@ -542,6 +544,28 @@ describe("duel socket", () => {
       received: 3,
       opponentKeystrokes: [char("h", 400)],
     });
+  });
+
+  test("the Countdown lasts 4.5 s from the pairing, Face-off included", async () => {
+    const { alan, found } = await paired();
+
+    expect(found).toMatchObject({ serverTime: NOW, duel: { startsAt: NOW + 4500 } });
+    await alan.settle();
+  });
+
+  test("a Keystroke sent during the Face-off is ignored", async () => {
+    const { ada, alan } = await paired();
+
+    setNow(NOW + 1000);
+    ada.send({ type: "keystrokes", keystrokes: [char("s", -3500)] });
+
+    expect(await ada.next()).toEqual({
+      type: "resync",
+      keystrokes: [],
+      received: 1,
+      opponentKeystrokes: [],
+    });
+    await alan.settle();
   });
 
   test("a Keystroke sent during the Countdown is ignored", async () => {
