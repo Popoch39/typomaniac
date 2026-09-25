@@ -15,7 +15,8 @@ type UserSearchProps = {
 // Finds a User by the start of their Handle, updated as it is typed.
 export const UserSearch = ({ inputId }: UserSearchProps) => {
   const [input, setInput] = useState("");
-  const handle = useDebouncedValue(input.trim().replace(/^@/, ""), SEARCH_DELAY_MS);
+  const typed = input.trim().replace(/^@/, "");
+  const handle = useDebouncedValue(typed, SEARCH_DELAY_MS);
 
   return (
     <section className="flex flex-col gap-3">
@@ -39,7 +40,7 @@ export const UserSearch = ({ inputId }: UserSearchProps) => {
           className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-faint"
         />
       </div>
-      <UserSearchResults handle={handle} />
+      <UserSearchResults typed={typed} handle={handle} />
     </section>
   );
 };

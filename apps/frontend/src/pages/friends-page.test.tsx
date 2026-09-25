@@ -119,6 +119,16 @@ describe("FriendsPage", () => {
     ).toBeInTheDocument();
   });
 
+  test("the search shows it is looking while the Handle is typed", async () => {
+    await renderPage();
+
+    await userEvent.type(screen.getByLabelText("Chercher un User"), "bar");
+
+    expect(screen.getByRole("status", { name: "Recherche des Users" })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "@barbara" })).toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: "Recherche des Users" })).not.toBeInTheDocument();
+  });
+
   test("without a Friend, the empty list brings the User to the search", async () => {
     await renderPage([]);
 
