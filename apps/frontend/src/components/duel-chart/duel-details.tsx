@@ -11,7 +11,7 @@ export const DuelDetails = ({ duelId }: { duelId: string }) => {
   const { data: duel } = useSuspenseQuery(replayedDuelQueryOptions(duelId));
 
   return (
-    <div className="flex flex-col gap-6 px-3 py-4">
+    <div className="flex flex-col gap-6 px-5 py-5">
       <DuelChart duel={duel} />
       <ReplayResults duel={duel} />
       <div>

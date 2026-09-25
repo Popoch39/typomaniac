@@ -30,7 +30,10 @@ export const DuelHistory = () => {
 
   return (
     <div className="flex flex-col gap-3">
-      <ul aria-label="Duel history" className="flex flex-col divide-y border border-foreground/15">
+      <ul
+        aria-label="Duel history"
+        className="flex flex-col divide-y divide-border overflow-hidden rounded-card bg-card"
+      >
         {duels.map((duel) => (
           <DuelHistoryItem
             key={duel.id}

@@ -14,10 +14,12 @@ type PlayerResultProps = {
 };
 
 // One player's Score and Result at the end of a Duel, under their name: the opponent's in their
-// caret color.
+// caret color, the User's in the accent.
 export const PlayerResult = ({ name, result, score, opponent = false }: PlayerResultProps) => (
   <section aria-label={name} className="flex flex-col gap-4 rounded-card bg-card p-8">
-    <h3 className={cn("text-xl font-bold", opponent && "text-opponent-caret")}>{name}</h3>
+    <h3 className={cn("text-xl font-bold", opponent ? "text-opponent-caret" : "text-caret")}>
+      {name}
+    </h3>
     <ScoreResult score={score} />
     <RunResult result={result} />
   </section>

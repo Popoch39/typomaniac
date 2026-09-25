@@ -10,7 +10,7 @@ export const ReplaySpeedPicker = ({ speed, onChange }: ReplaySpeedPickerProps) =
     aria-label="Vitesse de lecture"
     value={speed}
     onValueChange={onChange}
-    className="flex w-auto gap-4"
+    className="flex w-auto gap-1 rounded-full bg-card p-1"
   >
     {replaySpeeds.map((choice) => (
       <ReplayChoice key={choice} value={choice} label={`${choice.toLocaleString("fr")}×`} />

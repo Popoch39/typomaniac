@@ -6,8 +6,8 @@ import { RunText } from "@/components/run/run-text";
 import { initials } from "@/lib/initials";
 
 const tintClassNames: Record<DuelSide, string> = {
-  own: "border-caret/40 bg-caret/5",
-  opponent: "border-opponent-caret/40 bg-opponent-caret/5",
+  own: "border-caret/40 bg-caret/10",
+  opponent: "border-opponent-caret/40 bg-opponent-caret/10",
 };
 
 type ReplayTextProps = {
@@ -36,7 +36,7 @@ export const ReplayText = ({
   return (
     <section className="flex flex-col gap-2">
       <ReplayTextTitle side={shownSide} opponentName={opponentName} />
-      <div className={cn("rounded-md border px-4 py-2", tintClassNames[shownSide])}>
+      <div className={cn("rounded-card border px-8 py-6", tintClassNames[shownSide])}>
         <RunText
           run={shown.run}
           tone={shownSide}

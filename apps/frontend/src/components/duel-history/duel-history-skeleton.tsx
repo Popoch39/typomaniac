@@ -13,7 +13,7 @@ export const DuelHistorySkeleton = ({
 }: DuelHistorySkeletonProps) => (
   <LoadingRegion label={label}>
     {ROW_KEYS.slice(0, rows).map((row) => (
-      <div key={row} className="flex items-center gap-4 px-3 py-2">
+      <div key={row} className="flex items-center gap-4 px-5 py-3">
         <Skeleton className="size-8 rounded-[33%]" />
         <Skeleton className="h-4 w-24" />
         <Skeleton className="h-4 w-16" />

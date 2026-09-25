@@ -8,7 +8,9 @@ type PlayerLiveScoreProps = { name: string; score: ScoreState; opponent?: boolea
 // One player's Score so far in a Duel, under their name: the opponent's in their caret color.
 export const PlayerLiveScore = ({ name, score, opponent = false }: PlayerLiveScoreProps) => (
   <section aria-label={`Score de ${name}`} className="flex flex-col gap-1">
-    <h3 className={cn("text-sm font-bold", opponent && "text-opponent-caret")}>{name}</h3>
+    <h3 className={cn("text-sm font-bold", opponent ? "text-opponent-caret" : "text-caret")}>
+      {name}
+    </h3>
     <ScoreStats score={score} tone={opponent ? "opponent" : "own"} />
   </section>
 );

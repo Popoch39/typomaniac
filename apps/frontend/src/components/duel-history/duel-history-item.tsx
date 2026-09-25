@@ -16,7 +16,7 @@ type DuelHistoryItemProps = { duel: DuelHistoryEntry; open: boolean; onToggle: (
 // and both wpm (theirs first). A click opens its details under it, another closes them.
 export const DuelHistoryItem = ({ duel, open, onToggle }: DuelHistoryItemProps) => (
   <li>
-    <div className="relative flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 has-[button:hover]:bg-muted has-[button:focus-visible]:bg-muted">
+    <div className="relative flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 has-[button:hover]:bg-muted has-[button:focus-visible]:bg-muted">
       <DuelOpponentLabel opponent={duel.opponent} endedAt={duel.endedAt} />
       {/* The toggle stretches over the whole row; the opponent's Handle stays above it. */}
       <button
@@ -27,12 +27,15 @@ export const DuelHistoryItem = ({ duel, open, onToggle }: DuelHistoryItemProps) 
       >
         <span className="sr-only">Duel contre {opponentName(duel.opponent)}</span>
         <FinishedDuelOutcome outcome={duel.outcome} forfeit={duel.forfeit} />
+        {/* Each User keeps their colour: the accent for the User, opponent for the other. */}
         <span className="font-mono tabular-nums">
           <span className="text-[0.7rem] text-muted-foreground">Score </span>
-          {orDash(duel.score)} – {orDash(duel.opponentScore)}
+          <span className="text-caret">{orDash(duel.score)}</span> –{" "}
+          <span className="text-opponent-caret">{orDash(duel.opponentScore)}</span>
         </span>
         <span className="text-muted-foreground font-mono tabular-nums">
-          {orDash(duel.wpm)} – {orDash(duel.opponentWpm)} wpm
+          <span className="text-caret">{orDash(duel.wpm)}</span> –{" "}
+          <span className="text-opponent-caret">{orDash(duel.opponentWpm)}</span> wpm
         </span>
       </button>
     </div>
