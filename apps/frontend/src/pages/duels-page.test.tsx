@@ -187,6 +187,44 @@ describe("DuelsPage", () => {
     expect(deleted).toHaveTextContent("90 – — wpm");
   });
 
+  test("the opponent's Handle leads to their Profile without opening the Duel", async () => {
+    await renderPage({ duels: [entry({ id: "won" })], next: null }, [replayed({ id: "won" })]);
+
+    const link = within(row(0)).getByRole("link", { name: "@alan" });
+
+    expect(link).toHaveAttribute("href", "/u/alan");
+
+    await userEvent.click(link);
+
+    expect(toggle(0)).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("a deleted opponent stays « User supprimé », with no link", async () => {
+    await renderPage(
+      {
+        duels: [entry({ id: "deleted", opponent: null, opponentScore: null, opponentWpm: null })],
+        next: null,
+      },
+      [replayed({ id: "deleted", opponent: null })],
+    );
+
+    await userEvent.click(toggle(0));
+
+    expect(row(0)).toHaveTextContent("User supprimé");
+    expect(within(row(0)).queryByRole("link", { name: /User supprimé/ })).not.toBeInTheDocument();
+    expect(within(row(0)).queryAllByRole("link", { name: /^@/ })).toHaveLength(0);
+  });
+
+  test("the Duel chart names the opponent by a link to their Profile", async () => {
+    await renderPage({ duels: [entry({ id: "won" })], next: null }, [replayed({ id: "won" })]);
+
+    await userEvent.click(toggle(0));
+
+    const chart = within(row(0)).getByRole("figure", { name: "Duel chart" });
+
+    expect(within(chart).getByRole("link", { name: "@alan" })).toHaveAttribute("href", "/u/alan");
+  });
+
   test("a click opens the Duel in place: its detailed Results and the way to its Replay", async () => {
     await renderPage({ duels: [entry({ id: "won" })], next: null }, [replayed({ id: "won" })]);
 

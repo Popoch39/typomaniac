@@ -1,4 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Suspense } from "react";
@@ -82,11 +88,19 @@ const renderReplay = async (duel: ReplayedDuel) => {
 
   vi.stubGlobal("fetch", fetch);
 
+  // On a router of its own: the opponent's Handle is a link.
+  const router = createRouter({
+    routeTree: createRootRoute({ component: () => <DuelReplay duelId={duel.id} /> }),
+    history: createMemoryHistory({ initialEntries: [`/duels/${duel.id}`] }),
+  });
+
+  await router.load();
+
   render(
     <QueryClientProvider client={new QueryClient()}>
       <ClockContext value={() => now}>
         <Suspense>
-          <DuelReplay duelId={duel.id} />
+          <RouterProvider router={router} />
         </Suspense>
       </ClockContext>
     </QueryClientProvider>,

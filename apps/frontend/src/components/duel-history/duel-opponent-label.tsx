@@ -1,7 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { OpponentHandle } from "@/components/handle/opponent-handle";
 import { initials } from "@/lib/initials";
-import { opponentName } from "@/lib/opponent-name";
-import { cn } from "cn";
 
 const endedAtFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
 
@@ -19,9 +18,7 @@ export const DuelOpponentLabel = ({ opponent, endedAt }: DuelOpponentLabelProps)
       <AvatarFallback>{opponent ? initials(opponent.handle) : "?"}</AvatarFallback>
     </Avatar>
     <div className="flex min-w-0 flex-col">
-      <span className={cn("truncate", opponent === null && "text-muted-foreground")}>
-        {opponentName(opponent)}
-      </span>
+      <OpponentHandle opponent={opponent} className="relative z-10 truncate" />
       <time
         dateTime={new Date(endedAt).toISOString()}
         className="text-[0.7rem] text-muted-foreground"

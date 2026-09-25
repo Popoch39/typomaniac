@@ -3,6 +3,7 @@ import { CartesianGrid, ComposedChart, Line, Scatter, XAxis, YAxis } from "recha
 
 import type { ReplayedDuel } from "@/api/duel-history";
 import { duelChartRows } from "@/components/duel-chart/duel-chart-rows";
+import { OpponentHandle } from "@/components/handle/opponent-handle";
 import type { DuelSide } from "@/components/replay/replay-sides";
 import {
   type ChartConfig,
@@ -72,7 +73,10 @@ export const DuelChart = ({ duel }: { duel: ReplayedDuel }) => {
       : { ...own, ...sideConfig("opponent", opponentName(duel.opponent)) };
 
   return (
-    <figure aria-label="Duel chart">
+    <figure aria-label="Duel chart" className="flex flex-col gap-2">
+      <figcaption className="text-[0.7rem] text-muted-foreground">
+        Toi contre <OpponentHandle opponent={duel.opponent} className="text-foreground" />
+      </figcaption>
       <ChartContainer config={config} className="aspect-auto h-64 w-full">
         <ComposedChart data={rows} margin={{ left: 0, right: 0 }}>
           <CartesianGrid vertical={false} />

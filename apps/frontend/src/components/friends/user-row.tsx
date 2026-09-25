@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { atHandle } from "@/lib/at-handle";
+import { HandleLink } from "@/components/handle/handle-link";
 import { initials } from "@/lib/initials";
 
 type UserRowProps = {
@@ -19,7 +19,9 @@ export const UserRow = ({ user, aside, children }: UserRowProps) => (
       {user.image ? <AvatarImage src={user.image} alt="" /> : null}
       <AvatarFallback>{initials(user.handle)}</AvatarFallback>
     </Avatar>
-    <span className="min-w-0 flex-1 truncate">{atHandle(user.handle)}</span>
+    <span className="min-w-0 flex-1 truncate">
+      <HandleLink handle={user.handle} />
+    </span>
     {aside}
     {children ? <div className="flex shrink-0 gap-1">{children}</div> : null}
   </li>
