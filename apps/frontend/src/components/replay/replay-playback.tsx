@@ -3,6 +3,7 @@ import { DuelClock } from "@/components/duel/duel-clock";
 import { ReplayScores } from "@/components/replay/replay-scores";
 import { type ReplayView, sidesAt, viewedSides } from "@/components/replay/replay-sides";
 import { ReplayText } from "@/components/replay/replay-text";
+import { initials } from "@/lib/initials";
 import { opponentName } from "@/lib/opponent-name";
 
 type ReplayPlaybackProps = { duel: ReplayedDuel; t: number; view: ReplayView };
@@ -11,7 +12,7 @@ type ReplayPlaybackProps = { duel: ReplayedDuel; t: number; view: ReplayView };
 // on its Text. Both sides are rebuilt once per instant.
 export const ReplayPlayback = ({ duel, t, view }: ReplayPlaybackProps) => {
   const sides = sidesAt(duel, t);
-  const { shown, caretSide } = viewedSides(sides, view);
+  const { shown, shownSide, caretSide } = viewedSides(sides, view);
 
   return (
     <>
@@ -21,7 +22,13 @@ export const ReplayPlayback = ({ duel, t, view }: ReplayPlaybackProps) => {
         opponent={sides.opponent}
         opponentName={opponentName(duel.opponent)}
       />
-      <ReplayText shown={shown} caretSide={caretSide} />
+      <ReplayText
+        shown={shown}
+        shownSide={shownSide}
+        caretSide={caretSide}
+        opponentName={opponentName(duel.opponent)}
+        opponentInitial={duel.opponent ? initials(duel.opponent.handle) : ""}
+      />
     </>
   );
 };

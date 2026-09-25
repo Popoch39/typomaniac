@@ -6,5 +6,5 @@ export const SoloText = () => {
   const run = useRunStore((state) => state.run);
   const lastBurst = useRunStore((state) => state.score.lastBurst);
 
-  return <RunText run={run} opponent={null} lastBurst={lastBurst} />;
+  return <RunText run={run} tone="own" other={null} lastBurst={lastBurst} />;
 };

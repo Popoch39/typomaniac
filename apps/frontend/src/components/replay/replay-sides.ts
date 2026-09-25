@@ -9,6 +9,7 @@ import {
 } from "typing-engine";
 
 import type { ReplayedDuel, ReplayedPlayer } from "@/api/duel-history";
+import type { RunTone } from "@/components/run/run-tone";
 
 // The Duel's Text as it was drawn: its Seed, Language and Word list version, even an old one. A
 // Duel is always played in `time` Mode.
@@ -52,7 +53,7 @@ export const sidesAt = (duel: ReplayedDuel, t: number) => {
 export type ReplayView = DuelSide;
 
 // A side of the Duel: the User's own, or their opponent's.
-export type DuelSide = "own" | "opponent";
+export type DuelSide = RunTone;
 
 // Who forfeited, the side that did not win, and when: the recorded end minus the start, where the
 // Replay ends (`replayDuration`), so no Run goes on past it. Null for a Duel ended by its time.
@@ -64,11 +65,12 @@ export const replayForfeit = (duel: ReplayedDuel): { side: DuelSide; at: number 
   return { side: duel.outcome === "win" ? "opponent" : "own", at: replayDuration(duel) };
 };
 
-// The side whose Run shows, and the one whose caret stands in it. Without an opponent, the User's.
+// The side whose Run shows, which one it is, and the one whose caret stands in it. Without an
+// opponent, the User's.
 export const viewedSides = (
   { own, opponent }: { own: ReplaySide; opponent: ReplaySide | null },
   view: ReplayView,
-) =>
+): { shown: ReplaySide; shownSide: DuelSide; caretSide: ReplaySide | null } =>
   view === "opponent" && opponent !== null
-    ? { shown: opponent, caretSide: own }
-    : { shown: own, caretSide: opponent };
+    ? { shown: opponent, shownSide: "opponent", caretSide: own }
+    : { shown: own, shownSide: "own", caretSide: opponent };
