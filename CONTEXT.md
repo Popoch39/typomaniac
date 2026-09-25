@@ -84,7 +84,7 @@ Deux Users, appariés par la Queue ou par un Challenge, qui tapent le même Text
 _Avoid_ : match, versus, 1v1, partie, race
 
 **Queue** :
-L'attente des Users qui veulent un Duel. Les deux premiers Users distincts qui y attendent sont appariés ; un User peut la quitter tant qu'il n'est pas apparié.
+L'attente des Users qui veulent un Duel Ranked. Deux Users distincts y sont appariés quand leurs MMR sont assez proches : l'écart accepté part de ±100 et s'élargit avec l'attente, jusqu'à n'importe quel adversaire au bout de 30 secondes. Un User peut la quitter tant qu'il n'est pas apparié.
 _Avoid_ : lobby, file, matchmaking, salle d'attente
 
 **Countdown** :
@@ -135,6 +135,36 @@ _Avoid_ : statistiques, Result, score
 L'évolution Duel après Duel du wpm, du raw, de l'accuracy et de la consistency d'un User. Les Duels terminés par un Forfeit n'y figurent pas, parce que leur Result ne couvre pas tout le temps.
 _Avoid_ : évolution, historique, courbe
 
+### Ranked
+
+**Ranked** :
+Le classement des Users par les Duels de la Queue : chaque Duel Ranked terminé, Forfeit et Draw compris, fait bouger le MMR et les TP des deux Users. Les Challenges et les Duels joués avant la Ranked n'y comptent pas.
+_Avoid_ : compétitif, ladder, classé
+
+**MMR** :
+Le niveau caché d'un User, un Elo : il sert à l'apparier dans la Queue et à peser ses TP, et n'est jamais montré, pas même à lui. Il part de sa Pace au premier Duel Ranked. Une victoire compte 1, un Draw 0,5, une défaite 0 ; un Forfeit est une victoire pour l'adversaire.
+_Avoid_ : elo, rating, cote, niveau
+
+**TP** :
+Les typing points visibles d'un User dans sa Division, de 0 à 100 : un Duel en rapporte ou en coûte entre 8 et 35 (un Draw entre 0 et 35, dans un sens ou dans l'autre), plus contre un adversaire au MMR supérieur, et plus encore quand le MMR du User dépasse ce qu'attend son rang, pour que le rang rattrape le niveau. À 100, le User monte d'une Division en gardant le surplus, sans série de promotion ; sa première défaite ensuite, si elle le fait passer sous 0, le laisse à 0 sans le faire descendre. Sinon, passer sous 0 le fait descendre à 75 dans la Division d'en dessous, jamais sous Fer IV.
+_Avoid_ : LP, points, Score
+
+**Tier** :
+Le palier du rang d'un User : Fer, Bronze, Argent, Or, Platine, Diamant, chacun en quatre Divisions, puis Maître, sans Division, où les TP s'accumulent sans plafond.
+_Avoid_ : ligue, rang, elo
+
+**Division** :
+L'un des quatre échelons d'un Tier, de IV (le plus bas) à I. Chacune vaut 100 TP.
+_Avoid_ : palier, niveau
+
+**Placement** :
+Les 5 premiers Duels Ranked d'un User, sans Tier visible, où son MMR bouge presque deux fois plus vite. À la fin, il reçoit la Division qui correspond à son MMR, à 0 TP.
+_Avoid_ : placement matches, qualifications
+
+**Classement** :
+La liste des Users Ranked hors Placement, triés par Tier, Division puis TP.
+_Avoid_ : leaderboard, ladder, top
+
 ### Social
 
 **Friend** :
@@ -150,7 +180,7 @@ Ce qu'un User laisse voir à ses Friends de sa disponibilité : en ligne (typoma
 _Avoid_ : statut, online, activité
 
 **Challenge** :
-L'invitation d'un User à l'un de ses Friends, en ligne, à jouer un Duel ensemble, hors de la Queue. Elle expire au bout de 30 secondes ; l'envoyeur peut l'annuler, le destinataire l'accepter ou la refuser. Accepter lance le Countdown du Duel, qui compte comme n'importe quel autre. Un User n'a qu'un Challenge envoyé à la fois.
+L'invitation d'un User à l'un de ses Friends, en ligne, à jouer un Duel ensemble, hors de la Queue. Elle expire au bout de 30 secondes ; l'envoyeur peut l'annuler, le destinataire l'accepter ou la refuser. Accepter lance le Countdown du Duel, qui compte comme n'importe quel autre, sauf qu'il n'est jamais Ranked : il ne touche ni au MMR ni aux TP. Un User n'a qu'un Challenge envoyé à la fois.
 _Avoid_ : défi, invitation, invite, duel privé
 
 **Activity** :
