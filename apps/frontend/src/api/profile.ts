@@ -19,12 +19,16 @@ export type Stats = Profile["stats"];
 
 export type ProgressionPoint = Stats["progression"][number];
 
-// The window changes the Progression only: the tiles and the record read the default one.
+// The window changes the Progression only: the tiles and the record read the default one. A Handle
+// has no case: `/u/Ada` and `/u/ada` share one entry.
 export const profileQueryOptions = (
   handle: string,
   span: ProgressionWindow = DEFAULT_PROGRESSION_WINDOW,
-) =>
-  queryOptions({
-    queryKey: ["profile", handle, span],
-    queryFn: () => fetchProfile(handle, span),
+) => {
+  const lower = handle.toLowerCase();
+
+  return queryOptions({
+    queryKey: ["profile", lower, span],
+    queryFn: () => fetchProfile(lower, span),
   });
+};

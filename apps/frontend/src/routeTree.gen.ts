@@ -15,6 +15,7 @@ import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as HealthRouteImport } from './routes/health'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as DuelsDuelIdRouteImport } from './routes/duels_.$duelId'
+import { Route as UHandleRouteImport } from './routes/u.$handle'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const DuelsDuelIdRoute = DuelsDuelIdRouteImport.update({
   path: '/duels/$duelId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UHandleRoute = UHandleRouteImport.update({
+  id: '/u/$handle',
+  path: '/u/$handle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/health': typeof HealthRoute
   '/profile': typeof ProfileRoute
   '/duels/$duelId': typeof DuelsDuelIdRoute
+  '/u/$handle': typeof UHandleRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/health': typeof HealthRoute
   '/profile': typeof ProfileRoute
   '/duels/$duelId': typeof DuelsDuelIdRoute
+  '/u/$handle': typeof UHandleRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,13 +79,27 @@ export interface FileRoutesById {
   '/health': typeof HealthRoute
   '/profile': typeof ProfileRoute
   '/duels_/$duelId': typeof DuelsDuelIdRoute
+  '/u/$handle': typeof UHandleRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/duels' | '/friends' | '/health' | '/profile' | '/duels/$duelId'
+    | '/'
+    | '/duels'
+    | '/friends'
+    | '/health'
+    | '/profile'
+    | '/duels/$duelId'
+    | '/u/$handle'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/duels' | '/friends' | '/health' | '/profile' | '/duels/$duelId'
+  to:
+    | '/'
+    | '/duels'
+    | '/friends'
+    | '/health'
+    | '/profile'
+    | '/duels/$duelId'
+    | '/u/$handle'
   id:
     | '__root__'
     | '/'
@@ -86,6 +108,7 @@ export interface FileRouteTypes {
     | '/health'
     | '/profile'
     | '/duels_/$duelId'
+    | '/u/$handle'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -95,6 +118,7 @@ export interface RootRouteChildren {
   HealthRoute: typeof HealthRoute
   ProfileRoute: typeof ProfileRoute
   DuelsDuelIdRoute: typeof DuelsDuelIdRoute
+  UHandleRoute: typeof UHandleRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -141,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DuelsDuelIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/u/$handle': {
+      id: '/u/$handle'
+      path: '/u/$handle'
+      fullPath: '/u/$handle'
+      preLoaderRoute: typeof UHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -151,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   HealthRoute: HealthRoute,
   ProfileRoute: ProfileRoute,
   DuelsDuelIdRoute: DuelsDuelIdRoute,
+  UHandleRoute: UHandleRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

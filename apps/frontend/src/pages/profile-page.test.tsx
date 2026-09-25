@@ -1,4 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { render, screen, within } from "@testing-library/react";
 import { Suspense } from "react";
 import { describe, expect, test } from "vitest";
@@ -68,10 +74,17 @@ const renderPage = async (
     }
   }
 
+  const router = createRouter({
+    routeTree: createRootRoute({ component: ProfilePage }),
+    history: createMemoryHistory({ initialEntries: ["/profile"] }),
+  });
+
+  await router.load();
+
   render(
     <QueryClientProvider client={queryClient}>
       <Suspense>
-        <ProfilePage />
+        <RouterProvider router={router} />
       </Suspense>
     </QueryClientProvider>,
   );
@@ -158,5 +171,15 @@ describe("ProfilePage", () => {
     await renderPage({ ...me, handle: null }, null);
 
     expect(screen.queryByRole("heading", { name: "Stats" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Voir mon Profile public" })).not.toBeInTheDocument();
+  });
+
+  test("links to the User's public Profile", async () => {
+    await renderPage(me, profile({}));
+
+    expect(screen.getByRole("link", { name: "Voir mon Profile public" })).toHaveAttribute(
+      "href",
+      "/u/ada",
+    );
   });
 });

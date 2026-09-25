@@ -1,4 +1,5 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { suggestHandle } from "handle";
 import { Suspense } from "react";
 import { toast } from "sonner";
@@ -40,10 +41,18 @@ export const ProfilePage = () => {
         Changer de Handle libère l'ancien aussitôt. Ton historique de Duels te suit.
       </p>
       {me.handle === null ? null : (
-        // A new Handle reads the Stats again: the form above stays while they load.
-        <Suspense fallback={null}>
-          <ProfileStats handle={me.handle} />
-        </Suspense>
+        <>
+          <Link to="/u/$handle" params={{ handle: me.handle }} className="text-sm underline">
+            Voir mon Profile public
+          </Link>
+          {/* A new Handle reads the Stats again: the form above stays while they load. */}
+          <Suspense fallback={null}>
+            <ProfileStats
+              handle={me.handle}
+              emptyNotice="Pas encore de Duel : joue ton premier pour voir tes Stats."
+            />
+          </Suspense>
+        </>
       )}
     </section>
   );
