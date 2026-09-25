@@ -3,6 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { duelHistoryQueryOptions } from "@/api/duel-history";
 import { meQueryOptions } from "@/api/me";
 import { DuelsPage } from "@/pages/duels-page";
+import { DuelsPendingPage } from "@/pages/duels-pending-page";
 
 // A Visitor has no Duels: back to the home page.
 export const Route = createFileRoute("/duels")({
@@ -13,4 +14,5 @@ export const Route = createFileRoute("/duels")({
   },
   loader: ({ context }) => context.queryClient.ensureInfiniteQueryData(duelHistoryQueryOptions),
   component: DuelsPage,
+  pendingComponent: DuelsPendingPage,
 });

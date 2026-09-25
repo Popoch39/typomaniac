@@ -105,7 +105,7 @@ describe("DuelEnded", () => {
 
     await renderEnded("duel-1");
 
-    expect(screen.getByText("Chargement…")).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Chargement du Duel chart" })).toBeInTheDocument();
   });
 
   test("a Duel detail that fails to load leaves the end screen, without its Duel chart", async () => {
@@ -116,7 +116,7 @@ describe("DuelEnded", () => {
 
     await renderEnded("duel-1");
 
-    await waitFor(() => expect(screen.queryByText("Chargement…")).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
     expect(screen.getByRole("button", { name: "Nouveau Duel" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Revoir" })).toBeInTheDocument();
     expect(screen.queryByRole("figure", { name: "Duel chart" })).toBeNull();
@@ -127,6 +127,6 @@ describe("DuelEnded", () => {
 
     expect(screen.queryByRole("button", { name: "Revoir" })).toBeNull();
     expect(screen.queryByRole("figure", { name: "Duel chart" })).toBeNull();
-    expect(screen.queryByText("Chargement…")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });

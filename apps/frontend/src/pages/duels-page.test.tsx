@@ -248,7 +248,7 @@ describe("DuelsPage", () => {
 
     await userEvent.click(toggle(0));
 
-    expect(within(row(0)).getByText("Chargement…")).toBeInTheDocument();
+    expect(within(row(0)).getByRole("status", { name: "Chargement du Duel" })).toBeInTheDocument();
   });
 
   test("one Duel open at a time, a second click closes it", async () => {
@@ -310,6 +310,7 @@ describe("DuelsPage", () => {
 
     expect(screen.queryByRole("list", { name: "Duel history" })).not.toBeInTheDocument();
     expect(screen.getByText(/Aucun Duel pour l'instant/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Lancer un Duel" })).toHaveAttribute("href", "/");
   });
 
   test("loads the next page once the bottom of the list shows", async () => {

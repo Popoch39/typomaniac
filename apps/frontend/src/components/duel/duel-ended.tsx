@@ -5,6 +5,8 @@ import { NothingOnError } from "@/components/duel/nothing-on-error";
 import { PlayerResult } from "@/components/duel/player-result";
 import { ReplayDuelLink } from "@/components/duel/replay-duel-link";
 import { Button } from "@/components/ui/button";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { DuelChartSkeleton } from "@/components/duel-chart/duel-chart-skeleton";
 import { atHandle } from "@/lib/at-handle";
 import { type DuelEnding, useDuelStore } from "@/stores/duel-store";
 
@@ -38,7 +40,13 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
       </div>
       {ending.duelId === null ? null : (
         <NothingOnError>
-          <Suspense fallback={<p className="text-[0.7rem] text-muted-foreground">Chargement…</p>}>
+          <Suspense
+            fallback={
+              <LoadingRegion label="Chargement du Duel chart">
+                <DuelChartSkeleton />
+              </LoadingRegion>
+            }
+          >
             <WrittenDuelChart duelId={ending.duelId} />
           </Suspense>
         </NothingOnError>

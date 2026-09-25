@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import type { DuelHistoryEntry } from "@/api/duel-history";
 import { DuelDetails } from "@/components/duel-chart/duel-details";
+import { DuelDetailsSkeleton } from "@/components/duel-chart/duel-details-skeleton";
 import { DuelOpponentLabel } from "@/components/duel-history/duel-opponent-label";
 import { FinishedDuelOutcome } from "@/components/duel-history/finished-duel-outcome";
 import { opponentName } from "@/lib/opponent-name";
@@ -36,9 +37,7 @@ export const DuelHistoryItem = ({ duel, open, onToggle }: DuelHistoryItemProps) 
       </button>
     </div>
     {open ? (
-      <Suspense
-        fallback={<p className="px-3 py-4 text-[0.7rem] text-muted-foreground">Chargement…</p>}
-      >
+      <Suspense fallback={<DuelDetailsSkeleton />}>
         <DuelDetails duelId={duel.id} />
       </Suspense>
     ) : null}
