@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { profileQueryOptions } from "@/api/profile";
+import { ProfileProgression } from "@/components/profile/profile-progression";
 import { StatsRecord } from "@/components/profile/stats-record";
 import { StatsTiles } from "@/components/profile/stats-tiles";
 
@@ -20,6 +21,7 @@ export const ProfileStats = ({ handle }: { handle: string }) => {
         <>
           <StatsTiles stats={profile.stats} />
           <StatsRecord stats={profile.stats} />
+          <ProfileProgression handle={handle} />
         </>
       )}
     </section>

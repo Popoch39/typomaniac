@@ -4,7 +4,14 @@ import { Suspense } from "react";
 import { describe, expect, test } from "vitest";
 
 import { type Me, meQueryOptions } from "@/api/me";
-import { type Profile, profileQueryOptions } from "@/api/profile";
+import userEvent from "@testing-library/user-event";
+
+import {
+  PROGRESSION_WINDOWS,
+  type Profile,
+  type ProgressionWindow,
+  profileQueryOptions,
+} from "@/api/profile";
 import { ProfilePage } from "@/pages/profile-page";
 
 const me: Me = {
@@ -23,18 +30,42 @@ const profile = (stats: Partial<Profile["stats"]>): Profile => ({
     record: { wins: 0, losses: 0, draws: 0 },
     averages: { wpm: null, accuracy: null },
     records: { wpm: null, score: null, combo: null },
+    progression: [],
     ...stats,
   },
 });
 
+const isProgressionWindow = (value: string): value is ProgressionWindow =>
+  PROGRESSION_WINDOWS.some((window) => window === value);
+
+// `count` Duels of the Progression, one a minute.
+const points = (count: number): Profile["stats"]["progression"] =>
+  Array.from({ length: count }, (_, index) => ({
+    endedAt: Date.UTC(2026, 8, 25, 9, index),
+    wpm: 60 + index,
+    raw: 70 + index,
+    accuracy: 95,
+    consistency: 80,
+  }));
+
 // The page with the User and their Profile in the cache, the way the route's loader leaves them.
-const renderPage = async (user: Me, own: Profile | null) => {
+const renderPage = async (
+  user: Me,
+  own: Profile | null,
+  windows: Partial<Record<ProgressionWindow, Profile>> = {},
+) => {
   const queryClient = new QueryClient();
 
   queryClient.setQueryData(meQueryOptions.queryKey, user);
 
   if (own !== null) {
     queryClient.setQueryData(profileQueryOptions(own.handle).queryKey, own);
+  }
+
+  for (const [window, cached] of Object.entries(windows)) {
+    if (isProgressionWindow(window)) {
+      queryClient.setQueryData(profileQueryOptions(cached.handle, window).queryKey, cached);
+    }
   }
 
   render(
@@ -80,6 +111,40 @@ describe("ProfilePage", () => {
     expect(tile("Bilan", "défaites")).toHaveTextContent("1");
     expect(tile("Bilan", "Draws")).toHaveTextContent("1");
     expect(tile("Bilan", "taux de victoire")).toHaveTextContent("50 %");
+  });
+
+  test("shows the four curves of the Progression, with the Duels there are", async () => {
+    await renderPage(me, profile({ duels: 3, progression: points(3) }));
+
+    for (const metric of ["wpm", "raw", "accuracy", "consistency"]) {
+      expect(screen.getByRole("figure", { name: `Progression ${metric}` })).toBeInTheDocument();
+    }
+
+    expect(screen.getByText("3 Duels, hors Forfeits")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "50 derniers" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+  });
+
+  test("another window reloads the Progression, never the tiles", async () => {
+    const tiles = { duels: 250, record: { wins: 250, losses: 0, draws: 0 } };
+
+    await renderPage(me, profile({ ...tiles, progression: points(50) }), {
+      "200": profile({ ...tiles, duels: 999, progression: points(200) }),
+      all: profile({ ...tiles, duels: 999, progression: points(240) }),
+    });
+
+    await userEvent.click(screen.getByRole("button", { name: "200 derniers" }));
+
+    expect(await screen.findByText("200 Duels, hors Forfeits")).toBeInTheDocument();
+    expect(tile("Stats", "Duels")).toHaveTextContent("250");
+
+    await userEvent.click(screen.getByRole("button", { name: "tous" }));
+
+    expect(await screen.findByText("240 Duels, hors Forfeits")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "tous" })).toHaveAttribute("aria-pressed", "true");
+    expect(tile("Stats", "Duels")).toHaveTextContent("250");
   });
 
   test("invites a User without a Duel to play", async () => {

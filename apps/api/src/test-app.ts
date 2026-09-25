@@ -130,7 +130,31 @@ export const memoryDuelStore = () => {
   const winnerOf = ({ winnerId }: DuelRecord) =>
     winnerId === null || deleted.has(winnerId) ? null : winnerId;
 
+  const progression: DuelStore["progression"] = async (userId, limit) => {
+    const points = saved
+      .filter((record) => record.outcome !== "forfeit")
+      .toSorted((a, b) => a.endedAt - b.endedAt)
+      .flatMap((record) =>
+        playersOf(record).flatMap(({ userId: playerId, result }) =>
+          playerId === userId
+            ? [
+                {
+                  endedAt: record.endedAt,
+                  wpm: result.wpm,
+                  raw: result.raw,
+                  accuracy: result.accuracy,
+                  consistency: result.consistency,
+                },
+              ]
+            : [],
+        ),
+      );
+
+    return limit === null ? points : points.slice(-limit);
+  };
+
   const store: DuelStore = {
+    progression,
     save: async (record) => {
       saved.push(record);
     },

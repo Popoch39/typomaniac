@@ -12,13 +12,29 @@ const stats = t.Object({
     score: t.Nullable(t.Integer()),
     combo: t.Nullable(t.Integer()),
   }),
+  // The Progression: the Duels of the window but the Forfeits, the oldest first.
+  progression: t.Array(
+    t.Object({
+      endedAt: t.Number(),
+      wpm: t.Number(),
+      raw: t.Number(),
+      accuracy: t.Number(),
+      consistency: t.Number(),
+    }),
+  ),
 });
+
+// How many of their last Duels (Forfeits left out) the Progression shows.
+export const PROGRESSION_WINDOWS = ["50", "200", "all"] as const;
 
 export const ProfileModel = {
   params: t.Object({ handle: t.String({ maxLength: 100 }) }),
+  query: t.Object({ window: t.Optional(t.UnionEnum(PROGRESSION_WINDOWS)) }),
   // A User's Profile: their Handle of today, their avatar and their Stats, never their name nor
   // their email.
   profile: t.Object({ handle: t.String(), image: t.Nullable(t.String()), stats }),
 };
 
 export type Profile = typeof ProfileModel.profile.static;
+
+export type ProgressionWindow = (typeof PROGRESSION_WINDOWS)[number];

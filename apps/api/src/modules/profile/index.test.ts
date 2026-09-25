@@ -59,6 +59,23 @@ const finishedDuel = ({
   };
 };
 
+// `count` Duels `ada` won, their wpm 1, 2, 3… in the order they ended.
+const played = (count: number, ada: string, alan: string, outcome?: DuelRecord["outcome"]) =>
+  Array.from({ length: count }, (_, index) =>
+    finishedDuel({
+      outcome,
+      winnerId: ada,
+      players: [
+        { userId: ada, wpm: index + 1, score: null },
+        { userId: alan, wpm: 10, score: null },
+      ],
+    }),
+  );
+
+// The wpm of the last `count` of `total` Duels from `played`: up to `total`.
+const last = (count: number, total: number) =>
+  Array.from({ length: count }, (_, index) => total - count + 1 + index);
+
 // A fresh app per test: its Users and its Duels are its own.
 const setup = () => {
   const auth = createTestAuth();
@@ -68,11 +85,14 @@ const setup = () => {
 
   let count = 0;
 
-  const profileResponse = (cookie: string | null, handle: string) =>
+  const profileResponse = (cookie: string | null, handle: string, window?: string) =>
     app.handle(
-      new Request(`http://localhost/api/users/${handle}/profile`, {
-        headers: cookie === null ? undefined : { cookie },
-      }),
+      new Request(
+        `http://localhost/api/users/${handle}/profile${window ? `?window=${window}` : ""}`,
+        {
+          headers: cookie === null ? undefined : { cookie },
+        },
+      ),
     );
 
   const newUser = async (handle: string) => {
@@ -90,8 +110,8 @@ const setup = () => {
     return { id: user.id, image, cookie };
   };
 
-  const profileOf = async (cookie: string, handle: string) => {
-    const response = await profileResponse(cookie, handle);
+  const profileOf = async (cookie: string, handle: string, window?: string) => {
+    const response = await profileResponse(cookie, handle, window);
 
     expect(response.status).toBe(200);
 
@@ -170,6 +190,62 @@ describe("GET /api/users/:handle/profile", () => {
       record: { wins: 0, losses: 0, draws: 0 },
       averages: { wpm: null, accuracy: null },
       records: { wpm: null, score: null, combo: null },
+      progression: [],
+    });
+  });
+
+  describe("the Progression", () => {
+    test("leaves out the Forfeits, which the record still counts, oldest first", async () => {
+      const { duels, newUser, profileOf } = setup();
+      const ada = await newUser("ada");
+      const alan = await newUser("alan");
+
+      const [first, second] = played(2, ada.id, alan.id);
+      const [forfeit] = played(1, ada.id, alan.id, "forfeit");
+
+      if (!first || !second || !forfeit) {
+        throw new Error("Three Duels expected");
+      }
+
+      duels.saved.push(second, forfeit, first);
+
+      const { stats } = await profileOf(ada.cookie, "ada");
+
+      expect(stats.record.wins).toBe(3);
+      expect(stats.progression).toEqual([
+        { endedAt: first.endedAt, wpm: 1, raw: 1, accuracy: 100, consistency: 80 },
+        { endedAt: second.endedAt, wpm: 2, raw: 2, accuracy: 100, consistency: 80 },
+      ]);
+    });
+
+    test("the last 50 Duels by default, 200 or all of them on demand", async () => {
+      const { duels, newUser, profileOf } = setup();
+      const ada = await newUser("ada");
+      const alan = await newUser("alan");
+
+      duels.saved.push(...played(210, ada.id, alan.id), ...played(3, ada.id, alan.id, "forfeit"));
+
+      const wpms = async (window?: string) =>
+        (await profileOf(ada.cookie, "ada", window)).stats.progression.map(({ wpm }) => wpm);
+
+      expect(await wpms()).toEqual(last(50, 210));
+      expect(await wpms("50")).toEqual(last(50, 210));
+      expect(await wpms("200")).toEqual(last(200, 210));
+      expect(await wpms("all")).toEqual(last(210, 210));
+
+      const { stats } = await profileOf(ada.cookie, "ada", "50");
+
+      expect(stats.duels).toBe(213);
+      expect(stats.record.wins).toBe(213);
+    });
+
+    test("refuses any other window", async () => {
+      const { profileResponse, newUser } = setup();
+      const ada = await newUser("ada");
+
+      const response = await profileResponse(ada.cookie, "ada", "100");
+
+      expect(response.status).toBe(422);
     });
   });
 

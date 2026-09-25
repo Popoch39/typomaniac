@@ -68,6 +68,15 @@ export type DuelStats = {
   records: { wpm: number | null; score: number | null; combo: number | null };
 };
 
+// A point of the Progression: one finished Duel of a User, not a Forfeit.
+export type ProgressionPoint = {
+  endedAt: number;
+  wpm: number;
+  raw: number;
+  accuracy: number;
+  consistency: number;
+};
+
 // Where finished Duels are written, injected through AppConfig: Drizzle in production, in memory
 // in the tests. A Duel still running when the API stops is never written.
 export type DuelStore = {
@@ -86,6 +95,9 @@ export type DuelStore = {
   playedDuel: (userId: string, duelId: string) => Promise<PlayedDuel | null>;
   // The Stats of a User's finished Duels, those whose opponent was deleted too.
   stats: (userId: string) => Promise<DuelStats>;
+  // The Progression of a User: their last `limit` finished Duels but the Forfeits (all of them when
+  // null), the oldest first.
+  progression: (userId: string, limit: number | null) => Promise<ProgressionPoint[]>;
 };
 
 // A User's Pace, from the wpm of their last Duels (the engine's paceOf).

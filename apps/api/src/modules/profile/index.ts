@@ -19,10 +19,11 @@ export const profileModule = ({ auth, trustProxy, store, users }: ProfileModuleC
     .use(authentication(auth, { trustProxy }))
     .get(
       "/users/:handle/profile",
-      ({ params }) => profileOfHandle({ store, users }, params.handle),
+      ({ params, query }) => profileOfHandle({ store, users }, params.handle, query.window ?? "50"),
       {
         auth: true,
         params: ProfileModel.params,
+        query: ProfileModel.query,
         response: ProfileModel.profile,
         detail: {
           summary: "A User's Profile, by their Handle: their avatar and their Stats",

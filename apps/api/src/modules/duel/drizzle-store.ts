@@ -161,6 +161,31 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
       opponent: opponent ? playerOf(opponent.duel_player) : null,
     };
   },
+  // The last Duels read newest first, then turned around.
+  progression: async (userId, limit) => {
+    const query = db
+      .select({
+        endedAt: duel.endedAt,
+        wpm: duelPlayer.wpm,
+        raw: duelPlayer.raw,
+        accuracy: duelPlayer.accuracy,
+        consistency: duelPlayer.consistency,
+      })
+      .from(duelPlayer)
+      .innerJoin(duel, eq(duel.id, duelPlayer.duelId))
+      .where(and(eq(duelPlayer.userId, userId), ne(duel.outcome, "forfeit")))
+      .orderBy(desc(duel.endedAt), desc(duel.id));
+
+    const rows = await (limit === null ? query : query.limit(limit));
+
+    return rows.toReversed().map(({ endedAt, wpm, raw, accuracy, consistency }) => ({
+      endedAt: endedAt.getTime(),
+      wpm,
+      raw,
+      accuracy,
+      consistency,
+    }));
+  },
   // One pass over the User's player rows. A loss is neither a win nor a Draw: a deleted winner
   // leaves `winner_id` null on a Duel that was not a Draw.
   stats: async (userId) => {
