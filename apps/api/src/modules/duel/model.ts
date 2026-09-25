@@ -71,6 +71,36 @@ export type DuelScore = typeof DuelScore.static;
 // What a player sees of the other: their Handle of the moment and their avatar, never their name.
 const DuelOpponent = t.Object({ handle: t.String(), image: t.Nullable(t.String()) });
 
+// A User's visible rank (ranked package): a Tier and Division with TP, Maître without Division, or
+// the Placement Duels still to play. Never the MMR.
+const Rank = t.Union([
+  t.Object({
+    tier: t.Union([
+      t.Literal("fer"),
+      t.Literal("bronze"),
+      t.Literal("argent"),
+      t.Literal("or"),
+      t.Literal("platine"),
+      t.Literal("diamant"),
+    ]),
+    division: t.Union([t.Literal(4), t.Literal(3), t.Literal(2), t.Literal(1)]),
+    tp: t.Integer(),
+    shielded: t.Boolean(),
+  }),
+  t.Object({ tier: t.Literal("maitre"), tp: t.Integer(), shielded: t.Boolean() }),
+  t.Object({ placementsLeft: t.Integer() }),
+]);
+
+// What a ranked Duel did to one User's rank: the TP it moved (null in Placement), their rank
+// before and after.
+const DuelRanked = t.Object({
+  tp: t.Nullable(t.Integer()),
+  previousRank: Rank,
+  rank: Rank,
+});
+
+export type DuelRanked = typeof DuelRanked.static;
+
 const Duel = t.Object({
   id: t.String(),
   seed: t.Integer(),
@@ -151,6 +181,9 @@ const ServerMessage = t.Union([
     score: DuelScore,
     opponentScore: DuelScore,
     opponent: DuelOpponent,
+    // The User's rank moved by a Duel of the Queue; null for a Challenge (never ranked) and when
+    // the Duel was not written (nothing moved).
+    ranked: t.Nullable(DuelRanked),
   }),
   t.Object({ type: t.Literal("invalid-message") }),
   // The same socket tells the User of their Friends: Presence, Friend requests, Friends.
@@ -173,4 +206,5 @@ export const DuelModel = {
   keystroke: Keystroke,
   result: Result,
   score: DuelScore,
+  rank: Rank,
 };

@@ -40,6 +40,7 @@ const finishedDuel = ({
     pace: defaultPace,
     score: score === null ? null : { ...score, bursts: 1 },
     keystrokes: [],
+    rated: null,
   });
 
   duelCount += 1;

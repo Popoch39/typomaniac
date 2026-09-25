@@ -7,6 +7,7 @@ import {
   nextMmr,
   PLACEMENT_DUELS,
   rankFromMmr,
+  rateDuel,
   seedMmr,
   tpDelta,
   type Standing,
@@ -184,5 +185,28 @@ describe("matchWindow", () => {
 
   test("accepts any MMR after 30 seconds", () => {
     expect(matchWindow(30_000)).toBe(Infinity);
+  });
+});
+
+describe("rateDuel", () => {
+  test("moves the MMR at the Placement K and counts the Placement down, without TP", () => {
+    expect(rateDuel({ mmr: 600, rank: { placementsLeft: 5 } }, 600, "win")).toEqual({
+      rating: { mmr: 630, rank: { placementsLeft: 4 } },
+      tp: null,
+    });
+  });
+
+  test("reveals the rank of the MMR after the last Placement", () => {
+    expect(rateDuel({ mmr: 600, rank: { placementsLeft: 1 } }, 600, "win")).toEqual({
+      rating: { mmr: 630, rank: { tier: "bronze", division: 4, tp: 0, shielded: false } },
+      tp: null,
+    });
+  });
+
+  test("moves the MMR and the TP of a ranked User", () => {
+    expect(rateDuel({ mmr: 1000, rank: standing() }, 1000, "win")).toEqual({
+      rating: { mmr: 1016, rank: standing({ tp: 70 }) },
+      tp: 20,
+    });
   });
 });

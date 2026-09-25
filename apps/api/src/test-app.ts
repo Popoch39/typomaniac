@@ -4,6 +4,7 @@ import { betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { testUtils } from "better-auth/plugins";
 import pino from "pino";
+import type { Rating } from "ranked";
 import { currentWordListVersion, defaultPace } from "typing-engine";
 
 import type { AppConfig } from "./app";
@@ -124,6 +125,8 @@ const best = (values: number[]) => (values.length === 0 ? null : Math.max(...val
 export const memoryDuelStore = () => {
   const saved: DuelRecord[] = [];
   const deleted = new Set<string>();
+  // Each User's Rating, by id: a test can give one before the User joins the Queue.
+  const ratings = new Map<string, Rating>();
 
   const playersOf = (record: DuelRecord) =>
     record.players.filter((player) => !deleted.has(player.userId));
@@ -179,6 +182,19 @@ export const memoryDuelStore = () => {
         .slice(0, limit),
     save: async (record) => {
       saved.push(record);
+
+      for (const { userId, rated } of record.players) {
+        if (rated) {
+          ratings.set(userId, rated.after);
+        }
+      }
+    },
+    ensureRating: async (userId, initial) => {
+      const rating = ratings.get(userId) ?? initial;
+
+      ratings.set(userId, rating);
+
+      return rating;
     },
     recentWpms: async (userId, count) =>
       saved
@@ -268,7 +284,7 @@ export const memoryDuelStore = () => {
     deleted.add(userId);
   };
 
-  return { store, saved, deleteUser };
+  return { store, saved, ratings, deleteUser };
 };
 
 // The Friend requests and the friendships in memory, in the order they were written. `now` dates
@@ -396,6 +412,7 @@ export const pastDuel = (userId: string, wpm: number, endedAt: number): DuelReco
     pace: defaultPace,
     score: { score: 0, bestCombo: 0, bursts: 0 },
     keystrokes: [],
+    rated: null,
   });
 
   return {

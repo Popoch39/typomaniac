@@ -359,9 +359,10 @@ export class Challenges {
         }
 
         this.#end(challenge, "accepted");
+        // A Challenge is never ranked: no Rating.
         this.#arena.startDuel([
-          { user: from, pace: fromPace, connection: fromConnection },
-          { user: to, pace: toPace, connection: toConnection },
+          { user: from, pace: fromPace, rating: null, connection: fromConnection },
+          { user: to, pace: toPace, rating: null, connection: toConnection },
         ]);
       },
       (error) => {

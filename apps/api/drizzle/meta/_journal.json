@@ -43,6 +43,13 @@
       "when": 1790268108940,
       "tag": "0005_friends",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790344983610,
+      "tag": "0006_ranked_rating",
+      "breakpoints": true
     }
   ]
 }

@@ -7,7 +7,9 @@ export const TIERS = [...DIVISION_TIERS, "maitre"] as const;
 export type Tier = (typeof TIERS)[number];
 
 // IV is the lowest Division of a Tier, I the highest. Maître has none.
-export type Division = 4 | 3 | 2 | 1;
+export const DIVISIONS = [4, 3, 2, 1] as const;
+
+export type Division = (typeof DIVISIONS)[number];
 
 // A User's visible rank once Placement is over. `shielded`: just moved up, so the next loss, if it
 // goes below 0 TP, keeps the Division. Any loss spends it.
@@ -52,7 +54,7 @@ const FER_IV_MMR = 400;
 
 const MMR_PER_DIVISION = 50;
 
-const DIVISION_TP = 100;
+export const DIVISION_TP = 100;
 
 const DEMOTED_TP = 75;
 
@@ -92,7 +94,7 @@ export const nextMmr = (
   );
 
 // Fer IV is step 0, Diamant I step 23, Maître step 24.
-const stepOf = (standing: Standing) =>
+export const stepOf = (standing: Standing) =>
   standing.tier === "maitre"
     ? MAITRE_STEP
     : DIVISION_TIERS.indexOf(standing.tier) * DIVISIONS_PER_TIER +
@@ -170,3 +172,36 @@ export const matchWindow = (waitMs: number) =>
   waitMs >= UNLIMITED_WINDOW_MS
     ? Infinity
     : MATCH_WINDOW + Math.floor(waitMs / MATCH_WINDOW_STEP_MS) * MATCH_WINDOW_STEP;
+
+// A User's hidden MMR and visible rank, as a ranked Duel moves them.
+export type Rating = { mmr: number; rank: Rank };
+
+const isPlacement = (rank: Rank): rank is Placement => "placementsLeft" in rank;
+
+// What a ranked Duel did to one User: their new Rating and the TP it moved (null in Placement).
+export type RatedDuel = { rating: Rating; tp: number | null };
+
+// A ranked Duel for one User: their new MMR, and their new rank. In Placement, no TP moves (`tp`
+// null) and the last Placement reveals the rank the MMR deserves.
+export const rateDuel = (
+  { mmr, rank }: Rating,
+  opponentMmr: number,
+  outcome: RankedOutcome,
+): RatedDuel => {
+  if (isPlacement(rank)) {
+    const next = nextMmr(mmr, opponentMmr, outcome, true);
+    const placementsLeft = rank.placementsLeft - 1;
+
+    return {
+      rating: { mmr: next, rank: placementsLeft > 0 ? { placementsLeft } : rankFromMmr(next) },
+      tp: null,
+    };
+  }
+
+  const tp = tpDelta(rank, mmr, opponentMmr, outcome);
+
+  return {
+    rating: { mmr: nextMmr(mmr, opponentMmr, outcome, false), rank: applyTp(rank, tp) },
+    tp,
+  };
+};

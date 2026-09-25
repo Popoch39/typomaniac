@@ -3,16 +3,53 @@ import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import { alias } from "drizzle-orm/pg-core";
 
 import type { Table } from "../../database/schema";
-import { duel, duelPlayer } from "./schema";
+import { DIVISIONS, PLACEMENT_DUELS, type Rating } from "ranked";
+
+import { duel, duelPlayer, rankedRating } from "./schema";
 import type { DuelCursor, DuelPlayerRecord, DuelStore, PlayedDuelPlayer } from "./store";
+
+// A Rating as its row holds it: the Placement as a count of Duels played.
+const ratingRow = (userId: string, { mmr, rank }: Rating) => ({
+  userId,
+  mmr,
+  placementsPlayed:
+    "placementsLeft" in rank ? PLACEMENT_DUELS - rank.placementsLeft : PLACEMENT_DUELS,
+  tier: "tier" in rank ? rank.tier : null,
+  division: "division" in rank ? rank.division : null,
+  tp: "tp" in rank ? rank.tp : 0,
+  shielded: "shielded" in rank ? rank.shielded : false,
+});
+
+// A row always written by ratingRow: past Placement, a Tier, and a Division below Maître.
+const ratingOf = (row: typeof rankedRating.$inferSelect): Rating => {
+  const { mmr, placementsPlayed, tier, division, tp, shielded } = row;
+
+  if (placementsPlayed < PLACEMENT_DUELS) {
+    return { mmr, rank: { placementsLeft: PLACEMENT_DUELS - placementsPlayed } };
+  }
+
+  if (tier === "maitre") {
+    return { mmr, rank: { tier, tp, shielded } };
+  }
+
+  const known = DIVISIONS.find((candidate) => candidate === division);
+
+  if (tier === null || typeof known === "undefined") {
+    throw new Error(`Malformed rating of ${row.userId}`);
+  }
+
+  return { mmr, rank: { tier, division: known, tp, shielded } };
+};
 
 const playerRow = (
   duelId: string,
-  { userId, result, pace, score, keystrokes }: DuelPlayerRecord,
+  { userId, result, pace, score, keystrokes, rated }: DuelPlayerRecord,
 ) => ({
   duelId,
   userId,
   pace,
+  tpDelta: rated?.tp ?? null,
+  mmrDelta: rated ? rated.after.mmr - rated.before.mmr : null,
   wpm: result.wpm,
   raw: result.raw,
   accuracy: result.accuracy,
@@ -76,11 +113,45 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
         endedAt: new Date(record.endedAt),
         outcome: record.outcome,
         winnerId: record.winnerId,
+        ranked: record.players.every((player) => player.rated !== null),
       });
       await tx
         .insert(duelPlayer)
         .values(record.players.map((player) => playerRow(record.id, player)));
+
+      const ratings = record.players.flatMap(({ userId, rated }) =>
+        rated ? [ratingRow(userId, rated.after)] : [],
+      );
+
+      if (ratings.length > 0) {
+        await tx
+          .insert(rankedRating)
+          .values(ratings)
+          .onConflictDoUpdate({
+            target: rankedRating.userId,
+            set: {
+              mmr: sql`excluded.mmr`,
+              placementsPlayed: sql`excluded.placements_played`,
+              tier: sql`excluded.tier`,
+              division: sql`excluded.division`,
+              tp: sql`excluded.tp`,
+              shielded: sql`excluded.shielded`,
+            },
+          });
+      }
     });
+  },
+  // Inserted unless there is one already, then read: two joins at once create it once.
+  ensureRating: async (userId, initial) => {
+    await db.insert(rankedRating).values(ratingRow(userId, initial)).onConflictDoNothing();
+
+    const [row] = await db.select().from(rankedRating).where(eq(rankedRating.userId, userId));
+
+    if (!row) {
+      throw new Error(`Rating of ${userId} not written`);
+    }
+
+    return ratingOf(row);
   },
   recentWpms: async (userId, count) => {
     const rows = await db

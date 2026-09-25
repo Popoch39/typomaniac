@@ -1,4 +1,5 @@
 import type { Logger } from "pino";
+import { PLACEMENT_DUELS, type Rating, seedMmr } from "ranked";
 import { currentWordListVersion, defaultPace, type Keystroke } from "typing-engine";
 
 import type { Clock } from "../../lib/clock";
@@ -51,8 +52,9 @@ export type DuelQueueConfig = {
 };
 
 // A User in the Queue: their profile once read (they have a Handle), then their Pace once read
-// from their history. Replaced by a new entry when they leave and join again.
-type QueueEntry = { user: User | null; pace: number | null };
+// from their history, with their Rating (null when it could not be read: their Duel is not
+// ranked). Replaced by a new entry when they leave and join again.
+type QueueEntry = { user: User | null; paced: { pace: number; rating: Rating | null } | null };
 
 // The Queue, the running Duels, the Challenges and the connected Users, in memory (ADR 0003). A User
 // can have many connections (tabs, ADR 0007) but one place, in the Queue or in a Duel, played on
@@ -362,7 +364,12 @@ export class DuelQueue implements ChallengeArena {
           this.#saving.delete(userId);
         }
 
-        this.#tellEnd(userId, { ...message, duelId });
+        // Not written, no Rating moved.
+        this.#tellEnd(userId, {
+          ...message,
+          duelId,
+          ranked: duelId === null ? null : message.ranked,
+        });
       });
     }
   }
@@ -470,7 +477,7 @@ export class DuelQueue implements ChallengeArena {
       return;
     }
 
-    const entry: QueueEntry = { user: null, pace: null };
+    const entry: QueueEntry = { user: null, paced: null };
 
     this.#queue.set(userId, entry);
     void this.#users.profileOf(userId).then(
@@ -489,9 +496,11 @@ export class DuelQueue implements ChallengeArena {
         entry.user = { id: userId, handle: profile.handle, image: profile.image };
         this.#send(userId, { type: "queued" });
         this.#tellOthers(userId);
-        void this.readPace(userId).then((pace) => {
+        void this.readPace(userId).then(async (pace) => {
+          const rating = await this.#readRating(userId, pace);
+
           if (this.#queue.get(userId) === entry) {
-            entry.pace = pace;
+            entry.paced = { pace, rating };
             this.#pair();
           }
         });
@@ -521,14 +530,29 @@ export class DuelQueue implements ChallengeArena {
     }
   }
 
-  // FIFO among the Users whose profile and Pace are read: one still being read holds up no one
-  // behind (a Map iterates in insertion order). They are distinct, the Queue holds User ids.
+  // The User's Rating, created from their Pace on their first join of the Queue (read once their
+  // last Duel is written, as the Pace). Unreadable, null: their Duel is not ranked, and is played.
+  async #readRating(userId: string, pace: number) {
+    try {
+      return await this.#store.ensureRating(userId, {
+        mmr: seedMmr(pace),
+        rank: { placementsLeft: PLACEMENT_DUELS },
+      });
+    } catch (error) {
+      this.#logger.error({ err: error, userId }, "rating not read");
+
+      return null;
+    }
+  }
+
+  // FIFO among the Users whose profile, Pace and Rating are read: one still being read holds up no
+  // one behind (a Map iterates in insertion order). They are distinct, the Queue holds User ids.
   #pair() {
     const ready: PacedUser[] = [];
 
-    for (const [userId, { user, pace }] of this.#queue) {
-      if (this.#playing.has(userId) && user !== null && pace !== null) {
-        ready.push({ user, pace });
+    for (const [userId, { user, paced }] of this.#queue) {
+      if (this.#playing.has(userId) && user !== null && paced !== null) {
+        ready.push({ user, ...paced });
       }
 
       if (ready.length === 2) {

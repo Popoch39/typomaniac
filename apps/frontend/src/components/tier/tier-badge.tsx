@@ -1,19 +1,24 @@
 import { cn } from "cn";
+import type { Standing } from "ranked";
 
-import { TIER_COLORS, TIER_NAMES, type Division, type Tier } from "@/components/tier/tier";
+import { standingName, TIER_COLORS } from "@/components/tier/tier";
 import { TierDivisionBars } from "@/components/tier/tier-division-bars";
 import { TierEmblem } from "@/components/tier/tier-emblem";
 
-type TierBadgeProps = { tier: Tier; division: Division; className?: string };
+type TierBadgeProps = { standing: Standing; size?: "md" | "lg"; className?: string };
 
-// A tier and its division, recognisable without the colour: each tier has its own emblem.
-// Screen readers hear the name and the division; the drawing is hidden from them.
-export const TierBadge = ({ tier, division, className }: TierBadgeProps) => (
-  <span className={cn("inline-flex flex-col items-center gap-1", TIER_COLORS[tier], className)}>
-    <span className="size-8">
-      <TierEmblem tier={tier} />
+const EMBLEM_SIZES = { md: "size-8", lg: "size-14" };
+
+// A Tier and its Division, recognisable without the colour: each Tier has its own emblem, the
+// Division its bars (none in Maître). Screen readers hear the name; the drawing is hidden.
+export const TierBadge = ({ standing, size = "md", className }: TierBadgeProps) => (
+  <span
+    className={cn("inline-flex flex-col items-center gap-1", TIER_COLORS[standing.tier], className)}
+  >
+    <span className={EMBLEM_SIZES[size]}>
+      <TierEmblem tier={standing.tier} />
     </span>
-    <TierDivisionBars division={division} />
-    <span className="sr-only">{`${TIER_NAMES[tier]}, division ${division}`}</span>
+    {standing.tier === "maitre" ? null : <TierDivisionBars division={standing.division} />}
+    <span className="sr-only">{standingName(standing)}</span>
   </span>
 );

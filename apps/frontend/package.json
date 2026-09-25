@@ -25,6 +25,7 @@
     "cn": "^0.4.0",
     "handle": "workspace:*",
     "lucide-react": "^1.47.0",
+    "ranked": "workspace:*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "recharts": "3.8.0",

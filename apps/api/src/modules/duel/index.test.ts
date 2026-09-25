@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import pino from "pino";
+import type { Rating } from "ranked";
 import {
   computeResult,
   computeScore,
@@ -101,6 +102,16 @@ const duelFound = (opponent: string) => ({
   opponentPace: defaultPace,
 });
 
+// Or IV expects an MMR of 1000, Diamant IV one of 1400: at those, no catch-up moves the TP.
+const orIv = (tp: number) => ({ tier: "or" as const, division: 4 as const, tp, shielded: false });
+
+const diamantIv = (tp: number) => ({
+  tier: "diamant" as const,
+  division: 4 as const,
+  tp,
+  shielded: false,
+});
+
 // Ada's connection drops: Alan is told.
 const dropped = async (ada: TestClient, alan: TestClient) => {
   ada.socket.close();
@@ -120,12 +131,16 @@ describe("duel socket", () => {
   // The finished Duels written by the server.
   let saved: DuelRecord[];
 
+  // Each User's Rating, as the server writes it.
+  let ratings: Map<string, Rating>;
+
   beforeEach(() => {
     const { clock, set } = manualClock(NOW);
     const duels = memoryDuelStore();
 
     setNow = set;
     saved = duels.saved;
+    ratings = duels.ratings;
     auth = createTestAuth();
     app = createApp(testConfig({ auth, clock, duelStore: duels.store })).listen(0);
     url = `ws://localhost:${app.server?.port}/api/duel`;
@@ -1136,6 +1151,12 @@ describe("duel socket", () => {
             pace: defaultPace,
             score: scoreOf(forAda),
             keystrokes: typed(word, 1000),
+            // A first Queue: seeded at 600 from the default Pace, then a Placement win at K 60.
+            rated: {
+              before: { mmr: 600, rank: { placementsLeft: 5 } },
+              after: { mmr: 630, rank: { placementsLeft: 4 } },
+              tp: null,
+            },
           },
           {
             userId: alanId,
@@ -1143,6 +1164,11 @@ describe("duel socket", () => {
             pace: defaultPace,
             score: scoreOf(forAlan),
             keystrokes: [char("x", 3000)],
+            rated: {
+              before: { mmr: 600, rank: { placementsLeft: 5 } },
+              after: { mmr: 570, rank: { placementsLeft: 4 } },
+              tp: null,
+            },
           },
         ],
       },
@@ -1319,6 +1345,7 @@ describe("duel socket", () => {
     const failing = {
       save: () => Promise.reject(new Error("database down")),
       recentWpms: () => Promise.reject(new Error("database down")),
+      ensureRating: () => Promise.reject(new Error("database down")),
       history: () => Promise.reject(new Error("database down")),
       playedDuel: () => Promise.reject(new Error("database down")),
       stats: () => Promise.reject(new Error("database down")),
@@ -1338,12 +1365,14 @@ describe("duel socket", () => {
 
     setNow(ENDS_AT);
 
-    // Nothing written: nothing to replay.
-    expect(await ada.next()).toMatchObject({ type: "duel-ended", duelId: null });
-    expect(await alan.next()).toMatchObject({ type: "duel-ended", duelId: null });
+    // Nothing written: nothing to replay, and no Rating moved (none was read: not ranked).
+    expect(await ada.next()).toMatchObject({ type: "duel-ended", duelId: null, ranked: null });
+    expect(await alan.next()).toMatchObject({ type: "duel-ended", duelId: null, ranked: null });
     expect(logged.map((line) => JSON.parse(line))).toMatchObject([
       { msg: "pace not read", err: { message: "database down" } },
+      { msg: "rating not read", err: { message: "database down" } },
       { msg: "pace not read", err: { message: "database down" } },
+      { msg: "rating not read", err: { message: "database down" } },
       { msg: "finished duel not saved", err: { message: "database down" } },
     ]);
   });
@@ -1368,8 +1397,8 @@ describe("duel socket", () => {
 
     setNow(ENDS_AT + SAVE_TIMEOUT_MS);
 
-    expect(await ada.next()).toMatchObject({ type: "duel-ended", duelId: null });
-    expect(await alan.next()).toMatchObject({ type: "duel-ended", duelId: null });
+    expect(await ada.next()).toMatchObject({ type: "duel-ended", duelId: null, ranked: null });
+    expect(await alan.next()).toMatchObject({ type: "duel-ended", duelId: null, ranked: null });
     expect(logged.map((line) => JSON.parse(line))).toMatchObject([
       { msg: "finished duel not saved in time" },
     ]);
@@ -1414,5 +1443,130 @@ describe("duel socket", () => {
     expect(forAda).toMatchObject({ type: "duel-ended", duelId });
     expect(forAlan).toMatchObject({ type: "duel-ended", duelId });
     expect(await other.next()).toEqual({ type: "idle" });
+  });
+
+  // Ada and Alan, with their Ratings given before they join, paired at NOW.
+  const rankedPair = async (adaRating: Rating, alanRating: Rating) => {
+    const adaUser = await signedInUser("Ada");
+    const alanUser = await signedInUser("Alan");
+
+    ratings.set(adaUser.id, adaRating);
+    ratings.set(alanUser.id, alanRating);
+
+    const ada = await queued(adaUser.cookie);
+    const alan = await queued(alanUser.cookie);
+    const [found] = await Promise.all([ada.next(), alan.next()]);
+
+    return { ada, alan, adaId: adaUser.id, alanId: alanUser.id, found };
+  };
+
+  describe("ranked", () => {
+    test("a first join of the Queue seeds the Rating from the Pace, in Placement", async () => {
+      const { ada, alan, adaId } = await pairedUsers({ adaWpms: [70] });
+
+      // Ada's Pace of 70 wpm: 600 + 20 × 12. Alan's default Pace of 50: 600.
+      expect(ratings.get(adaId)).toEqual({ mmr: 840, rank: { placementsLeft: 5 } });
+
+      setNow(ENDS_AT);
+
+      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+      // A Placement Duel: no TP, one Placement fewer.
+      expect(forAda).toMatchObject({
+        ranked: { tp: null, previousRank: { placementsLeft: 5 }, rank: { placementsLeft: 4 } },
+      });
+      expect(forAlan).toMatchObject({
+        ranked: { tp: null, previousRank: { placementsLeft: 5 }, rank: { placementsLeft: 4 } },
+      });
+    });
+
+    test("a win moves both Ratings, each told their TP and ranks, never the MMR", async () => {
+      const { ada, alan, adaId, alanId, found } = await rankedPair(
+        { mmr: 1000, rank: orIv(50) },
+        { mmr: 1000, rank: orIv(50) },
+      );
+
+      setNow(STARTS_AT + 5000);
+      ada.send({ type: "keystrokes", keystrokes: typed(firstWordOf(found), 1000) });
+      await alan.next();
+      setNow(ENDS_AT);
+
+      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+      expect(endedOf(forAda).ranked).toEqual({ tp: 20, previousRank: orIv(50), rank: orIv(70) });
+      expect(endedOf(forAlan).ranked).toEqual({ tp: -20, previousRank: orIv(50), rank: orIv(30) });
+      expect(ratings.get(adaId)).toEqual({ mmr: 1016, rank: orIv(70) });
+      expect(ratings.get(alanId)).toEqual({ mmr: 984, rank: orIv(30) });
+    });
+
+    test("a Forfeit is a full loss, whatever the Score so far", async () => {
+      const { ada, alan, found } = await rankedPair(
+        { mmr: 1000, rank: orIv(50) },
+        { mmr: 1000, rank: orIv(50) },
+      );
+
+      setNow(STARTS_AT + 5000);
+      ada.send({ type: "keystrokes", keystrokes: typed(firstWordOf(found), 1000) });
+      await alan.next();
+      ada.send({ type: "leave-duel" });
+
+      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+      expect(endedOf(forAda).ranked).toMatchObject({ tp: -20, rank: orIv(30) });
+      expect(endedOf(forAlan).ranked).toMatchObject({ tp: 20, rank: orIv(70) });
+    });
+
+    test("a Draw counts as half a win: drawing a stronger opponent moves up", async () => {
+      const { ada, alan } = await rankedPair(
+        { mmr: 1000, rank: orIv(50) },
+        { mmr: 1400, rank: diamantIv(50) },
+      );
+
+      setNow(ENDS_AT);
+
+      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+      expect(forAda).toMatchObject({ outcome: "draw", ranked: { tp: 16, rank: orIv(66) } });
+      expect(forAlan).toMatchObject({ outcome: "draw", ranked: { tp: -16, rank: diamantIv(34) } });
+    });
+
+    test("the last Placement reveals the rank the MMR reached", async () => {
+      const { ada } = await rankedPair(
+        { mmr: 1000, rank: { placementsLeft: 1 } },
+        { mmr: 1000, rank: orIv(50) },
+      );
+
+      setNow(ENDS_AT);
+
+      // A Draw at 1000: the MMR stays, Or IV at 0 TP.
+      expect(endedOf(await ada.next()).ranked).toEqual({
+        tp: null,
+        previousRank: { placementsLeft: 1 },
+        rank: orIv(0),
+      });
+    });
+
+    test("the Rating of the next Duel is the one the last Duel wrote", async () => {
+      const { ada, alan, adaId, alanId } = await rankedPair(
+        { mmr: 1000, rank: orIv(50) },
+        { mmr: 1000, rank: orIv(50) },
+      );
+
+      ada.send({ type: "leave-duel" });
+      await Promise.all([ada.next(), alan.next()]);
+
+      ada.send({ type: "join-queue" });
+      expect(await ada.next()).toEqual({ type: "queued" });
+      alan.send({ type: "join-queue" });
+      expect(await alan.next()).toEqual({ type: "queued" });
+      await Promise.all([ada.next(), alan.next()]);
+      alan.send({ type: "leave-duel" });
+
+      const [forAda] = await Promise.all([ada.next(), alan.next()]);
+
+      expect(endedOf(forAda).ranked).toMatchObject({ previousRank: orIv(30) });
+      expect(ratings.get(adaId)?.mmr).toBeGreaterThan(984);
+      expect(ratings.get(alanId)?.mmr).toBeLessThan(1016);
+    });
   });
 });

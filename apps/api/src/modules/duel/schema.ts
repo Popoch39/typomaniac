@@ -1,5 +1,7 @@
+import { TIERS } from "ranked";
 import {
   bigint,
+  boolean,
   doublePrecision,
   index,
   integer,
@@ -31,6 +33,27 @@ export const duel = pgTable("duel", {
   outcome: text("outcome", { enum: DUEL_OUTCOMES }).notNull(),
   // Null for a Draw, or once the winner's User is deleted.
   winnerId: text("winner_id").references(() => user.id, { onDelete: "set null" }),
+  // A Duel of the Queue, which moved both Ratings; false for a Challenge and for the Duels played
+  // before ranked existed.
+  ranked: boolean("ranked").notNull().default(false),
+});
+
+// A User's Rating (ranked package): the hidden MMR and the visible rank. Created on their first
+// join of the Queue, from their Pace; moved by each ranked Duel, written with it.
+export const rankedRating = pgTable("ranked_rating", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  mmr: integer("mmr").notNull(),
+  // Below PLACEMENT_DUELS, the User is in Placement: no Tier yet.
+  placementsPlayed: integer("placements_played").notNull(),
+  // Null in Placement.
+  tier: text("tier", { enum: TIERS }),
+  // Null in Placement and in Maître.
+  division: integer("division"),
+  tp: integer("tp").notNull(),
+  // Just moved up: the next loss below 0 TP keeps the Division.
+  shielded: boolean("shielded").notNull(),
 });
 
 // Each of the two players of a finished Duel: their Result and the Keystrokes the server accepted,
@@ -60,6 +83,10 @@ export const duelPlayer = pgTable(
     score: integer("score"),
     bestCombo: integer("best_combo"),
     bursts: integer("bursts"),
+    // What a ranked Duel moved: the TP (null in Placement) and the MMR. Both null for an unranked
+    // Duel.
+    tpDelta: integer("tp_delta"),
+    mmrDelta: integer("mmr_delta"),
     keystrokes: jsonb("keystrokes").$type<readonly Keystroke[]>().notNull(),
   },
   (table) => [

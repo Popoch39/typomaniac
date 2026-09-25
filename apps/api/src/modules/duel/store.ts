@@ -1,3 +1,4 @@
+import type { Rating } from "ranked";
 import { type Keystroke, paceDuels, paceOf, type Result } from "typing-engine";
 
 import type { Duel, DuelScore } from "./model";
@@ -12,7 +13,12 @@ export type DuelPlayerRecord = {
   // Null for the Duels written before the Score: their outcome is the one of the time, by wpm.
   score: DuelScore | null;
   keystrokes: readonly Keystroke[];
+  // What a Duel of the Queue did to their Rating, written with the Duel; null for a Challenge.
+  rated: RatedPlayer | null;
 };
+
+// A player's Rating before and after a ranked Duel, and the TP it moved (null in Placement).
+export type RatedPlayer = { before: Rating; after: Rating; tp: number | null };
 
 // How a finished Duel ended, for both players: someone won, a Draw, or the loser forfeited.
 export const DUEL_OUTCOMES = ["win", "draw", "forfeit"] as const;
@@ -49,7 +55,7 @@ export type DuelHistoryRow = {
 
 // A player of a finished Duel as it is read back: their Pace is null for the Duels written before
 // it came from the history.
-export type PlayedDuelPlayer = Omit<DuelPlayerRecord, "pace"> & { pace: number | null };
+export type PlayedDuelPlayer = Omit<DuelPlayerRecord, "pace" | "rated"> & { pace: number | null };
 
 // A finished Duel read back for one of its two Users (`player`), to replay it. `opponent` is null
 // once their User is deleted: their player row goes with it.
@@ -90,7 +96,11 @@ export type RecentDuel = {
 // Where finished Duels are written, injected through AppConfig: Drizzle in production, in memory
 // in the tests. A Duel still running when the API stops is never written.
 export type DuelStore = {
+  // The Duel, and for a ranked one each player's new Rating, in one transaction.
   save: (record: DuelRecord) => Promise<void>;
+  // The User's Rating, created as `initial` when they have none yet (their first join of the
+  // Queue).
+  ensureRating: (userId: string, initial: Rating) => Promise<Rating>;
   // The wpm of the last `count` Duels a User finished, the most recent first: those written before
   // the Score too.
   recentWpms: (userId: string, count: number) => Promise<number[]>;

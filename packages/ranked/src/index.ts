@@ -1,4 +1,6 @@
 export {
+  DIVISION_TP,
+  DIVISIONS,
   PLACEMENT_DUELS,
   TIERS,
   applyTp,
@@ -6,12 +8,16 @@ export {
   matchWindow,
   nextMmr,
   rankFromMmr,
+  rateDuel,
   seedMmr,
+  stepOf,
   tpDelta,
   type Division,
   type Placement,
   type Rank,
   type RankedOutcome,
+  type RatedDuel,
+  type Rating,
   type Standing,
   type Tier,
 } from "./ranked";

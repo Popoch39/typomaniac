@@ -39,6 +39,7 @@ const finishedDuel = ({
     pace: defaultPace,
     score: score === null ? null : { score, bestCombo: 10, bursts: 1 },
     keystrokes,
+    rated: null,
   });
 
   return {

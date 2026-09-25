@@ -290,12 +290,23 @@ const ended = ({
   score,
   opponentScore,
   opponent,
+  ranked,
 }: DuelEnded): DuelState => {
   outbox = [];
 
   return {
     phase: "ended",
-    ending: { duelId, outcome, forfeit, result, opponentResult, score, opponentScore, opponent },
+    ending: {
+      duelId,
+      outcome,
+      forfeit,
+      result,
+      opponentResult,
+      score,
+      opponentScore,
+      opponent,
+      ranked,
+    },
   };
 };
 

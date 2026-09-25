@@ -22,7 +22,8 @@ const noResult = {
 
 const noScore = { score: 0, bestCombo: 0, bursts: 0 };
 
-const ending = (duelId: string | null): DuelEnding => ({
+const ending = (duelId: string | null, ranked: DuelEnding["ranked"] = null): DuelEnding => ({
+  ranked,
   duelId,
   outcome: "draw",
   forfeit: false,
@@ -62,7 +63,11 @@ afterEach(() => {
 });
 
 // The end screen on a router of its own (Revoir is a link), the written Duel in the cache if given.
-const renderEnded = async (duelId: string | null, cached: ReplayedDuel | null = null) => {
+const renderEnded = async (
+  duelId: string | null,
+  cached: ReplayedDuel | null = null,
+  ranked: DuelEnding["ranked"] = null,
+) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
   if (cached !== null) {
@@ -70,7 +75,7 @@ const renderEnded = async (duelId: string | null, cached: ReplayedDuel | null = 
   }
 
   const router = createRouter({
-    routeTree: createRootRoute({ component: () => <DuelEnded ending={ending(duelId)} /> }),
+    routeTree: createRootRoute({ component: () => <DuelEnded ending={ending(duelId, ranked)} /> }),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
 
@@ -120,6 +125,63 @@ describe("DuelEnded", () => {
     expect(screen.getByRole("button", { name: "Nouveau Duel" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Revoir" })).toBeInTheDocument();
     expect(screen.queryByRole("figure", { name: "Duel chart" })).toBeNull();
+  });
+
+  test("a ranked Duel shows the TP won and the rank after it", async () => {
+    await renderEnded(null, null, {
+      tp: 20,
+      previousRank: { tier: "or", division: 3, tp: 90, shielded: false },
+      rank: { tier: "or", division: 2, tp: 10, shielded: true },
+    });
+
+    const rank = screen.getByRole("region", { name: "Rang" });
+
+    expect(rank).toHaveTextContent("+20 TP");
+    expect(rank).toHaveTextContent("Promotion : Or II");
+    expect(rank).toHaveTextContent("10 TP");
+  });
+
+  test("a lost ranked Duel shows the TP lost, and a demotion", async () => {
+    await renderEnded(null, null, {
+      tp: -18,
+      previousRank: { tier: "or", division: 4, tp: 5, shielded: false },
+      rank: { tier: "argent", division: 1, tp: 75, shielded: false },
+    });
+
+    const rank = screen.getByRole("region", { name: "Rang" });
+
+    expect(rank).toHaveTextContent("−18 TP");
+    expect(rank).toHaveTextContent("Descente en Argent I");
+  });
+
+  test("a Placement Duel shows the Placements left, the last one reveals the rank", async () => {
+    await renderEnded(null, null, {
+      tp: null,
+      previousRank: { placementsLeft: 3 },
+      rank: { placementsLeft: 2 },
+    });
+
+    expect(screen.getByRole("region", { name: "Rang" })).toHaveTextContent(
+      "Placement : encore 2 Duels avant ton rang",
+    );
+  });
+
+  test("the last Placement reveals the rank", async () => {
+    await renderEnded(null, null, {
+      tp: null,
+      previousRank: { placementsLeft: 1 },
+      rank: { tier: "bronze", division: 4, tp: 0, shielded: false },
+    });
+
+    expect(screen.getByRole("region", { name: "Rang" })).toHaveTextContent(
+      "Placement terminé, ton rang :Bronze IV",
+    );
+  });
+
+  test("an unranked Duel (a Challenge) shows no rank", async () => {
+    await renderEnded(null);
+
+    expect(screen.queryByRole("region", { name: "Rang" })).toBeNull();
   });
 
   test("a Duel that was not written: no Revoir, no Duel chart, no loading state", async () => {

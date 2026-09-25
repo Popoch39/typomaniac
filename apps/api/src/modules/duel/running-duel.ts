@@ -12,8 +12,10 @@ import {
   startAcceptedRun,
 } from "typing-engine";
 
+import { type RankedOutcome, type Rating, rateDuel } from "ranked";
+
 import type { Duel, DuelScore, ServerMessage } from "./model";
-import type { DuelPlayerRecord, DuelRecord } from "./store";
+import type { DuelPlayerRecord, DuelRecord, RatedPlayer } from "./store";
 
 // How late past the end a Keystroke may still arrive: the network delay of the last ones.
 export const END_TOLERANCE_MS = 1000;
@@ -25,8 +27,9 @@ const MAX_KEYSTROKES_PER_SECOND = 40;
 // the Queue. Only a User with a Handle plays.
 export type User = { id: string; handle: string; image: string | null };
 
-// A User paired into a Duel, with their Pace in wpm, frozen for it.
-export type PacedUser = { user: User; pace: number };
+// A User paired into a Duel, with their Pace in wpm, frozen for it, and their Rating when the Duel
+// is ranked (from the Queue): null for a Challenge, never ranked.
+export type PacedUser = { user: User; pace: number; rating: Rating | null };
 
 export type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
 
@@ -63,13 +66,41 @@ const judgedSide = ({ result, score }: Side): DuelSide => ({ result, score: scor
 const playerRecord = (
   { user, pace, acceptedRun }: Player,
   { result, score }: Side,
+  rated: RatedPlayer | null,
 ): DuelPlayerRecord => ({
   userId: user.id,
   result,
   pace,
   score,
   keystrokes: [...acceptedRun.keystrokes],
+  rated,
 });
+
+const ratePlayer = (before: Rating, opponent: Rating, outcome: RankedOutcome): RatedPlayer => {
+  const { rating, tp } = rateDuel(before, opponent.mmr, outcome);
+
+  return { before, after: rating, tp };
+};
+
+// What the Duel does to both Ratings, each judged against the other's MMR before it; null unless
+// both players have one (a Duel of the Queue).
+const rate = (
+  [first, second]: readonly [Player, Player],
+  [firstOutcome, secondOutcome]: readonly [RankedOutcome, RankedOutcome],
+): [RatedPlayer, RatedPlayer] | [null, null] => {
+  if (!first.rating || !second.rating) {
+    return [null, null];
+  }
+
+  return [
+    ratePlayer(first.rating, second.rating, firstOutcome),
+    ratePlayer(second.rating, first.rating, secondOutcome),
+  ];
+};
+
+// What a player is told of their rank: never the MMR.
+const rankedOf = (rated: RatedPlayer | null): DuelEnded["ranked"] =>
+  rated && { tp: rated.tp, previousRank: rated.before.rank, rank: rated.after.rank };
 
 // What became of a batch of Keystrokes: the accepted ones, to relay, whether any was rejected, and
 // whether the player typed at an inhuman rate.
@@ -169,12 +200,14 @@ export class RunningDuel {
     const secondSide = this.#sideOf(second);
     const judged = outcomeOf(judgedSide(firstSide), judgedSide(secondSide));
     const [firstOutcome, secondOutcome] = OUTCOMES[judged];
+    const [firstRated, secondRated] = rate(this.#players, OUTCOMES[judged]);
 
     const endingFor = (
       player: Player,
       opponent: Player,
       outcome: DuelEnded["outcome"],
       [side, opponentSide]: [Side, Side],
+      rated: RatedPlayer | null,
     ): Ending => ({
       userId: player.user.id,
       message: {
@@ -186,6 +219,7 @@ export class RunningDuel {
         score: side.score,
         opponentScore: opponentSide.score,
         opponent: profileOf(opponent.user),
+        ranked: rankedOf(rated),
       },
     });
 
@@ -193,8 +227,8 @@ export class RunningDuel {
 
     return {
       endings: [
-        endingFor(first, second, firstOutcome, [firstSide, secondSide]),
-        endingFor(second, first, secondOutcome, [secondSide, firstSide]),
+        endingFor(first, second, firstOutcome, [firstSide, secondSide], firstRated),
+        endingFor(second, first, secondOutcome, [secondSide, firstSide], secondRated),
       ],
       record: {
         ...this.duel,
@@ -202,7 +236,10 @@ export class RunningDuel {
         endedAt,
         outcome: forfeit ? "forfeit" : winner ? "win" : "draw",
         winnerId: winner?.user.id ?? null,
-        players: [playerRecord(first, firstSide), playerRecord(second, secondSide)],
+        players: [
+          playerRecord(first, firstSide, firstRated),
+          playerRecord(second, secondSide, secondRated),
+        ],
       },
     };
   }

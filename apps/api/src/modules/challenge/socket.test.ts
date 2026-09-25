@@ -222,11 +222,40 @@ describe("Challenges, on the socket", () => {
     });
     expect(adaFound).toMatchObject({ type: "duel-found", opponent: { handle: "alan" } });
 
-    // It counts like any Duel: written at its end.
+    // It counts like any Duel: written at its end. But it is never ranked: no Rating moves, none
+    // is even created.
     clock.set(NOW + 3000 + 30_000 + 1000);
-    expect(await alanTab.next()).toMatchObject({ type: "duel-ended" });
-    expect(await adaTab.next()).toMatchObject({ type: "duel-ended" });
-    expect(duels.saved).toHaveLength(1);
+    expect(await alanTab.next()).toMatchObject({ type: "duel-ended", ranked: null });
+    expect(await adaTab.next()).toMatchObject({ type: "duel-ended", ranked: null });
+    expect(duels.saved).toMatchObject([{ players: [{ rated: null }, { rated: null }] }]);
+    expect(duels.ratings.size).toBe(0);
+  });
+
+  test("a Challenge leaves the Ratings of ranked Users untouched", async () => {
+    const ada = await newUser("Ada");
+    const alan = await newUser("Alan");
+    const rating = { mmr: 1000, rank: { placementsLeft: 3 } };
+
+    duels.ratings.set(ada.id, rating);
+    duels.ratings.set(alan.id, rating);
+    await befriend(ada, alan);
+
+    const adaTab = await tab(ada);
+    const alanTab = await tab(alan);
+    const challengeId = await challenge(ada, [adaTab], alan, [alanTab]);
+
+    alanTab.send({ type: "accept-challenge", challengeId });
+    await Promise.all([alanTab.next(), adaTab.next()]);
+    adaTab.send({ type: "leave-duel" });
+
+    expect(await alanTab.next()).toMatchObject({
+      type: "duel-ended",
+      outcome: "win",
+      ranked: null,
+    });
+    expect(await adaTab.next()).toMatchObject({ type: "duel-ended", ranked: null });
+    expect(duels.ratings.get(ada.id)).toEqual(rating);
+    expect(duels.ratings.get(alan.id)).toEqual(rating);
   });
 
   test("a declined Challenge is over for both, and nothing starts", async () => {
