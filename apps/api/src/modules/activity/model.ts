@@ -36,14 +36,21 @@ const activity = t.Union([
   }),
 ]);
 
+// A Friend who just came online, from offline: shown on the moment, never kept nor read back.
+const arrival = t.Object({ id: t.String(), at: t.Number(), friend: activityUser });
+
 // What the real-time connection tells a User of their Friends' Activity, on the Duel socket (ADR
 // 0007): one Activity just happened, to put first. An ended friendship is told by `friend-removed`.
 const activityMessage = t.Object({ type: t.Literal("activity-added"), activity });
+
+// A Friend's arrival, on the same socket: apart from the Activities, since the read never has it.
+const arrivalMessage = t.Object({ type: t.Literal("friend-arrived"), arrival });
 
 export const ActivityModel = {
   // The last Activities of the signed-in User's Friends of today, the newest first.
   activities: t.Array(activity),
   activityMessage,
+  arrivalMessage,
 };
 
 export type Activities = typeof ActivityModel.activities.static;
@@ -51,3 +58,5 @@ export type Activities = typeof ActivityModel.activities.static;
 export type Activity = Activities[number];
 
 export type ActivityMessage = typeof activityMessage.static;
+
+export type ArrivalMessage = typeof arrivalMessage.static;

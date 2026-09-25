@@ -159,6 +159,7 @@ const ServerMessage = t.Union([
   ChallengeModel.challengeMessage,
   // And of their Friends' Activity.
   ActivityModel.activityMessage,
+  ActivityModel.arrivalMessage,
 ]);
 
 export type ServerMessage = typeof ServerMessage.static;

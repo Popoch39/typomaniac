@@ -1,7 +1,7 @@
 import type { Logger } from "pino";
 
 import type { Clock } from "../../lib/clock";
-import type { Activity, ActivityMessage } from "../activity/model";
+import type { Activity, ActivityMessage, ArrivalMessage } from "../activity/model";
 import { duelActivity, friendshipActivity } from "../activity/service";
 import type { DuelRecord } from "../duel/store";
 import type { HandleMatch, Users } from "../user/users";
@@ -11,7 +11,7 @@ import { type FriendStore, orderedPair } from "./store";
 // One WebSocket of a User, seen from their Friends: the Duel route hands its own to it.
 export type FriendConnection = {
   id: string;
-  send: (message: FriendMessage | ActivityMessage) => void;
+  send: (message: FriendMessage | ActivityMessage | ArrivalMessage) => void;
 };
 
 // What the Friend routes tell once they wrote, for the Users concerned to be told live.
@@ -86,6 +86,11 @@ export class FriendsLive implements FriendEvents {
     connections.set(connection.id, connection);
     this.#connections.set(userId, connections);
     this.#tellIfChanged(userId, before);
+
+    if (before === "offline") {
+      this.#tellArrival(userId);
+    }
+
     this.#later(userId, async () => {
       await this.#readFriends(userId);
 
@@ -221,7 +226,7 @@ export class FriendsLive implements FriendEvents {
     return this.#connections.get(userId)?.get(connection.id) === connection;
   }
 
-  #sendTo(userId: string, message: FriendMessage | ActivityMessage) {
+  #sendTo(userId: string, message: FriendMessage | ActivityMessage | ArrivalMessage) {
     for (const connection of this.#connections.get(userId)?.values() ?? []) {
       connection.send(message);
     }
@@ -271,6 +276,41 @@ export class FriendsLive implements FriendEvents {
       },
       (error) => {
         this.#logger.error({ err: error, userIds }, "activity not told");
+      },
+    );
+  }
+
+  // The User just came online, from offline, to every Friend who watches them: never written, so
+  // never read back. A failed read of their profile is logged.
+  #tellArrival(userId: string) {
+    const watchers = this.#watchers.get(userId);
+
+    if (!watchers || watchers.size === 0) {
+      return;
+    }
+
+    const at = this.#clock.now();
+
+    this.#users.profilesOf([userId]).then(
+      ([user]) => {
+        // Gone again while the profile was read: no arrival to tell.
+        if (!user || this.presenceOf(userId) === "offline") {
+          return;
+        }
+
+        const arrival = {
+          id: crypto.randomUUID(),
+          at,
+          friend: { id: user.id, handle: user.handle, image: user.image },
+        };
+
+        // Read again: the watchers may have changed during the read.
+        for (const watcherId of this.#watchers.get(userId) ?? []) {
+          this.#sendTo(watcherId, { type: "friend-arrived", arrival });
+        }
+      },
+      (error) => {
+        this.#logger.error({ err: error, userId }, "arrival not told");
       },
     );
   }

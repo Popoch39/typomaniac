@@ -377,6 +377,7 @@ const stateAfter = (state: DuelState, message: ServerMessage): DuelState => {
     case "challenge-ended":
     case "challenge-refused":
     case "activity-added":
+    case "friend-arrived":
     case "invalid-message":
       return state;
   }

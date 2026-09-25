@@ -2,6 +2,7 @@ import type { ClientMessage, Presence, ServerMessage } from "api";
 import { create } from "zustand";
 
 import { api } from "@/api/client";
+import { type Arrival, arrivalsAfter } from "@/lib/activity-feed";
 
 // The User's place as the server tells this connection: none, or in the Queue or a Duel, played
 // here or not (another tab holds it, or none does while they come back to their Duel).
@@ -45,6 +46,9 @@ type ConnectionStore = {
   friends: LiveFriends | null;
   // Unknown until the snapshot of each new socket.
   challenges: LiveChallenges | null;
+  // The Friends who came online since the tab opened, the newest first: kept through a lost
+  // connection, forgotten on reload or sign-out.
+  arrivals: readonly Arrival[];
   // Opens the socket, opened again whenever it is lost; `openSocket` opens it, and every
   // reconnection's.
   open: (openSocket?: OpenLiveSocket) => void;
@@ -251,6 +255,7 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
         place: placeAfter(get().place, data),
         friends: friendsAfter(get().friends, data),
         challenges: challengesAfter(get().challenges, data, Date.now()),
+        arrivals: arrivalsAfter(get().arrivals, data),
       });
 
       for (const listener of listeners) {
@@ -274,6 +279,7 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
     place: null,
     friends: null,
     challenges: null,
+    arrivals: [],
     open: (tabSocket = openApiSocket) => {
       get().close();
       openSocket = tabSocket;
@@ -285,7 +291,7 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
 
       socket = null;
       stopReconnecting();
-      set({ status: "closed", place: null, friends: null, challenges: null });
+      set({ status: "closed", place: null, friends: null, challenges: null, arrivals: [] });
       current?.close();
     },
   };

@@ -5,7 +5,7 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Suspense } from "react";
 import { describe, expect, test } from "vitest";
@@ -180,5 +180,35 @@ describe("FriendsPage", () => {
     ]);
 
     useConnectionStore.getState().close();
+  });
+
+  test("a Friend's arrival online comes first, and is gone once the tab starts again", async () => {
+    const sockets = fakeServer();
+
+    useConnectionStore.getState().open(sockets.open);
+    await renderPage(friends, []);
+
+    sockets.server().receive({
+      type: "friend-arrived",
+      arrival: { id: "arrival-1", at: Date.now(), friend: alan },
+    });
+
+    const column = within(screen.getByRole("region", { name: "Activity" }));
+
+    await column.findByText("est en ligne", { exact: false });
+    expect(column.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+      "A@alan est en ligneà l'instant",
+    ]);
+
+    // A reload: a new store, the Activity read again without it.
+    useConnectionStore.getState().close();
+    cleanup();
+    await renderPage();
+
+    expect(
+      within(screen.getByRole("region", { name: "Activity" })).queryByText("est en ligne", {
+        exact: false,
+      }),
+    ).toBeNull();
   });
 });

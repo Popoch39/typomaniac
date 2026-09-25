@@ -211,4 +211,56 @@ describe("Activity, live on the socket", () => {
       [bobTab, graceTab, linusTab, adaTab, alanTab].map((client) => client.settleActivity()),
     );
   });
+
+  test("a Friend's arrival online reaches their Friends at once, never the others nor the read", async () => {
+    const ada = await newUser("Ada");
+    const alan = await newUser("Alan");
+    const grace = await newUser("Grace");
+
+    await befriend(ada, alan);
+
+    const alanTab = await tab(alan);
+    const graceTab = await tab(grace);
+    const adaTab = await tab(ada);
+
+    expect(await alanTab.nextArrival()).toEqual({
+      type: "friend-arrived",
+      arrival: { id: expect.any(String), at: NOW, friend: profile(ada) },
+    });
+    await alanTab.settleArrivals();
+    await graceTab.settleArrivals();
+    await adaTab.settleArrivals();
+
+    const response = await fetch(`http://${origin}/api/activity`, {
+      headers: { cookie: alan.cookie },
+    });
+
+    // Only their friendship: the arrival is never kept.
+    expect(await response.json()).toMatchObject([{ type: "friendship" }]);
+  });
+
+  test("a second tab, a Duel or going offline tells no arrival", async () => {
+    const ada = await newUser("Ada");
+    const alan = await newUser("Alan");
+    const carol = await newUser("Carol");
+
+    await befriend(ada, alan);
+
+    const alanTab = await tab(alan);
+    const adaTab = await tab(ada);
+
+    expect(await alanTab.nextFriends()).toMatchObject({ presence: "online" });
+    expect(await alanTab.nextArrival()).toMatchObject({ arrival: { friend: profile(ada) } });
+
+    const secondTab = await tab(ada);
+    const carolTab = await tab(carol);
+
+    await duel(adaTab, carolTab);
+    adaTab.socket.close();
+    secondTab.socket.close();
+    expect(await alanTab.nextFriends()).toMatchObject({ presence: "in-duel" });
+    expect(await alanTab.nextFriends()).toMatchObject({ presence: "online" });
+    expect(await alanTab.nextFriends()).toMatchObject({ presence: "offline" });
+    await alanTab.settleArrivals();
+  });
 });
