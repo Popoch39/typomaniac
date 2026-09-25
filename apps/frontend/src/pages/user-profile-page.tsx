@@ -4,6 +4,7 @@ import { useParams } from "@tanstack/react-router";
 import { meQueryOptions } from "@/api/me";
 import { ProfileHeader } from "@/components/profile/profile-header";
 import { ProfileStats } from "@/components/profile/profile-stats";
+import { UserProfileEmpty } from "@/components/profile/user-profile-empty";
 import { SignInInvitation } from "@/components/profile/sign-in-invitation";
 
 // A User's Profile, as any signed-in User sees it: their Handle, their avatar and their Stats.
@@ -17,9 +18,9 @@ export const UserProfilePage = () => {
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-sm flex-col gap-6 py-12">
+    <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 py-12">
       <ProfileHeader handle={handle} />
-      <ProfileStats handle={handle} emptyNotice="Pas encore de Duel." />
+      <ProfileStats handle={handle} empty={<UserProfileEmpty />} />
     </section>
   );
 };

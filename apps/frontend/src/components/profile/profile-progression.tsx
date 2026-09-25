@@ -2,6 +2,7 @@ import { Suspense, useState, useTransition } from "react";
 
 import { DEFAULT_PROGRESSION_WINDOW, type ProgressionWindow } from "@/api/profile";
 import { ProgressionCharts } from "@/components/profile/progression-charts";
+import { ProgressionChartsSkeleton } from "@/components/profile/progression-charts-skeleton";
 import { ProgressionWindowPicker } from "@/components/profile/progression-window-picker";
 
 // The Progression of the User who holds `handle`, over the window they pick. A new window keeps the
@@ -15,10 +16,10 @@ export const ProfileProgression = ({ handle }: { handle: string }) => {
   return (
     <section aria-label="Progression" className="flex flex-col gap-3" aria-busy={isPending}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-bold">Progression</h3>
+        <h3 className="text-xl font-bold">Progression</h3>
         <ProgressionWindowPicker span={span} onChange={pick} />
       </div>
-      <Suspense>
+      <Suspense fallback={<ProgressionChartsSkeleton />}>
         <ProgressionCharts handle={handle} span={span} />
       </Suspense>
     </section>

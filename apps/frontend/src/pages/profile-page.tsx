@@ -6,7 +6,9 @@ import { toast } from "sonner";
 
 import { meQueryOptions } from "@/api/me";
 import { HandleForm } from "@/components/handle/handle-form";
+import { OwnProfileEmpty } from "@/components/profile/own-profile-empty";
 import { ProfileStats } from "@/components/profile/profile-stats";
+import { ProfileStatsSkeleton } from "@/components/profile/profile-stats-skeleton";
 import { atHandle } from "@/lib/at-handle";
 
 const onSaved = () => toast.success("Handle enregistré");
@@ -22,9 +24,9 @@ export const ProfilePage = () => {
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-sm flex-col gap-6 py-12">
+    <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 py-12">
       <div className="flex flex-col gap-1">
-        <h1 className="text-lg font-bold">Profil</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight">Profil</h1>
         <p className="text-muted-foreground">
           {me.handle === null
             ? "Tu n'as pas encore de Handle : sans lui, pas de Duel."
@@ -46,11 +48,8 @@ export const ProfilePage = () => {
             Voir mon Profile public
           </Link>
           {/* A new Handle reads the Stats again: the form above stays while they load. */}
-          <Suspense fallback={null}>
-            <ProfileStats
-              handle={me.handle}
-              emptyNotice="Pas encore de Duel : joue ton premier pour voir tes Stats."
-            />
+          <Suspense fallback={<ProfileStatsSkeleton />}>
+            <ProfileStats handle={me.handle} empty={<OwnProfileEmpty />} />
           </Suspense>
         </>
       )}

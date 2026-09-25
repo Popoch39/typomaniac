@@ -101,7 +101,8 @@ describe("UserProfilePage", () => {
   test("a User without a Duel yet has no Stats", async () => {
     await renderAt(me, "grace", [{ ...grace, stats: { ...grace.stats, duels: 0 } }]);
 
-    expect(await screen.findByText("Pas encore de Duel.")).toBeInTheDocument();
+    expect(await screen.findByText("Pas encore de Duel")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Lancer un Duel" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Stats")).not.toBeInTheDocument();
   });
 

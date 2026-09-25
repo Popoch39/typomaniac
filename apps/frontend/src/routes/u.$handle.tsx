@@ -5,6 +5,7 @@ import { meQueryOptions } from "@/api/me";
 import { profileQueryOptions } from "@/api/profile";
 import { UserProfileNotFoundPage } from "@/pages/user-profile-not-found-page";
 import { UserProfilePage } from "@/pages/user-profile-page";
+import { UserProfilePendingPage } from "@/pages/user-profile-pending-page";
 
 // A User's Profile, by their Handle. A Visitor stays, invited to sign in: nothing to load for them
 // (the API answers 401). An unknown Handle, or one given up, answers 404: the not-found page. Any
@@ -29,5 +30,6 @@ export const Route = createFileRoute("/u/$handle")({
     }
   },
   component: UserProfilePage,
+  pendingComponent: UserProfilePendingPage,
   notFoundComponent: UserProfileNotFoundPage,
 });

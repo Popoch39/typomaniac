@@ -18,7 +18,8 @@ const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeSt
 
 const round = (value: number) => Math.round(value * 10) / 10;
 
-// One metric of the Progression: a point per Duel, and the rolling average over 10 Duels as a line.
+// One metric of the Progression, on a card, all in the accent (only the User is on it): a faint point
+// per Duel, and the rolling average over 10 Duels as a line.
 // The tooltip gives the date of the hovered Duel, its value and the average.
 export const ProgressionChart = ({
   points,
@@ -31,7 +32,7 @@ export const ProgressionChart = ({
 
   const config: ChartConfig = {
     value: { label: metric, color: "var(--caret)" },
-    average: { label: `moyenne sur ${ROLLING_DUELS}`, color: "var(--opponent-caret)" },
+    average: { label: `moyenne sur ${ROLLING_DUELS}`, color: "var(--caret)" },
   };
 
   // The hovered Duel: its date and its four exact values.
@@ -53,18 +54,26 @@ export const ProgressionChart = ({
   };
 
   return (
-    <figure aria-label={`Progression ${metric}`} className="flex flex-col gap-1">
-      <figcaption className="text-sm text-muted-foreground">{metric}</figcaption>
+    <figure
+      aria-label={`Progression ${metric}`}
+      className="flex flex-col gap-2 rounded-card bg-card p-5"
+    >
+      <figcaption className="text-sm font-semibold">{metric}</figcaption>
       <ChartContainer config={config} className="aspect-auto h-48 w-full">
         <ComposedChart data={rows} margin={{ left: 0, right: 0 }}>
           <CartesianGrid vertical={false} />
           <XAxis dataKey="duel" type="number" domain={["dataMin", "dataMax"]} hide />
           <YAxis tickLine={false} axisLine={false} width={32} domain={["auto", "auto"]} />
           <ChartTooltip content={<ChartTooltipContent labelFormatter={duelOf} />} />
-          <Scatter dataKey="value" fill="var(--caret)" isAnimationActive={false} />
+          <Scatter
+            dataKey="value"
+            fill="var(--caret)"
+            fillOpacity={0.4}
+            isAnimationActive={false}
+          />
           <Line
             dataKey="average"
-            stroke="var(--opponent-caret)"
+            stroke="var(--caret)"
             strokeWidth={2}
             dot={false}
             isAnimationActive={false}

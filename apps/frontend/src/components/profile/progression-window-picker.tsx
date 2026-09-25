@@ -1,5 +1,5 @@
 import { PROGRESSION_WINDOWS, type ProgressionWindow } from "@/api/profile";
-import { Button } from "@/components/ui/button";
+import { SettingGroup } from "@/components/settings/setting-group";
 
 const LABELS: Record<ProgressionWindow, string> = {
   "50": "50 derniers",
@@ -7,7 +7,9 @@ const LABELS: Record<ProgressionWindow, string> = {
   all: "tous",
 };
 
-// Which of their last Duels the Progression shows.
+const OPTIONS = PROGRESSION_WINDOWS.map((value) => ({ value, label: LABELS[value] }));
+
+// Which of their last Duels the Progression shows, as segmented pills.
 export const ProgressionWindowPicker = ({
   span,
   onChange,
@@ -15,18 +17,10 @@ export const ProgressionWindowPicker = ({
   span: ProgressionWindow;
   onChange: (span: ProgressionWindow) => void;
 }) => (
-  <fieldset className="flex gap-1">
-    <legend className="sr-only">Fenêtre de la Progression</legend>
-    {PROGRESSION_WINDOWS.map((option) => (
-      <Button
-        key={option}
-        size="sm"
-        variant={option === span ? "default" : "outline"}
-        aria-pressed={option === span}
-        onClick={() => onChange(option)}
-      >
-        {LABELS[option]}
-      </Button>
-    ))}
-  </fieldset>
+  <SettingGroup
+    label="Fenêtre de la Progression"
+    options={OPTIONS}
+    value={span}
+    onChange={onChange}
+  />
 );

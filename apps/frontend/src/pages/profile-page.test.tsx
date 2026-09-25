@@ -163,7 +163,8 @@ describe("ProfilePage", () => {
   test("invites a User without a Duel to play", async () => {
     await renderPage(me, profile({}));
 
-    expect(screen.getByText(/joue ton premier/)).toBeInTheDocument();
+    expect(screen.getByText(/ton premier Duel/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Lancer un Duel" })).toHaveAttribute("href", "/");
     expect(screen.queryByLabelText("Stats")).not.toBeInTheDocument();
   });
 

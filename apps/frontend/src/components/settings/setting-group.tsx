@@ -25,7 +25,7 @@ export const SettingGroup = <T extends string | number>({
         size="sm"
         aria-pressed={option.value === value}
         onClick={() => onChange(option.value)}
-        className="rounded-fulltext-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/85"
+        className="rounded-full text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/85"
       >
         {option.label}
       </Button>
