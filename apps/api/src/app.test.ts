@@ -418,7 +418,8 @@ describe("api docs", () => {
 
 describe("auth", () => {
   const auth = createTestAuth();
-  const authApp = createApp(testConfig({ auth }));
+  const duels = memoryDuelStore();
+  const authApp = createApp(testConfig({ auth, duelStore: duels.store }));
 
   const signIn = () =>
     signInAs(auth, { name: "Ada", email: "ada@example.com", image: "https://img/ada" });
@@ -444,7 +445,19 @@ describe("auth", () => {
       email: "ada@example.com",
       image: "https://img/ada",
       handle: null,
+      rank: null,
     });
+  });
+
+  test("GET /api/me carries the User's rank, never their MMR", async () => {
+    const { user, cookie } = await signIn();
+
+    duels.ratings.set(user.id, { mmr: 1234, rank: { tier: "maitre", tp: 250, shielded: true } });
+
+    const body = await (await getMe(cookie)).json();
+
+    expect(body).toMatchObject({ rank: { tier: "maitre", tp: 250, shielded: true } });
+    expect(JSON.stringify(body)).not.toContain("1234");
   });
 
   test("GET /api/me refreshes the session cookie cache as an httpOnly Lax cookie", async () => {

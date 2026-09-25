@@ -1370,6 +1370,7 @@ describe("duel socket", () => {
       stats: () => Promise.reject(new Error("database down")),
       progression: () => Promise.reject(new Error("database down")),
       recentDuelsOf: () => Promise.reject(new Error("database down")),
+      rankOf: () => Promise.reject(new Error("database down")),
     };
 
     await app.stop(true);

@@ -1,5 +1,7 @@
 import { t } from "elysia";
 
+import { DuelModel } from "../duel/model";
+
 // The aggregates of a User's finished Duels (Runs never count): their record, their averages and
 // their bests. The averages and the best wpm are null without a Duel; the best Score and Combo
 // also without a Duel played since the Score.
@@ -32,7 +34,13 @@ export const ProfileModel = {
   query: t.Object({ window: t.Optional(t.UnionEnum(PROGRESSION_WINDOWS)) }),
   // A User's Profile: their Handle of today, their avatar and their Stats, never their name nor
   // their email.
-  profile: t.Object({ handle: t.String(), image: t.Nullable(t.String()), stats }),
+  // Their rank is null until they first join the Queue.
+  profile: t.Object({
+    handle: t.String(),
+    image: t.Nullable(t.String()),
+    rank: t.Nullable(DuelModel.rank),
+    stats,
+  }),
 };
 
 export type Profile = typeof ProfileModel.profile.static;

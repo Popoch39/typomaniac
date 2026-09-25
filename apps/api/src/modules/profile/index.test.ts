@@ -177,9 +177,43 @@ describe("GET /api/users/:handle/profile", () => {
 
     const profile = await profileOf(ada.cookie, "alan");
 
-    expect(Object.keys(profile).toSorted()).toEqual(["handle", "image", "stats"]);
+    expect(Object.keys(profile).toSorted()).toEqual(["handle", "image", "rank", "stats"]);
     expect(JSON.stringify(profile)).not.toContain("@example.com");
     expect(JSON.stringify(profile)).not.toContain("User 2");
+  });
+
+  describe("the rank", () => {
+    test("is null for a User who never joined the Queue", async () => {
+      const { newUser, profileOf } = setup();
+      const ada = await newUser("ada");
+
+      expect((await profileOf(ada.cookie, "ada")).rank).toBeNull();
+    });
+
+    test("shows the Tier, Division and TP of any User, never their MMR", async () => {
+      const { duels, newUser, profileOf } = setup();
+      const ada = await newUser("ada");
+      const alan = await newUser("alan");
+
+      duels.ratings.set(alan.id, {
+        mmr: 987,
+        rank: { tier: "or", division: 2, tp: 42, shielded: false },
+      });
+
+      const profile = await profileOf(ada.cookie, "alan");
+
+      expect(profile.rank).toEqual({ tier: "or", division: 2, tp: 42, shielded: false });
+      expect(JSON.stringify(profile)).not.toContain("987");
+    });
+
+    test("shows the Placement Duels left", async () => {
+      const { duels, newUser, profileOf } = setup();
+      const ada = await newUser("ada");
+
+      duels.ratings.set(ada.id, { mmr: 600, rank: { placementsLeft: 3 } });
+
+      expect((await profileOf(ada.cookie, "ada")).rank).toEqual({ placementsLeft: 3 });
+    });
   });
 
   test("Stats without a Duel: nothing played, nothing to average", async () => {

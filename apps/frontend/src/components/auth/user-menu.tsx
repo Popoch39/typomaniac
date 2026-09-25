@@ -4,6 +4,7 @@ import { LogOutIcon, UserIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { meQueryOptions, type Me } from "@/api/me";
+import { UserChipRank } from "@/components/auth/user-chip-rank";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,7 +55,10 @@ export const UserMenu = ({ me }: UserMenuProps) => {
           {me.image ? <AvatarImage src={me.image} alt="" /> : null}
           <AvatarFallback>{initials(me.name)}</AvatarFallback>
         </Avatar>
-        <span className="max-w-32 truncate text-sm font-bold">{me.handle ?? me.name}</span>
+        <span className="flex flex-col items-start leading-tight">
+          <span className="max-w-32 truncate text-sm font-bold">{me.handle ?? me.name}</span>
+          {me.rank ? <UserChipRank rank={me.rank} /> : null}
+        </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-56">
         <DropdownMenuGroup>

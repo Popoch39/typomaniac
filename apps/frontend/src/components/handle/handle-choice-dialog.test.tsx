@@ -14,6 +14,7 @@ const ada: Me = {
   email: "ada@example.com",
   image: null,
   handle: null,
+  rank: null,
 };
 
 beforeEach(() => {

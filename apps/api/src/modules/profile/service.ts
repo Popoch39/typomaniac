@@ -22,10 +22,11 @@ export const profileOfHandle = async (
     throw new ApiError("NOT_FOUND", "User not found");
   }
 
-  const [stats, progression] = await Promise.all([
+  const [stats, progression, rank] = await Promise.all([
     store.stats(userId),
     store.progression(userId, progressionLimits[window]),
+    store.rankOf(userId),
   ]);
 
-  return { handle: profile.handle, image: profile.image, stats: { ...stats, progression } };
+  return { handle: profile.handle, image: profile.image, rank, stats: { ...stats, progression } };
 };

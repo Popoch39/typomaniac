@@ -265,7 +265,15 @@ describe("HomePage", () => {
   });
 
   test("a User's Bursts are judged against the Pace of their Duels", async () => {
-    const me = { id: "u1", name: "Ada", email: "ada@example.com", image: null, handle: "ada" };
+    const me = {
+      id: "u1",
+      name: "Ada",
+      email: "ada@example.com",
+      image: null,
+      handle: "ada",
+      rank: null,
+    };
+
     // At a Pace of 500 wpm, a Burst takes 600 wpm: "help " in 150 ms, 400 wpm, is not one, when it
     // would be at the default Pace.
     const { user, advance } = renderRun(words10, { me, pace: 500 });

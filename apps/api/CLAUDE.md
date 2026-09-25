@@ -24,7 +24,7 @@ src/
     …             fichiers nommés quand le module en a besoin (store.ts, drizzle-store.ts, schema.ts…)
 ```
 
-- Modules actuels : `auth` (instance Better Auth, macro `auth`), `me` (`/me`, `/me/pace`), `handle`, `user` (Users, recherche), `friend` (Friend requests, Friends), `duel`, `duel-history` (`/duels`, sur le `DuelStore`), `profile` (`/users/:handle/profile`, Stats sur le `DuelStore`), `activity` (`/activity`, sur le `DuelStore` et le `FriendStore`), `challenge` (sans route : ses messages passent par la socket du Duel).
+- Modules actuels : `auth` (instance Better Auth, macro `auth`), `me` (`/me`, avec le rang via `DuelStore.rankOf`, jamais le MMR ; `/me/pace`), `handle`, `user` (Users, recherche), `friend` (Friend requests, Friends), `duel`, `duel-history` (`/duels`, sur le `DuelStore`), `profile` (`/users/:handle/profile`, Stats sur le `DuelStore`), `activity` (`/activity`, sur le `DuelStore` et le `FriendStore`), `challenge` (sans route : ses messages passent par la socket du Duel).
 - `app.ts` ne déclare pas de route métier (seulement `/health`) : il monte les plugins puis `.use()` chaque module. Chaque module fait `.use(authentication(…))` pour la macro (plugin nommé, dédupliqué).
 - Le model est la source unique des types : pas d'interface parallèle aux schémas.
 - Services : pas de classe statique ni de singleton ; les dépendances (`Users`, `DuelStore`, `Clock`…) passent en argument, injectées depuis `AppConfig` (tests sans `vi.mock`). Les classes à état (`DuelQueue`, `RunningDuel`) restent des classes.

@@ -11,7 +11,7 @@ export type MeModuleConfig = { auth: AuthHandler; trustProxy: boolean; duelStore
 export const meModule = ({ auth, trustProxy, duelStore }: MeModuleConfig) =>
   new Elysia({ name: "me", seed: duelStore })
     .use(authentication(auth, { trustProxy }))
-    .get("/me", ({ user }) => meOf(user), {
+    .get("/me", ({ user }) => meOf(duelStore, user), {
       auth: true,
       response: MeModel.me,
       detail: { summary: "The signed-in User", tags: ["Auth"] },

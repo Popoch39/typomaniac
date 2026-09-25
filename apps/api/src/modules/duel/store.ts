@@ -1,4 +1,4 @@
-import type { Rating } from "ranked";
+import type { Rank, Rating } from "ranked";
 import { type Keystroke, paceDuels, paceOf, type Result } from "typing-engine";
 
 import type { Duel, DuelScore } from "./model";
@@ -101,6 +101,8 @@ export type DuelStore = {
   // The User's Rating, created as `initial` when they have none yet (their first join of the
   // Queue).
   ensureRating: (userId: string, initial: Rating) => Promise<Rating>;
+  // The User's visible rank, never their MMR: null until they first join the Queue.
+  rankOf: (userId: string) => Promise<Rank | null>;
   // The wpm of the last `count` Duels a User finished, the most recent first: those written before
   // the Score too.
   recentWpms: (userId: string, count: number) => Promise<number[]>;

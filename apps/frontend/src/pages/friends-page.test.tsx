@@ -30,6 +30,7 @@ const me: Me = {
   email: "ada@example.com",
   image: null,
   handle: "ada",
+  rank: null,
 };
 
 const friends: Friend[] = [{ id: "alan-id", handle: "alan", image: null }];

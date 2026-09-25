@@ -32,9 +32,40 @@ describe("AuthControl", () => {
       email: "ada@example.com",
       image: null,
       handle: "ada",
+      rank: null,
     });
 
     expect(screen.getByRole("button", { name: "Menu de Ada Lovelace" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Se connecter" })).not.toBeInTheDocument();
+  });
+
+  test("the User chip shows the User's Tier and Division", () => {
+    renderWithSession({
+      id: "u1",
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      image: null,
+      handle: "ada",
+      rank: { tier: "platine", division: 3, tp: 10, shielded: false },
+    });
+
+    expect(screen.getByRole("button", { name: "Menu de Ada Lovelace" })).toHaveTextContent(
+      "Platine III · 10 TP",
+    );
+  });
+
+  test("the User chip shows a User in Placement as such", () => {
+    renderWithSession({
+      id: "u1",
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      image: null,
+      handle: "ada",
+      rank: { placementsLeft: 2 },
+    });
+
+    expect(screen.getByRole("button", { name: "Menu de Ada Lovelace" })).toHaveTextContent(
+      "Placement · 2 Duels restants",
+    );
   });
 });

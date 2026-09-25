@@ -21,11 +21,13 @@ const me: Me = {
   email: "ada@example.com",
   image: null,
   handle: "ada",
+  rank: null,
 };
 
 const grace: Profile = {
   handle: "grace",
   image: null,
+  rank: null,
   stats: {
     duels: 3,
     record: { wins: 2, losses: 1, draws: 0 },
@@ -90,6 +92,20 @@ describe("UserProfilePage", () => {
     ).toHaveTextContent("2");
     expect(screen.queryByRole("link", { name: /Revoir/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/Duel history/)).not.toBeInTheDocument();
+  });
+
+  test("shows the User's Tier, Division and TP", async () => {
+    await renderAt(me, "grace", [
+      { ...grace, rank: { tier: "or", division: 2, tp: 42, shielded: false } },
+    ]);
+
+    expect(await screen.findByText("Or II · 42 TP")).toBeInTheDocument();
+  });
+
+  test("shows the Placement Duels a User has left", async () => {
+    await renderAt(me, "grace", [{ ...grace, rank: { placementsLeft: 4 } }]);
+
+    expect(await screen.findByText("Placement · 4 Duels restants")).toBeInTheDocument();
   });
 
   test("a Handle has no case: /u/Grace shows @grace", async () => {

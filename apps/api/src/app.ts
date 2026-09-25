@@ -117,7 +117,7 @@ export const createApp = (config: AppConfig) => {
     })
     .use(authentication(auth, { trustProxy }))
     .use(meModule({ auth, trustProxy, duelStore }))
-    .use(handleModule({ auth, trustProxy, users }))
+    .use(handleModule({ auth, trustProxy, users, duelStore }))
     .use(
       userModule({
         auth,

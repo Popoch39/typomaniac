@@ -26,6 +26,7 @@ const me: Me = {
   email: "ada@example.com",
   image: null,
   handle: "ada",
+  rank: null,
 };
 
 type Entry = DuelHistoryPage["duels"][number];

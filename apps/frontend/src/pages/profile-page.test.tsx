@@ -26,11 +26,13 @@ const me: Me = {
   email: "ada@example.com",
   image: null,
   handle: "ada",
+  rank: null,
 };
 
 const profile = (stats: Partial<Profile["stats"]>): Profile => ({
   handle: "ada",
   image: null,
+  rank: null,
   stats: {
     duels: 0,
     record: { wins: 0, losses: 0, draws: 0 },

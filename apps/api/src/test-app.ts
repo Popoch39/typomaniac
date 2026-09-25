@@ -196,6 +196,7 @@ export const memoryDuelStore = () => {
 
       return rating;
     },
+    rankOf: async (userId) => ratings.get(userId)?.rank ?? null,
     recentWpms: async (userId, count) =>
       saved
         .toSorted((a, b) => b.endedAt - a.endedAt)

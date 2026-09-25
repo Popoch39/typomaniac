@@ -1,6 +1,7 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { profileQueryOptions } from "@/api/profile";
+import { ProfileRank } from "@/components/profile/profile-rank";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { atHandle } from "@/lib/at-handle";
 import { initials } from "@/lib/initials";
@@ -18,6 +19,7 @@ export const ProfileHeader = ({ handle }: { handle: string }) => {
         </AvatarFallback>
       </Avatar>
       <h1 className="text-3xl font-extrabold tracking-tight">{atHandle(profile.handle)}</h1>
+      {profile.rank ? <ProfileRank rank={profile.rank} /> : null}
     </div>
   );
 };

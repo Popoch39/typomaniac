@@ -1,3 +1,4 @@
+import type { DuelStore } from "../duel/store";
 import type { Me } from "./model";
 
 type SessionUser = {
@@ -8,10 +9,11 @@ type SessionUser = {
   handle?: string | null;
 };
 
-export const meOf = (user: SessionUser): Me => ({
+export const meOf = async (store: DuelStore, user: SessionUser): Promise<Me> => ({
   id: user.id,
   name: user.name,
   email: user.email,
   image: user.image ?? null,
   handle: user.handle ?? null,
+  rank: await store.rankOf(user.id),
 });
