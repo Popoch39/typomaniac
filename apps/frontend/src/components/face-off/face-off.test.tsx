@@ -57,6 +57,13 @@ describe("FaceOff", () => {
     expect(screen.getByText("Challenge")).toBeInTheDocument();
   });
 
+  test("slides each player's Handle, repeated, behind their panel", () => {
+    faceOffAt(-4500);
+
+    expect(screen.getAllByText(/^ada · ada · /)).not.toHaveLength(0);
+    expect(screen.getAllByText(/^alan · alan · /)).not.toHaveLength(0);
+  });
+
   test("falls back on the initials of a player without an avatar", () => {
     faceOffAt(-4500);
 

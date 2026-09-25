@@ -1,22 +1,35 @@
+import { cn } from "cn";
+
 import { DIGITS, digitName } from "@/components/face-off/face-off-timeline";
 
-const MARKS = [
-  { part: "vs", label: "VS" },
-  ...DIGITS.map(({ mark }) => ({ part: digitName(mark), label: mark })),
-];
+const MARK =
+  "invisible absolute inset-0 flex items-center justify-center leading-none text-foreground opacity-0";
 
-// The VS of the impact and the giant 3-2-1 then GO, stacked on the diagonal's middle, each shown
-// in turn by the timeline. Seen only: the announcer says them.
+// The ink disc on the diagonal's middle, over both panels: the VS of the impact, then the 3-2-1
+// and GO, each shown in turn by the timeline. Seen only: the announcer says them.
 export const FaceOffCount = () => (
-  <div aria-hidden className="pointer-events-none absolute inset-0">
-    {MARKS.map(({ part, label }) => (
+  <div
+    aria-hidden
+    data-face-off="disc"
+    className="pointer-events-none invisible absolute inset-0 m-auto size-50 rounded-full bg-background opacity-0 ring-12 ring-background/25"
+  >
+    <span data-face-off="vs" className={cn(MARK, "text-[4rem] font-extrabold italic")}>
+      VS
+    </span>
+    {DIGITS.map(({ mark }) => (
       <span
-        key={part}
-        data-face-off={part}
-        className="invisible absolute inset-0 flex items-center justify-center font-mono text-[14rem] leading-none font-extrabold text-foreground italic tabular-nums opacity-0 [text-shadow:0_0.06em_0_var(--brand)]"
+        key={mark}
+        data-face-off={digitName(mark)}
+        className={cn(MARK, "font-mono text-[6.875rem] font-semibold tabular-nums")}
       >
-        {label}
+        {mark}
       </span>
     ))}
+    <span
+      data-face-off="go"
+      className={cn(MARK, "text-[4.75rem] font-extrabold text-caret italic")}
+    >
+      GO
+    </span>
   </div>
 );
