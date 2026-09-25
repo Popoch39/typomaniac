@@ -344,7 +344,7 @@ export class DuelQueue implements ChallengeArena {
       serverTime: this.#clock.now(),
       ...duel.stateOf(userId),
       opponentConnected: this.#playing.has(opponentId),
-      ...duel.pacesOf(userId),
+      ...duel.pairingOf(userId),
     });
 
     if (this.#away.delete(userId)) {
@@ -649,7 +649,7 @@ export class DuelQueue implements ChallengeArena {
         duel: duel.duel,
         opponent: duel.opponentProfileOf(user.id),
         serverTime,
-        ...duel.pacesOf(user.id),
+        ...duel.pairingOf(user.id),
       });
       this.#tellOthers(user.id);
     }

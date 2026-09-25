@@ -307,8 +307,15 @@ export class RunningDuel {
     return profileOf(this.#opponent(userId).user);
   }
 
-  // A player's Pace and the opponent's, as `duel-found` and `duel-resumed` send them.
-  pacesOf(userId: string) {
-    return { pace: this.#player(userId).pace, opponentPace: this.#opponent(userId).pace };
+  // A player's Pace and the opponent's, with the opponent's rank before the Duel (never the MMR),
+  // as `duel-found` and `duel-resumed` send them.
+  pairingOf(userId: string) {
+    const opponent = this.#opponent(userId);
+
+    return {
+      pace: this.#player(userId).pace,
+      opponentPace: opponent.pace,
+      opponentRank: opponent.rating?.rank ?? null,
+    };
   }
 }

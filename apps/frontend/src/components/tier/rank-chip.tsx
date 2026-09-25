@@ -5,9 +5,9 @@ import { rankLabel } from "@/components/tier/rank-label";
 import { TIER_COLORS } from "@/components/tier/tier";
 import { TierEmblem } from "@/components/tier/tier-emblem";
 
-// The User's rank in the nav chip: the Tier's emblem and the rank in words, or the Placement
-// Duels left.
-export const UserChipRank = ({ rank }: { rank: Rank }) =>
+// A rank in a line: the Tier's emblem and the rank in words, or the Placement Duels left. Under
+// the Handle of the User chip, next to the opponent's during the Countdown.
+export const RankChip = ({ rank }: { rank: Rank }) =>
   "placementsLeft" in rank ? (
     <span className="text-xs font-semibold text-muted-foreground">{rankLabel(rank)}</span>
   ) : (

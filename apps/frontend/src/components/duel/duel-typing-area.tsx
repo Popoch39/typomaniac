@@ -13,11 +13,19 @@ import { atHandle } from "@/lib/at-handle";
 import type { DuelPlay } from "@/stores/duel-store";
 import { useDuelStore } from "@/stores/duel-store";
 
-type DuelTypingAreaProps = Pick<DuelPlay, "opponent" | "startsAt"> & { seconds: number };
+type DuelTypingAreaProps = Pick<DuelPlay, "opponent" | "opponentRank" | "startsAt"> & {
+  seconds: number;
+};
 
 // The Duel from the Countdown to the end: the same Text for both, typing blocked until the start.
-// It stays mounted from the Countdown on, so the typing input keeps the focus at the start.
-export const DuelTypingArea = ({ opponent, startsAt, seconds }: DuelTypingAreaProps) => {
+// It stays mounted from the Countdown on, so the typing input keeps the focus at the start. The
+// opponent's rank shows during the Countdown only.
+export const DuelTypingArea = ({
+  opponent,
+  opponentRank,
+  startsAt,
+  seconds,
+}: DuelTypingAreaProps) => {
   const { inputRef, focused, setFocused, focus } = useTypingFocus();
   const press = useDuelStore((store) => store.press);
   const elapsed = useDuelElapsed(startsAt);
@@ -25,7 +33,7 @@ export const DuelTypingArea = ({ opponent, startsAt, seconds }: DuelTypingAreaPr
 
   return (
     <div className="flex flex-col gap-4">
-      <DuelFound opponent={opponent} />
+      <DuelFound opponent={opponent} rank={elapsed < 0 ? opponentRank : null} />
       <DuelConnection opponent={opponentLabel} />
       <KeystrokeInput ref={inputRef} onFocusChange={setFocused} onPress={press} />
       <div className="flex items-baseline justify-between">

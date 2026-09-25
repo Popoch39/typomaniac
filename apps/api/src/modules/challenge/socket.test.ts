@@ -219,6 +219,8 @@ describe("Challenges, on the socket", () => {
       duel: { language: "en", seconds: 30, startsAt: NOW + 3000 },
       opponent: { handle: "ada", image: ada.image },
       serverTime: NOW,
+      // Never ranked: no rank to show.
+      opponentRank: null,
     });
     expect(adaFound).toMatchObject({ type: "duel-found", opponent: { handle: "alan" } });
 

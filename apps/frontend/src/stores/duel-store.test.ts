@@ -19,6 +19,7 @@ const duelFound: ServerMessage = {
   serverTime: 0,
   pace: 40,
   opponentPace: 40,
+  opponentRank: { placementsLeft: 5 },
 };
 
 let sockets = fakeServer();

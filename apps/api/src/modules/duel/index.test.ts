@@ -100,6 +100,8 @@ const duelFound = (opponent: string) => ({
   // Neither User has played a Duel yet.
   pace: defaultPace,
   opponentPace: defaultPace,
+  // Both in their first Placement.
+  opponentRank: { placementsLeft: 5 },
 });
 
 // Or IV expects an MMR of 1000, Diamant IV one of 1400: at those, no catch-up moves the TP.
@@ -248,6 +250,7 @@ describe("duel socket", () => {
       serverTime: NOW,
       pace: defaultPace,
       opponentPace: defaultPace,
+      opponentRank: { placementsLeft: 5 },
     });
     expect(forAda).toEqual(duelFound("Alan"));
     // The very same Duel (id, Seed, start), only the opponent differs.
@@ -887,6 +890,7 @@ describe("duel socket", () => {
       // Frozen at the pairing.
       pace: 72,
       opponentPace: defaultPace,
+      opponentRank: { placementsLeft: 5 },
     });
     expect(await alan.next()).toEqual({ type: "opponent-reconnected" });
 
@@ -1568,13 +1572,47 @@ describe("duel socket", () => {
       const alan = await queued(alanUser.cookie);
       const grace = await queued(graceUser.cookie);
 
-      expect(await ada.next()).toEqual(duelFound("Grace"));
-      expect(await grace.next()).toEqual(duelFound("Ada"));
+      expect(await ada.next()).toEqual({ ...duelFound("Grace"), opponentRank: orIv(50) });
+      expect(await grace.next()).toEqual({ ...duelFound("Ada"), opponentRank: orIv(50) });
       await alan.settle();
     });
   });
 
   describe("ranked", () => {
+    test("each User is told the opponent's rank at the pairing, never the MMR", async () => {
+      const adaUser = await signedInUser("Ada");
+      const alanUser = await signedInUser("Alan");
+
+      ratings.set(adaUser.id, { mmr: 1000, rank: orIv(50) });
+      // Within the window of Ada's MMR, whatever the rank shown.
+      ratings.set(alanUser.id, { mmr: 1050, rank: diamantIv(10) });
+
+      const ada = await queued(adaUser.cookie);
+      const alan = await queued(alanUser.cookie);
+      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+      expect(forAda).toMatchObject({ type: "duel-found", opponentRank: diamantIv(10) });
+      expect(forAlan).toMatchObject({ type: "duel-found", opponentRank: orIv(50) });
+      expect(JSON.stringify([forAda, forAlan])).not.toContain("mmr");
+    });
+
+    test("the opponent's rank comes back with the resumed Duel", async () => {
+      const adaUser = await signedInUser("Ada");
+      const alanUser = await signedInUser("Alan");
+
+      ratings.set(adaUser.id, { mmr: 1000, rank: orIv(50) });
+      ratings.set(alanUser.id, { mmr: 1000, rank: orIv(20) });
+
+      const ada = await queued(adaUser.cookie);
+      const alan = await queued(alanUser.cookie);
+
+      await Promise.all([ada.next(), alan.next()]);
+
+      const again = await resumedOn(adaUser.cookie);
+
+      expect(await again.next()).toMatchObject({ type: "duel-resumed", opponentRank: orIv(20) });
+    });
+
     test("a first join of the Queue seeds the Rating from the Pace, in Placement", async () => {
       const { ada, alan, adaId } = await pairedUsers({ adaWpms: [70] });
 

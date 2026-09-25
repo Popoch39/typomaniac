@@ -137,6 +137,9 @@ const ServerMessage = t.Union([
     // Each player's Pace, in wpm, frozen for the Duel: the client scores both sides with them.
     pace: t.Number(),
     opponentPace: t.Number(),
+    // The opponent's rank, shown during the Countdown, never their MMR; null for a Challenge
+    // (never ranked) or when their Rating could not be read.
+    opponentRank: t.Nullable(Rank),
   }),
   // The User's Duel, played on this connection from now on (`resume-duel`): the Duel as
   // `duel-found` gives it, plus the state that holds, as `resync` gives it.
@@ -152,6 +155,7 @@ const ServerMessage = t.Union([
     opponentConnected: t.Boolean(),
     pace: t.Number(),
     opponentPace: t.Number(),
+    opponentRank: t.Nullable(Rank),
   }),
   // The opponent's connection dropped: they have a few seconds to come back, or forfeit.
   t.Object({ type: t.Literal("opponent-disconnected") }),
