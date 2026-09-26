@@ -5,6 +5,7 @@ import { DuelHandleRequired } from "@/components/duel/duel-handle-required";
 import { DuelInterrupted } from "@/components/duel/duel-interrupted";
 import { DuelQueue } from "@/components/duel/duel-queue";
 import { DuelTypingArea } from "@/components/duel/duel-typing-area";
+import { MatchProposal } from "@/components/match-proposal/match-proposal";
 import { useClock } from "@/components/run/clock-context";
 import { useDuelStore } from "@/stores/duel-store";
 
@@ -26,6 +27,13 @@ export const DuelArea = () => {
     case "connecting":
     case "queued":
       return <DuelQueue />;
+    case "proposed":
+      return (
+        <>
+          <DuelQueue />
+          <MatchProposal proposal={state.proposal} />
+        </>
+      );
     case "handle-required":
       return <DuelHandleRequired />;
     case "countdown":

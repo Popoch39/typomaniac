@@ -32,6 +32,12 @@ const DUEL_SECONDS = 30;
 // The Face-off (1.5 s), then the 3-2-1: typing is blocked all along.
 const COUNTDOWN_MS = 4500;
 
+// How long both Users of a Match proposal have to accept it.
+export const PROPOSAL_MS = 10_000;
+
+// Between the double acceptance of a Match proposal and the Countdown: « C'est parti ! ».
+const ACCEPTED_MS = 1000;
+
 // How long a player whose connection dropped has to come back before forfeiting.
 const RECONNECT_GRACE_MS = 10_000;
 
@@ -56,8 +62,8 @@ export type DuelQueueConfig = {
   // Where a Challenge checks the two are Friends.
   friendStore: FriendStore;
   logger: Logger;
-  // Told when a User's Duel starts (at the pairing, Countdown included) and when it ends: their
-  // Presence.
+  // Told when a User's Duel starts (once its Match proposal is accepted, Countdown included) and
+  // when it ends: their Presence.
   onDuel: (userId: string, inDuel: boolean) => void;
   // Told once a finished Duel is written, never when the write failed or ran out of time.
   onDuelSaved: (record: DuelRecord) => void;
@@ -74,6 +80,15 @@ type QueueEntry = {
 };
 
 type ReadyUser = PacedUser & { joinedAt: number };
+
+// Two Users paired by the Queue, until both accept or its time runs out: each with their entry of
+// the Queue (when they joined kept), who accepted so far, when they were paired and when it ends.
+type Proposal = {
+  players: readonly [ReadyUser, ReadyUser];
+  accepted: Set<string>;
+  pairedAt: number;
+  expiresAt: number;
+};
 
 // Two Users can face each other once their MMR gap fits the window of whichever has waited
 // longer. Without a Rating, the Duel is not ranked: any MMR fits.
@@ -111,6 +126,9 @@ export class DuelQueue implements ChallengeArena {
   // User ids in arrival order. Queued Users always have a connection that plays: its closing drops
   // them.
   readonly #queue = new Map<string, QueueEntry>();
+
+  // The Match proposal of each User in one: out of the Queue, not in a Duel yet.
+  readonly #proposals = new Map<string, Proposal>();
 
   // The write of each User's last Duel, until it is done: their Pace waits for it. It gives the id
   // the Duel was written under, null if the write failed.
@@ -203,6 +221,9 @@ export class DuelQueue implements ChallengeArena {
       case "leave-duel":
         this.#leave(userId);
         break;
+      case "accept-proposal":
+        this.#accept(userId);
+        break;
     }
   }
 
@@ -252,9 +273,14 @@ export class DuelQueue implements ChallengeArena {
     return this.#connections.get(userId)?.get(connectionId);
   }
 
-  // From the pairing (Countdown included) to the end, told once the Duel is written.
+  // From the start of the Duel (Countdown included) to its end, told once the Duel is written.
   isInDuel(userId: string) {
     return this.#duels.has(userId) || this.#beingWritten.has(userId);
+  }
+
+  // Paired by the Queue, until the Match proposal is over: neither in the Queue nor in a Duel.
+  isProposed(userId: string) {
+    return this.#proposals.has(userId);
   }
 
   // Their Challenges between them are over.
@@ -285,13 +311,14 @@ export class DuelQueue implements ChallengeArena {
 
   // The User's place as a connection that does not play it is told. A Duel whose end they were not
   // told is still their place: only a connection that resumes it is told the end. Still being
-  // read, the Queue is no place yet: it becomes one with `queued`.
+  // read, the Queue is no place yet: it becomes one with `queued`. A Match proposal is still the
+  // Queue's.
   #placeOf(userId: string): ServerMessage {
     if (this.isInDuel(userId) || this.#missed.has(userId)) {
       return { type: "elsewhere", place: "duel" };
     }
 
-    if (this.#queue.get(userId)?.user) {
+    if (this.#queue.get(userId)?.user || this.#proposals.has(userId)) {
       return { type: "elsewhere", place: "queue" };
     }
 
@@ -377,12 +404,17 @@ export class DuelQueue implements ChallengeArena {
   // The same mechanism as a reconnection: the Duel goes on here, the connection that played it
   // until now is told, and the time to come back stops. A Duel that ended while no connection
   // played it: its end, told once, and the other connections that the User is idle. Otherwise,
-  // ignored. A Duel over but not written yet: its end is told here once it is.
+  // ignored. A Duel over but not written yet: its end is told here once it is. A Match proposal
+  // goes on here too.
   #resumeOn(userId: string, connection: Connection) {
     const duel = this.#duels.get(userId);
     const missed = this.#missed.get(userId);
+    const proposal = this.#proposals.get(userId);
 
-    if (duel) {
+    if (proposal) {
+      this.#playOn(userId, connection);
+      this.#send(userId, this.#proposalMessage(userId, proposal));
+    } else if (duel) {
       this.#playOn(userId, connection);
       this.#resume(userId, duel);
     } else if (this.#beingWritten.has(userId)) {
@@ -546,6 +578,14 @@ export class DuelQueue implements ChallengeArena {
     this.#missed.delete(userId);
     this.#playOn(userId, connection);
 
+    const proposal = this.#proposals.get(userId);
+
+    if (proposal) {
+      this.#send(userId, this.#proposalMessage(userId, proposal));
+
+      return;
+    }
+
     const queued = this.#queue.get(userId);
 
     if (queued) {
@@ -667,10 +707,8 @@ export class DuelQueue implements ChallengeArena {
       if (a) {
         this.#queue.delete(a.user.id);
         this.#queue.delete(b.user.id);
-        this.#recentWaits.push(now - a.joinedAt, now - b.joinedAt);
-        this.#recentWaits = this.#recentWaits.slice(-2 * ESTIMATED_WAIT_PAIRINGS);
         this.#queueChanged();
-        this.#start([a, b]);
+        this.#propose([a, b], now);
       } else {
         waiting.push(b);
       }
@@ -704,10 +742,89 @@ export class DuelQueue implements ChallengeArena {
     });
   }
 
-  // Seed drawn here, same format for every Duel, the Countdown starting now. Each player is told on
-  // the connection that plays, their other connections that the Duel is elsewhere; their
-  // Challenges are over.
-  #start([a, b]: readonly [PacedUser, PacedUser]) {
+  // A pairing opens a Match proposal: both have PROPOSAL_MS to accept the Duel, their Challenges
+  // are over, and they stay online until it starts.
+  #propose(players: readonly [ReadyUser, ReadyUser], now: number) {
+    const proposal: Proposal = {
+      players,
+      accepted: new Set(),
+      pairedAt: now,
+      expiresAt: now + PROPOSAL_MS,
+    };
+
+    for (const { user } of players) {
+      this.#proposals.set(user.id, proposal);
+      this.#challenges.engaged(user.id);
+      this.#send(user.id, this.#proposalMessage(user.id, proposal));
+    }
+
+    this.#clock.at(proposal.expiresAt, () => this.#expire(proposal));
+  }
+
+  // The Match proposal as `userId` sees it.
+  #proposalMessage(userId: string, { players, accepted, expiresAt }: Proposal): ServerMessage {
+    const [self, opponent] = players[0].user.id === userId ? players : [players[1], players[0]];
+
+    return {
+      type: "match-proposed",
+      expiresAt,
+      serverTime: this.#clock.now(),
+      opponent: { handle: opponent.user.handle, image: opponent.user.image },
+      selfRank: self.rating?.rank ?? null,
+      opponentRank: opponent.rating?.rank ?? null,
+      selfAccepted: accepted.has(userId),
+      opponentAccepted: accepted.has(opponent.user.id),
+    };
+  }
+
+  // The first to accept tells the other. Once both have, the Duel starts ACCEPTED_MS later, and
+  // their waits, from joining the Queue to the pairing, count for the Estimated wait.
+  #accept(userId: string) {
+    const proposal = this.#proposals.get(userId);
+
+    if (!proposal || proposal.accepted.has(userId)) {
+      return;
+    }
+
+    proposal.accepted.add(userId);
+
+    const { players, pairedAt } = proposal;
+
+    if (proposal.accepted.size < players.length) {
+      for (const { user } of players) {
+        if (user.id !== userId) {
+          this.#send(user.id, { type: "opponent-accepted" });
+        }
+      }
+
+      return;
+    }
+
+    for (const { user, joinedAt } of players) {
+      this.#proposals.delete(user.id);
+      this.#recentWaits.push(pairedAt - joinedAt);
+      this.#send(user.id, { type: "proposal-ended", reason: "accepted" });
+    }
+
+    this.#recentWaits = this.#recentWaits.slice(-2 * ESTIMATED_WAIT_PAIRINGS);
+    this.#start(players, ACCEPTED_MS);
+  }
+
+  // Out of time before both accepted: both are out of the Queue.
+  #expire(proposal: Proposal) {
+    for (const { user } of proposal.players) {
+      if (this.#proposals.get(user.id) === proposal) {
+        this.#proposals.delete(user.id);
+        this.#send(user.id, { type: "proposal-ended", reason: "missed" });
+        this.#tellOthers(user.id);
+      }
+    }
+  }
+
+  // Seed drawn here, same format for every Duel, the Countdown starting in `delay` ms. Each player
+  // is told on the connection that plays, their other connections that the Duel is elsewhere;
+  // their Challenges are over.
+  #start([a, b]: readonly [PacedUser, PacedUser], delay = 0) {
     const serverTime = this.#clock.now();
 
     const duel = new RunningDuel(
@@ -717,7 +834,7 @@ export class DuelQueue implements ChallengeArena {
         language: DUEL_LANGUAGE,
         wordListVersion: currentWordListVersion[DUEL_LANGUAGE],
         seconds: DUEL_SECONDS,
-        startsAt: serverTime + COUNTDOWN_MS,
+        startsAt: serverTime + delay + COUNTDOWN_MS,
       },
       [a, b],
     );
@@ -728,7 +845,7 @@ export class DuelQueue implements ChallengeArena {
 
     for (const { user } of [a, b]) {
       this.#onDuel(user.id, true);
-      this.#challenges.enteredDuel(user.id);
+      this.#challenges.engaged(user.id);
       this.#send(user.id, {
         type: "duel-found",
         duel: duel.duel,

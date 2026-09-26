@@ -34,6 +34,8 @@ const ClientMessage = t.Union([
   // Plays the User's Duel on this connection from now on: after a reconnection, a reload, from
   // another tab.
   t.Object({ type: t.Literal("resume-duel") }),
+  // Accepts the User's Match proposal: they have one at a time.
+  t.Object({ type: t.Literal("accept-proposal") }),
   // The same socket carries the User's Challenges.
   ChallengeModel.challengeClientMessage,
 ]);
@@ -158,6 +160,26 @@ const ServerMessage = t.Union([
   QueueStatus,
   // Refused the Queue: a Duel shows each player's Handle, and the User has none yet.
   t.Object({ type: t.Literal("handle-required") }),
+  // Paired by the Queue: the User has until `expiresAt` (server time) to accept the Duel. Sent
+  // again when they come back to it (`join-queue`, `resume-duel`), with who accepted so far. Each
+  // player's rank, never their MMR.
+  t.Object({
+    type: t.Literal("match-proposed"),
+    expiresAt: t.Number(),
+    serverTime: t.Number(),
+    opponent: DuelOpponent,
+    selfRank: t.Nullable(Rank),
+    opponentRank: t.Nullable(Rank),
+    selfAccepted: t.Boolean(),
+    opponentAccepted: t.Boolean(),
+  }),
+  t.Object({ type: t.Literal("opponent-accepted") }),
+  // The Match proposal is over: both accepted, `duel-found` follows; or its time ran out before,
+  // and both are out of the Queue.
+  t.Object({
+    type: t.Literal("proposal-ended"),
+    reason: t.Union([t.Literal("accepted"), t.Literal("missed")]),
+  }),
   t.Object({
     type: t.Literal("duel-found"),
     duel: Duel,

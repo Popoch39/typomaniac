@@ -78,8 +78,13 @@ export const placeAfter = (place: Place | null, message: ServerMessage): Place |
       return { at: "idle" };
     case "elsewhere":
       return { at: message.place, here: false };
+    // A Match proposal is still the Queue's, until the Duel is found.
     case "queued":
+    case "match-proposed":
       return { at: "queue", here: true };
+    // Out of time: out of the Queue.
+    case "proposal-ended":
+      return message.reason === "missed" ? { at: "idle" } : place;
     case "duel-found":
     case "duel-resumed":
       return { at: "duel", here: true };

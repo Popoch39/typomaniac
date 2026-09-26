@@ -27,6 +27,7 @@
   /* The search of the Queue: the arc around the avatar, and the dashed halo the other way. */
   --animate-queue-arc: queue-spin 1.2s linear infinite;
   --animate-queue-halo: queue-spin 14s linear infinite reverse;
+  --animate-proposal-pop: proposal-pop 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -84,6 +85,14 @@
   @keyframes tp-fill {
     from {
       transform: scaleX(0);
+    }
+  }
+
+  /* The Match proposal's dialog pops over the Queue. */
+  @keyframes proposal-pop {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.96);
     }
   }
 

@@ -142,6 +142,15 @@ describe("FaceOff", () => {
     expect(screen.getByText("Aucun Duel classé")).toBeInTheDocument();
   });
 
+  test("waits for the Countdown: nothing in the second of « C'est parti ! » before it", () => {
+    const face = faceOffAt(-5500);
+
+    expect(screen.queryByText("@alan")).not.toBeInTheDocument();
+
+    face.at(-4500);
+    expect(screen.getByText("@alan")).toBeInTheDocument();
+  });
+
   test("slides each player's Handle, repeated, behind their panel", () => {
     faceOffAt(-4500);
 

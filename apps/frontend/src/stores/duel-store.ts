@@ -74,10 +74,30 @@ export type QueueView = {
   estimatedWait: number | null;
 };
 
+type MatchProposed = Extract<ServerMessage, { type: "match-proposed" }>;
+
+// Where the User's Match proposal stands, as the dialog shows it: to answer, accepted and waiting
+// for the opponent, accepted by both (the Duel follows), or out of time.
+export type ProposalStage = "pending" | "accepted" | "ready" | "missed";
+
+// A Match proposal as this tab shows it: until when to answer, on this tab's clock, the opponent,
+// both ranks (never the MMR) and whether each accepted (kept once the time ran out).
+export type ProposalView = {
+  stage: ProposalStage;
+  expiresAt: number;
+  opponent: DuelOpponent;
+  selfRank: MatchProposed["selfRank"];
+  opponentRank: MatchProposed["opponentRank"];
+  selfAccepted: boolean;
+  opponentAccepted: boolean;
+};
+
 export type DuelState =
   // Waiting for the User's place, to join the Queue or resume their Duel here.
   | { phase: "connecting" }
   | { phase: "queued"; queue: QueueView | null }
+  // Paired by the Queue: the Duel waits for both to accept it. The Queue's place still.
+  | { phase: "proposed"; proposal: ProposalView }
   // Refused the Queue: the User has no Handle yet.
   | { phase: "handle-required" }
   // Paired, typing blocked until the start.
@@ -106,6 +126,8 @@ type DuelStore = {
   claim: () => void;
   // Nouveau Duel, once the previous one is over: back to the Queue.
   joinQueue: () => void;
+  // Accepts the Match proposal, while it waits for this User's answer.
+  acceptProposal: () => void;
   // Quitter le Duel: a Forfeit, the server ends the Duel.
   leave: () => void;
   press: (key: Key, now: number) => void;
@@ -211,6 +233,36 @@ const withQueueStatus = (state: DuelState, status: QueueStatus): DuelState =>
         },
       }
     : state;
+
+// The Match proposal, its end shifted onto this tab's clock as the Duel's start is.
+const proposedState = (message: MatchProposed): DuelState => ({
+  phase: "proposed",
+  proposal: {
+    stage: message.selfAccepted ? "accepted" : "pending",
+    expiresAt: message.expiresAt - message.serverTime + clock(),
+    opponent: message.opponent,
+    selfRank: message.selfRank,
+    opponentRank: message.opponentRank,
+    selfAccepted: message.selfAccepted,
+    opponentAccepted: message.opponentAccepted,
+  },
+});
+
+// Applies a change to the Match proposal, while it is shown.
+const updateProposal = (
+  state: DuelState,
+  update: (proposal: ProposalView) => ProposalView,
+): DuelState =>
+  state.phase === "proposed" ? { phase: "proposed", proposal: update(state.proposal) } : state;
+
+type ProposalEnded = Extract<ServerMessage, { type: "proposal-ended" }>;
+
+const proposalEnded = (state: DuelState, { reason }: ProposalEnded) =>
+  updateProposal(state, (proposal) =>
+    reason === "accepted"
+      ? { ...proposal, stage: "ready", selfAccepted: true, opponentAccepted: true }
+      : { ...proposal, stage: "missed" },
+  );
 
 // The Duel from the server's state: Countdown first, the next frame starts it if already due.
 const playing = (
@@ -398,6 +450,12 @@ const stateAfter = (state: DuelState, message: ServerMessage): DuelState => {
       return withQueueStatus(state, message);
     case "handle-required":
       return { phase: "handle-required" };
+    case "match-proposed":
+      return proposedState(message);
+    case "opponent-accepted":
+      return updateProposal(state, (proposal) => ({ ...proposal, opponentAccepted: true }));
+    case "proposal-ended":
+      return proposalEnded(state, message);
     case "duel-found":
       return startDuel(message);
     case "duel-resumed":
@@ -481,6 +539,10 @@ const ticked = (state: DuelState, now: number): DuelState => {
   return { phase: "finishing", duel: state.duel };
 };
 
+// The Queue's place, or on the way to it: waiting in the Queue or its Match proposal.
+const inQueuePlace = ({ phase }: DuelState) =>
+  phase === "queued" || phase === "proposed" || phase === "connecting";
+
 // The connection is lost: the server keeps the Duel played here for a few seconds, marked
 // disconnected until resumed; it drops the User from the Queue, which they join again once back.
 const lost = (state: DuelState): DuelState => {
@@ -488,7 +550,8 @@ const lost = (state: DuelState): DuelState => {
     return updateDuel(state, (duel) => ({ ...duel, connected: false }));
   }
 
-  if (state.phase === "queued" || state.phase === "connecting") {
+  // The server keeps a Match proposal: joining the Queue again brings it back.
+  if (inQueuePlace(state)) {
     placeAsked = false;
 
     return { phase: "connecting" };
@@ -525,7 +588,7 @@ export const useDuelStore = create<DuelStore>()((set, get) => ({
     // Leaving on purpose once the time is up would forfeit a Duel whose verdict is on its way.
     if (state.phase === "countdown" || state.phase === "running") {
       send({ type: "leave-duel" });
-    } else if (state.phase === "queued" || state.phase === "connecting") {
+    } else if (inQueuePlace(state)) {
       send({ type: "leave-queue" });
     }
 
@@ -540,6 +603,20 @@ export const useDuelStore = create<DuelStore>()((set, get) => ({
     claimPlace();
   },
   joinQueue: () => send({ type: "join-queue" }),
+  acceptProposal: () => {
+    const { state } = get();
+
+    if (state.phase === "proposed" && state.proposal.stage === "pending") {
+      send({ type: "accept-proposal" });
+      set({
+        state: updateProposal(state, (proposal) => ({
+          ...proposal,
+          stage: "accepted",
+          selfAccepted: true,
+        })),
+      });
+    }
+  },
   leave: () => send({ type: "leave-duel" }),
   press: (key, now) => set((store) => pressed(store, key, now)),
   tick: (now) =>

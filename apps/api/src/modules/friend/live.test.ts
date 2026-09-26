@@ -36,12 +36,26 @@ const closed = async (client: TestClient) => {
   await client.closed;
 };
 
-// Two Users paired from the Queue: their Duel's Countdown is on.
-const paired = async (a: TestClient, b: TestClient) => {
+// Two Users paired from the Queue, then `accepted` once their Match proposal is out: both accept
+// it, their Duel's Countdown is on.
+const paired = async (
+  a: TestClient,
+  b: TestClient,
+  { proposed = async () => {} }: { proposed?: () => Promise<void> } = {},
+) => {
   a.send({ type: "join-queue" });
   expect(await a.next()).toEqual({ type: "queued" });
   b.send({ type: "join-queue" });
   expect(await b.next()).toEqual({ type: "queued" });
+
+  const [first, second] = await Promise.all([a.next(), b.next()]);
+
+  expect([first, second]).toMatchObject([{ type: "match-proposed" }, { type: "match-proposed" }]);
+  await proposed();
+  a.send({ type: "accept-proposal" });
+  b.send({ type: "accept-proposal" });
+  expect(await b.next()).toEqual({ type: "opponent-accepted" });
+  await Promise.all([a.next(), b.next()]);
   expect(await a.next()).toMatchObject({ type: "duel-found" });
   expect(await b.next()).toMatchObject({ type: "duel-found" });
 };
@@ -136,10 +150,10 @@ describe("Presence and Friends, live on the socket", () => {
 
     expect(await alanTab.nextFriends()).toEqual(presence(ada.id, "online"));
 
-    // In the Queue, still online; in a Duel from the Countdown on.
+    // In the Queue and in a Match proposal, still online; in a Duel from the Countdown on.
     const carolTab = await tab(carol);
 
-    await paired(adaTab, carolTab);
+    await paired(adaTab, carolTab, { proposed: async () => alanTab.settleFriends() });
     expect(await alanTab.nextFriends()).toEqual(presence(ada.id, "in-duel"));
 
     // Over (a Forfeit): online again.

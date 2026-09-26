@@ -11,6 +11,7 @@ import {
 
 import { createApp } from "../../app";
 import {
+  acceptBoth,
   createTestAuth,
   manualClock,
   memoryDuelStore,
@@ -29,10 +30,11 @@ import type { DuelRecord } from "./store";
 
 const NOW = 1_700_000_000_000;
 
-// A Duel paired at NOW starts after the 4.5 s Countdown (Face-off, then 3-2-1) and lasts 30 s.
+// A Duel whose Match proposal both accepted at NOW starts 1 s later (« C'est parti ! »), after the
+// 4.5 s Countdown (Face-off, then 3-2-1), and lasts 30 s.
 const COUNTDOWN_MS = 4500;
 
-const STARTS_AT = NOW + COUNTDOWN_MS;
+const STARTS_AT = NOW + 1000 + COUNTDOWN_MS;
 
 // Its time is up: the end written for a Duel that was not forfeited.
 const TIME_UP = STARTS_AT + 30_000;
@@ -244,7 +246,7 @@ describe("duel socket", () => {
     const ada = await queued(await signedIn("Ada"));
     const alan = await queued(await signedIn("Alan"));
 
-    const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+    const [forAda, forAlan] = await acceptBoth(ada, alan);
 
     expect(forAlan).toEqual({
       type: "duel-found",
@@ -298,12 +300,13 @@ describe("duel socket", () => {
     expect(await ada.next()).toEqual({ type: "queued" });
 
     const alan = await queued(await signedIn("Alan"));
+    const [forAda, forAlan] = await acceptBoth(ada, alan);
 
-    expect(await alan.next()).toMatchObject({
+    expect(forAlan).toMatchObject({
       type: "duel-found",
       opponent: { handle: "countess", image: "https://img/ada" },
     });
-    expect(await ada.next()).not.toHaveProperty("opponent.name");
+    expect(forAda).not.toHaveProperty("opponent.name");
   });
 
   test("each User's Pace is the median wpm of their last 10 Duels, sent to both players", async () => {
@@ -325,7 +328,7 @@ describe("duel socket", () => {
     const ada = await queuedLongAgo(adaUser.cookie);
     const alan = await queued(alanUser.cookie);
 
-    const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+    const [forAda, forAlan] = await acceptBoth(ada, alan);
 
     // Sorted: 60 61 65 70 72 74 77 80 88 90.
     expect(forAda).toMatchObject({ type: "duel-found", pace: 73, opponentPace: defaultPace });
@@ -337,7 +340,7 @@ describe("duel socket", () => {
     const alanUser = await signedInUser("Alan");
     const ada = await queued(adaUser.cookie);
     const alan = await queued(alanUser.cookie);
-    const [found] = await Promise.all([ada.next(), alan.next()]);
+    const [found] = await acceptBoth(ada, alan);
 
     setNow(STARTS_AT + 5000);
     ada.send({ type: "keystrokes", keystrokes: typed(firstWordOf(found), 1000) });
@@ -351,7 +354,7 @@ describe("duel socket", () => {
     expect(await ada.next()).toEqual({ type: "queued" });
     expect(await alan.next()).toEqual({ type: "queued" });
 
-    expect(await ada.next()).toMatchObject({
+    expect((await acceptBoth(ada, alan))[0]).toMatchObject({
       type: "duel-found",
       pace: ending.result.wpm,
       opponentPace: ending.opponentResult.wpm,
@@ -400,9 +403,11 @@ describe("duel socket", () => {
 
     const alan = await queued(await signedIn("Alan"));
 
-    expect(await firstTab.next()).toEqual(duelFound("Alan"));
+    // Its acceptance is ignored too: the one of the tab that plays counts.
+    secondTab.send({ type: "accept-proposal" });
+    await secondTab.settle();
+    expect(await acceptBoth(firstTab, alan)).toEqual([duelFound("Alan"), duelFound("Ada")]);
     expect(await secondTab.next()).toEqual({ type: "elsewhere", place: "duel" });
-    expect(await alan.next()).toEqual(duelFound("Ada"));
 
     // Its Keystrokes and its Forfeit are ignored too.
     setNow(STARTS_AT + 1000);
@@ -430,9 +435,8 @@ describe("duel socket", () => {
 
     const alan = await queued(await signedIn("Alan"));
 
-    expect(await secondTab.next()).toEqual(duelFound("Alan"));
+    expect(await acceptBoth(secondTab, alan)).toEqual([duelFound("Alan"), duelFound("Ada")]);
     expect(await firstTab.next()).toEqual({ type: "elsewhere", place: "duel" });
-    expect(await alan.next()).toEqual(duelFound("Ada"));
   });
 
   test("every tab is told the User's place when it changes", async () => {
@@ -454,9 +458,8 @@ describe("duel socket", () => {
 
     const alan = await queued(await signedIn("Alan"));
 
-    expect(await playing.next()).toMatchObject({ type: "duel-found" });
+    expect((await acceptBoth(playing, alan))[0]).toMatchObject({ type: "duel-found" });
     expect(await watching.next()).toEqual({ type: "elsewhere", place: "duel" });
-    await alan.next();
 
     setNow(ENDS_AT);
     expect(await playing.next()).toMatchObject({ type: "duel-ended" });
@@ -507,7 +510,7 @@ describe("duel socket", () => {
 
     const ada = await queuedLongAgo(adaUser.cookie);
     const alan = await queued(alanUser.cookie);
-    const [found] = await Promise.all([ada.next(), alan.next()]);
+    const [found] = await acceptBoth(ada, alan);
 
     return { ada, alan, adaId: adaUser.id, alanId: alanUser.id, cookie: adaUser.cookie, found };
   };
@@ -517,7 +520,7 @@ describe("duel socket", () => {
     const ada = await queued(await signedIn("Ada"));
     const alan = await queued(await signedIn("Alan"));
 
-    const [found] = await Promise.all([ada.next(), alan.next()]);
+    const [found] = await acceptBoth(ada, alan);
 
     return { ada, alan, found };
   };
@@ -557,17 +560,17 @@ describe("duel socket", () => {
     });
   });
 
-  test("the Countdown lasts 4.5 s from the pairing, Face-off included", async () => {
+  test("the Countdown starts 1 s after both accepted and lasts 4.5 s, Face-off included", async () => {
     const { alan, found } = await paired();
 
-    expect(found).toMatchObject({ serverTime: NOW, duel: { startsAt: NOW + 4500 } });
+    expect(found).toMatchObject({ serverTime: NOW, duel: { startsAt: NOW + 5500 } });
     await alan.settle();
   });
 
   test("a Keystroke sent during the Face-off is ignored", async () => {
     const { ada, alan } = await paired();
 
-    setNow(NOW + 1000);
+    setNow(STARTS_AT - 3500);
     ada.send({ type: "keystrokes", keystrokes: [char("s", -3500)] });
 
     expect(await ada.next()).toEqual({
@@ -641,7 +644,7 @@ describe("duel socket", () => {
   test("the best Score wins, and both see the same Results and Scores", async () => {
     const ada = await queued(await signedIn("Ada"));
     const alan = await queued(await signedIn("Alan"));
-    const [found] = await Promise.all([ada.next(), alan.next()]);
+    const [found] = await acceptBoth(ada, alan);
     const word = firstWordOf(found);
 
     setNow(STARTS_AT + 5000);
@@ -683,7 +686,7 @@ describe("duel socket", () => {
   test("a slower player who keeps their Combo beats a faster one who makes mistakes", async () => {
     const ada = await queued(await signedIn("Ada"));
     const alan = await queued(await signedIn("Alan"));
-    const [found] = await Promise.all([ada.next(), alan.next()]);
+    const [found] = await acceptBoth(ada, alan);
     const words = wordsOf(found, 11);
 
     setNow(STARTS_AT + 29_000);
@@ -716,7 +719,7 @@ describe("duel socket", () => {
   test("the same Score is won by the best accuracy", async () => {
     const ada = await queued(await signedIn("Ada"));
     const alan = await queued(await signedIn("Alan"));
-    const [found] = await Promise.all([ada.next(), alan.next()]);
+    const [found] = await acceptBoth(ada, alan);
     const word = firstWordOf(found);
 
     setNow(STARTS_AT + 5000);
@@ -738,7 +741,7 @@ describe("duel socket", () => {
   test("the same Score and accuracy is a Draw for both", async () => {
     const ada = await queued(await signedIn("Ada"));
     const alan = await queued(await signedIn("Alan"));
-    const [found] = await Promise.all([ada.next(), alan.next()]);
+    const [found] = await acceptBoth(ada, alan);
     const word = firstWordOf(found);
 
     setNow(STARTS_AT + 5000);
@@ -820,7 +823,10 @@ describe("duel socket", () => {
 
     alan.send({ type: "join-queue" });
     expect(await alan.next()).toEqual({ type: "queued" });
-    expect(await ada.next()).toMatchObject({ type: "duel-found", opponent: { handle: "alan" } });
+    expect((await acceptBoth(ada, alan))[0]).toMatchObject({
+      type: "duel-found",
+      opponent: { handle: "alan" },
+    });
   });
 
   // A new socket of the User, as after a reload: told she is in a Duel, she plays it there.
@@ -1385,8 +1391,10 @@ describe("duel socket", () => {
     const alan = await queued(await signedIn("Alan"));
     const grace = await queued(await signedIn("Grace"));
 
-    expect(await alan.next()).toMatchObject({ type: "duel-found", opponent: { handle: "grace" } });
-    expect(await grace.next()).toMatchObject({ type: "duel-found", opponent: { handle: "alan" } });
+    expect(await acceptBoth(alan, grace)).toMatchObject([
+      { type: "duel-found", opponent: { handle: "grace" } },
+      { type: "duel-found", opponent: { handle: "alan" } },
+    ]);
     await ada.settle();
 
     // Read at last: Ada waits for the next User.
@@ -1394,8 +1402,10 @@ describe("duel socket", () => {
 
     const hopper = await queued(await signedIn("Hopper"));
 
-    expect(await hopper.next()).toMatchObject({ type: "duel-found", opponentPace: 80 });
-    expect(await ada.next()).toMatchObject({ type: "duel-found", pace: 80 });
+    expect(await acceptBoth(hopper, ada)).toMatchObject([
+      { type: "duel-found", opponentPace: 80 },
+      { type: "duel-found", pace: 80 },
+    ]);
   });
 
   test("a Duel that cannot be written still ends for both players, and the failure is logged", async () => {
@@ -1529,7 +1539,7 @@ describe("duel socket", () => {
 
     const ada = await queuedLongAgo(adaUser.cookie);
     const alan = await queued(alanUser.cookie);
-    const [found] = await Promise.all([ada.next(), alan.next()]);
+    const [found] = await acceptBoth(ada, alan);
 
     return { ada, alan, adaId: adaUser.id, alanId: alanUser.id, found };
   };
@@ -1591,15 +1601,157 @@ describe("duel socket", () => {
       expect(await ada.nextQueueStatus()).toMatchObject({ joinedAt: NOW, serverTime: NOW + 7000 });
     });
 
-    test("the Estimated wait is the median wait of the last pairings", async () => {
+    test("the Estimated wait is the median wait of the last pairings, up to the pairing", async () => {
       const { ada, alan } = await queuedApart(1000, 1250);
 
       setNow(NOW + 15_000);
+      await Promise.all([ada.next(), alan.next()]);
+      // Accepted a few seconds later: the wait ended with the pairing.
+      setNow(NOW + 18_000);
+      ada.send({ type: "accept-proposal" });
+      expect(await alan.next()).toEqual({ type: "opponent-accepted" });
+      alan.send({ type: "accept-proposal" });
       await Promise.all([ada.next(), alan.next()]);
 
       const grace = await queued(await signedIn("Grace"));
 
       expect(await grace.nextQueueStatus()).toMatchObject({ size: 1, estimatedWait: 15_000 });
+    });
+  });
+
+  describe("Match proposal", () => {
+    test("a pairing proposes the Duel to both, it does not start it", async () => {
+      const ada = await queued(await signedIn("Ada"));
+      const alan = await queued(await signedIn("Alan"));
+
+      expect(await ada.next()).toEqual({
+        type: "match-proposed",
+        expiresAt: NOW + 10_000,
+        serverTime: NOW,
+        opponent: { handle: "alan", image: "https://img/alan" },
+        selfRank: { placementsLeft: 5 },
+        opponentRank: { placementsLeft: 5 },
+        selfAccepted: false,
+        opponentAccepted: false,
+      });
+      expect(await alan.next()).toMatchObject({
+        type: "match-proposed",
+        opponent: { handle: "ada" },
+      });
+      await ada.settle();
+      await alan.settle();
+    });
+
+    test("both accepting starts the Duel 1 s later, then the Countdown", async () => {
+      const ada = await queued(await signedIn("Ada"));
+      const alan = await queued(await signedIn("Alan"));
+
+      await Promise.all([ada.next(), alan.next()]);
+      setNow(NOW + 2000);
+      alan.send({ type: "accept-proposal" });
+      expect(await ada.next()).toEqual({ type: "opponent-accepted" });
+      await alan.settle();
+
+      setNow(NOW + 7000);
+      ada.send({ type: "accept-proposal" });
+
+      const ended = { type: "proposal-ended", reason: "accepted" } as const;
+
+      const found = {
+        type: "duel-found",
+        serverTime: NOW + 7000,
+        duel: { startsAt: NOW + 12_500 },
+      };
+
+      expect(await Promise.all([ada.next(), alan.next()])).toEqual([ended, ended]);
+      expect(await Promise.all([ada.next(), alan.next()])).toMatchObject([found, found]);
+
+      // Its time is over: nothing more.
+      setNow(NOW + 10_000);
+      await ada.settle();
+      await alan.settle();
+    });
+
+    test("accepting twice tells the opponent once", async () => {
+      const ada = await queued(await signedIn("Ada"));
+      const alan = await queued(await signedIn("Alan"));
+
+      await Promise.all([ada.next(), alan.next()]);
+      ada.send({ type: "accept-proposal" });
+      ada.send({ type: "accept-proposal" });
+      expect(await alan.next()).toEqual({ type: "opponent-accepted" });
+      await alan.settle();
+      await ada.settle();
+    });
+
+    test("out of time before both accepted, both leave the Queue", async () => {
+      const cookie = await signedIn("Ada");
+      const ada = await queued(cookie);
+      const alan = await queued(await signedIn("Alan"));
+      const watching = await connect(cookie);
+
+      await Promise.all([ada.next(), alan.next()]);
+      expect(await watching.next()).toEqual({ type: "elsewhere", place: "queue" });
+      ada.send({ type: "accept-proposal" });
+      await alan.next();
+
+      setNow(NOW + 9999);
+      await ada.settle();
+
+      setNow(NOW + 10_000);
+      expect(await ada.next()).toEqual({ type: "proposal-ended", reason: "missed" });
+      expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "missed" });
+      expect(await watching.next()).toEqual({ type: "idle" });
+
+      // Accepting now changes nothing, and neither is paired with the next User.
+      alan.send({ type: "accept-proposal" });
+
+      const grace = await queued(await signedIn("Grace"));
+
+      await Promise.all([ada.settle(), alan.settle(), grace.settle()]);
+    });
+
+    test("an unanswered Match proposal does not count for the Estimated wait", async () => {
+      const { ada, alan } = await queuedApart(1000, 1250);
+
+      setNow(NOW + 15_000);
+      await Promise.all([ada.next(), alan.next()]);
+      setNow(NOW + 25_000);
+      await Promise.all([ada.next(), alan.next()]);
+
+      const grace = await queued(await signedIn("Grace"));
+
+      expect(await grace.nextQueueStatus()).toMatchObject({ estimatedWait: null });
+    });
+
+    test("back on another tab, the Match proposal is sent again as it stands", async () => {
+      const cookie = await signedIn("Ada");
+      const ada = await queued(cookie);
+      const alan = await queued(await signedIn("Alan"));
+
+      await Promise.all([ada.next(), alan.next()]);
+      ada.send({ type: "accept-proposal" });
+      await alan.next();
+
+      setNow(NOW + 4000);
+      ada.socket.close();
+      await ada.closed;
+
+      const back = await connect(cookie);
+
+      expect(await back.next()).toEqual({ type: "elsewhere", place: "queue" });
+      back.send({ type: "join-queue" });
+      expect(await back.next()).toMatchObject({
+        type: "match-proposed",
+        expiresAt: NOW + 10_000,
+        serverTime: NOW + 4000,
+        selfAccepted: true,
+        opponentAccepted: false,
+      });
+
+      alan.send({ type: "accept-proposal" });
+      expect(await back.next()).toEqual({ type: "proposal-ended", reason: "accepted" });
+      expect(await back.next()).toMatchObject({ type: "duel-found" });
     });
   });
 
@@ -1609,8 +1761,7 @@ describe("duel socket", () => {
       const alan = await queued(await signedIn("Alan"));
 
       // Both at the default Pace: the same MMR.
-      expect(await ada.next()).toEqual(duelFound("Alan"));
-      expect(await alan.next()).toEqual(duelFound("Ada"));
+      expect(await acceptBoth(ada, alan)).toEqual([duelFound("Alan"), duelFound("Ada")]);
     });
 
     test("holds two Users too far apart until the window widens to their gap", async () => {
@@ -1623,7 +1774,7 @@ describe("duel socket", () => {
       // 250 after 15 s.
       setNow(NOW + 15_000);
 
-      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+      const [forAda, forAlan] = await acceptBoth(ada, alan);
 
       expect(forAda).toMatchObject({ type: "duel-found", serverTime: NOW + 15_000 });
       expect(forAlan).toMatchObject({ type: "duel-found", serverTime: NOW + 15_000 });
@@ -1636,7 +1787,7 @@ describe("duel socket", () => {
       await Promise.all([ada.settle(), alan.settle()]);
       setNow(NOW + 30_000);
 
-      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+      const [forAda, forAlan] = await acceptBoth(ada, alan);
 
       expect(forAda).toMatchObject({ type: "duel-found", serverTime: NOW + 30_000 });
       expect(forAlan).toMatchObject({ type: "duel-found", serverTime: NOW + 30_000 });
@@ -1656,8 +1807,10 @@ describe("duel socket", () => {
 
       const alan = await queued(alanUser.cookie);
 
-      expect(await ada.next()).toMatchObject({ type: "duel-found", serverTime: NOW + 10_000 });
-      expect(await alan.next()).toMatchObject({ type: "duel-found" });
+      expect(await acceptBoth(ada, alan)).toMatchObject([
+        { type: "duel-found", serverTime: NOW + 10_000 },
+        { type: "duel-found" },
+      ]);
     });
 
     test("pairs the first User who fits, not the first in the Queue", async () => {
@@ -1675,16 +1828,10 @@ describe("duel socket", () => {
       const alan = await queued(alanUser.cookie);
       const grace = await queued(graceUser.cookie);
 
-      expect(await ada.next()).toEqual({
-        ...duelFound("Grace"),
-        selfRank: orIv(50),
-        opponentRank: orIv(50),
-      });
-      expect(await grace.next()).toEqual({
-        ...duelFound("Ada"),
-        selfRank: orIv(50),
-        opponentRank: orIv(50),
-      });
+      expect(await acceptBoth(ada, grace)).toEqual([
+        { ...duelFound("Grace"), selfRank: orIv(50), opponentRank: orIv(50) },
+        { ...duelFound("Ada"), selfRank: orIv(50), opponentRank: orIv(50) },
+      ]);
       await alan.settle();
     });
   });
@@ -1700,7 +1847,7 @@ describe("duel socket", () => {
 
       const ada = await queued(adaUser.cookie);
       const alan = await queued(alanUser.cookie);
-      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+      const [forAda, forAlan] = await acceptBoth(ada, alan);
 
       expect(forAda).toMatchObject({ type: "duel-found", opponentRank: diamantIv(10) });
       expect(forAlan).toMatchObject({ type: "duel-found", opponentRank: orIv(50) });
@@ -1717,7 +1864,7 @@ describe("duel socket", () => {
       const ada = await queued(adaUser.cookie);
       const alan = await queued(alanUser.cookie);
 
-      await Promise.all([ada.next(), alan.next()]);
+      await acceptBoth(ada, alan);
 
       const again = await resumedOn(adaUser.cookie);
 
@@ -1744,7 +1891,7 @@ describe("duel socket", () => {
 
       const ada = await queued(adaUser.cookie);
       const alan = await queued(alanUser.cookie);
-      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+      const [forAda, forAlan] = await acceptBoth(ada, alan);
 
       const adaForm = { avgWpm: 70, outcomes: ["win", "loss", "draw", "win", "loss"] };
 
@@ -1774,8 +1921,9 @@ describe("duel socket", () => {
       const ada = await queuedLongAgo(adaUser.cookie);
       const alan = await queued(alanUser.cookie);
 
-      await alan.next();
-      expect(await ada.next()).toMatchObject({ selfForm: { avgWpm: 60, outcomes: ["loss"] } });
+      expect((await acceptBoth(ada, alan))[0]).toMatchObject({
+        selfForm: { avgWpm: 60, outcomes: ["loss"] },
+      });
     });
 
     test("both ranks and both Forms come back with the resumed Duel, as they were at the pairing", async () => {
@@ -1789,7 +1937,7 @@ describe("duel socket", () => {
       const ada = await queued(adaUser.cookie);
       const alan = await queued(alanUser.cookie);
 
-      await Promise.all([ada.next(), alan.next()]);
+      await acceptBoth(ada, alan);
       // Written during the Duel: the Forms do not move.
       saved.push(rankedPastDuel(adaUser.id, 100, NOW + 1000, "win"));
 
@@ -1902,7 +2050,7 @@ describe("duel socket", () => {
       expect(await ada.next()).toEqual({ type: "queued" });
       alan.send({ type: "join-queue" });
       expect(await alan.next()).toEqual({ type: "queued" });
-      await Promise.all([ada.next(), alan.next()]);
+      await acceptBoth(ada, alan);
       alan.send({ type: "leave-duel" });
 
       const [forAda] = await Promise.all([ada.next(), alan.next()]);

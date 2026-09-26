@@ -19,12 +19,13 @@ export const CHALLENGE_MS = 30_000;
 // A player of a Duel started by a Challenge, with the connection that plays it.
 export type Seat = PacedUser & { connection: Connection };
 
-// What the Challenges need of the Duels: the Users' connections, who is in a Duel, their Pace and
-// Form, and starting one. The Duel Queue.
+// What the Challenges need of the Duels: the Users' connections, who is in a Duel or a Match
+// proposal, their Pace and Form, and starting one. The Duel Queue.
 export type ChallengeArena = {
   connectionsOf: (userId: string) => Connection[];
   connectionOf: (userId: string, connectionId: string) => Connection | undefined;
   isInDuel: (userId: string) => boolean;
+  isProposed: (userId: string) => boolean;
   readPace: (userId: string) => Promise<number>;
   readForm: (userId: string) => Promise<Form | null>;
   // Out of the Queue if they were in it, the Duel played on the seats' connections.
@@ -135,8 +136,8 @@ export class Challenges {
     this.#endWhere((challenge) => involves(challenge, userId), "unavailable");
   }
 
-  // In a Duel from its Countdown: their other Challenges are over.
-  enteredDuel(userId: string) {
+  // In a Match proposal, or in a Duel from its Countdown: their other Challenges are over.
+  engaged(userId: string) {
     this.left(userId);
   }
 
@@ -162,6 +163,11 @@ export class Challenges {
     }
 
     return null;
+  }
+
+  // Seen online by their Friends, yet not free to play a Challenge.
+  #proposed(fromId: string, toId: string) {
+    return this.#arena.isProposed(fromId) || this.#arena.isProposed(toId);
   }
 
   #sentBy(userId: string) {
@@ -299,6 +305,11 @@ export class Challenges {
       challenge: { id, to: shownOf(to), expiresAt },
       serverTime,
     });
+
+    // Either is in a Match proposal: it cannot be played.
+    if (this.#proposed(from.id, to.id)) {
+      this.#end(challenge, "unavailable");
+    }
   }
 
   // Cancelled or declined, by the User it allows.
@@ -326,7 +337,7 @@ export class Challenges {
 
     const { from, to } = challenge;
 
-    if (this.#unavailable(from.id, to.id)) {
+    if (this.#unavailable(from.id, to.id) || this.#proposed(from.id, to.id)) {
       this.#end(challenge, "unavailable");
 
       return;
@@ -355,7 +366,8 @@ export class Challenges {
           relations.get(to.id) !== "friend" ||
           !toConnection ||
           !fromConnection ||
-          this.#unavailable(from.id, to.id)
+          this.#unavailable(from.id, to.id) ||
+          this.#proposed(from.id, to.id)
         ) {
           this.#end(challenge, "unavailable");
 

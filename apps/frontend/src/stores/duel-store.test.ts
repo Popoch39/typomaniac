@@ -39,6 +39,30 @@ const enter = () => useDuelStore.getState().enter(() => 0);
 
 const phase = () => useDuelStore.getState().state.phase;
 
+const matchProposed: ServerMessage = {
+  type: "match-proposed",
+  expiresAt: 25_000,
+  serverTime: 20_000,
+  opponent: { handle: "kaelis", image: null },
+  selfRank: orIv,
+  opponentRank: { placementsLeft: 3 },
+  selfAccepted: false,
+  opponentAccepted: false,
+};
+
+const proposal = () => {
+  const { state } = useDuelStore.getState();
+
+  return state.phase === "proposed" ? state.proposal : null;
+};
+
+// Shown, in the Queue.
+const inQueue = () => {
+  server().receive({ type: "idle" });
+  enter();
+  server().receive({ type: "queued" });
+};
+
 beforeEach(() => {
   vi.useFakeTimers();
   sockets = fakeServer();
@@ -213,6 +237,102 @@ describe("the Duel on the app's connection", () => {
     expect(useDuelStore.getState().state).toMatchObject({
       phase: "countdown",
       duel: { selfRank: orIv, opponentRank: null, selfForm: adaForm, opponentForm: null },
+    });
+  });
+
+  describe("a Match proposal", () => {
+    test("is shown to answer, its end on this tab's clock, both ranks", () => {
+      inQueue();
+      server().receive(matchProposed);
+
+      expect(useDuelStore.getState().state).toEqual({
+        phase: "proposed",
+        proposal: {
+          stage: "pending",
+          expiresAt: 5000,
+          opponent: { handle: "kaelis", image: null },
+          selfRank: orIv,
+          opponentRank: { placementsLeft: 3 },
+          selfAccepted: false,
+          opponentAccepted: false,
+        },
+      });
+    });
+
+    test("accepting tells the server once, then waits for the opponent", () => {
+      inQueue();
+      server().receive(matchProposed);
+      useDuelStore.getState().acceptProposal();
+      useDuelStore.getState().acceptProposal();
+
+      expect(server().sent).toEqual([{ type: "join-queue" }, { type: "accept-proposal" }]);
+      expect(proposal()?.stage).toBe("accepted");
+
+      server().receive({ type: "opponent-accepted" });
+      expect(proposal()).toMatchObject({ stage: "accepted", opponentAccepted: true });
+    });
+
+    test("the opponent may accept first", () => {
+      inQueue();
+      server().receive(matchProposed);
+      server().receive({ type: "opponent-accepted" });
+
+      expect(proposal()).toMatchObject({ stage: "pending", opponentAccepted: true });
+    });
+
+    test("accepted by both, it is ready, then the Duel found starts the Countdown", () => {
+      inQueue();
+      server().receive(matchProposed);
+      useDuelStore.getState().acceptProposal();
+      server().receive({ type: "proposal-ended", reason: "accepted" });
+
+      expect(proposal()).toMatchObject({ stage: "ready", opponentAccepted: true });
+      expect(useConnectionStore.getState().place).toEqual({ at: "queue", here: true });
+
+      server().receive(duelFound);
+      expect(phase()).toBe("countdown");
+      expect(useConnectionStore.getState().place).toEqual({ at: "duel", here: true });
+    });
+
+    test("out of time, it says so, and searching again joins the Queue", () => {
+      inQueue();
+      server().receive(matchProposed);
+      server().receive({ type: "proposal-ended", reason: "missed" });
+
+      expect(proposal()).toMatchObject({ stage: "missed", selfAccepted: false });
+
+      useDuelStore.getState().joinQueue();
+      server().receive({ type: "queued" });
+      expect(phase()).toBe("queued");
+    });
+
+    test("comes back as it stood, joining the Queue again from another tab", () => {
+      enter();
+      server().receive({ type: "elsewhere", place: "queue" });
+      server().receive({ ...matchProposed, selfAccepted: true, opponentAccepted: true });
+
+      expect(proposal()).toMatchObject({ stage: "accepted", opponentAccepted: true });
+    });
+
+    test("leaving Duel leaves the Queue", () => {
+      inQueue();
+      server().receive(matchProposed);
+      useDuelStore.getState().exit();
+
+      expect(server().sent.at(-1)).toEqual({ type: "leave-queue" });
+    });
+
+    test("back from a lost connection, joins the Queue again to get it back", () => {
+      inQueue();
+      server().receive(matchProposed);
+      server().drop();
+
+      expect(phase()).toBe("connecting");
+
+      vi.advanceTimersByTime(1_000);
+      server().receive({ type: "elsewhere", place: "queue" });
+
+      expect(server().sent).toEqual([{ type: "join-queue" }]);
     });
   });
 

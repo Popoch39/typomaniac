@@ -27,6 +27,10 @@ const EXIT_S = 0.5;
 // The overlay stays this long past the start, for its exit.
 export const EXIT_MS = EXIT_S * 1000;
 
+// `elapsed` ms since the start of the Duel is before its Countdown: the second of « C'est parti ! »
+// of a Duel of the Queue.
+export const beforeCountdown = (elapsed: number) => elapsed < -COUNTDOWN_S * 1000;
+
 // How far the Handles' rows drift over the whole Face-off, in their own font size: the same speed
 // whatever the Handle's length or the screen's size. Fast as the panels come in, slowing down
 // through the 3-2-1.

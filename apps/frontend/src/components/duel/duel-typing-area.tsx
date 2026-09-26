@@ -7,6 +7,8 @@ import { LeaveDuel } from "@/components/duel/leave-duel";
 import { useDuelElapsed } from "@/components/duel/use-duel-elapsed";
 import { FaceOff } from "@/components/face-off/face-off";
 import type { FaceOffPairing } from "@/components/face-off/face-off-pairing";
+import { beforeCountdown } from "@/components/face-off/face-off-timeline";
+import { MatchProposalGo } from "@/components/match-proposal/match-proposal-go";
 import { FocusOverlay } from "@/components/run/focus-overlay";
 import { KeystrokeInput } from "@/components/run/keystroke-input";
 import { useTypingFocus } from "@/components/run/use-typing-focus";
@@ -21,7 +23,8 @@ type DuelTypingAreaProps = Pick<DuelPlay, "id" | "opponent" | "startsAt"> & {
 
 // The Duel from the Countdown to the end: the same Text for both, typing blocked until the start.
 // It stays mounted from the Countdown on, so the typing input keeps the focus at the start. The
-// Face-off covers it during the Countdown, a new one for each Duel.
+// Face-off covers it during the Countdown, a new one for each Duel. A Duel of the Queue starts with
+// « C'est parti ! » the second before.
 export const DuelTypingArea = ({
   id,
   opponent,
@@ -36,6 +39,7 @@ export const DuelTypingArea = ({
 
   return (
     <div className="flex flex-col gap-4">
+      {beforeCountdown(elapsed) ? <MatchProposalGo opponent={opponent} pairing={pairing} /> : null}
       <FaceOff
         key={id}
         opponent={opponent}

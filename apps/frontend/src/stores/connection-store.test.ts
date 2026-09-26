@@ -49,6 +49,17 @@ const duelFound: ServerMessage = {
   opponentForm: null,
 };
 
+const matchProposed: ServerMessage = {
+  type: "match-proposed",
+  expiresAt: 10_000,
+  serverTime: 0,
+  opponent,
+  selfRank: null,
+  opponentRank: null,
+  selfAccepted: false,
+  opponentAccepted: false,
+};
+
 const duelResumed: ServerMessage = {
   type: "duel-resumed",
   duel,
@@ -102,6 +113,18 @@ describe("the User's place, from the server's messages", () => {
     expect(placeAfter({ at: "duel", here: false }, duelResumed)).toEqual({
       at: "duel",
       here: true,
+    });
+  });
+
+  test("in the Queue through a Match proposal, until the Duel is found or its time runs out", () => {
+    const queue = { at: "queue", here: true } as const;
+
+    expect(placeAfter(null, matchProposed)).toEqual(queue);
+    expect(placeAfter(queue, { type: "opponent-accepted" })).toEqual(queue);
+    expect(placeAfter(queue, { type: "proposal-ended", reason: "accepted" })).toEqual(queue);
+    expect(placeAfter(queue, duelFound)).toEqual({ at: "duel", here: true });
+    expect(placeAfter(queue, { type: "proposal-ended", reason: "missed" })).toEqual({
+      at: "idle",
     });
   });
 

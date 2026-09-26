@@ -662,6 +662,22 @@ export const openClient = (url: string, cookie?: string) => {
 
 export type TestClient = ReturnType<typeof openClient>;
 
+// The two Users just paired by the Queue both accept their Match proposal, `first` then
+// `second`: the Duel found of each, once told the proposal ended.
+export const acceptBoth = async (first: TestClient, second: TestClient) => {
+  const [firstProposed, secondProposed] = await Promise.all([first.next(), second.next()]);
+
+  expect(firstProposed).toMatchObject({ type: "match-proposed" });
+  expect(secondProposed).toMatchObject({ type: "match-proposed" });
+  first.send({ type: "accept-proposal" });
+  expect(await second.next()).toEqual({ type: "opponent-accepted" });
+  second.send({ type: "accept-proposal" });
+  expect(await first.next()).toEqual({ type: "proposal-ended", reason: "accepted" });
+  expect(await second.next()).toEqual({ type: "proposal-ended", reason: "accepted" });
+
+  return Promise.all([first.next(), second.next()]);
+};
+
 // The Users are read from the auth's database: the one of `overrides.auth` when a test passes one.
 export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => {
   const auth = overrides.auth ?? createTestAuth();

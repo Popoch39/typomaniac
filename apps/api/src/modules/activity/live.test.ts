@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import { createApp } from "../../app";
 import {
+  acceptBoth,
   createTestAuth,
   manualClock,
   openClient,
@@ -19,8 +20,10 @@ const duel = async (loser: TestClient, winner: TestClient) => {
   expect(await loser.next()).toEqual({ type: "queued" });
   winner.send({ type: "join-queue" });
   expect(await winner.next()).toEqual({ type: "queued" });
-  expect(await loser.next()).toMatchObject({ type: "duel-found" });
-  expect(await winner.next()).toMatchObject({ type: "duel-found" });
+  expect(await acceptBoth(loser, winner)).toMatchObject([
+    { type: "duel-found" },
+    { type: "duel-found" },
+  ]);
   loser.send({ type: "leave-duel" });
 
   const ended = await loser.next();
