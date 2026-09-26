@@ -94,7 +94,9 @@ describe("MatchProposalDialog", () => {
     await screen.findByRole("dialog", { name: "Adversaire trouvé !" });
 
     expect(
-      [...document.querySelectorAll("[data-ornament] use")].map((use) => use.getAttribute("href")),
+      [...document.querySelectorAll('[data-ornament] use[href^="#tier-ornament-"]')].map((use) =>
+        use.getAttribute("href"),
+      ),
     ).toEqual(["#tier-ornament-or", "#tier-ornament-diamant"]);
 
     cleanup();

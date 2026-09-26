@@ -32,7 +32,9 @@ const renderPage = async () => {
 
 // The Tiers of the Ornaments and of the Blasons drawn inside `element`, in order.
 const ornaments = (element: HTMLElement) =>
-  [...element.querySelectorAll("[data-ornament] use")].map((use) => use.getAttribute("href"));
+  [...element.querySelectorAll('[data-ornament] use[href^="#tier-ornament-"]')].map((use) =>
+    use.getAttribute("href"),
+  );
 
 const blasons = (element: HTMLElement) =>
   [...element.querySelectorAll("[data-tier-blason] > use")].map((use) => use.getAttribute("href"));

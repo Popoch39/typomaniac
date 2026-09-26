@@ -1,5 +1,6 @@
 import { TIERS } from "ranked";
 
+import { AuraSpriteDefs } from "@/components/aura/aura-sprite-defs";
 import {
   DEEPS,
   deepId,
@@ -63,5 +64,6 @@ export const TierSpriteDefs = () => (
       d="M16 8 L18.2 13.4 L24 13.6 L19.5 17.2 L21 22.8 L16 19.6 L11 22.8 L12.5 17.2 L8 13.6 L13.8 13.4 Z"
     />
     <path id={SPARK_ID} d="M0 -6 L1.3 -1.3 L6 0 L1.3 1.3 L0 6 L-1.3 1.3 L-6 0 L-1.3 -1.3 Z" />
+    <AuraSpriteDefs />
   </defs>
 );

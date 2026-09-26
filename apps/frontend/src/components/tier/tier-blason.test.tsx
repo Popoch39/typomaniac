@@ -5,8 +5,11 @@ import { describe, expect, test } from "vitest";
 import { TierBlason } from "@/components/tier/tier-blason";
 import { TierOrnament } from "@/components/tier/tier-ornament";
 
+// The drawings used, the Aura's sparks aside.
 const hrefs = (container: HTMLElement) =>
-  [...container.querySelectorAll("use")].map((use) => use.getAttribute("href"));
+  [...container.querySelectorAll("use:not([data-aura-spark])")].map((use) =>
+    use.getAttribute("href"),
+  );
 
 describe("TierBlason", () => {
   test.each(TIERS)("lays the Emblem of %s on its Ornament", (tier) => {
