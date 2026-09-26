@@ -5,12 +5,18 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { gsap } from "gsap";
+import { StrictMode } from "react";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { type ReplayedDuel, replayedDuelQueryOptions } from "@/api/duel-history";
+import type { FaceOffSound, FaceOffSounds } from "@/audio/face-off-sounds";
 import { DuelEnded } from "@/components/duel/duel-ended";
+import type { DuelRanked } from "@/components/duel/rank-change";
+import { FaceOffSoundsContext } from "@/components/face-off/face-off-sounds-context";
 import type { DuelEnding } from "@/stores/duel-store";
+import { useFaceOffSoundStore } from "@/stores/face-off-sound-store";
 
 const noResult = {
   wpm: 0,
@@ -58,8 +64,24 @@ const written: ReplayedDuel = {
   opponent: player("alan"),
 };
 
+// What the end screen played.
+let played: FaceOffSound[] = [];
+
+const sounds: FaceOffSounds = {
+  unlock: () => {},
+  play: (sound) => {
+    played.push(sound);
+  },
+};
+
+beforeEach(() => {
+  played = [];
+  useFaceOffSoundStore.setState({ muted: false });
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 // The end screen on a router of its own (Revoir is a link), the written Duel in the cache if given.
@@ -80,13 +102,53 @@ const renderEnded = async (
   });
 
   await router.load();
+  // Strict Mode runs every effect twice: a sound played on mount must still play once.
   render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>,
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <FaceOffSoundsContext value={sounds}>
+          <RouterProvider router={router} />
+        </FaceOffSoundsContext>
+      </QueryClientProvider>
+    </StrictMode>,
   );
   await screen.findByRole("button", { name: "Nouveau Duel" });
 };
+
+const or = (division: 4 | 3 | 2 | 1, tp: number) => ({
+  tier: "or" as const,
+  division,
+  tp,
+  shielded: false,
+});
+
+const argentI = { tier: "argent" as const, division: 1 as const, tp: 90, shielded: false };
+
+const orIv = { tier: "or" as const, division: 4 as const, tp: 15, shielded: true };
+
+const intoOr = { tp: 25, previousRank: argentI, rank: orIv };
+
+const intoMaitre = {
+  tp: 30,
+  previousRank: { tier: "diamant" as const, division: 1 as const, tp: 80, shielded: false },
+  rank: { tier: "maitre" as const, tp: 10, shielded: true },
+};
+
+// The celebration's emblem: only seen, so found by the part its timeline animates.
+const celebration = () => document.querySelector('[data-tier-up="emblem"]');
+
+// The User prefers reduced motion: the celebration reads it when its timeline is built.
+const reduceMotion = () =>
+  vi.spyOn(window, "matchMedia").mockImplementation((media) => ({
+    matches: media === "(prefers-reduced-motion: reduce)",
+    media,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => true,
+  }));
 
 describe("DuelEnded", () => {
   test("Revoir opens the Replay of the Duel just played", async () => {
@@ -176,6 +238,71 @@ describe("DuelEnded", () => {
     expect(screen.getByRole("region", { name: "Rang" })).toHaveTextContent(
       "Placement terminé, ton rang :Bronze IV",
     );
+  });
+
+  test("a Duel into a new Tier celebrates it, with its sound once", async () => {
+    await renderEnded(null, null, intoOr);
+
+    const rank = screen.getByRole("region", { name: "Rang" });
+
+    expect(celebration()).not.toBeNull();
+    expect(rank).toHaveTextContent("Nouveau Tier : Or IV !");
+    expect(rank).toHaveTextContent("+25 TP");
+    expect(rank).toHaveTextContent("15 TP");
+    expect(played).toEqual(["rank-up"]);
+  });
+
+  test("a Duel into Maître celebrates it", async () => {
+    await renderEnded(null, null, intoMaitre);
+
+    expect(celebration()).not.toBeNull();
+    const rank = screen.getByRole("region", { name: "Rang" });
+
+    expect(rank).toHaveTextContent("Nouveau Tier : Maître !");
+    expect(rank).toHaveTextContent("+30 TP");
+    expect(rank).toHaveTextContent("10 TP");
+    expect(played).toEqual(["rank-up"]);
+  });
+
+  test("the celebration stays silent while the Face-off is muted", async () => {
+    useFaceOffSoundStore.setState({ muted: true });
+
+    await renderEnded(null, null, intoOr);
+
+    expect(celebration()).not.toBeNull();
+    expect(played).toEqual([]);
+  });
+
+  test("the emblem comes in, animated, and still under reduced motion", async () => {
+    await renderEnded(null, null, intoOr);
+
+    const moving = celebration();
+
+    expect(moving === null ? [] : gsap.getTweensOf(moving)).not.toHaveLength(0);
+
+    cleanup();
+    reduceMotion();
+    await renderEnded(null, null, intoOr);
+
+    const still = celebration();
+
+    expect(still === null ? null : gsap.getTweensOf(still)).toEqual([]);
+    expect(still === null ? null : gsap.getProperty(still, "opacity")).toBe(1);
+    expect(still === null ? null : gsap.getProperty(still, "scale")).toBe(1);
+  });
+
+  test.each([
+    ["a move up a Division", { tp: 20, previousRank: or(3, 90), rank: or(2, 10) }],
+    ["a demotion out of a Tier", { tp: -18, previousRank: or(4, 5), rank: argentI }],
+    ["TP within the Division", { tp: 12, previousRank: or(3, 40), rank: or(3, 52) }],
+    ["a Placement", { tp: null, previousRank: { placementsLeft: 3 }, rank: { placementsLeft: 2 } }],
+    ["the last Placement", { tp: null, previousRank: { placementsLeft: 1 }, rank: orIv }],
+  ])("no celebration for %s", async (_, ranked: DuelRanked) => {
+    await renderEnded(null, null, ranked);
+
+    expect(screen.getByRole("region", { name: "Rang" })).toBeInTheDocument();
+    expect(celebration()).toBeNull();
+    expect(played).toEqual([]);
   });
 
   test("an unranked Duel (a Challenge) shows no rank", async () => {

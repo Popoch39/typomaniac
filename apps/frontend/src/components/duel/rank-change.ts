@@ -1,4 +1,4 @@
-import { type Rank, type Standing, stepOf } from "ranked";
+import { changesTier, type Rank, type Standing, stepOf } from "ranked";
 
 import type { DuelEnding } from "@/stores/duel-store";
 
@@ -29,7 +29,7 @@ export const rankChange = ({ tp, previousRank, rank }: DuelRanked): RankChange =
   }
 
   const gap = stepOf(rank) - stepOf(previousRank);
-  const newTier = rank.tier !== previousRank.tier;
+  const newTier = changesTier(previousRank, rank);
 
   if (gap === 0) {
     return { kind: "moved", tp, from: previousRank, standing: rank, newTier };
@@ -43,3 +43,9 @@ export const rankChange = ({ tp, previousRank, rank }: DuelRanked): RankChange =
     newTier,
   };
 };
+
+// The rank a Duel moved up into, when it reached another Tier or Maître: celebrated on the end
+// screen. Null for a move up a Division, a demotion, TP within the Division, and a Placement,
+// last one included (the rank revealed was never held before).
+export const tierReached = (change: RankChange) =>
+  change.kind === "promoted" && change.newTier ? change.standing : null;

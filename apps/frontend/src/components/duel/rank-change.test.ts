@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { rankChange } from "@/components/duel/rank-change";
+import { type DuelRanked, rankChange, tierReached } from "@/components/duel/rank-change";
 
 const or = (division: 4 | 3 | 2 | 1, tp: number) => ({
   tier: "or" as const,
@@ -65,5 +65,52 @@ describe("rankChange", () => {
         rank: { tier: "maitre", tp: 10, shielded: true },
       }),
     ).toMatchObject({ kind: "promoted", newTier: true });
+  });
+});
+
+const change = (ranked: DuelRanked) => tierReached(rankChange(ranked));
+
+describe("tierReached", () => {
+  test("is the rank reached when a Duel moves up into a new Tier", () => {
+    const orIv = { tier: "or" as const, division: 4 as const, tp: 15, shielded: true };
+
+    expect(
+      change({
+        tp: 25,
+        previousRank: { tier: "argent", division: 1, tp: 90, shielded: false },
+        rank: orIv,
+      }),
+    ).toEqual(orIv);
+  });
+
+  test("is Maître when a Duel moves up into it", () => {
+    const maitre = { tier: "maitre" as const, tp: 10, shielded: true };
+
+    expect(
+      change({
+        tp: 30,
+        previousRank: { tier: "diamant", division: 1, tp: 80, shielded: false },
+        rank: maitre,
+      }),
+    ).toEqual(maitre);
+  });
+
+  test("is none for a move up a Division, a demotion out of a Tier, or TP within the Division", () => {
+    expect(change({ tp: 20, previousRank: or(3, 90), rank: or(2, 10) })).toBeNull();
+    expect(
+      change({
+        tp: -18,
+        previousRank: or(4, 5),
+        rank: { tier: "argent", division: 1, tp: 75, shielded: false },
+      }),
+    ).toBeNull();
+    expect(change({ tp: 12, previousRank: or(3, 40), rank: or(3, 52) })).toBeNull();
+  });
+
+  test("is none for a Placement, or the rank it reveals", () => {
+    expect(
+      change({ tp: null, previousRank: { placementsLeft: 5 }, rank: { placementsLeft: 4 } }),
+    ).toBeNull();
+    expect(change({ tp: null, previousRank: { placementsLeft: 1 }, rank: or(4, 0) })).toBeNull();
   });
 });

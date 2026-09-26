@@ -1,8 +1,9 @@
 import { synthesize } from "@/audio/face-off-synth";
 
 // The Face-off's highlights, each with its sound: the panels coming in, their impact, each digit
-// of the 3-2-1, GO. And, before it, the Match proposal arriving.
-export type FaceOffSound = "whoosh" | "impact" | "beep" | "go" | "proposal";
+// of the 3-2-1, GO. And, before it, the Match proposal arriving; after the Duel, a move up into a
+// new Tier or Maître.
+export type FaceOffSound = "whoosh" | "impact" | "beep" | "go" | "proposal" | "rank-up";
 
 // What the Face-off plays through: Web Audio in the browser, a fake in the tests.
 export type FaceOffSounds = {

@@ -129,7 +129,37 @@ const proposal = (voice: Voice) => {
   tone({ ...voice, at: voice.at + 0.14 }, { type: "triangle", from: 1320 }, bell);
 };
 
-const SYNTHS = { whoosh, impact, beep, go, proposal };
+// The notes of the rank-up fanfare, in Hz: a major arpeggio up to the octave (C, E, G, C).
+const FANFARE = [523.25, 659.25, 783.99, 1046.5];
+
+// Seconds between two notes of the fanfare.
+const FANFARE_STEP_S = 0.09;
+
+// A move up into a new Tier or Maître: a rising fanfare of bells, its last note held, over a
+// bright shimmer of airy noise.
+const rankUp = (voice: Voice) => {
+  const shimmer = voice.context.createBiquadFilter();
+
+  for (const [step, note] of FANFARE.entries()) {
+    const last = step === FANFARE.length - 1;
+
+    tone(
+      { ...voice, at: voice.at + step * FANFARE_STEP_S },
+      { type: "triangle", from: note },
+      { peak: 0.32, attack: 0.006, release: last ? 0.9 : 0.3 },
+    );
+  }
+
+  shimmer.type = "highpass";
+  shimmer.frequency.value = 5000;
+  noiseBurst({ ...voice, at: voice.at + (FANFARE.length - 1) * FANFARE_STEP_S }, shimmer, {
+    peak: 0.12,
+    attack: 0.03,
+    release: 0.4,
+  });
+};
+
+const SYNTHS = { whoosh, impact, beep, go, proposal, "rank-up": rankUp };
 
 // Plays `sound` into `destination` now, built from oscillators and noise: each node is dropped once
 // it has played.
