@@ -12,7 +12,7 @@ import {
   startAcceptedRun,
 } from "typing-engine";
 
-import { type RankedOutcome, type Rating, rateDuel, type Stake, stakeOf } from "ranked";
+import { type RankedOutcome, type Rating, rateDuel, type Stake, stakeOf, type Tier } from "ranked";
 
 import type { Duel, DuelScore, Form, ServerMessage } from "./model";
 import type { DuelPlayerRecord, DuelRecord, RatedPlayer } from "./store";
@@ -27,9 +27,16 @@ const MAX_KEYSTROKES_PER_SECOND = 40;
 // the Queue. Only a User with a Handle plays.
 export type User = { id: string; handle: string; image: string | null };
 
-// A User paired into a Duel, with their Pace in wpm and their Form, both frozen for it, and their
-// Rating when the Duel is ranked (from the Queue): null for a Challenge, never ranked.
-export type PacedUser = { user: User; pace: number; form: Form | null; rating: Rating | null };
+// A User paired into a Duel, with their Pace in wpm, their Form and the Ornament they wear, all
+// frozen for it, and their Rating when the Duel is ranked (from the Queue): null for a Challenge,
+// never ranked.
+export type PacedUser = {
+  user: User;
+  pace: number;
+  form: Form | null;
+  ornament: Tier | null;
+  rating: Rating | null;
+};
 
 export type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
 
@@ -314,18 +321,21 @@ export class RunningDuel {
     };
   }
 
-  // Who a player faces, as `duel-found` shows them.
+  // Who a player faces, as `duel-found` shows them: with the Ornament they wear.
   opponentProfileOf(userId: string) {
-    return profileOf(this.#opponent(userId).user);
+    const opponent = this.#opponent(userId);
+
+    return { ...profileOf(opponent.user), ornament: opponent.ornament };
   }
 
-  // A player's Pace, rank before the Duel (never the MMR) and Form, and the opponent's, then the
-  // player's own Stake, as `duel-found` and `duel-resumed` send them.
+  // A player's Ornament, then their Pace, rank before the Duel (never the MMR) and Form, and the
+  // opponent's, then the player's own Stake, as `duel-found` and `duel-resumed` send them.
   pairingOf(userId: string) {
     const player = this.#player(userId);
     const opponent = this.#opponent(userId);
 
     return {
+      selfOrnament: player.ornament,
       pace: player.pace,
       opponentPace: opponent.pace,
       selfRank: player.rating?.rank ?? null,

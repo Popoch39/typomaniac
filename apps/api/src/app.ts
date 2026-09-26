@@ -73,6 +73,7 @@ export const createApp = (config: AppConfig) => {
   const friendsLive = new FriendsLive({
     store: friendStore,
     users,
+    duelStore,
     clock: config.clock,
     logger: config.logger,
   });
@@ -125,6 +126,7 @@ export const createApp = (config: AppConfig) => {
         trustProxy,
         users,
         friendStore,
+        duelStore,
         searchRateLimit: config.searchRateLimit,
       }),
     )
@@ -134,6 +136,7 @@ export const createApp = (config: AppConfig) => {
         trustProxy,
         users,
         store: friendStore,
+        duelStore,
         events: friendEvents,
         sendRateLimit: config.friendRequestRateLimit,
       }),

@@ -17,7 +17,8 @@ const duel = {
 const duelFound: ServerMessage = {
   type: "duel-found",
   duel,
-  opponent: { handle: "ada", image: null },
+  opponent: { handle: "ada", image: null, ornament: null },
+  selfOrnament: null,
   serverTime: 0,
   pace: 40,
   opponentPace: 40,
@@ -50,7 +51,8 @@ const matchProposed: ServerMessage = {
   type: "match-proposed",
   expiresAt: 25_000,
   serverTime: 20_000,
-  opponent: { handle: "kaelis", image: null },
+  opponent: { handle: "kaelis", image: null, ornament: "diamant" },
+  selfOrnament: "or",
   selfRank: orIv,
   opponentRank: { placementsLeft: 3 },
   selfAccepted: false,
@@ -204,11 +206,13 @@ describe("the Duel on the app's connection", () => {
     expect(server().sent).toEqual([{ type: "resume-duel" }]);
   });
 
-  test("paired, shows both ranks and both Forms in the Countdown", () => {
+  test("paired, shows both Ornaments, both ranks and both Forms in the Countdown", () => {
     server().receive({ type: "idle" });
     enter();
     server().receive({
       ...duelFound,
+      opponent: { handle: "ada", image: null, ornament: "or" },
+      selfOrnament: "argent",
       selfRank: null,
       opponentRank: orIv,
       selfForm: null,
@@ -217,7 +221,14 @@ describe("the Duel on the app's connection", () => {
 
     expect(useDuelStore.getState().state).toMatchObject({
       phase: "countdown",
-      duel: { selfRank: null, opponentRank: orIv, selfForm: null, opponentForm: adaForm },
+      duel: {
+        opponent: { ornament: "or" },
+        selfOrnament: "argent",
+        selfRank: null,
+        opponentRank: orIv,
+        selfForm: null,
+        opponentForm: adaForm,
+      },
     });
   });
 
@@ -227,7 +238,8 @@ describe("the Duel on the app's connection", () => {
     server().receive({
       type: "duel-resumed",
       duel,
-      opponent: { handle: "ada", image: null },
+      opponent: { handle: "ada", image: null, ornament: null },
+      selfOrnament: null,
       serverTime: 1_000,
       keystrokes: [],
       received: 0,
@@ -255,7 +267,7 @@ describe("the Duel on the app's connection", () => {
   });
 
   describe("a Match proposal", () => {
-    test("is shown to answer, its end on this tab's clock, both ranks", () => {
+    test("is shown to answer, its end on this tab's clock, both Ornaments and both ranks", () => {
       inQueue();
       server().receive(matchProposed);
 
@@ -264,7 +276,8 @@ describe("the Duel on the app's connection", () => {
         proposal: {
           stage: "pending",
           expiresAt: 5000,
-          opponent: { handle: "kaelis", image: null },
+          opponent: { handle: "kaelis", image: null, ornament: "diamant" },
+          selfOrnament: "or",
           selfRank: orIv,
           opponentRank: { placementsLeft: 3 },
           selfAccepted: false,
@@ -406,7 +419,8 @@ describe("the Duel on the app's connection", () => {
       expect(proposal()).toEqual({
         stage: "accepted",
         expiresAt: 2000,
-        opponent: { handle: "kaelis", image: null },
+        opponent: { handle: "kaelis", image: null, ornament: "diamant" },
+        selfOrnament: "or",
         selfRank: orIv,
         opponentRank: { placementsLeft: 3 },
         selfAccepted: true,

@@ -1,4 +1,5 @@
 import type { Logger } from "pino";
+import type { Tier } from "ranked";
 
 import type { Clock } from "../../lib/clock";
 import type { Form } from "../duel/model";
@@ -20,7 +21,7 @@ export const CHALLENGE_MS = 30_000;
 export type Seat = PacedUser & { connection: Connection };
 
 // What the Challenges need of the Duels: the Users' connections, who is in a Duel or a Match
-// proposal, their Pace and Form, and starting one. The Duel Queue.
+// proposal, their Pace, Form and Ornament, and starting one. The Duel Queue.
 export type ChallengeArena = {
   connectionsOf: (userId: string) => Connection[];
   connectionOf: (userId: string, connectionId: string) => Connection | undefined;
@@ -28,6 +29,7 @@ export type ChallengeArena = {
   isProposed: (userId: string) => boolean;
   readPace: (userId: string) => Promise<number>;
   readForm: (userId: string) => Promise<Form | null>;
+  readOrnament: (userId: string) => Promise<Tier | null>;
   // Out of the Queue if they were in it, the Duel played on the seats' connections.
   startDuel: (seats: readonly [Seat, Seat]) => void;
 };
@@ -350,8 +352,10 @@ export class Challenges {
       this.#arena.readPace(to.id),
       this.#arena.readForm(from.id),
       this.#arena.readForm(to.id),
+      this.#arena.readOrnament(from.id),
+      this.#arena.readOrnament(to.id),
     ]).then(
-      ([relations, fromPace, toPace, fromForm, toForm]) => {
+      ([relations, fromPace, toPace, fromForm, toForm, fromOrnament, toOrnament]) => {
         if (this.#challenges.get(challengeId) !== challenge) {
           return;
         }
@@ -377,8 +381,22 @@ export class Challenges {
         this.#end(challenge, "accepted");
         // A Challenge is never ranked: no Rating.
         this.#arena.startDuel([
-          { user: from, pace: fromPace, form: fromForm, rating: null, connection: fromConnection },
-          { user: to, pace: toPace, form: toForm, rating: null, connection: toConnection },
+          {
+            user: from,
+            pace: fromPace,
+            form: fromForm,
+            ornament: fromOrnament,
+            rating: null,
+            connection: fromConnection,
+          },
+          {
+            user: to,
+            pace: toPace,
+            form: toForm,
+            ornament: toOrnament,
+            rating: null,
+            connection: toConnection,
+          },
         ]);
       },
       (error) => {

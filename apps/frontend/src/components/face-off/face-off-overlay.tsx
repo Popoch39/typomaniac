@@ -42,7 +42,12 @@ export const FaceOffOverlay = ({ opponent, pairing, startsAt, elapsed }: FaceOff
       onMouseDown={keepFocus}
     >
       <div data-face-off="stage" className="absolute inset-0">
-        <FaceOffSelf rank={pairing.selfRank} form={pairing.selfForm} stake={pairing.selfStake} />
+        <FaceOffSelf
+          ornament={pairing.selfOrnament}
+          rank={pairing.selfRank}
+          form={pairing.selfForm}
+          stake={pairing.selfStake}
+        />
         <FaceOffOpponent
           opponent={opponent}
           rank={pairing.opponentRank}

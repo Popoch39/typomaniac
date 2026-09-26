@@ -5,6 +5,7 @@ import {
   acceptBoth,
   createTestAuth,
   manualClock,
+  memoryDuelStore,
   openClient,
   signIn,
   type TestAuth,
@@ -43,9 +44,14 @@ describe("Activity, live on the socket", () => {
   let origin: string;
   const clients: TestClient[] = [];
 
+  let duels: ReturnType<typeof memoryDuelStore>;
+
   beforeEach(() => {
     auth = createTestAuth();
-    app = createApp(testConfig({ auth, clock: manualClock(NOW).clock })).listen(0);
+    duels = memoryDuelStore();
+    app = createApp(
+      testConfig({ auth, clock: manualClock(NOW).clock, duelStore: duels.store }),
+    ).listen(0);
     origin = `localhost:${app.server?.port}`;
   });
 
@@ -104,15 +110,46 @@ describe("Activity, live on the socket", () => {
     return client;
   };
 
+  // In Placement or without a Rating: no Ornament.
   const player = (user: TestUser, outcome: "win" | "loss") => ({
     id: user.id,
     handle: user.handle,
     image: user.image,
+    ornament: null,
     wpm: 0,
     outcome,
   });
 
-  const profile = ({ id, handle, image }: TestUser) => ({ id, handle, image });
+  const profile = ({ id, handle, image }: TestUser) => ({ id, handle, image, ornament: null });
+
+  test("the Users of a live Activity and of an arrival wear their Ornament", async () => {
+    const ada = await newUser("Ada");
+    const alan = await newUser("Alan");
+    const bob = await newUser("Bob");
+
+    duels.ratings.set(ada.id, {
+      mmr: 1000,
+      rank: { tier: "argent", division: 1, tp: 0, shielded: false },
+    });
+    await befriend(ada, bob);
+
+    const bobTab = await tab(bob);
+    const alanTab = await tab(alan);
+
+    await befriend(ada, alan);
+    expect(await bobTab.nextActivity()).toMatchObject({
+      activity: {
+        type: "friendship",
+        friend: { id: ada.id, ornament: "argent" },
+        other: { id: alan.id, ornament: null },
+      },
+    });
+
+    await tab(ada);
+    expect(await alanTab.nextArrival()).toMatchObject({
+      arrival: { friend: { id: ada.id, ornament: "argent" } },
+    });
+  });
 
   test("a Friend's Duel reaches their Friends, against a stranger too, never the others", async () => {
     const ada = await newUser("Ada");

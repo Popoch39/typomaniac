@@ -1,4 +1,7 @@
 import { ApiError, type ErrorCode } from "../../lib/errors";
+import type { DuelStore } from "../duel/store";
+import type { PublicUser } from "../user/public-user";
+import { publicUsersOf } from "../user/public-users";
 import type { Users } from "../user/users";
 import type { FriendEvents } from "./live";
 import type { FriendRefusal, FriendRequests, Relation } from "./model";
@@ -9,8 +12,14 @@ export const MAX_FRIENDS = 200;
 // Sent and still waiting: past it, the User waits for answers or cancels some.
 export const MAX_SENT_REQUESTS = 50;
 
-// `events`: told once written, for the Users concerned to be told live (FriendsLive).
-export type FriendDeps = { store: FriendStore; users: Users; events: FriendEvents };
+// `events`: told once written, for the Users concerned to be told live (FriendsLive). `duelStore`:
+// where the Ornament of each User listed is read.
+export type FriendDeps = {
+  store: FriendStore;
+  users: Users;
+  duelStore: DuelStore;
+  events: FriendEvents;
+};
 
 // The User acting, as the Session knows them.
 export type Actor = { id: string; handle: string | null };
@@ -47,12 +56,9 @@ const requireHandle = (actor: Actor) => {
   }
 };
 
-// The profiles of `userIds` in that order, those without a Handle left out.
-const profilesInOrder = async (users: Users, userIds: readonly string[]) => {
-  const byId = new Map((await users.profilesOf(userIds)).map((profile) => [profile.id, profile]));
-
-  return userIds.flatMap((id) => byId.get(id) ?? []);
-};
+// The Users of `userIds` in that order, those without a Handle left out.
+const inOrder = (byId: ReadonlyMap<string, PublicUser>, userIds: readonly string[]) =>
+  userIds.flatMap((id) => byId.get(id) ?? []);
 
 // Accepts the request `senderId` sent to `recipientId`, `recipientId` acting: both under the limit,
 // then the request turned into a friendship in one transaction. Two accepts at once may pass the
@@ -98,28 +104,28 @@ export const relationsWith = async (
 const relationOf = async (store: FriendStore, userId: string, otherId: string) =>
   (await relationsWith(store, userId, [otherId]))(otherId);
 
-export const listFriends = async ({ store, users }: FriendDeps, actor: Actor) => {
+export const listFriends = async ({ store, users, duelStore }: FriendDeps, actor: Actor) => {
   requireHandle(actor);
 
-  const friends = await users.profilesOf(await store.friendIds(actor.id));
+  const friends = await publicUsersOf(users, duelStore, await store.friendIds(actor.id));
 
   return friends.toSorted((a, b) => (a.handle < b.handle ? -1 : 1));
 };
 
+// Both ways read at once: one read of the Users and one of the Ratings.
 export const listFriendRequests = async (
-  { store, users }: FriendDeps,
+  { store, users, duelStore }: FriendDeps,
   actor: Actor,
 ): Promise<FriendRequests> => {
   requireHandle(actor);
 
   const { received, sent } = await store.requestsOf(actor.id);
 
-  const [receivedProfiles, sentProfiles] = await Promise.all([
-    profilesInOrder(users, received),
-    profilesInOrder(users, sent),
-  ]);
+  const byId = new Map(
+    (await publicUsersOf(users, duelStore, [...received, ...sent])).map((user) => [user.id, user]),
+  );
 
-  return { received: receivedProfiles, sent: sentProfiles };
+  return { received: inOrder(byId, received), sent: inOrder(byId, sent) };
 };
 
 // A Friend request to `recipientId`, who must have a Handle. One they had sent the other way makes

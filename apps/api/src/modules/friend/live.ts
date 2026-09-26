@@ -2,9 +2,10 @@ import type { Logger } from "pino";
 
 import type { Clock } from "../../lib/clock";
 import type { Activity, ActivityMessage, ArrivalMessage } from "../activity/model";
-import { duelActivity, friendshipActivity } from "../activity/service";
-import type { DuelRecord } from "../duel/store";
-import type { HandleMatch, Users } from "../user/users";
+import { duelActivity, friendshipActivity, type Profiles } from "../activity/service";
+import type { DuelRecord, DuelStore } from "../duel/store";
+import { publicUsersOf } from "../user/public-users";
+import type { Users } from "../user/users";
 import type { FriendMessage, Presence } from "./model";
 import { type FriendStore, orderedPair } from "./store";
 
@@ -24,7 +25,14 @@ export type FriendEvents = {
   friendsRemoved: (a: string, b: string) => void;
 };
 
-export type FriendsLiveConfig = { store: FriendStore; users: Users; clock: Clock; logger: Logger };
+// `duelStore`: where the Ornament of the Users of an Activity or an arrival is read.
+export type FriendsLiveConfig = {
+  store: FriendStore;
+  users: Users;
+  duelStore: DuelStore;
+  clock: Clock;
+  logger: Logger;
+};
 
 // What the Duel socket tells: each connection, each Duel.
 export type PresenceEvents = Pick<FriendsLive, "connect" | "disconnect" | "setInDuel">;
@@ -47,6 +55,8 @@ export class FriendsLive implements FriendEvents {
   readonly #store: FriendStore;
 
   readonly #users: Users;
+
+  readonly #duelStore: DuelStore;
 
   readonly #clock: Clock;
 
@@ -71,9 +81,10 @@ export class FriendsLive implements FriendEvents {
   // The messages of each User that need a read, sent in the order they were asked for.
   readonly #outbox = new Map<string, Promise<void>>();
 
-  constructor({ store, users, clock, logger }: FriendsLiveConfig) {
+  constructor({ store, users, duelStore, clock, logger }: FriendsLiveConfig) {
     this.#store = store;
     this.#users = users;
+    this.#duelStore = duelStore;
     this.#clock = clock;
     this.#logger = logger;
   }
@@ -251,10 +262,7 @@ export class FriendsLive implements FriendEvents {
   // from them: the profiles are read once for all. A failed read is logged.
   #tellActivity(
     userIds: readonly string[],
-    activityFor: (
-      friends: ReadonlySet<string>,
-      profiles: ReadonlyMap<string, HandleMatch>,
-    ) => Activity[],
+    activityFor: (friends: ReadonlySet<string>, profiles: Profiles) => Activity[],
   ) {
     const watchers = new Set(userIds.flatMap((userId) => [...(this.#watchers.get(userId) ?? [])]));
 
@@ -262,7 +270,7 @@ export class FriendsLive implements FriendEvents {
       return;
     }
 
-    this.#users.profilesOf(userIds).then(
+    publicUsersOf(this.#users, this.#duelStore, userIds).then(
       (found) => {
         const profiles = new Map(found.map((user) => [user.id, user]));
 
@@ -291,18 +299,14 @@ export class FriendsLive implements FriendEvents {
 
     const at = this.#clock.now();
 
-    this.#users.profilesOf([userId]).then(
+    publicUsersOf(this.#users, this.#duelStore, [userId]).then(
       ([user]) => {
         // Gone again while the profile was read: no arrival to tell.
         if (!user || this.presenceOf(userId) === "offline") {
           return;
         }
 
-        const arrival = {
-          id: crypto.randomUUID(),
-          at,
-          friend: { id: user.id, handle: user.handle, image: user.image },
-        };
+        const arrival = { id: crypto.randomUUID(), at, friend: user };
 
         // Read again: the watchers may have changed during the read.
         for (const watcherId of this.#watchers.get(userId) ?? []) {

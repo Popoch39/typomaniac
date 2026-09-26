@@ -255,6 +255,35 @@ describe("Challenges, on the socket", () => {
     expect(duels.ratings.size).toBe(0);
   });
 
+  test("a Challenge, never ranked, shows the Ornament both wear", async () => {
+    const ada = await newUser("Ada");
+    const alan = await newUser("Alan");
+
+    duels.ratings.set(ada.id, {
+      mmr: 1000,
+      rank: { tier: "or", division: 2, tp: 10, shielded: false },
+    });
+    duels.ratings.set(alan.id, { mmr: 1000, rank: { placementsLeft: 3 } });
+    await befriend(ada, alan);
+
+    const adaTab = await tab(ada);
+    const alanTab = await tab(alan);
+    const challengeId = await challenge(ada, [adaTab], alan, [alanTab]);
+
+    alanTab.send({ type: "accept-challenge", challengeId });
+
+    expect(await alanTab.next()).toMatchObject({
+      type: "duel-found",
+      selfOrnament: null,
+      opponent: { handle: "ada", ornament: "or" },
+    });
+    expect(await adaTab.next()).toMatchObject({
+      type: "duel-found",
+      selfOrnament: "or",
+      opponent: { handle: "alan", ornament: null },
+    });
+  });
+
   test("a Challenge leaves the Ratings of ranked Users untouched", async () => {
     const ada = await newUser("Ada");
     const alan = await newUser("Alan");

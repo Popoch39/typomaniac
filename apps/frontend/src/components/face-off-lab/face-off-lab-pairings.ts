@@ -4,8 +4,9 @@ import type { FaceOffPairing } from "@/components/face-off/face-off-pairing";
 import type { SettingOption } from "@/components/settings/setting-group";
 import type { DuelOpponent } from "@/stores/duel-store";
 
-// The opponent the lab faces, with every rank, Form and Stake the Face-off can show.
-export const LAB_OPPONENT: DuelOpponent = { handle: "kzr_", image: null };
+// The opponent the lab faces, with their Ornament and every rank, Form and Stake the Face-off can
+// show.
+export const LAB_OPPONENT: DuelOpponent = { handle: "kzr_", image: null, ornament: "diamant" };
 
 export type LabPairing =
   | "ranked"
@@ -26,6 +27,7 @@ const opponentForm: Form = { avgWpm: 91.6, outcomes: ["loss", "win", "win", "los
 export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
   // An ordinary ranked Duel: a win keeps the Division.
   ranked: {
+    selfOrnament: "platine",
     selfRank: { tier: "platine", division: 4, tp: 12, shielded: false },
     opponentRank: { tier: "or", division: 2, tp: 42, shielded: false },
     selfForm,
@@ -37,6 +39,7 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
   },
   // A win moves this User up a Division.
   division: {
+    selfOrnament: "or",
     selfRank: { tier: "or", division: 3, tp: 94, shielded: false },
     opponentRank: { tier: "or", division: 2, tp: 47, shielded: false },
     selfForm,
@@ -48,6 +51,7 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
   },
   // A Promotion Duel: a win moves this User up a Tier, from Or I to Platine IV.
   promotion: {
+    selfOrnament: "or",
     selfRank: { tier: "or", division: 1, tp: 91, shielded: false },
     opponentRank: { tier: "platine", division: 4, tp: 30, shielded: false },
     selfForm,
@@ -59,6 +63,7 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
   },
   // A Promotion Duel for Maniac: a win moves this User from Diamant I into Maniac.
   forManiac: {
+    selfOrnament: "diamant",
     selfRank: { tier: "diamant", division: 1, tp: 95, shielded: false },
     opponentRank: { tier: "maniac", tp: 212, shielded: false },
     selfForm,
@@ -70,6 +75,7 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
   },
   // A loss moves this User down a Division.
   demotion: {
+    selfOrnament: "or",
     selfRank: { tier: "or", division: 2, tp: 8, shielded: false },
     opponentRank: { tier: "or", division: 2, tp: 47, shielded: false },
     selfForm,
@@ -81,6 +87,7 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
   },
   // Just moved up: the shield holds a loss below 0 TP in the Division.
   shielded: {
+    selfOrnament: "or",
     selfRank: { tier: "or", division: 2, tp: 4, shielded: true },
     opponentRank: { tier: "or", division: 2, tp: 47, shielded: false },
     selfForm,
@@ -92,6 +99,7 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
   },
   // The lowest rank: a loss below 0 TP stays at 0.
   ferIv: {
+    selfOrnament: "fer",
     selfRank: { tier: "fer", division: 4, tp: 6, shielded: false },
     opponentRank: { tier: "fer", division: 3, tp: 30, shielded: false },
     selfForm,
@@ -103,6 +111,7 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
   },
   // TP without a cap: no bar.
   maniac: {
+    selfOrnament: "maniac",
     selfRank: { tier: "maniac", tp: 248, shielded: false },
     opponentRank: { tier: "maniac", tp: 310, shielded: false },
     selfForm,
@@ -112,15 +121,18 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
       loss: { tp: -11, standing: { tier: "maniac", tp: 237, shielded: false } },
     },
   },
-  // This User without a Ranked Duel yet: their Form is absent, and no TP at stake.
+  // This User without a Ranked Duel yet: their Form is absent, no TP at stake, no Ornament.
   placement: {
+    selfOrnament: null,
     selfRank: { placementsLeft: 5 },
     opponentRank: { placementsLeft: 3 },
     selfForm: null,
     opponentForm: { avgWpm: 63, outcomes: ["win", "loss"] },
     selfStake: null,
   },
+  // Never ranked, the Ornament worn all the same.
   challenge: {
+    selfOrnament: "argent",
     selfRank: null,
     opponentRank: null,
     selfForm,

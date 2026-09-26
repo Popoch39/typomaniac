@@ -43,6 +43,8 @@ export type DuelPlay = {
   // Each player's Pace, frozen by the server at the pairing: their Bursts are judged against it.
   pace: number;
   opponentPace: number;
+  // The Ornament this User wears, read at the pairing as the opponent's (in `opponent`).
+  selfOrnament: DuelFound["selfOrnament"];
   // Each player's rank at the pairing, never their MMR; null for a Challenge or when the server
   // could not read their Rating.
   selfRank: DuelFound["selfRank"];
@@ -91,11 +93,13 @@ export type ProposalStage =
   | Exclude<ProposalEnded["reason"], "accepted">;
 
 // A Match proposal as this tab shows it: until when to answer, on this tab's clock, the opponent,
-// both ranks (never the MMR) and whether each accepted (kept once the time ran out).
+// this User's Ornament (the opponent's in `opponent`), both ranks (never the MMR) and whether each
+// accepted (kept once the time ran out).
 export type ProposalView = {
   stage: ProposalStage;
   expiresAt: number;
   opponent: DuelOpponent;
+  selfOrnament: MatchProposed["selfOrnament"];
   selfRank: MatchProposed["selfRank"];
   opponentRank: MatchProposed["opponentRank"];
   selfAccepted: boolean;
@@ -253,6 +257,7 @@ const proposedState = (message: MatchProposed): DuelState => ({
     stage: message.selfAccepted ? "accepted" : "pending",
     expiresAt: message.expiresAt - message.serverTime + clock(),
     opponent: message.opponent,
+    selfOrnament: message.selfOrnament,
     selfRank: message.selfRank,
     opponentRank: message.opponentRank,
     selfAccepted: message.selfAccepted,
@@ -307,6 +312,7 @@ const playing = (
       startsAt: localStart(message),
       pace: message.pace,
       opponentPace: message.opponentPace,
+      selfOrnament: message.selfOrnament,
       selfRank: message.selfRank,
       opponentRank: message.opponentRank,
       selfForm: message.selfForm,

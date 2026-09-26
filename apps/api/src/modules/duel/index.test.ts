@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import pino from "pino";
-import { PLACEMENT_DUELS, type Rating, seedMmr } from "ranked";
+import { type OrnamentChoice, PLACEMENT_DUELS, type Rating, seedMmr } from "ranked";
 import {
   computeResult,
   computeScore,
@@ -100,7 +100,13 @@ const burst = (count: number, start: number, every: number) =>
 const duelFound = (opponent: string) => ({
   type: "duel-found" as const,
   duel: expect.any(Object),
-  opponent: { handle: opponent.toLowerCase(), image: `https://img/${opponent.toLowerCase()}` },
+  opponent: {
+    handle: opponent.toLowerCase(),
+    image: `https://img/${opponent.toLowerCase()}`,
+    ornament: null,
+  },
+  // Both in Placement: no Ornament worn.
+  selfOrnament: null,
   serverTime: NOW,
   // Neither User has played a Duel yet.
   pace: defaultPace,
@@ -146,6 +152,9 @@ describe("duel socket", () => {
   // Each User's Rating, as the server writes it.
   let ratings: Map<string, Rating>;
 
+  // Each User's Ornament choice: "follow" when absent.
+  let ornaments: Map<string, OrnamentChoice>;
+
   // What deleting a User does to the Duels written.
   let deleteUser: (userId: string) => void;
 
@@ -156,6 +165,7 @@ describe("duel socket", () => {
     setNow = set;
     saved = duels.saved;
     ratings = duels.ratings;
+    ornaments = duels.ornaments;
     deleteUser = duels.deleteUser;
     auth = createTestAuth();
     app = createApp(testConfig({ auth, clock, duelStore: duels.store })).listen(0);
@@ -260,7 +270,8 @@ describe("duel socket", () => {
         seconds: 30,
         startsAt: STARTS_AT,
       },
-      opponent: { handle: "ada", image: "https://img/ada" },
+      opponent: { handle: "ada", image: "https://img/ada", ornament: null },
+      selfOrnament: null,
       serverTime: NOW,
       pace: defaultPace,
       opponentPace: defaultPace,
@@ -925,7 +936,8 @@ describe("duel socket", () => {
     expect(resumed).toEqual({
       type: "duel-resumed",
       duel: expect.any(Object),
-      opponent: { handle: "alan", image: "https://img/alan" },
+      opponent: { handle: "alan", image: "https://img/alan", ornament: null },
+      selfOrnament: null,
       serverTime: STARTS_AT + 1000 + 9999,
       keystrokes: [char("s", 100)],
       received: 2,
@@ -1429,6 +1441,7 @@ describe("duel socket", () => {
       recentRankedDuels: () => Promise.reject(new Error("database down")),
       rankOf: () => Promise.reject(new Error("database down")),
       ornamentChoiceOf: () => Promise.reject(new Error("database down")),
+      ornamentChoicesOf: () => Promise.reject(new Error("database down")),
       leaderboard: () => Promise.reject(new Error("database down")),
       leaderboardPosition: () => Promise.reject(new Error("database down")),
     };
@@ -1459,9 +1472,11 @@ describe("duel socket", () => {
       { msg: "pace not read", err: { message: "database down" } },
       { msg: "rating not read", err: { message: "database down" } },
       { msg: "form not read", err: { message: "database down" } },
+      { msg: "ornament not read", err: { message: "database down" } },
       { msg: "pace not read", err: { message: "database down" } },
       { msg: "rating not read", err: { message: "database down" } },
       { msg: "form not read", err: { message: "database down" } },
+      { msg: "ornament not read", err: { message: "database down" } },
       { msg: "finished duel not saved", err: { message: "database down" } },
     ]);
   });
@@ -1633,7 +1648,8 @@ describe("duel socket", () => {
         type: "match-proposed",
         expiresAt: NOW + 10_000,
         serverTime: NOW,
-        opponent: { handle: "alan", image: "https://img/alan" },
+        opponent: { handle: "alan", image: "https://img/alan", ornament: null },
+        selfOrnament: null,
         selfRank: { placementsLeft: 5 },
         opponentRank: { placementsLeft: 5 },
         selfAccepted: false,
@@ -2157,12 +2173,25 @@ describe("duel socket", () => {
       const alan = await queued(alanUser.cookie);
       const grace = await queued(graceUser.cookie);
 
-      const ranks = { selfRank: orIv(50), opponentRank: orIv(50), selfStake: expect.any(Object) };
+      const ranks = {
+        selfOrnament: "or" as const,
+        selfRank: orIv(50),
+        opponentRank: orIv(50),
+        selfStake: expect.any(Object),
+      };
 
-      expect(await acceptBoth(ada, grace)).toEqual([
-        { ...duelFound("Grace"), ...ranks },
-        { ...duelFound("Ada"), ...ranks },
-      ]);
+      const [forAda, forGrace] = await acceptBoth(ada, grace);
+
+      expect(forAda).toEqual({
+        ...duelFound("Grace"),
+        ...ranks,
+        opponent: { ...duelFound("Grace").opponent, ornament: "or" },
+      });
+      expect(forGrace).toEqual({
+        ...duelFound("Ada"),
+        ...ranks,
+        opponent: { ...duelFound("Ada").opponent, ornament: "or" },
+      });
       await alan.settle();
     });
   });
@@ -2200,6 +2229,61 @@ describe("duel socket", () => {
       const again = await resumedOn(adaUser.cookie);
 
       expect(await again.next()).toMatchObject({ type: "duel-resumed", opponentRank: orIv(20) });
+    });
+
+    test("each User is told the Ornament both wear, from the Match proposal to the resumed Duel", async () => {
+      const adaUser = await signedInUser("Ada");
+      const alanUser = await signedInUser("Alan");
+
+      ratings.set(adaUser.id, { mmr: 1000, rank: orIv(50) });
+      ratings.set(alanUser.id, { mmr: 1050, rank: diamantIv(10) });
+      ornaments.set(adaUser.id, "none");
+      // Below his Tier: worn as chosen. His raw choice never leaves the server.
+      ornaments.set(alanUser.id, "or");
+
+      const ada = await queued(adaUser.cookie);
+      const alan = await queued(alanUser.cookie);
+
+      expect(await ada.next()).toMatchObject({
+        type: "match-proposed",
+        selfOrnament: null,
+        opponent: { handle: "alan", ornament: "or" },
+      });
+      expect(await alan.next()).toMatchObject({
+        type: "match-proposed",
+        selfOrnament: "or",
+        opponent: { handle: "ada", ornament: null },
+      });
+      ada.send({ type: "accept-proposal" });
+      await alan.next();
+      alan.send({ type: "accept-proposal" });
+      await Promise.all([ada.next(), alan.next()]);
+
+      expect(await ada.next()).toMatchObject({
+        type: "duel-found",
+        selfOrnament: null,
+        opponent: { ornament: "or" },
+      });
+      expect(await alan.next()).toMatchObject({
+        type: "duel-found",
+        selfOrnament: "or",
+        opponent: { ornament: null },
+      });
+
+      const again = await resumedOn(adaUser.cookie);
+
+      expect(await again.next()).toMatchObject({
+        type: "duel-resumed",
+        selfOrnament: null,
+        opponent: { ornament: "or" },
+      });
+    });
+
+    test("in Placement, no Ornament is worn", async () => {
+      const ada = await queued(await signedIn("Ada"));
+      const alan = await queued(await signedIn("Alan"));
+
+      expect(await acceptBoth(ada, alan)).toEqual([duelFound("Alan"), duelFound("Ada")]);
     });
 
     test("each User is told their own Stake, never the opponent's nor any MMR", async () => {

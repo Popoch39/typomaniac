@@ -3,8 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { meQueryOptions } from "@/api/me";
 import { UserAvatar } from "@/components/user-avatar/user-avatar";
 
-// The User's avatar in the middle of the search: an accent arc turns around it, a dashed halo
-// turns slowly the other way. Still under reduced motion. The avatar never holds up the page.
+// The User's avatar, with their Ornament, in the middle of the search: an accent arc turns around
+// it, a dashed halo turns slowly the other way. Still under reduced motion. The avatar never holds up the page.
 export const QueueRing = () => {
   const { data: me } = useQuery(meQueryOptions);
 
@@ -15,6 +15,7 @@ export const QueueRing = () => {
       <UserAvatar
         handle={me?.handle ?? ""}
         image={me?.image ?? null}
+        ornament={me?.ornament ?? null}
         className="size-21 rounded-[33%] text-2xl font-extrabold"
         fallbackClassName="bg-primary text-2xl font-extrabold text-primary-foreground"
       />

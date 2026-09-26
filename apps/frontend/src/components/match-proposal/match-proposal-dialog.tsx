@@ -72,6 +72,7 @@ export const MatchProposalDialog = ({
               self
               handle={me?.handle ?? ""}
               image={me?.image ?? null}
+              ornament={proposal.selfOrnament}
               rank={proposal.selfRank}
               status={selfStatus(stage, proposal.selfAccepted)}
             />
@@ -79,6 +80,7 @@ export const MatchProposalDialog = ({
             <MatchProposalPlayer
               handle={opponent.handle}
               image={opponent.image}
+              ornament={opponent.ornament}
               rank={proposal.opponentRank}
               status={opponentStatus(stage, proposal.opponentAccepted)}
               faded={isCancelled(stage)}

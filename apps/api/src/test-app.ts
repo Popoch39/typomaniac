@@ -136,6 +136,8 @@ export const memoryDuelStore = () => {
   const ratings = new Map<string, Rating>();
   // Each User's Ornament choice, by id: "follow" when absent, as the column's default.
   const ornaments = new Map<string, OrnamentChoice>();
+  // The Users of each read of Ornament choices, in order: a list reads them all at once.
+  const ornamentReads: string[][] = [];
 
   const playersOf = (record: DuelRecord) =>
     record.players.filter((player) => !deleted.has(player.userId));
@@ -219,7 +221,22 @@ export const memoryDuelStore = () => {
       return rating;
     },
     rankOf: async (userId) => ratings.get(userId)?.rank ?? null,
-    ornamentChoiceOf: async (userId) => ornaments.get(userId) ?? "follow",
+    ornamentChoiceOf: async (userId) => {
+      ornamentReads.push([userId]);
+
+      return ornaments.get(userId) ?? "follow";
+    },
+    ornamentChoicesOf: async (userIds) => {
+      ornamentReads.push([...userIds]);
+
+      return userIds.flatMap((userId) => {
+        const rating = ratings.get(userId);
+
+        return rating && !deleted.has(userId)
+          ? [{ userId, rank: rating.rank, choice: ornaments.get(userId) ?? "follow" }]
+          : [];
+      });
+    },
     leaderboard: async (limit) => classement().slice(0, limit),
     leaderboardPosition: async (userId) =>
       classement().find((row) => row.userId === userId)?.position ?? null,
@@ -324,7 +341,7 @@ export const memoryDuelStore = () => {
     deleted.add(userId);
   };
 
-  return { store, saved, ratings, ornaments, deleteUser };
+  return { store, saved, ratings, ornaments, ornamentReads, deleteUser };
 };
 
 // The Friend requests and the friendships in memory, in the order they were written. `now` dates

@@ -1,5 +1,6 @@
 import { cn } from "cn";
 import type { ReactNode } from "react";
+import type { Tier } from "ranked";
 
 import { FaceOffMarquee } from "@/components/face-off/face-off-marquee";
 import type { RunTone } from "@/components/run/run-tone";
@@ -11,6 +12,8 @@ type FaceOffPanelProps = {
   // Null while this User's is being read: the panel comes in without it.
   handle: string | null;
   image: string | null;
+  // The Ornament the player wears around their avatar: it rises in and leaves with it.
+  ornament: Tier | null;
   children?: ReactNode;
 };
 
@@ -34,7 +37,7 @@ const SIDES = {
 // One player in the Face-off, in ink on their colour: their Handle sliding behind, then their
 // avatar (their initials without one), their Handle and what the side adds, risen in after the
 // impact.
-export const FaceOffPanel = ({ side, handle, image, children }: FaceOffPanelProps) => {
+export const FaceOffPanel = ({ side, handle, image, ornament, children }: FaceOffPanelProps) => {
   const style = SIDES[side];
 
   return (
@@ -51,10 +54,12 @@ export const FaceOffPanel = ({ side, handle, image, children }: FaceOffPanelProp
           <UserAvatar
             handle={handle ?? ""}
             image={image}
+            ornament={ornament}
             className="size-44 after:border-0"
             fallbackClassName={cn("bg-background text-6xl font-extrabold", style.initials)}
           />
-          <p className="max-w-full truncate text-7xl leading-none font-extrabold tracking-[-0.02em]">
+          {/* Positioned after the avatar: drawn over the Ornament's overflow, never under it. */}
+          <p className="relative max-w-full truncate text-7xl leading-none font-extrabold tracking-[-0.02em]">
             {handle === null ? null : atHandle(handle)}
           </p>
           {children}

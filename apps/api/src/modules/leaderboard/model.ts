@@ -1,16 +1,18 @@
 import { t } from "elysia";
 
 import { DuelModel } from "../duel/model";
+import { WornOrnament } from "../duel/tier";
 
 // How many Users of the Classement the page shows, from the first.
 export const LEADERBOARD_LIMIT = 100;
 
-// A User of the Classement: their place, their Handle of today, their avatar and their rank, never
-// their MMR, their name nor their email.
+// A User of the Classement: their place, their Handle of today, their avatar with the Ornament
+// they wear and their rank, never their MMR, their name nor their email.
 const entry = t.Object({
   position: t.Integer(),
   handle: t.String(),
   image: t.Nullable(t.String()),
+  ornament: WornOrnament,
   rank: DuelModel.standing,
 });
 

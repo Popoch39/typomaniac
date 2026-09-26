@@ -4,12 +4,22 @@ import { t } from "elysia";
 
 import { createApp } from "../../app";
 import type { RateLimit } from "../../plugins/rate-limit";
-import { createTestAuth, memoryFriendStore, signIn, testConfig } from "../../test-app";
+import {
+  createTestAuth,
+  memoryDuelStore,
+  memoryFriendStore,
+  signIn,
+  testConfig,
+} from "../../test-app";
 
 type Method = "GET" | "POST" | "DELETE";
 
 const relationsFound = TypeCompiler.Compile(
   t.Array(t.Object({ handle: t.String(), relation: t.String() })),
+);
+
+const ornamentsFound = TypeCompiler.Compile(
+  t.Array(t.Object({ handle: t.String(), ornament: t.Nullable(t.String()) })),
 );
 
 type SendBody = { userId: string };
@@ -19,9 +29,15 @@ const setup = ({
   friendRequestRateLimit = { max: 1000, windowMs: 60_000 },
 }: { friendRequestRateLimit?: RateLimit } = {}) => {
   const auth = createTestAuth();
+  const duels = memoryDuelStore();
 
   const app = createApp(
-    testConfig({ auth, friendStore: memoryFriendStore(), friendRequestRateLimit }),
+    testConfig({
+      auth,
+      duelStore: duels.store,
+      friendStore: memoryFriendStore(),
+      friendRequestRateLimit,
+    }),
   );
 
   let users = 0;
@@ -71,7 +87,8 @@ const setup = ({
     return {
       id,
       cookie,
-      profile: { id, handle, image },
+      // Without a Rating: no Ornament.
+      profile: { id, handle, image, ornament: null },
       send: (to: string) => call(cookie, "POST", "/friend-requests", { userId: to }),
       cancel: (to: string) => call(cookie, "DELETE", `/friend-requests/sent/${to}`),
       accept: (from: string) => call(cookie, "POST", `/friend-requests/received/${from}/accept`),
@@ -87,7 +104,7 @@ const setup = ({
   const newUsers = async (count: number, prefix: string) =>
     Promise.all(Array.from({ length: count }, (_, index) => newUser(`${prefix}_${index}`)));
 
-  return { newUser, newUsers, call };
+  return { duels, newUser, newUsers, call };
 };
 
 type TestUser = Awaited<ReturnType<ReturnType<typeof setup>["newUser"]>>;
@@ -455,5 +472,80 @@ describe("the search", () => {
       ["rel_received", "request-received"],
       ["rel_sent", "request-sent"],
     ]);
+  });
+});
+
+// A User past Placement in Or II, with an Ornament choice when given.
+const ranked = (
+  duels: ReturnType<typeof setup>["duels"],
+  user: TestUser,
+  choice?: "none" | "argent",
+) => {
+  duels.ratings.set(user.id, {
+    mmr: 1000,
+    rank: { tier: "or", division: 2, tp: 40, shielded: false },
+  });
+
+  if (choice) {
+    duels.ornaments.set(user.id, choice);
+  }
+};
+
+describe("the Ornament", () => {
+  test("is worn by each Friend, resolved from their choice, null in Placement", async () => {
+    const { duels, newUser } = setup();
+    const ada = await newUser("ada");
+    const bob = await newUser("bob");
+    const eve = await newUser("eve");
+    const zoe = await newUser("zoe");
+
+    ranked(duels, bob);
+    ranked(duels, eve, "argent");
+    duels.ratings.set(zoe.id, { mmr: 1000, rank: { placementsLeft: 2 } });
+    await befriendAll(ada, [bob, eve, zoe]);
+    duels.ornamentReads.length = 0;
+
+    const friends = ornamentsFound.Decode(await ada.friends());
+
+    expect(friends.map(({ handle, ornament }) => [handle, ornament])).toEqual([
+      ["bob", "or"],
+      ["eve", "argent"],
+      ["zoe", null],
+    ]);
+    expect(duels.ornamentReads).toHaveLength(1);
+  });
+
+  test("is worn in the Friend requests, both ways", async () => {
+    const { duels, newUser } = setup();
+    const ada = await newUser("ada");
+    const bob = await newUser("bob");
+    const eve = await newUser("eve");
+
+    ranked(duels, bob);
+    ranked(duels, eve, "none");
+    await bob.send(ada.id);
+    await ada.send(eve.id);
+
+    expect(await ada.requests()).toEqual({
+      received: [{ ...bob.profile, ornament: "or" }],
+      sent: [{ ...eve.profile, ornament: null }],
+    });
+  });
+
+  test("is worn by each User found, read at once", async () => {
+    const { duels, newUser } = setup();
+    const me = await newUser("me_myself");
+    const bob = await newUser("orn_bob");
+
+    await newUser("orn_eve");
+    ranked(duels, bob, "argent");
+
+    const found = ornamentsFound.Decode(await me.search("orn"));
+
+    expect(found.map(({ handle, ornament }) => [handle, ornament])).toEqual([
+      ["orn_bob", "argent"],
+      ["orn_eve", null],
+    ]);
+    expect(duels.ornamentReads).toHaveLength(1);
   });
 });

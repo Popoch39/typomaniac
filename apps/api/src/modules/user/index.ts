@@ -2,6 +2,7 @@ import { Elysia } from "elysia";
 
 import { keyedRateLimit, type RateLimit } from "../../plugins/rate-limit";
 import { type AuthHandler, authentication } from "../auth";
+import type { DuelStore } from "../duel/store";
 import type { FriendStore } from "../friend/store";
 import { UserModel } from "./model";
 import { searchUsers } from "./service";
@@ -13,6 +14,8 @@ export type UserModuleConfig = {
   users: Users;
   // Where the searcher stands with each User found.
   friendStore: FriendStore;
+  // Where the Ornament of each User found is read.
+  duelStore: DuelStore;
   // Per User, stricter than the global limit: the search must not dump the Handles.
   searchRateLimit: RateLimit;
 };
@@ -22,6 +25,7 @@ export const userModule = ({
   trustProxy,
   users,
   friendStore,
+  duelStore,
   searchRateLimit,
 }: UserModuleConfig) => {
   // Throws the 429 once a User is over their searches.
@@ -37,7 +41,7 @@ export const userModule = ({
           limitSearches(user.id, set);
 
           return searchUsers(
-            { users, friendStore },
+            { users, friendStore, duelStore },
             { id: user.id, handle: user.handle ?? null },
             query.handle,
           );

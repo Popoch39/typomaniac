@@ -224,6 +224,18 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
 
     return row?.ornament ?? "follow";
   },
+  ornamentChoicesOf: async (userIds) => {
+    const rows = await db
+      .select()
+      .from(rankedRating)
+      .where(inArray(rankedRating.userId, [...userIds]));
+
+    return rows.map((row) => ({
+      userId: row.userId,
+      rank: ratingOf(row).rank,
+      choice: row.ornament,
+    }));
+  },
   recentWpms: async (userId, count) => {
     const rows = await db
       .select({ wpm: duelPlayer.wpm })

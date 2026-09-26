@@ -1,4 +1,11 @@
-import { type OrnamentChoice, ornamentOf, type Rank, type Rating, type Standing } from "ranked";
+import {
+  type OrnamentChoice,
+  ornamentOf,
+  type Rank,
+  type Rating,
+  type Standing,
+  type Tier,
+} from "ranked";
 import { type Keystroke, paceDuels, paceOf, type Result } from "typing-engine";
 
 import type { Duel, DuelScore, Form } from "./model";
@@ -101,6 +108,9 @@ export type RankedDuelRow = Pick<DuelRecord, "outcome" | "winnerId"> & { wpm: nu
 // A User of the Classement: their place in it, from 1, and their rank, never their MMR.
 export type LeaderboardRow = { userId: string; position: number; standing: Standing };
 
+// A User with a Rating: their rank and the Ornament they chose, raw, to resolve by `ornamentOf`.
+export type OrnamentChoiceRow = { userId: string; rank: Rank; choice: OrnamentChoice };
+
 // Where finished Duels are written, injected through AppConfig: Drizzle in production, in memory
 // in the tests. A Duel still running when the API stops is never written.
 export type DuelStore = {
@@ -113,6 +123,9 @@ export type DuelStore = {
   rankOf: (userId: string) => Promise<Rank | null>;
   // The Ornament the User chose, raw: "follow" until they choose, or without a Rating.
   ornamentChoiceOf: (userId: string) => Promise<OrnamentChoice>;
+  // The rank and raw Ornament choice of those of `userIds` who have a Rating, in one read: the
+  // lists of Users never read them one by one.
+  ornamentChoicesOf: (userIds: readonly string[]) => Promise<OrnamentChoiceRow[]>;
   // The first `limit` Users of the Classement, past Placement, in its order (`byStanding` of the
   // ranked package, ties by User id).
   leaderboard: (limit: number) => Promise<LeaderboardRow[]>;
@@ -166,6 +179,27 @@ export const readRankAndOrnament = async (store: DuelStore, userId: string) => {
   const [rank, choice] = await Promise.all([store.rankOf(userId), store.ornamentChoiceOf(userId)]);
 
   return { rank, ornament: rank === null ? null : ornamentOf(rank, choice) };
+};
+
+// The Ornament each of `userIds` wears, resolved from their choice, in one read of the Ratings:
+// absent for those who wear none (in Placement, without a Rating or by choice).
+export const readOrnaments = async (
+  store: DuelStore,
+  userIds: readonly string[],
+): Promise<ReadonlyMap<string, Tier>> => {
+  if (userIds.length === 0) {
+    return new Map();
+  }
+
+  const rows = await store.ornamentChoicesOf(userIds);
+
+  return new Map(
+    rows.flatMap(({ userId, rank, choice }) => {
+      const ornament = ornamentOf(rank, choice);
+
+      return ornament === null ? [] : [[userId, ornament] as const];
+    }),
+  );
 };
 
 // How many Ranked Duels the Form shows.

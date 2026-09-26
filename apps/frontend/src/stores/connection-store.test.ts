@@ -24,7 +24,7 @@ const duel = {
   startsAt: 3_000,
 } as const;
 
-const opponent = { handle: "ada", image: null };
+const opponent = { handle: "ada", image: null, ornament: null };
 
 const noResult = {
   wpm: 0,
@@ -40,6 +40,7 @@ const duelFound: ServerMessage = {
   type: "duel-found",
   duel,
   opponent,
+  selfOrnament: null,
   serverTime: 0,
   pace: 40,
   opponentPace: 40,
@@ -55,6 +56,7 @@ const matchProposed: ServerMessage = {
   expiresAt: 10_000,
   serverTime: 0,
   opponent,
+  selfOrnament: null,
   selfRank: null,
   opponentRank: null,
   selfAccepted: false,
@@ -65,6 +67,7 @@ const duelResumed: ServerMessage = {
   type: "duel-resumed",
   duel,
   opponent,
+  selfOrnament: null,
   serverTime: 0,
   keystrokes: [],
   received: 0,

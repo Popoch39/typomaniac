@@ -142,7 +142,7 @@ describe("user search", () => {
     expect(await handlesFound(me.cookie, "a".repeat(40))).toEqual([]);
   });
 
-  test("shows the id, the Handle, the avatar and the relation, never the name nor the email", async () => {
+  test("shows the id, the Handle, the avatar, the Ornament and the relation, never the name nor the email", async () => {
     const { newUser, search } = setup();
     const me = await newUser("me_myself");
     const ada = await newUser("ada");
@@ -150,7 +150,13 @@ describe("user search", () => {
     const response = await search(me.cookie, "ada");
 
     expect(await response.json()).toEqual([
-      { id: ada.id, handle: "ada", image: "https://example.com/2.png", relation: "none" },
+      {
+        id: ada.id,
+        handle: "ada",
+        image: "https://example.com/2.png",
+        ornament: null,
+        relation: "none",
+      },
     ]);
   });
 

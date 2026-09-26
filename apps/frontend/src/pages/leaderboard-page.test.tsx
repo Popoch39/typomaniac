@@ -27,12 +27,21 @@ const me: Me = {
   ornament: null,
 };
 
-const entry = (position: number, handle: string): LeaderboardEntry => ({
+const entry = (
+  position: number,
+  handle: string,
+  ornament: LeaderboardEntry["ornament"] = null,
+): LeaderboardEntry => ({
   position,
   handle,
   image: null,
+  ornament,
   rank: { tier: "or", division: 2, tp: 42, shielded: false },
 });
+
+// The Tier of the Ornament the row's avatar wears, none without one.
+const ornamentOf = (row: HTMLElement) =>
+  row.querySelector("[data-ornament] use")?.getAttribute("href") ?? null;
 
 // The page at `/leaderboard`, the Classement already read through Query.
 const renderPage = async (user: Me | null, leaderboard: Leaderboard) => {
@@ -93,6 +102,19 @@ describe("LeaderboardPage", () => {
     ]);
     expect(rows[1]?.getAttribute("aria-current")).toBe("true");
     expect(rows.filter((row) => row.hasAttribute("aria-current"))).toHaveLength(1);
+  });
+
+  test("each avatar wears its User's Ornament, the reader's below the list too", async () => {
+    await renderPage(me, {
+      entries: [entry(1, "alan", "diamant"), entry(2, "grace")],
+      me: entry(140, "ada", "argent"),
+    });
+
+    expect(screen.getAllByRole("listitem").map(ornamentOf)).toEqual([
+      "#tier-ornament-diamant",
+      null,
+      "#tier-ornament-argent",
+    ]);
   });
 
   test("shows the reader's line below the list when they stand further down", async () => {

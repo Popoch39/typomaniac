@@ -16,6 +16,7 @@ export const MatchProposalGo = ({ opponent, pairing }: MatchProposalGoProps) => 
       stage: "ready",
       expiresAt: 0,
       opponent,
+      selfOrnament: pairing.selfOrnament,
       selfRank: pairing.selfRank,
       opponentRank: pairing.opponentRank,
       selfAccepted: true,

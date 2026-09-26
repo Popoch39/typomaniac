@@ -1,5 +1,7 @@
 import { t } from "elysia";
 
+import { PublicUser } from "../user/public-user";
+
 // Where a User stands with another: Friends, a Friend request one way or the other, or nothing.
 export const RELATIONS = ["none", "friend", "request-sent", "request-received"] as const;
 
@@ -16,12 +18,9 @@ export const FRIEND_REFUSALS = [
   "not-friends",
 ] as const;
 
-// Another User as a Friend or a Friend request shows them: never their name nor their email.
-const friendProfile = t.Object({
-  id: t.String(),
-  handle: t.String(),
-  image: t.Nullable(t.String()),
-});
+// Another User as a Friend or a Friend request shows them, with the Ornament they wear around
+// their avatar: never their name nor their email.
+const friendProfile = PublicUser;
 
 const otherUser = t.Object({ userId: t.String() });
 

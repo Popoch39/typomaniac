@@ -34,14 +34,22 @@ const me: Me = {
   ornament: null,
 };
 
-const friends: Friend[] = [{ id: "alan-id", handle: "alan", image: null }];
+const alan = { id: "alan-id", handle: "alan", image: null, ornament: "or" } as const;
+
+const friends: Friend[] = [alan];
 
 const requests: FriendRequests = {
-  received: [{ id: "grace-id", handle: "grace", image: null }],
-  sent: [{ id: "linus-id", handle: "linus", image: null }],
+  received: [{ id: "grace-id", handle: "grace", image: null, ornament: "platine" }],
+  sent: [{ id: "linus-id", handle: "linus", image: null, ornament: null }],
 };
 
-const alan = { id: "alan-id", handle: "alan", image: null };
+// The Tier of the Ornament worn in the row of that Handle's link, none without one.
+const ornamentBy = (handle: string) =>
+  screen
+    .getByRole("link", { name: `@${handle}` })
+    .closest("li")
+    ?.querySelector("[data-ornament] use")
+    ?.getAttribute("href") ?? null;
 
 const activities: Activity[] = [
   {
@@ -50,18 +58,27 @@ const activities: Activity[] = [
     at: Date.now() - 5 * 60_000,
     forfeit: true,
     friend: { ...alan, wpm: 72.4, outcome: "win" },
-    opponent: { id: "turing-id", handle: "turing", image: null, wpm: 40, outcome: "loss" },
+    opponent: {
+      id: "turing-id",
+      handle: "turing",
+      image: null,
+      ornament: null,
+      wpm: 40,
+      outcome: "loss",
+    },
   },
   {
     type: "friendship",
     id: "ada-id:alan-id",
     at: Date.now() - 2 * 86_400_000,
     friend: alan,
-    other: { id: "ada-id", handle: "ada", image: null },
+    other: { id: "ada-id", handle: "ada", image: null, ornament: null },
   },
 ];
 
-const found: UserFound[] = [{ id: "barbara-id", handle: "barbara", image: null, relation: "none" }];
+const found: UserFound[] = [
+  { id: "barbara-id", handle: "barbara", image: null, ornament: "bronze", relation: "none" },
+];
 
 // The page with the User's lists and a search already in the cache, on a router of its own.
 const renderPage = async (userFriends: Friend[] = friends, activity: Activity[] = activities) => {
@@ -102,6 +119,31 @@ describe("FriendsPage", () => {
         `/u/${handle}`,
       );
     }
+  });
+
+  test("each avatar wears its User's Ornament: Friends, Friend requests, search, Activity", async () => {
+    await renderPage(friends, []);
+
+    expect(ornamentBy("alan")).toBe("#tier-ornament-or");
+    expect(ornamentBy("grace")).toBe("#tier-ornament-platine");
+    expect(ornamentBy("linus")).toBeNull();
+
+    await userEvent.type(screen.getByLabelText("Chercher un User"), "bar");
+    await screen.findByRole("link", { name: "@barbara" });
+
+    expect(ornamentBy("barbara")).toBe("#tier-ornament-bronze");
+  });
+
+  test("an Activity's avatar wears its Friend's Ornament", async () => {
+    await renderPage();
+
+    const column = within(screen.getByRole("region", { name: "Activity" }));
+
+    expect(
+      column
+        .getAllByRole("listitem")
+        .map((item) => item.querySelector("[data-ornament] use")?.getAttribute("href")),
+    ).toEqual(["#tier-ornament-or", "#tier-ornament-or"]);
   });
 
   test("a User found leads to their Profile, next to the Friend request", async () => {
@@ -178,7 +220,7 @@ describe("FriendsPage", () => {
         id: "alan-id:grace-id",
         at: Date.now(),
         friend: alan,
-        other: { id: "grace-id", handle: "grace", image: null },
+        other: { id: "grace-id", handle: "grace", image: null, ornament: null },
       },
     });
 

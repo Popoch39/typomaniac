@@ -9,14 +9,14 @@ import {
   withActivity,
 } from "@/lib/activity-feed";
 
-const ada = { id: "ada-id", handle: "ada", image: null };
+const ada = { id: "ada-id", handle: "ada", image: null, ornament: null };
 
 const friendship = (id: string, at: number): Activity => ({
   type: "friendship",
   id,
   at,
   friend: ada,
-  other: { id: `${id}-id`, handle: id, image: null },
+  other: { id: `${id}-id`, handle: id, image: null, ornament: null },
 });
 
 describe("withActivity", () => {
@@ -62,7 +62,11 @@ describe("arrivalsAfter", () => {
   });
 
   test("forgets an ex-Friend's arrivals", () => {
-    const alans = { id: "x", at: 1_000, friend: { id: "alan-id", handle: "alan", image: null } };
+    const alans = {
+      id: "x",
+      at: 1_000,
+      friend: { id: "alan-id", handle: "alan", image: null, ornament: null },
+    };
 
     expect(
       arrivalsAfter([arrival("a", 2_000), alans], { type: "friend-removed", userId: "alan-id" }),

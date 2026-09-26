@@ -5,7 +5,6 @@ import {
   matchWindow,
   nextWidening,
   PLACEMENT_DUELS,
-  type Rating,
   seedMmr,
 } from "ranked";
 import { currentWordListVersion, defaultPace, type Keystroke } from "typing-engine";
@@ -14,8 +13,8 @@ import type { Clock } from "../../lib/clock";
 import { type ChallengeArena, Challenges, type Seat } from "../challenge/service";
 import type { FriendStore } from "../friend/store";
 import type { Users } from "../user/users";
-import type { ClientMessage, Form, ServerMessage } from "./model";
-import { type DuelRecord, type DuelStore, readForm, readPace } from "./store";
+import type { ClientMessage, ServerMessage } from "./model";
+import { type DuelRecord, type DuelStore, readForm, readPace, readRankAndOrnament } from "./store";
 import {
   type DuelEnded,
   type Finish,
@@ -77,13 +76,13 @@ export type DuelQueueConfig = {
   onDuelSaved: (record: DuelRecord) => void;
 };
 
-// A User in the Queue: their profile once read (they have a Handle), then their Pace and Form once
-// read from their history, with their Rating (null when it could not be read: their Duel is not
+// A User in the Queue: their profile once read (they have a Handle), then their Pace, Form and
+// Ornament once read from their history, with their Rating (null when it could not be read: their Duel is not
 // ranked), and when they joined: their wait widens the MMR window. Replaced by a new entry when
 // they leave and join again.
 type QueueEntry = {
   user: User | null;
-  paced: { pace: number; form: Form | null; rating: Rating | null } | null;
+  paced: Omit<PacedUser, "user"> | null;
   joinedAt: number;
 };
 
@@ -673,13 +672,14 @@ export class DuelQueue implements ChallengeArena {
         this.#tellOthers(userId);
         this.#queueChanged();
         void this.readPace(userId).then(async (pace) => {
-          const [rating, form] = await Promise.all([
+          const [rating, form, ornament] = await Promise.all([
             this.#readRating(userId, pace),
             this.readForm(userId),
+            this.readOrnament(userId),
           ]);
 
           if (this.#queue.get(userId) === entry) {
-            entry.paced = { pace, form, rating };
+            entry.paced = { pace, form, ornament, rating };
             this.#pair();
           }
         });
@@ -718,6 +718,20 @@ export class DuelQueue implements ChallengeArena {
       return await readForm(this.#store, userId);
     } catch (error) {
       this.#logger.error({ err: error, userId }, "form not read");
+
+      return null;
+    }
+  }
+
+  // The Ornament the User wears, once their last Duel is written (it may move their Tier), as the
+  // Pace. Unreadable, none: the Duel is played.
+  async readOrnament(userId: string) {
+    try {
+      await this.#saving.get(userId);
+
+      return (await readRankAndOrnament(this.#store, userId)).ornament;
+    } catch (error) {
+      this.#logger.error({ err: error, userId }, "ornament not read");
 
       return null;
     }
@@ -823,7 +837,12 @@ export class DuelQueue implements ChallengeArena {
       type: "match-proposed",
       expiresAt,
       serverTime: this.#clock.now(),
-      opponent: { handle: opponent.user.handle, image: opponent.user.image },
+      opponent: {
+        handle: opponent.user.handle,
+        image: opponent.user.image,
+        ornament: opponent.ornament,
+      },
+      selfOrnament: self.ornament,
       selfRank: self.rating?.rank ?? null,
       opponentRank: opponent.rating?.rank ?? null,
       selfAccepted: accepted.has(userId),
@@ -890,7 +909,7 @@ export class DuelQueue implements ChallengeArena {
     atFault: (userId: string) => boolean,
     reason: "declined" | "missed",
   ) {
-    for (const { user, pace, form, rating, joinedAt } of proposal.players) {
+    for (const { user, pace, form, ornament, rating, joinedAt } of proposal.players) {
       this.#proposals.delete(user.id);
 
       if (atFault(user.id)) {
@@ -903,7 +922,7 @@ export class DuelQueue implements ChallengeArena {
 
         this.#tellOthers(user.id);
       } else {
-        const entry: QueueEntry = { user, paced: { pace, form, rating }, joinedAt };
+        const entry: QueueEntry = { user, paced: { pace, form, ornament, rating }, joinedAt };
 
         this.#returning.set(user.id, entry);
         this.#send(user.id, { type: "proposal-ended", reason: `opponent-${reason}` });

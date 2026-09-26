@@ -104,6 +104,7 @@ describe("GET /api/leaderboard", () => {
       position: 5,
       handle: "ada",
       image: "https://example.com/1.png",
+      ornament: "or",
       rank: { tier: "or", division: 4, tp: 90, shielded: false },
     });
   });
@@ -141,6 +142,7 @@ describe("GET /api/leaderboard", () => {
         position: 2,
         handle: "ada",
         image: "https://example.com/2.png",
+        ornament: "or",
         rank: or(4, 10),
       });
     });
@@ -180,6 +182,40 @@ describe("GET /api/leaderboard", () => {
     expect((await leaderboardOf(ada.cookie)).entries).toEqual([
       expect.objectContaining({ position: 2, handle: "ada" }),
     ]);
+  });
+
+  describe("the Ornament", () => {
+    test("is the one each User wears, resolved from their choice, the reader's too", async () => {
+      const { duels, newUser, leaderboardOf } = setup();
+      const alan = await newUser("alan", { tier: "platine", division: 1, tp: 0, shielded: false });
+      const grace = await newUser("grace", or(1, 50));
+      const ada = await newUser("ada", or(4, 10));
+
+      duels.ornaments.set(alan.id, "argent");
+      duels.ornaments.set(grace.id, "none");
+
+      const leaderboard = await leaderboardOf(ada.cookie);
+
+      expect(leaderboard.entries.map(({ handle, ornament }) => [handle, ornament])).toEqual([
+        ["alan", "argent"],
+        ["grace", null],
+        ["ada", "or"],
+      ]);
+      expect(leaderboard.me?.ornament).toBe("or");
+    });
+
+    test("reads the Ratings of all the Users at once, never one by one", async () => {
+      const { duels, newUser, leaderboardOf } = setup();
+
+      await newUser("alan", or(1, 0));
+      await newUser("grace", or(2, 0));
+
+      const ada = await newUser("ada", or(4, 10));
+
+      await leaderboardOf(ada.cookie);
+
+      expect(duels.ornamentReads).toHaveLength(1);
+    });
   });
 
   test("forgets a deleted User", async () => {

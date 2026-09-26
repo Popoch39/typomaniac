@@ -14,7 +14,13 @@ import { useFaceOffSoundStore } from "@/stores/face-off-sound-store";
 
 const STARTS_AT = 10_000;
 
-const alan = { handle: "alan", image: null };
+const alan = { handle: "alan", image: null, ornament: "platine" } as const;
+
+// The Ornament worn in a side's panel, within what its timeline moves in and out.
+const ornamentIn = (side: string) =>
+  document
+    .querySelector(`[data-face-off="${side}"] [data-face-off="reveal"] [data-ornament] use`)
+    ?.getAttribute("href");
 
 const me: Me = {
   id: "ada-id",
@@ -32,6 +38,7 @@ const clock = () => now;
 
 // A Challenge: ranked for neither, Ada's Form from the Queue, none for Alan.
 const challenge: FaceOffPairing = {
+  selfOrnament: null,
   selfRank: null,
   opponentRank: null,
   selfForm: { avgWpm: 80, outcomes: ["win", "loss"] },
@@ -47,6 +54,7 @@ const maniac = (tp: number) => ({ tier: "maniac", tp, shielded: false }) as cons
 
 // A ranked Duel between equals, at the MMR their rank expects: 20 TP either way.
 const ranked: FaceOffPairing = {
+  selfOrnament: "or",
   selfRank: orIv(50),
   opponentRank: orIv(30),
   selfForm: null,
@@ -230,8 +238,22 @@ describe("FaceOff", () => {
     expect(screen.getAllByText("Challenge")).toHaveLength(2);
   });
 
+  test("each avatar wears its player's Ornament, in the panel that moves it", () => {
+    faceOffAt(-4500, ranked);
+
+    expect(ornamentIn("own")).toBe("#tier-ornament-or");
+    expect(ornamentIn("opponent")).toBe("#tier-ornament-platine");
+  });
+
+  test("without an Ornament, the avatar wears none", () => {
+    faceOffAt(-4500);
+
+    expect(document.querySelector('[data-face-off="own"] [data-ornament]')).toBeNull();
+  });
+
   test("shows each player's rank and Form, absent for one without a Ranked Duel", () => {
     faceOffAt(-4500, {
+      selfOrnament: "or",
       selfRank: { tier: "or", division: 2, tp: 42, shielded: false },
       opponentRank: { placementsLeft: 3 },
       selfForm: { avgWpm: 80, outcomes: ["win", "loss"] },

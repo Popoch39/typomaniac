@@ -1,5 +1,7 @@
 import type { DuelStore, LeaderboardRow } from "../duel/store";
-import type { HandleMatch, Users } from "../user/users";
+import type { PublicUser } from "../user/public-user";
+import { publicUsersOf } from "../user/public-users";
+import type { Users } from "../user/users";
 import { LEADERBOARD_LIMIT, type Leaderboard, type LeaderboardEntry } from "./model";
 
 export type LeaderboardDeps = { store: DuelStore; users: Users };
@@ -7,17 +9,23 @@ export type LeaderboardDeps = { store: DuelStore; users: Users };
 // A row of the Classement as the page shows it: null for a User without a Handle.
 const entryOf = (
   { userId, position, standing }: LeaderboardRow,
-  profiles: ReadonlyMap<string, HandleMatch>,
+  profiles: ReadonlyMap<string, PublicUser>,
 ): LeaderboardEntry | null => {
   const profile = profiles.get(userId);
 
   return profile
-    ? { position, handle: profile.handle, image: profile.image, rank: standing }
+    ? {
+        position,
+        handle: profile.handle,
+        image: profile.image,
+        ornament: profile.ornament,
+        rank: standing,
+      }
     : null;
 };
 
 // The Classement's first Users, with their Handle of today (a User without one is left out, their
-// place kept), and where the reader stands in it.
+// place kept) and their Ornament, and where the reader stands in it.
 export const leaderboardOf = async (
   { store, users }: LeaderboardDeps,
   readerId: string,
@@ -36,10 +44,9 @@ export const leaderboardOf = async (
   const userIds = rows.map((row) => row.userId);
 
   const profiles = new Map(
-    (await users.profilesOf(reader === null ? userIds : [...userIds, readerId])).map((profile) => [
-      profile.id,
-      profile,
-    ]),
+    (await publicUsersOf(users, store, reader === null ? userIds : [...userIds, readerId])).map(
+      (profile) => [profile.id, profile],
+    ),
   );
 
   return {

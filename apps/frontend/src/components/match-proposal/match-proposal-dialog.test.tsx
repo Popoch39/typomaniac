@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -25,7 +25,8 @@ const clock = () => now;
 const pending: ProposalView = {
   stage: "pending",
   expiresAt: 10_000,
-  opponent: { handle: "kaelis", image: null },
+  opponent: { handle: "kaelis", image: null, ornament: null },
+  selfOrnament: "or",
   selfRank: { tier: "or", division: 2, tp: 64, shielded: false },
   opponentRank: { placementsLeft: 3 },
   selfAccepted: false,
@@ -84,6 +85,22 @@ describe("MatchProposalDialog", () => {
     expect(screen.getByText("10")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Accepter/ })).toHaveFocus();
     expect(screen.queryByText(/mmr/i)).not.toBeInTheDocument();
+  });
+
+  test("each player's avatar wears their Ornament, none for one without", async () => {
+    shown({ ...pending, opponent: { ...pending.opponent, ornament: "diamant" } });
+
+    await screen.findByRole("dialog", { name: "Adversaire trouvé !" });
+
+    expect(
+      [...document.querySelectorAll("[data-ornament] use")].map((use) => use.getAttribute("href")),
+    ).toEqual(["#tier-ornament-or", "#tier-ornament-diamant"]);
+
+    cleanup();
+    shown(pending);
+    await screen.findByRole("dialog", { name: "Adversaire trouvé !" });
+
+    expect(document.querySelectorAll("[data-ornament]")).toHaveLength(1);
   });
 
   test("Accepter or Entrée accepts", async () => {

@@ -1,6 +1,8 @@
 import { type DuelStore, outcomeFor, type RecentDuel } from "../duel/store";
 import type { Friendship, FriendStore } from "../friend/store";
-import type { HandleMatch, Users } from "../user/users";
+import type { PublicUser } from "../user/public-user";
+import { publicUsersOf } from "../user/public-users";
+import type { Users } from "../user/users";
 import type { Activities, Activity } from "./model";
 
 // How many Activities the User sees, the newest.
@@ -8,7 +10,8 @@ export const ACTIVITY_LIMIT = 50;
 
 export type ActivityDeps = { duelStore: DuelStore; friendStore: FriendStore; users: Users };
 
-type Profiles = ReadonlyMap<string, HandleMatch>;
+// The Users of the Activities, each with their Ornament.
+export type Profiles = ReadonlyMap<string, PublicUser>;
 
 // The Duel with a Friend of the reader first; left out when that Friend cannot be read.
 export const duelActivity = (
@@ -78,7 +81,10 @@ export const activityOf = async (
     ...friendships.flatMap(({ pair }) => pair),
   ]);
 
-  const profiles = new Map((await users.profilesOf([...ids])).map((user) => [user.id, user]));
+  const profiles = new Map(
+    (await publicUsersOf(users, duelStore, [...ids])).map((user) => [user.id, user]),
+  );
+
   const friends = new Set(friendIds);
 
   return [

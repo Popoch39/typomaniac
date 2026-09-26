@@ -26,7 +26,8 @@ const me: Me = {
 const pending: ProposalView = {
   stage: "pending",
   expiresAt: 10_000,
-  opponent: { handle: "kaelis", image: null },
+  opponent: { handle: "kaelis", image: null, ornament: null },
+  selfOrnament: null,
   selfRank: null,
   opponentRank: null,
   selfAccepted: false,

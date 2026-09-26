@@ -7,7 +7,8 @@ import { UserAvatar } from "@/components/user-avatar/user-avatar";
 
 type LeaderboardRowProps = { entry: LeaderboardEntry; mine: boolean };
 
-// A User of the Classement: their place, avatar, Handle and rank. The reader's own line stands out.
+// A User of the Classement: their place, avatar with their Ornament, Handle and rank. The reader's
+// own line stands out.
 export const LeaderboardRow = ({ entry, mine }: LeaderboardRowProps) => (
   <li
     aria-current={mine ? "true" : undefined}
@@ -22,10 +23,12 @@ export const LeaderboardRow = ({ entry, mine }: LeaderboardRowProps) => (
     <UserAvatar
       handle={entry.handle}
       image={entry.image}
+      ornament={entry.ornament}
       className="size-9"
       fallbackClassName="bg-primary text-sm font-bold text-primary-foreground"
     />
-    <span className="flex min-w-0 flex-1 items-center gap-2 font-semibold">
+    {/* Positioned after the avatar: drawn over the Ornament's overflow, never under it. */}
+    <span className="relative flex min-w-0 flex-1 items-center gap-2 font-semibold">
       <HandleLink handle={entry.handle} className="truncate" />
       {mine ? <span className="text-xs text-primary">Toi</span> : null}
     </span>

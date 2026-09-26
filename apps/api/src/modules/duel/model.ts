@@ -1,10 +1,10 @@
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { t } from "elysia";
-import { TIERS } from "ranked";
 
 import { ActivityModel } from "../activity/model";
 import { ChallengeModel } from "../challenge/model";
 import { FriendLiveModel } from "../friend/model";
+import { Tier, WornOrnament } from "./tier";
 
 // Bun closes a connection whose message is larger: no message of the protocol comes close.
 export const MAX_DUEL_MESSAGE_SIZE = 16 * 1024;
@@ -76,6 +76,10 @@ export type DuelScore = typeof DuelScore.static;
 // What a player sees of the other: their Handle of the moment and their avatar, never their name.
 const DuelOpponent = t.Object({ handle: t.String(), image: t.Nullable(t.String()) });
 
+// The opponent as the pairing shows them, from the Match proposal to the Face-off: with the
+// Ornament they wear around their avatar, read when they were paired.
+const PairedOpponent = t.Object({ ...DuelOpponent.properties, ornament: WornOrnament });
+
 // A User's visible rank past Placement (ranked package): a Tier and Division with TP, Maniac
 // without Division. Never the MMR.
 const Standing = t.Union([
@@ -94,9 +98,6 @@ const Standing = t.Union([
   }),
   t.Object({ tier: t.Literal("maniac"), tp: t.Integer(), shielded: t.Boolean() }),
 ]);
-
-// A Tier of the ranked package, Maniac included.
-const Tier = t.UnionEnum(TIERS);
 
 // A Standing, or the Placement Duels still to play.
 const Rank = t.Union([...Standing.anyOf, t.Object({ placementsLeft: t.Integer() })]);
@@ -179,7 +180,8 @@ const ServerMessage = t.Union([
     type: t.Literal("match-proposed"),
     expiresAt: t.Number(),
     serverTime: t.Number(),
-    opponent: DuelOpponent,
+    opponent: PairedOpponent,
+    selfOrnament: WornOrnament,
     selfRank: t.Nullable(Rank),
     opponentRank: t.Nullable(Rank),
     selfAccepted: t.Boolean(),
@@ -202,7 +204,9 @@ const ServerMessage = t.Union([
   t.Object({
     type: t.Literal("duel-found"),
     duel: Duel,
-    opponent: DuelOpponent,
+    opponent: PairedOpponent,
+    // The Ornament this User wears, read at the pairing as the opponent's.
+    selfOrnament: WornOrnament,
     // The server's clock when it sent the message: the client derives its offset from it.
     serverTime: t.Number(),
     // Each player's Pace, in wpm, frozen for the Duel: the client scores both sides with them.
@@ -225,7 +229,8 @@ const ServerMessage = t.Union([
   t.Object({
     type: t.Literal("duel-resumed"),
     duel: Duel,
-    opponent: DuelOpponent,
+    opponent: PairedOpponent,
+    selfOrnament: WornOrnament,
     serverTime: t.Number(),
     keystrokes: t.Array(Keystroke),
     received: t.Integer(),

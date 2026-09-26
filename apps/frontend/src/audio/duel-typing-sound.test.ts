@@ -28,13 +28,14 @@ const duel = {
   startsAt: 3_000,
 } as const;
 
-const opponent = { handle: "ada", image: null };
+const opponent = { handle: "ada", image: null, ornament: null };
 
 // The server's clock and this tab's agree: the Duel starts at 3 s on both.
 const duelFound: ServerMessage = {
   type: "duel-found",
   duel,
   opponent,
+  selfOrnament: null,
   serverTime: 0,
   pace: 40,
   opponentPace: 40,
@@ -210,6 +211,7 @@ describe("typing sound in a Duel", () => {
       type: "duel-resumed",
       duel,
       opponent,
+      selfOrnament: null,
       serverTime: now,
       keystrokes: [],
       received: 0,

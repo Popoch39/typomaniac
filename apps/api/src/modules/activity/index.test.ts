@@ -93,13 +93,38 @@ const setup = () => {
   return { duels, friendStore, newUser, befriend, duel, activityResponse, activityOf };
 };
 
+// Without a Rating: no Ornament.
 const userOf = ({ id, handle, image }: { id: string; handle: string; image: string }) => ({
   id,
   handle,
   image,
+  ornament: null,
 });
 
 describe("GET /api/activity", () => {
+  test("shows the Ornament each User wears, the Ratings read at once", async () => {
+    const { duels, newUser, befriend, duel, activityOf } = setup();
+    const ada = await newUser("ada");
+    const alan = await newUser("alan");
+    const grace = await newUser("grace");
+
+    duels.ratings.set(alan.id, {
+      mmr: 1000,
+      rank: { tier: "platine", division: 3, tp: 0, shielded: false },
+    });
+    duels.ratings.set(grace.id, { mmr: 1000, rank: { placementsLeft: 1 } });
+    await befriend(ada, alan, 1_000);
+    duel(alan, grace, 2_000);
+
+    const activities = await activityOf(ada.cookie);
+
+    expect(activities).toMatchObject([
+      { type: "duel", friend: { ornament: "platine" }, opponent: { ornament: null } },
+      { type: "friendship", friend: { ornament: "platine" }, other: { ornament: null } },
+    ]);
+    expect(duels.ornamentReads).toHaveLength(1);
+  });
+
   test("refuses a Visitor", async () => {
     const { activityResponse } = setup();
 
