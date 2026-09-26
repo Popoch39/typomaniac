@@ -1,5 +1,7 @@
+import { gsap } from "gsap";
 import type { Tier } from "ranked";
 
+import { hasFullAura } from "@/components/aura/aura-paint";
 import type { FullAuraRuntime } from "@/lib/aura-runtime";
 import { FULL_AURA_SHADERS, QUAD_VERTEX, rgb } from "@/lib/full-aura-shaders";
 import {
@@ -58,8 +60,13 @@ const link = (gl: WebGL2RenderingContext, fragment: string) => {
   return program;
 };
 
-// Gives the context back to the browser now, rather than whenever it collects the canvas.
-const letGo = (gl: WebGL2RenderingContext) => gl.getExtension("WEBGL_lose_context")?.loseContext();
+// Gives the context back to the browser now, rather than whenever it collects the canvas. A
+// context the driver already lost has nothing to give back.
+const releaseContext = (gl: WebGL2RenderingContext) => {
+  if (!gl.isContextLost()) {
+    gl.getExtension("WEBGL_lose_context")?.loseContext();
+  }
+};
 
 // A WebGL2 painter on `canvas` for `tier`'s Aura: null without WebGL2, without a shader for that
 // Tier, or if it does not build.
@@ -68,7 +75,7 @@ const openWebGl2Painter = (
   tier: Tier,
   onLost: () => void,
 ): FullAuraPainter | null => {
-  const shader = FULL_AURA_SHADERS[tier];
+  const shader = hasFullAura(tier) ? FULL_AURA_SHADERS[tier] : undefined;
   const gl = shader === undefined ? null : canvas.getContext("webgl2", CONTEXT);
 
   if (shader === undefined || gl === null) {
@@ -78,7 +85,7 @@ const openWebGl2Painter = (
   const program = link(gl, shader.fragment);
 
   if (program === null) {
-    letGo(gl);
+    releaseContext(gl);
 
     return null;
   }
@@ -105,38 +112,30 @@ const openWebGl2Painter = (
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     },
     dispose: () => {
-      // Not a loss: it was let go.
+      // Not a loss: it was released.
       canvas.removeEventListener("webglcontextlost", lost);
-      gl.deleteProgram(program);
-      letGo(gl);
+
+      if (!gl.isContextLost()) {
+        gl.deleteProgram(program);
+      }
+
+      releaseContext(gl);
     },
   };
 };
 
-// `requestAnimationFrame` until stopped, even from within a frame.
-const animationFrames: FrameClock = (onFrame) => {
-  let stopped = false;
-  let request = 0;
+// GSAP's ticker, the one clock of every animation in the app, until stopped.
+const tickerFrames: FrameClock = (onFrame) => {
+  const tick = (time: number) => onFrame(time);
 
-  const tick = (time: number) => {
-    onFrame(time);
+  gsap.ticker.add(tick);
 
-    if (!stopped) {
-      request = requestAnimationFrame(tick);
-    }
-  };
-
-  request = requestAnimationFrame(tick);
-
-  return () => {
-    stopped = true;
-    cancelAnimationFrame(request);
-  };
+  return () => gsap.ticker.remove(tick);
 };
 
 export const browserFullAuraRuntime = (): FullAuraRuntime =>
   openFullAuraRuntime({
     open: openWebGl2Painter,
-    frames: animationFrames,
+    frames: tickerFrames,
     pixelRatio: () => window.devicePixelRatio,
   });

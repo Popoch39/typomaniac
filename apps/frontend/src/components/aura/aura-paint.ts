@@ -12,10 +12,15 @@ export const shines = (tier: Tier) => SHINING_TIERS.includes(tier);
 // where the caller asks for it.
 export type Aura = "light" | "full";
 
-// The Tiers with a full Aura so far: the others stay light, even when asked for a full one.
-const FULL_AURA_TIERS: ReadonlySet<Tier> = new Set(["or"]);
+// The Tiers with a full Aura so far, each with its shader (`FULL_AURA_SHADERS` is keyed on them):
+// the others stay light, even when asked for a full one.
+const FULL_AURA_TIERS = ["or"] as const;
 
-export const hasFullAura = (tier: Tier) => FULL_AURA_TIERS.has(tier);
+export type FullAuraTier = (typeof FULL_AURA_TIERS)[number];
+
+const FULL: ReadonlySet<Tier> = new Set(FULL_AURA_TIERS);
+
+export const hasFullAura = (tier: Tier): tier is FullAuraTier => FULL.has(tier);
 
 // The white band of the sheen, clear at its edges.
 export const SHEEN_ID = "tier-sheen";

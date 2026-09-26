@@ -45,7 +45,7 @@ export const fakeAuraRuntime = ({ webgl2 = true, pixelRatio = 1 }: FakeAuraRunti
 
       painters.push(painter);
 
-      const drawn: FullAuraPainter = {
+      const counting: FullAuraPainter = {
         draw: () => {
           painter.draws += 1;
         },
@@ -54,7 +54,7 @@ export const fakeAuraRuntime = ({ webgl2 = true, pixelRatio = 1 }: FakeAuraRunti
         },
       };
 
-      return drawn;
+      return counting;
     },
     frames: (each) => {
       onFrame = each;
@@ -102,7 +102,7 @@ export const fakeAuraRuntime = ({ webgl2 = true, pixelRatio = 1 }: FakeAuraRunti
     looping: () => onFrame !== null,
     // One frame of the shared loop, if it runs.
     tick: () => {
-      now += 16;
+      now += 1 / 60;
       onFrame?.(now);
     },
   };

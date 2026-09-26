@@ -1,5 +1,4 @@
-import type { Tier } from "ranked";
-
+import type { FullAuraTier } from "@/components/aura/aura-paint";
 import { METALS } from "@/components/tier/tier-sprite-paint";
 
 // The shaders of the full Aura: a quad over the whole canvas, then one fragment shader per Tier
@@ -76,7 +75,8 @@ export type AuraColors = { light: string; mid: string; deep: string };
 
 type FullAuraShader = { fragment: string; colors: AuraColors };
 
-export const FULL_AURA_SHADERS: Partial<Record<Tier, FullAuraShader>> = {
+// One shader for each Tier with a full Aura, none for the others.
+export const FULL_AURA_SHADERS: Record<FullAuraTier, FullAuraShader> = {
   or: {
     fragment: OR_FRAGMENT,
     colors: { light: METALS.or.light, mid: METALS.or.mid, deep: METALS.or.crease },

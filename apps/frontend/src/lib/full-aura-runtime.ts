@@ -9,7 +9,7 @@ export type FullAuraPainter = {
   dispose: () => void;
 };
 
-// A loop that calls `onFrame` at every frame, with the time in milliseconds, until stopped.
+// A loop that calls `onFrame` at every frame, with the time in seconds, until stopped.
 export type FrameClock = (onFrame: (time: number) => void) => () => void;
 
 // What the runtime needs from the browser: a painter on a canvas (null without WebGL2, or if its
@@ -66,7 +66,7 @@ export const openFullAuraRuntime = ({
     for (const entry of entries) {
       if (due(entry)) {
         fit(entry.canvas, ratio);
-        entry.painter.draw(time / 1000);
+        entry.painter.draw(time);
         entry.drawn = true;
       }
     }
