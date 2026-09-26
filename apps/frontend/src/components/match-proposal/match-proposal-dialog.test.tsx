@@ -16,6 +16,7 @@ const me: Me = {
   handle: "popoch",
   rank: null,
   ornament: null,
+  ornamentChoice: null,
 };
 
 let now = 0;

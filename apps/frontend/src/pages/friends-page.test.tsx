@@ -32,6 +32,7 @@ const me: Me = {
   handle: "ada",
   rank: null,
   ornament: null,
+  ornamentChoice: null,
 };
 
 const alan = { id: "alan-id", handle: "alan", image: null, ornament: "or" } as const;

@@ -126,6 +126,8 @@ export type DuelStore = {
   // The rank and raw Ornament choice of those of `userIds` who have a Rating, in one read: the
   // lists of Users never read them one by one.
   ornamentChoicesOf: (userIds: readonly string[]) => Promise<OrnamentChoiceRow[]>;
+  // Writes the User's Ornament choice on their Rating, raw: nothing without a Rating.
+  setOrnamentChoice: (userId: string, choice: OrnamentChoice) => Promise<void>;
   // The first `limit` Users of the Classement, past Placement, in its order (`byStanding` of the
   // ranked package, ties by User id).
   leaderboard: (limit: number) => Promise<LeaderboardRow[]>;
@@ -173,12 +175,21 @@ export const outcomeFor = (
 export const readPace = async (store: DuelStore, userId: string) =>
   paceOf(await store.recentWpms(userId, paceDuels));
 
-// A User's rank, never their MMR, and the Ornament they wear, resolved from their choice: never
-// the raw choice, which is theirs alone. Both null until they first join the Queue.
-export const readRankAndOrnament = async (store: DuelStore, userId: string) => {
+// A User's rank, never their MMR, their raw Ornament choice and the Ornament it makes them wear.
+// All null until they first join the Queue.
+export const readRankAndOrnamentChoice = async (store: DuelStore, userId: string) => {
   const [rank, choice] = await Promise.all([store.rankOf(userId), store.ornamentChoiceOf(userId)]);
 
-  return { rank, ornament: rank === null ? null : ornamentOf(rank, choice) };
+  return rank === null
+    ? { rank, ornament: null, ornamentChoice: null }
+    : { rank, ornament: ornamentOf(rank, choice), ornamentChoice: choice };
+};
+
+// A User's rank and the Ornament they wear, never the raw choice, which is theirs alone.
+export const readRankAndOrnament = async (store: DuelStore, userId: string) => {
+  const { rank, ornament } = await readRankAndOrnamentChoice(store, userId);
+
+  return { rank, ornament };
 };
 
 // The Ornament each of `userIds` wears, resolved from their choice, in one read of the Ratings:

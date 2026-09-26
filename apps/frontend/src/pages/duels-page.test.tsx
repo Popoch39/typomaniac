@@ -28,6 +28,7 @@ const me: Me = {
   handle: "ada",
   rank: null,
   ornament: null,
+  ornamentChoice: null,
 };
 
 type Entry = DuelHistoryPage["duels"][number];

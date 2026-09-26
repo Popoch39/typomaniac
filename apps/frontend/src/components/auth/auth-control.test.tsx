@@ -34,6 +34,7 @@ describe("AuthControl", () => {
       handle: "ada",
       rank: null,
       ornament: null,
+      ornamentChoice: null,
     });
 
     expect(screen.getByRole("button", { name: "Menu de Ada Lovelace" })).toBeInTheDocument();
@@ -49,6 +50,7 @@ describe("AuthControl", () => {
       handle: "alan turing",
       rank: null,
       ornament: null,
+      ornamentChoice: null,
     });
 
     expect(screen.getByText("AT")).toBeInTheDocument();
@@ -64,6 +66,7 @@ describe("AuthControl", () => {
       handle: null,
       rank: null,
       ornament: null,
+      ornamentChoice: null,
     });
 
     expect(screen.getByText("AL")).toBeInTheDocument();
@@ -78,6 +81,7 @@ describe("AuthControl", () => {
       handle: "ada",
       rank: { tier: "platine", division: 3, tp: 10, shielded: false },
       ornament: null,
+      ornamentChoice: null,
     });
 
     expect(screen.getByRole("button", { name: "Menu de Ada Lovelace" })).toHaveTextContent(
@@ -94,6 +98,7 @@ describe("AuthControl", () => {
       handle: "ada",
       rank: { tier: "platine", division: 3, tp: 10, shielded: false },
       ornament: "platine",
+      ornamentChoice: "follow",
     });
 
     const chip = screen.getByRole("button", { name: "Menu de Ada Lovelace" });
@@ -112,6 +117,7 @@ describe("AuthControl", () => {
       handle: "ada",
       rank: { placementsLeft: 2 },
       ornament: null,
+      ornamentChoice: null,
     });
 
     expect(screen.getByRole("button", { name: "Menu de Ada Lovelace" })).toHaveTextContent(

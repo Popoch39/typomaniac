@@ -21,6 +21,7 @@ const me: Me = {
   handle: "popoch",
   rank: null,
   ornament: null,
+  ornamentChoice: null,
 };
 
 const pending: ProposalView = {

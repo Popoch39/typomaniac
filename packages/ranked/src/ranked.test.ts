@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   applyTp,
   byStanding,
+  canWear,
   changesTier,
   estimatedWait,
   expectedScore,
@@ -15,7 +16,9 @@ import {
   rateDuel,
   seedMmr,
   stakeOf,
+  TIERS,
   tpDelta,
+  wearableOrnaments,
   type RankedOutcome,
   type Rating,
   type Standing,
@@ -393,6 +396,44 @@ describe("ornamentOf", () => {
   test("is none in Placement, whatever the choice", () => {
     for (const choice of ["follow", "none", "or", "maniac"] as const) {
       expect(ornamentOf({ placementsLeft: 3 }, choice)).toBeNull();
+    }
+  });
+});
+
+describe("wearableOrnaments", () => {
+  test("goes from Fer up to the current Tier", () => {
+    expect(wearableOrnaments(standing({ tier: "fer" }))).toEqual(["fer"]);
+    expect(wearableOrnaments(standing({ tier: "or", division: 1 }))).toEqual([
+      "fer",
+      "bronze",
+      "argent",
+      "or",
+    ]);
+    expect(wearableOrnaments({ tier: "maniac", tp: 0, shielded: false })).toEqual([...TIERS]);
+  });
+
+  test("is empty in Placement", () => {
+    expect(wearableOrnaments({ placementsLeft: 5 })).toEqual([]);
+  });
+});
+
+describe("canWear", () => {
+  test("accepts following the Tier and wearing none past Placement", () => {
+    expect(canWear(standing({ tier: "fer" }), "follow")).toBe(true);
+    expect(canWear(standing({ tier: "fer" }), "none")).toBe(true);
+  });
+
+  test("accepts a Tier up to the current one, never above", () => {
+    expect(canWear(standing({ tier: "or" }), "bronze")).toBe(true);
+    expect(canWear(standing({ tier: "or" }), "or")).toBe(true);
+    expect(canWear(standing({ tier: "or", division: 1, tp: 99 }), "platine")).toBe(false);
+    expect(canWear(standing({ tier: "diamant" }), "maniac")).toBe(false);
+    expect(canWear({ tier: "maniac", tp: 0, shielded: false }, "maniac")).toBe(true);
+  });
+
+  test("accepts nothing in Placement", () => {
+    for (const choice of ["follow", "none", "fer"] as const) {
+      expect(canWear({ placementsLeft: 1 }, choice)).toBe(false);
     }
   });
 });

@@ -18,6 +18,7 @@ const me: Me = {
   handle: "ada",
   rank: null,
   ornament: null,
+  ornamentChoice: null,
 };
 
 beforeEach(() => {

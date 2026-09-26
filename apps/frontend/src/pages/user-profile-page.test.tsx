@@ -7,8 +7,10 @@ import {
   notFound,
   RouterProvider,
 } from "@tanstack/react-router";
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, test } from "vitest";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { ORNAMENT_CHOICES, type OrnamentChoice, type Rank } from "ranked";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { type Me, meQueryOptions } from "@/api/me";
 import { type Profile, profileQueryOptions } from "@/api/profile";
@@ -23,6 +25,7 @@ const me: Me = {
   handle: "ada",
   rank: null,
   ornament: null,
+  ornamentChoice: null,
 };
 
 const grace: Profile = {
@@ -79,6 +82,8 @@ const renderAt = async (user: Me | null, handle: string, profiles: Profile[]) =>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
+
+  return queryClient;
 };
 
 describe("UserProfilePage", () => {
@@ -151,6 +156,146 @@ describe("UserProfilePage", () => {
     await renderAt(me, "nobody", [grace]);
 
     expect(await screen.findByRole("heading", { name: "User introuvable" })).toBeInTheDocument();
+  });
+
+  describe("the Ornament picker", () => {
+    const orII: Rank = { tier: "or", division: 2, tp: 42, shielded: false };
+    const rankedMe: Me = { ...me, rank: orII, ornament: "or", ornamentChoice: "follow" };
+    const ada: Profile = { ...grace, handle: "ada", rank: orII, ornament: "or" };
+
+    // Each body the picker may send, by the choice it carries.
+    const choiceOfBody = new Map(
+      ORNAMENT_CHOICES.map((choice) => [JSON.stringify({ choice }), choice]),
+    );
+
+    // The API as it answers the choice: the User wearing what they chose.
+    const stubSave = (answer: (choice: OrnamentChoice | null) => Me) => {
+      const fetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const choice = choiceOfBody.get(String(init?.body)) ?? null;
+
+        return new Response(JSON.stringify(answer(choice)), {
+          headers: { "content-type": "application/json" },
+        });
+      });
+
+      vi.stubGlobal("fetch", fetch);
+
+      return fetch;
+    };
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    test("is on the User's own Profile only", async () => {
+      await renderAt(rankedMe, "ada", [ada, grace]);
+
+      const picker = await screen.findByRole("group", { name: "Ornament" });
+
+      expect(screen.getByRole("radio", { name: "Suivre mon Tier" })).toBeChecked();
+      expect(
+        within(picker)
+          .getAllByRole("radio")
+          .map((radio) => radio.closest("label")?.textContent),
+      ).toEqual([
+        "Suivre mon Tier",
+        "Aucun",
+        "Fer",
+        "Bronze",
+        "Argent",
+        "Or",
+        "Platine",
+        "Diamant",
+        "Maniac",
+      ]);
+    });
+
+    test("is not on another User's Profile", async () => {
+      await renderAt(rankedMe, "grace", [ada, grace]);
+
+      await screen.findByRole("heading", { name: "@grace" });
+
+      expect(screen.queryByRole("group", { name: "Ornament" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    });
+
+    test("locks the Ornaments above the User's Tier", async () => {
+      await renderAt(rankedMe, "ada", [ada]);
+
+      await screen.findByRole("group", { name: "Ornament" });
+
+      for (const name of ["Suivre mon Tier", "Aucun", "Fer", "Bronze", "Argent", "Or"]) {
+        expect(screen.getByRole("radio", { name })).toBeEnabled();
+      }
+
+      for (const name of ["Platine", "Diamant", "Maniac"]) {
+        expect(screen.getByRole("radio", { name })).toBeDisabled();
+      }
+    });
+
+    test.each([
+      ["in Placement", { placementsLeft: 3 }, "follow"],
+      ["without a Rating", null, null],
+    ] as const)("locks every Ornament %s", async (_when, rank, ornamentChoice) => {
+      await renderAt({ ...me, rank, ornamentChoice }, "ada", [{ ...ada, rank, ornament: null }]);
+
+      expect(await screen.findByRole("group", { name: "Ornament" })).toHaveAccessibleDescription(
+        "Termine ton Placement",
+      );
+
+      for (const radio of screen.getAllByRole("radio")) {
+        expect(radio).toBeDisabled();
+      }
+    });
+
+    test("applies the choice to the avatar at once", async () => {
+      const fetch = stubSave((choice) => ({
+        ...rankedMe,
+        ornament: "bronze",
+        ornamentChoice: choice,
+      }));
+
+      const user = userEvent.setup();
+
+      const queryClient = await renderAt(rankedMe, "ada", [ada]);
+
+      await user.click(await screen.findByRole("radio", { name: "Bronze" }));
+
+      await waitFor(() => {
+        expect(screen.getByRole("radio", { name: "Bronze" })).toBeChecked();
+      });
+      expect(
+        document.querySelector('[data-ornament] use[href="#tier-ornament-bronze"]'),
+      ).not.toBeNull();
+      // The header's avatar reads the signed-in User: it wears the new Ornament too.
+      expect(queryClient.getQueryData(meQueryOptions.queryKey)?.ornament).toBe("bronze");
+      expect(fetch).toHaveBeenCalledTimes(1);
+      expect(String(fetch.mock.calls[0]?.[0])).toMatch(/\/api\/me\/ornament$/);
+    });
+
+    test("moves the choice with the arrow keys, skipping the locked Ornaments", async () => {
+      const fetch = stubSave((choice) => ({ ...rankedMe, ornament: null, ornamentChoice: choice }));
+      const user = userEvent.setup();
+
+      await renderAt({ ...rankedMe, ornamentChoice: "or" }, "ada", [ada]);
+      await screen.findByRole("group", { name: "Ornament" });
+
+      await user.tab();
+
+      expect(screen.getByRole("radio", { name: "Or" })).toHaveFocus();
+
+      await user.keyboard("{ArrowRight}");
+
+      expect(screen.getByRole("radio", { name: "Suivre mon Tier" })).toHaveFocus();
+
+      await user.keyboard("{ArrowLeft}{ArrowLeft}");
+
+      expect(screen.getByRole("radio", { name: "Argent" })).toHaveFocus();
+      await waitFor(() => {
+        expect(screen.getByRole("radio", { name: "Argent" })).toBeChecked();
+      });
+      expect(fetch).toHaveBeenCalledTimes(3);
+    });
   });
 
   test("a Visitor is invited to sign in instead", async () => {

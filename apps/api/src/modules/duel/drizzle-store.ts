@@ -236,6 +236,9 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
       choice: row.ornament,
     }));
   },
+  setOrnamentChoice: async (userId, choice) => {
+    await db.update(rankedRating).set({ ornament: choice }).where(eq(rankedRating.userId, userId));
+  },
   recentWpms: async (userId, count) => {
     const rows = await db
       .select({ wpm: duelPlayer.wpm })

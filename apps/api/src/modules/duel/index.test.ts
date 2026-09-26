@@ -1442,6 +1442,7 @@ describe("duel socket", () => {
       rankOf: () => Promise.reject(new Error("database down")),
       ornamentChoiceOf: () => Promise.reject(new Error("database down")),
       ornamentChoicesOf: () => Promise.reject(new Error("database down")),
+      setOrnamentChoice: () => Promise.reject(new Error("database down")),
       leaderboard: () => Promise.reject(new Error("database down")),
       leaderboardPosition: () => Promise.reject(new Error("database down")),
     };

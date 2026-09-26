@@ -237,6 +237,11 @@ export const memoryDuelStore = () => {
           : [];
       });
     },
+    setOrnamentChoice: async (userId, choice) => {
+      if (ratings.has(userId)) {
+        ornaments.set(userId, choice);
+      }
+    },
     leaderboard: async (limit) => classement().slice(0, limit),
     leaderboardPosition: async (userId) =>
       classement().find((row) => row.userId === userId)?.position ?? null,

@@ -19,6 +19,9 @@ export type Stats = Profile["stats"];
 
 export type ProgressionPoint = Stats["progression"][number];
 
+// Every window of one User's Profile: the prefix of their entries. A Handle has no case.
+export const profileQueryKey = (handle: string) => ["profile", handle.toLowerCase()] as const;
+
 // The window changes the Progression only: the tiles and the record read the default one. A Handle
 // has no case: `/u/Ada` and `/u/ada` share one entry.
 export const profileQueryOptions = (
@@ -28,7 +31,7 @@ export const profileQueryOptions = (
   const lower = handle.toLowerCase();
 
   return queryOptions({
-    queryKey: ["profile", lower, span],
+    queryKey: [...profileQueryKey(lower), span],
     queryFn: () => fetchProfile(lower, span),
   });
 };

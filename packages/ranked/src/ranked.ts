@@ -123,6 +123,16 @@ export const ornamentOf = (rank: Rank, choice: OrnamentChoice): Tier | null => {
   return choice;
 };
 
+// The Ornaments a User may freeze: from Fer up to their current Tier, none in Placement.
+export const wearableOrnaments = (rank: Rank): Tier[] =>
+  isPlacement(rank) ? [] : TIERS.slice(0, TIERS.indexOf(rank.tier) + 1);
+
+// Whether a User may choose `choice`: following their Tier or wearing none past Placement, a Tier
+// only up to their own, nothing in Placement.
+export const canWear = (rank: Rank, choice: OrnamentChoice) =>
+  !isPlacement(rank) &&
+  (choice === "follow" || choice === "none" || wearableOrnaments(rank).includes(choice));
+
 // The Classement's order: the higher step first, then the more TP. Maniac is ordered by TP alone.
 export const byStanding = (a: Standing, b: Standing) => stepOf(b) - stepOf(a) || b.tp - a.tp;
 
@@ -227,7 +237,7 @@ export const estimatedWait = (waitsMs: readonly number[]) => {
 // A User's hidden MMR and visible rank, as a ranked Duel moves them.
 export type Rating = { mmr: number; rank: Rank };
 
-const isPlacement = (rank: Rank): rank is Placement => "placementsLeft" in rank;
+export const isPlacement = (rank: Rank): rank is Placement => "placementsLeft" in rank;
 
 // What a ranked Duel did to one User: their new Rating and the TP it moved (null in Placement).
 export type RatedDuel = { rating: Rating; tp: number | null };

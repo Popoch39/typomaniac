@@ -30,6 +30,7 @@ const me: Me = {
   handle: "ada",
   rank: null,
   ornament: null,
+  ornamentChoice: null,
 };
 
 let now = 0;
