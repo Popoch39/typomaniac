@@ -53,6 +53,80 @@ const ranked: FaceOffPairing = {
   selfStake: { win: { tp: 20, standing: orIv(70) }, loss: { tp: -20, standing: orIv(30) } },
 };
 
+const orI = (tp: number) => ({ tier: "or", division: 1, tp, shielded: false }) as const;
+
+const diamantI = (tp: number) => ({ tier: "diamant", division: 1, tp, shielded: false }) as const;
+
+// A win moves Ada from Or I up to Platine IV: a Promotion Duel.
+const promotion: FaceOffPairing = {
+  ...ranked,
+  selfRank: orI(91),
+  selfStake: {
+    win: { tp: 14, standing: { tier: "platine", division: 4, tp: 5, shielded: true } },
+    loss: { tp: -11, standing: orI(80) },
+  },
+};
+
+// A win moves Ada from Diamant I into Maître.
+const forMaitre: FaceOffPairing = {
+  ...ranked,
+  selfRank: diamantI(95),
+  selfStake: {
+    win: { tp: 9, standing: { tier: "maitre", tp: 4, shielded: true } },
+    loss: { tp: -16, standing: diamantI(79) },
+  },
+};
+
+// A win moves Ada up a Division only, from Or III to Or II.
+const division: FaceOffPairing = {
+  ...ranked,
+  selfRank: { tier: "or", division: 3, tp: 94, shielded: false },
+  selfStake: {
+    win: { tp: 12, standing: { tier: "or", division: 2, tp: 6, shielded: true } },
+    loss: { tp: -13, standing: { tier: "or", division: 3, tp: 81, shielded: false } },
+  },
+};
+
+// The Promotion Duel's banner, found by its title.
+const banner = () => screen.queryByText(/^Duel (de promotion|pour Maître)$/);
+
+// Only seen, around the disc: found by the part the timeline shows.
+const ring = () => document.querySelector('[data-face-off="ring"]');
+
+// The banner's whole pill, which the timeline moves in and out.
+const bannerPart = () => {
+  const part = document.querySelector('[data-face-off="banner"]');
+
+  if (part === null) {
+    throw new Error("No Promotion Duel banner");
+  }
+
+  return part;
+};
+
+const discPart = () => {
+  const part = document.querySelector('[data-face-off="disc"]');
+
+  if (part === null) {
+    throw new Error("No disc");
+  }
+
+  return part;
+};
+
+// The User prefers reduced motion: the Face-off reads it when its timeline is built.
+const reduceMotion = () =>
+  vi.spyOn(window, "matchMedia").mockImplementation((media) => ({
+    matches: media === "(prefers-reduced-motion: reduce)",
+    media,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => true,
+  }));
+
 const stakeCard = () => screen.getByRole("region", { name: "Enjeu" });
 
 // What a win would add to the Stake's bar: only seen, so found by the part the timeline animates.
@@ -306,20 +380,82 @@ describe("FaceOff", () => {
   });
 
   test("under reduced motion, the bar shows what a win would add without filling in", () => {
-    vi.spyOn(window, "matchMedia").mockImplementation((media) => ({
-      matches: media === "(prefers-reduced-motion: reduce)",
-      media,
-      onchange: null,
-      addListener: () => {},
-      removeListener: () => {},
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      dispatchEvent: () => true,
-    }));
+    reduceMotion();
 
     faceOffAt(-3800, ranked);
 
     expect(gsap.getProperty(stakeGain(), "scaleX")).toBe(1);
+  });
+
+  test("stages a Promotion Duel: the banner, the rank reached from the rank held, the ring", () => {
+    faceOffAt(-3500, promotion);
+
+    expect(bannerPart()).toHaveTextContent("Duel de promotion");
+    expect(bannerPart()).toHaveTextContent("Or I → Platine IV");
+    expect(ring()).not.toBeNull();
+  });
+
+  test("stages a Duel for Maître the same way", () => {
+    faceOffAt(-3500, forMaitre);
+
+    expect(bannerPart()).toHaveTextContent("Duel pour Maître");
+    expect(bannerPart()).toHaveTextContent("Diamant I → Maître");
+    expect(ring()).not.toBeNull();
+  });
+
+  test("keeps a move up a Division, an ordinary Duel and a Challenge to the card alone", () => {
+    for (const pairing of [division, ranked, challenge]) {
+      faceOffAt(-3500, pairing);
+      expect(banner()).not.toBeInTheDocument();
+      expect(ring()).toBeNull();
+      cleanup();
+    }
+  });
+
+  test("announces a Promotion Duel for what it is", () => {
+    faceOffAt(-4500, forMaitre);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Duel pour Maître contre @alan");
+  });
+
+  test("brings the banner in with the reveal and takes it out at GO", () => {
+    const faceOff = faceOffAt(-4500, promotion);
+
+    expect(gsap.getProperty(bannerPart(), "opacity")).toBe(0);
+
+    tickAt(-3500);
+    expect(gsap.getProperty(bannerPart(), "opacity")).toBe(1);
+    expect(gsap.getProperty(bannerPart(), "y")).toBe(0);
+
+    faceOff.at(400);
+    tickAt(400);
+    expect(gsap.getProperty(bannerPart(), "opacity")).toBe(0);
+  });
+
+  test("a Face-off resumed during the 3-2-1 finds the banner and the ring where they stand", () => {
+    faceOffAt(-2000, promotion);
+
+    expect(gsap.getProperty(bannerPart(), "opacity")).toBe(1);
+    expect(gsap.getProperty(bannerPart(), "y")).toBe(0);
+    // The ring glows around the disc, shown through the whole 3-2-1.
+    expect(ring()?.closest('[data-face-off="disc"]')).not.toBeNull();
+    expect(gsap.getProperty(discPart(), "opacity")).toBe(1);
+  });
+
+  test("under reduced motion, the banner fades in without moving and its emblem stays still", () => {
+    reduceMotion();
+
+    const faceOff = faceOffAt(-4500, promotion);
+    const emblem = document.querySelector('[data-face-off="banner-emblem"]');
+
+    expect(gsap.getProperty(bannerPart(), "y")).toBe(0);
+
+    for (const at of [-3700, -3300, -2900, -2500]) {
+      faceOff.at(at);
+      tickAt(at);
+      expect(gsap.getProperty(bannerPart(), "y")).toBe(0);
+      expect(emblem === null ? null : gsap.getProperty(emblem, "opacity")).toBe(1);
+    }
   });
 
   test("waits for the Countdown: nothing in the second of « C'est parti ! » before it", () => {

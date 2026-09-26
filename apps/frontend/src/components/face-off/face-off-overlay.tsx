@@ -5,7 +5,9 @@ import { FaceOffCount } from "@/components/face-off/face-off-count";
 import { FaceOffMute } from "@/components/face-off/face-off-mute";
 import { FaceOffOpponent } from "@/components/face-off/face-off-opponent";
 import type { FaceOffPairing } from "@/components/face-off/face-off-pairing";
+import { FaceOffPromotionBanner } from "@/components/face-off/face-off-promotion-banner";
 import { FaceOffSelf } from "@/components/face-off/face-off-self";
+import { promotionDuel } from "@/components/face-off/promotion-duel";
 import { useFaceOffTimeline } from "@/components/face-off/use-face-off-timeline";
 import type { DuelOpponent } from "@/stores/duel-store";
 
@@ -21,11 +23,16 @@ const keepFocus = (event: MouseEvent) => event.preventDefault();
 
 // The Face-off, over the whole app (navigation included): this User on the left, the opponent on
 // the right, the VS, then the 3-2-1, on the Duel's clock. The stage shakes at the impact; the two
-// panels cover the page until they split away on GO.
+// panels cover the page until they split away on GO. A Promotion Duel adds its banner on top and
+// a ring of light around the disc.
 export const FaceOffOverlay = ({ opponent, pairing, startsAt, elapsed }: FaceOffOverlayProps) => {
   const scope = useRef<HTMLDivElement>(null);
+  const promotion = promotionDuel(pairing.selfRank, pairing.selfStake);
 
-  useFaceOffTimeline(scope, startsAt, pairing.selfStake !== null);
+  useFaceOffTimeline(scope, startsAt, {
+    stake: pairing.selfStake !== null,
+    promotion: promotion !== null,
+  });
 
   return (
     <div
@@ -41,10 +48,15 @@ export const FaceOffOverlay = ({ opponent, pairing, startsAt, elapsed }: FaceOff
           rank={pairing.opponentRank}
           form={pairing.opponentForm}
         />
-        <FaceOffCount />
+        <FaceOffCount glowTier={promotion?.to.tier ?? null} />
+        {promotion === null ? null : <FaceOffPromotionBanner promotion={promotion} />}
       </div>
       <FaceOffMute />
-      <FaceOffAnnouncer elapsed={elapsed} opponentHandle={opponent.handle} />
+      <FaceOffAnnouncer
+        elapsed={elapsed}
+        opponentHandle={opponent.handle}
+        title={promotion?.title}
+      />
     </div>
   );
 };

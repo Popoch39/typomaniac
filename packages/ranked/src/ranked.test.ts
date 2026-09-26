@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
   applyTp,
   byStanding,
+  changesTier,
   estimatedWait,
   expectedScore,
   matchWindow,
@@ -183,6 +184,53 @@ describe("applyTp", () => {
     expect(applyTp({ tier: "maitre", tp: 10, shielded: false }, -20)).toEqual(
       standing({ tier: "diamant", division: 1, tp: 75 }),
     );
+  });
+});
+
+describe("changesTier", () => {
+  test("is true from one Tier to the next", () => {
+    expect(
+      changesTier(
+        standing({ division: 1, tp: 92 }),
+        standing({ tier: "platine", tp: 6, shielded: true }),
+      ),
+    ).toBe(true);
+  });
+
+  test("is true from Diamant I to Maître", () => {
+    expect(
+      changesTier(standing({ tier: "diamant", division: 1, tp: 95 }), {
+        tier: "maitre",
+        tp: 4,
+        shielded: true,
+      }),
+    ).toBe(true);
+  });
+
+  test("is true down a Tier too", () => {
+    expect(
+      changesTier(standing({ tp: 5 }), standing({ tier: "argent", division: 1, tp: 75 })),
+    ).toBe(true);
+  });
+
+  test("is false from one Division to the next in the same Tier", () => {
+    expect(changesTier(standing({ division: 3, tp: 94 }), standing({ division: 2, tp: 6 }))).toBe(
+      false,
+    );
+  });
+
+  test("is false within a Division, and within Maître", () => {
+    expect(changesTier(standing({ tp: 50 }), standing({ tp: 70 }))).toBe(false);
+    expect(
+      changesTier(
+        { tier: "maitre", tp: 248, shielded: false },
+        {
+          tier: "maitre",
+          tp: 259,
+          shielded: false,
+        },
+      ),
+    ).toBe(false);
   });
 });
 

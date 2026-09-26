@@ -45,6 +45,20 @@ describe("FaceOffLab", () => {
     expect(stakeCard()).toHaveTextContent("Gagne et passe Or II");
   });
 
+  test("stages a Promotion Duel, then a Duel for Maître", async () => {
+    renderLab();
+
+    await userEvent.click(screen.getByRole("button", { name: "Face-off" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Duel de promotion" }));
+    expect(screen.getByText("Or I → Platine IV")).toBeInTheDocument();
+    expect(stakeCard()).toHaveTextContent("Défaite −11 TP, tu restes Or I");
+
+    await userEvent.click(screen.getByRole("button", { name: "Duel pour Maître" }));
+    expect(screen.getByText("Diamant I → Maître")).toBeInTheDocument();
+    expect(stakeCard()).toHaveTextContent("Gagne et passe Maître");
+  });
+
   test("shows the Stake of a loss that moves down, one the shield holds, Fer IV and Maître", async () => {
     renderLab();
 

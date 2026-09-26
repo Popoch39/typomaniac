@@ -10,6 +10,8 @@ export const LAB_OPPONENT: DuelOpponent = { handle: "kzr_", image: null };
 export type LabPairing =
   | "ranked"
   | "division"
+  | "promotion"
+  | "forMaitre"
   | "demotion"
   | "shielded"
   | "ferIv"
@@ -42,6 +44,28 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
     selfStake: {
       win: { tp: 12, standing: { tier: "or", division: 2, tp: 6, shielded: true } },
       loss: { tp: -13, standing: { tier: "or", division: 3, tp: 81, shielded: false } },
+    },
+  },
+  // A Promotion Duel: a win moves this User up a Tier, from Or I to Platine IV.
+  promotion: {
+    selfRank: { tier: "or", division: 1, tp: 91, shielded: false },
+    opponentRank: { tier: "platine", division: 4, tp: 30, shielded: false },
+    selfForm,
+    opponentForm,
+    selfStake: {
+      win: { tp: 14, standing: { tier: "platine", division: 4, tp: 5, shielded: true } },
+      loss: { tp: -11, standing: { tier: "or", division: 1, tp: 80, shielded: false } },
+    },
+  },
+  // A Promotion Duel for Maître: a win moves this User from Diamant I into Maître.
+  forMaitre: {
+    selfRank: { tier: "diamant", division: 1, tp: 95, shielded: false },
+    opponentRank: { tier: "maitre", tp: 212, shielded: false },
+    selfForm,
+    opponentForm,
+    selfStake: {
+      win: { tp: 9, standing: { tier: "maitre", tp: 4, shielded: true } },
+      loss: { tp: -16, standing: { tier: "diamant", division: 1, tp: 79, shielded: false } },
     },
   },
   // A loss moves this User down a Division.
@@ -108,6 +132,8 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
 export const LAB_PAIRING_OPTIONS: readonly SettingOption<LabPairing>[] = [
   { value: "ranked", label: "Classé" },
   { value: "division", label: "Montée de Division" },
+  { value: "promotion", label: "Duel de promotion" },
+  { value: "forMaitre", label: "Duel pour Maître" },
   { value: "demotion", label: "Descente" },
   { value: "shielded", label: "Protégé" },
   { value: "ferIv", label: "Fer IV" },

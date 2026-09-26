@@ -8,6 +8,16 @@ describe("faceOffAnnouncement", () => {
     expect(faceOffAnnouncement(-3100, "alan")).toBe("Duel contre @alan");
   });
 
+  test("names a Promotion Duel for what it is", () => {
+    expect(faceOffAnnouncement(-4500, "alan", "Duel de promotion")).toBe(
+      "Duel de promotion contre @alan",
+    );
+    expect(faceOffAnnouncement(-3100, "alan", "Duel pour Maître")).toBe(
+      "Duel pour Maître contre @alan",
+    );
+    expect(faceOffAnnouncement(-2000, "alan", "Duel de promotion")).toBe("2");
+  });
+
   test("counts 3, 2, 1 on the seconds left before the start", () => {
     expect(faceOffAnnouncement(-3000, "alan")).toBe("3");
     expect(faceOffAnnouncement(-2100, "alan")).toBe("3");

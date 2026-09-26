@@ -21,8 +21,9 @@ gsap.registerPlugin(useGSAP);
 export const useFaceOffTimeline = (
   scope: RefObject<HTMLDivElement | null>,
   startsAt: number,
-  // This User's Stake is shown: its bar fills in on the timeline.
-  withStake: boolean,
+  // What the overlay shows beyond the players: this User's Stake, whose bar fills in, and a
+  // Promotion Duel's banner, which comes and goes.
+  { stake, promotion }: { stake: boolean; promotion: boolean },
 ) => {
   const clock = useClock();
   const sounds = useFaceOffSounds();
@@ -31,9 +32,12 @@ export const useFaceOffTimeline = (
 
   useGSAP(
     () => {
-      // Under reduced motion, the Stake's bar shows at once what a win would add.
-      const fillStake = withStake && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const timeline = faceOffTimeline({ fillStake });
+      const timeline = faceOffTimeline({
+        stake,
+        promotion,
+        reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      });
+
       const pairedAt = startsAt - COUNTDOWN_S * 1000;
 
       const sync = () => {
@@ -59,6 +63,6 @@ export const useFaceOffTimeline = (
 
       return () => gsap.ticker.remove(sync);
     },
-    { scope, dependencies: [clock, sounds, startsAt, withStake] },
+    { scope, dependencies: [clock, sounds, startsAt, stake, promotion] },
   );
 };

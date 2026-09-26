@@ -101,6 +101,9 @@ export const stepOf = (standing: Standing) =>
       DIVISIONS_PER_TIER -
       standing.division;
 
+// A move from one rank to another crosses a Tier, Maître included: what makes a Promotion Duel.
+export const changesTier = (from: Standing, to: Standing) => from.tier !== to.tier;
+
 // The Classement's order: the higher step first, then the more TP. Maître is ordered by TP alone.
 export const byStanding = (a: Standing, b: Standing) => stepOf(b) - stepOf(a) || b.tp - a.tp;
 

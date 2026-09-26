@@ -94,11 +94,29 @@ const shake = () => [
   { x: 0, y: 0, duration: 0.03 },
 ];
 
+// The Promotion Duel's banner drops in from this far above, and goes back up.
+const BANNER_DROP_PX = 24;
+
+// Its emblem pulses this many times from the reveal to GO, dimming then brightening back: each
+// half-beat about 0.7 s, ending bright.
+const BANNER_PULSES = 3;
+
+const BANNER_HALF_BEAT_S = (COUNTDOWN_S - REVEAL_S) / (2 * BANNER_PULSES);
+
+type FaceOffTimelineOptions = {
+  // This User's Stake is shown: its bar fills in.
+  stake: boolean;
+  // A Promotion Duel: its banner comes in with the reveal and goes at GO.
+  promotion: boolean;
+  // Under reduced motion, the Stake's bar shows full at once, the banner fades without moving and
+  // its emblem stays still.
+  reducedMotion: boolean;
+};
+
 // The whole Face-off overlay on a single timeline, paused: its time is the time since the pairing,
 // set from the Duel's clock (never GSAP's own), so a seek lands anywhere. Transforms and opacity
-// only; the diagonal cut is a static clip-path. `fillStake`: this User's Stake is shown and its bar
-// fills in (not under reduced motion, where it shows full at once).
-export const faceOffTimeline = ({ fillStake }: { fillStake: boolean }) => {
+// only; the diagonal cut is a static clip-path.
+export const faceOffTimeline = ({ stake, promotion, reducedMotion }: FaceOffTimelineOptions) => {
   const timeline = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
   const marquee = { duration: COUNTDOWN_S + EXIT_S, ease: "power2.out" };
 
@@ -159,7 +177,33 @@ export const faceOffTimeline = ({ fillStake }: { fillStake: boolean }) => {
     );
   }
 
-  if (fillStake) {
+  const drop = reducedMotion ? 0 : -BANNER_DROP_PX;
+
+  if (promotion) {
+    timeline.fromTo(
+      part("banner"),
+      { autoAlpha: 0, y: drop },
+      { autoAlpha: 1, y: 0, duration: 0.34 },
+      "reveal",
+    );
+  }
+
+  if (promotion && !reducedMotion) {
+    timeline.fromTo(
+      part("banner-emblem"),
+      { opacity: 1 },
+      {
+        opacity: 0.55,
+        duration: BANNER_HALF_BEAT_S,
+        ease: "sine.inOut",
+        repeat: 2 * BANNER_PULSES - 1,
+        yoyo: true,
+      },
+      "reveal",
+    );
+  }
+
+  if (stake && !reducedMotion) {
     timeline
       .addLabel("stake", STAKE_FILL_S)
       .fromTo(
@@ -184,6 +228,14 @@ export const faceOffTimeline = ({ fillStake }: { fillStake: boolean }) => {
         at,
       )
       .to(part(digitName(mark)), { scale: 0.7, autoAlpha: 0, duration: 0.2 }, at + DIGIT_HOLD_S);
+  }
+
+  if (promotion) {
+    timeline.to(
+      part("banner"),
+      { autoAlpha: 0, y: drop, duration: 0.2, ease: "power3.in" },
+      COUNTDOWN_S,
+    );
   }
 
   return timeline

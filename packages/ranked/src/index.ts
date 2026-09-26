@@ -5,6 +5,7 @@ export {
   TIERS,
   applyTp,
   byStanding,
+  changesTier,
   ESTIMATED_WAIT_PAIRINGS,
   estimatedWait,
   expectedScore,
