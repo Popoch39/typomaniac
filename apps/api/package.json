@@ -5,7 +5,8 @@
   "exports": {
     ".": {
       "types": "./src/app.ts"
-    }
+    },
+    "./protocol": "./src/modules/duel/model.ts"
   },
   "scripts": {
     "test": "bun test",

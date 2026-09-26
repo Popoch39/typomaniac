@@ -1,0 +1,19 @@
+{
+  "name": "loadtest",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "seed": "bun run src/seed.ts",
+    "run": "bun run src/run.ts"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "0.34.52",
+    "api": "workspace:*",
+    "typing-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "bun-types": "^1.4.2"
+  }
+}

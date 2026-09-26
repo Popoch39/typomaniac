@@ -18,6 +18,7 @@ import { LiveFriendLists } from "@/components/friends/live-friend-lists";
 import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
 import { ProfileNavLink } from "@/components/profile/profile-nav-link";
 import { RealtimeConnection } from "@/components/realtime-connection";
+import { LiveRank } from "@/components/tier/live-rank";
 import { NavPill } from "@/components/ui/nav-pill";
 import { NavPills } from "@/components/ui/nav-pills";
 import { Toaster } from "@/components/ui/sonner";
@@ -50,6 +51,7 @@ export const RootLayout = () => (
     <RealtimeConnection />
     <LiveFriendLists />
     <LiveActivity />
+    <LiveRank />
     <WaitingChallenges />
     <ChallengeNotices />
     <DuelOnChallenge />

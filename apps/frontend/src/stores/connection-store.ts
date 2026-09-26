@@ -226,8 +226,13 @@ export const onServerMessage = (listener: (message: ServerMessage) => void) => {
   };
 };
 
-// Dropped while no socket is open: whoever sends learns the state again from the server once back.
-export const sendToServer = (message: ClientMessage) => socket?.send(message);
+// Dropped until the server has spoken on the current socket (one still opening throws on send):
+// whoever sends learns the state again from the server once back.
+export const sendToServer = (message: ClientMessage) => {
+  if (useConnectionStore.getState().status === "open") {
+    socket?.send(message);
+  }
+};
 
 const stopReconnecting = () => {
   if (reconnectTimer !== null) {

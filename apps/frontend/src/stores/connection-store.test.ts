@@ -367,6 +367,17 @@ describe("the connection store", () => {
     expect(fake.server().sent).toEqual([{ type: "join-queue" }]);
   });
 
+  test("drops what is sent while the socket is still opening, or opening again", () => {
+    useConnectionStore.getState().open(fake.open);
+    sendToServer({ type: "leave-queue" });
+    fake.server().receive({ type: "idle" });
+    fake.server().drop();
+    vi.advanceTimersByTime(reconnectDelay(0));
+    sendToServer({ type: "leave-queue" });
+
+    expect(fake.sockets.flatMap(({ sent }) => sent)).toEqual([]);
+  });
+
   test("opens a lost connection again, sooner once it was back", () => {
     useConnectionStore.getState().open(fake.open);
     fake.server().receive({ type: "idle" });

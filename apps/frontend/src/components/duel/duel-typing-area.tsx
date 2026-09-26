@@ -1,3 +1,5 @@
+import { cn } from "cn";
+
 import { DuelClock } from "@/components/duel/duel-clock";
 import { DuelConnection } from "@/components/duel/duel-connection";
 import { DuelLiveScore } from "@/components/duel/duel-live-score";
@@ -36,13 +38,14 @@ export const DuelTypingArea = ({
   const press = useDuelStore((store) => store.press);
   const elapsed = useDuelElapsed(startsAt);
   const opponentLabel = atHandle(opponent.handle);
-  // The non-modal « C'est parti ! » leaves the page visible: the Text waits for the Face-off to
-  // cover it, so neither player reads it ahead.
-  const goingIn = beforeCountdown(elapsed);
+  // Neither the non-modal « C'est parti ! » nor the Face-off (its panels slide in, then shake)
+  // covers the whole page: the Text stays unpainted until the start, so no one reads it ahead. It
+  // keeps its place, so nothing moves as the panels split away on GO.
+  const beforeStart = elapsed < 0;
 
   return (
     <div className="flex flex-col gap-4">
-      {goingIn ? <MatchProposalGo opponent={opponent} pairing={pairing} /> : null}
+      {beforeCountdown(elapsed) ? <MatchProposalGo opponent={opponent} pairing={pairing} /> : null}
       <FaceOff
         key={id}
         opponent={opponent}
@@ -61,7 +64,9 @@ export const DuelTypingArea = ({
         <DuelLiveScore name={opponentLabel} opponent />
       </div>
       <div className="relative rounded-card bg-card px-8 py-6">
-        {goingIn ? null : <DuelText />}
+        <div className={cn(beforeStart && "invisible")}>
+          <DuelText />
+        </div>
         {focused ? null : <FocusOverlay onResume={focus} />}
       </div>
       <div className="flex justify-center">
