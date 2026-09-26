@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { HandleLink } from "@/components/handle/handle-link";
-import { initials } from "@/lib/initials";
+import { UserAvatar } from "@/components/user-avatar/user-avatar";
 
 type UserRowProps = {
   user: { handle: string; image: string | null };
@@ -15,10 +14,7 @@ type UserRowProps = {
 // Another User in a list: their avatar and their Handle, nothing else of them.
 export const UserRow = ({ user, aside, children }: UserRowProps) => (
   <li className="flex items-center gap-3 px-5 py-3">
-    <Avatar>
-      {user.image ? <AvatarImage src={user.image} alt="" /> : null}
-      <AvatarFallback>{initials(user.handle)}</AvatarFallback>
-    </Avatar>
+    <UserAvatar handle={user.handle} image={user.image} />
     <span className="min-w-0 flex-1 truncate">
       <HandleLink handle={user.handle} />
     </span>

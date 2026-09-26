@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { initials } from "@/lib/initials";
+import { UserAvatar } from "@/components/user-avatar/user-avatar";
 import { relativeTime } from "@/lib/relative-time";
 
 type ActivityRowProps = {
@@ -15,10 +14,7 @@ type ActivityRowProps = {
 // One Activity: the Friend's avatar, what happened, and how long ago.
 export const ActivityRow = ({ friend, at, now, children }: ActivityRowProps) => (
   <li className="flex items-start gap-3 px-5 py-3">
-    <Avatar>
-      {friend.image ? <AvatarImage src={friend.image} alt="" /> : null}
-      <AvatarFallback>{initials(friend.handle)}</AvatarFallback>
-    </Avatar>
+    <UserAvatar handle={friend.handle} image={friend.image} />
     <div className="flex min-w-0 flex-1 flex-col gap-1">
       <p className="text-sm">{children}</p>
       <time dateTime={new Date(at).toISOString()} className="text-xs text-muted-foreground">

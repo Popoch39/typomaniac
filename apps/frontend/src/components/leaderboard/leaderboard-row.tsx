@@ -3,8 +3,7 @@ import { cn } from "cn";
 import type { LeaderboardEntry } from "@/api/leaderboard";
 import { HandleLink } from "@/components/handle/handle-link";
 import { RankChip } from "@/components/tier/rank-chip";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { initials } from "@/lib/initials";
+import { UserAvatar } from "@/components/user-avatar/user-avatar";
 
 type LeaderboardRowProps = { entry: LeaderboardEntry; mine: boolean };
 
@@ -20,12 +19,12 @@ export const LeaderboardRow = ({ entry, mine }: LeaderboardRowProps) => (
     <span className="w-10 text-right font-mono text-lg font-bold tabular-nums">
       {entry.position}
     </span>
-    <Avatar className="size-9">
-      {entry.image ? <AvatarImage src={entry.image} alt="" /> : null}
-      <AvatarFallback className="bg-primary text-sm font-bold text-primary-foreground">
-        {initials(entry.handle)}
-      </AvatarFallback>
-    </Avatar>
+    <UserAvatar
+      handle={entry.handle}
+      image={entry.image}
+      className="size-9"
+      fallbackClassName="bg-primary text-sm font-bold text-primary-foreground"
+    />
     <span className="flex min-w-0 flex-1 items-center gap-2 font-semibold">
       <HandleLink handle={entry.handle} className="truncate" />
       {mine ? <span className="text-xs text-primary">Toi</span> : null}

@@ -39,6 +39,33 @@ describe("AuthControl", () => {
     expect(screen.queryByRole("button", { name: "Se connecter" })).not.toBeInTheDocument();
   });
 
+  test("the User chip's avatar falls back on the initials of the Handle, as everywhere else", () => {
+    renderWithSession({
+      id: "u1",
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      image: null,
+      handle: "alan turing",
+      rank: null,
+    });
+
+    expect(screen.getByText("AT")).toBeInTheDocument();
+    expect(screen.queryByText("AL")).not.toBeInTheDocument();
+  });
+
+  test("the User chip's avatar falls back on the initials of the name until a Handle is chosen", () => {
+    renderWithSession({
+      id: "u1",
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      image: null,
+      handle: null,
+      rank: null,
+    });
+
+    expect(screen.getByText("AL")).toBeInTheDocument();
+  });
+
   test("the User chip shows the User's Tier and Division", () => {
     renderWithSession({
       id: "u1",

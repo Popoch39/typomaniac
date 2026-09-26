@@ -5,7 +5,6 @@ import { toast } from "sonner";
 
 import { meQueryOptions, type Me } from "@/api/me";
 import { RankChip } from "@/components/tier/rank-chip";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,9 +15,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { UserAvatar } from "@/components/user-avatar/user-avatar";
 import { atHandle } from "@/lib/at-handle";
 import { authClient } from "@/lib/auth-client";
-import { initials } from "@/lib/initials";
 
 type UserMenuProps = {
   me: Me;
@@ -26,6 +25,8 @@ type UserMenuProps = {
 
 export const UserMenu = ({ me }: UserMenuProps) => {
   const queryClient = useQueryClient();
+  // The Handle as everywhere else, the name until one is chosen: the chip and its initials.
+  const shownName = me.handle ?? me.name;
 
   const signOut = async () => {
     const { error } = await authClient.signOut();
@@ -51,12 +52,9 @@ export const UserMenu = ({ me }: UserMenuProps) => {
           />
         }
       >
-        <Avatar size="lg" className="size-9">
-          {me.image ? <AvatarImage src={me.image} alt="" /> : null}
-          <AvatarFallback>{initials(me.name)}</AvatarFallback>
-        </Avatar>
+        <UserAvatar handle={shownName} image={me.image} size="lg" className="size-9" />
         <span className="flex flex-col items-start leading-tight">
-          <span className="max-w-32 truncate text-sm font-bold">{me.handle ?? me.name}</span>
+          <span className="max-w-32 truncate text-sm font-bold">{shownName}</span>
           {me.rank ? <RankChip rank={me.rank} /> : null}
         </span>
       </DropdownMenuTrigger>

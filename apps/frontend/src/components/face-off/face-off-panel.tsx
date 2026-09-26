@@ -3,9 +3,8 @@ import type { ReactNode } from "react";
 
 import { FaceOffMarquee } from "@/components/face-off/face-off-marquee";
 import type { RunTone } from "@/components/run/run-tone";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/user-avatar/user-avatar";
 import { atHandle } from "@/lib/at-handle";
-import { initials } from "@/lib/initials";
 
 type FaceOffPanelProps = {
   side: RunTone;
@@ -49,12 +48,12 @@ export const FaceOffPanel = ({ side, handle, image, children }: FaceOffPanelProp
             style.content,
           )}
         >
-          <Avatar className="size-44 after:border-0">
-            {image ? <AvatarImage src={image} alt="" /> : null}
-            <AvatarFallback className={cn("bg-background text-6xl font-extrabold", style.initials)}>
-              {handle === null ? null : initials(handle)}
-            </AvatarFallback>
-          </Avatar>
+          <UserAvatar
+            handle={handle ?? ""}
+            image={image}
+            className="size-44 after:border-0"
+            fallbackClassName={cn("bg-background text-6xl font-extrabold", style.initials)}
+          />
           <p className="max-w-full truncate text-7xl leading-none font-extrabold tracking-[-0.02em]">
             {handle === null ? null : atHandle(handle)}
           </p>

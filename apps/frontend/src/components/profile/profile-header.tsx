@@ -2,9 +2,8 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { profileQueryOptions } from "@/api/profile";
 import { ProfileRank } from "@/components/profile/profile-rank";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { UserAvatar } from "@/components/user-avatar/user-avatar";
 import { atHandle } from "@/lib/at-handle";
-import { initials } from "@/lib/initials";
 
 // The top of a Profile, on a card: the squircle avatar and the Handle of today, as the API spells it.
 export const ProfileHeader = ({ handle }: { handle: string }) => {
@@ -12,12 +11,12 @@ export const ProfileHeader = ({ handle }: { handle: string }) => {
 
   return (
     <div className="flex items-center gap-4 rounded-card bg-card p-5">
-      <Avatar className="size-16">
-        {profile.image ? <AvatarImage src={profile.image} alt="" /> : null}
-        <AvatarFallback className="bg-primary text-lg font-bold text-primary-foreground">
-          {initials(profile.handle)}
-        </AvatarFallback>
-      </Avatar>
+      <UserAvatar
+        handle={profile.handle}
+        image={profile.image}
+        className="size-16"
+        fallbackClassName="bg-primary text-lg font-bold text-primary-foreground"
+      />
       <h1 className="text-3xl font-extrabold tracking-tight">{atHandle(profile.handle)}</h1>
       {profile.rank ? <ProfileRank rank={profile.rank} /> : null}
     </div>

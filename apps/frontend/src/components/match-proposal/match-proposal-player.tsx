@@ -4,8 +4,7 @@ import type { Rank } from "ranked";
 import { MatchProposalChip } from "@/components/match-proposal/match-proposal-chip";
 import type { PlayerStatus } from "@/components/match-proposal/match-proposal-copy";
 import { MatchProposalRank } from "@/components/match-proposal/match-proposal-rank";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { initials } from "@/lib/initials";
+import { UserAvatar } from "@/components/user-avatar/user-avatar";
 
 type MatchProposalPlayerProps = {
   handle: string;
@@ -44,17 +43,15 @@ export const MatchProposalPlayer = ({
       faded && "opacity-55",
     )}
   >
-    <Avatar className="size-21 rounded-[33%] after:hidden">
-      {image ? <AvatarImage src={image} alt="" /> : null}
-      <AvatarFallback
-        className={cn(
-          "text-[2rem] font-extrabold text-primary-foreground",
-          self ? "bg-primary" : "bg-opponent",
-        )}
-      >
-        {initials(handle)}
-      </AvatarFallback>
-    </Avatar>
+    <UserAvatar
+      handle={handle}
+      image={image}
+      className="size-21 rounded-[33%] after:hidden"
+      fallbackClassName={cn(
+        "text-[2rem] font-extrabold text-primary-foreground",
+        self ? "bg-primary" : "bg-opponent",
+      )}
+    />
     <div className="flex flex-col items-center gap-1">
       <span className="text-lg font-bold">
         {handle}

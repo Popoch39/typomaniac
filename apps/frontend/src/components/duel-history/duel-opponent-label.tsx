@@ -1,6 +1,5 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { OpponentHandle } from "@/components/handle/opponent-handle";
-import { initials } from "@/lib/initials";
+import { UserAvatar } from "@/components/user-avatar/user-avatar";
 
 const endedAtFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeStyle: "short" });
 
@@ -13,10 +12,8 @@ type DuelOpponentLabelProps = {
 // Against whom and when a finished Duel was played: in the Duel history and atop its Replay.
 export const DuelOpponentLabel = ({ opponent, endedAt }: DuelOpponentLabelProps) => (
   <div className="flex min-w-0 flex-1 items-center gap-3">
-    <Avatar size="sm">
-      {opponent?.image ? <AvatarImage src={opponent.image} alt="" /> : null}
-      <AvatarFallback>{opponent ? initials(opponent.handle) : "?"}</AvatarFallback>
-    </Avatar>
+    {/* A deleted User has no Handle left: « ? » stands in for their initials. */}
+    <UserAvatar handle={opponent?.handle ?? "?"} image={opponent?.image ?? null} size="sm" />
     <div className="flex min-w-0 flex-col">
       <OpponentHandle opponent={opponent} className="relative z-10 truncate" />
       <time
