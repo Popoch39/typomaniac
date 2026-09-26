@@ -25,7 +25,7 @@ import {
 } from "../../test-app";
 import { MAX_DUEL_MESSAGE_SIZE, type ServerMessage } from "./model";
 import { END_TOLERANCE_MS } from "./running-duel";
-import { SAVE_TIMEOUT_MS } from "./service";
+import { MISSED_PROPOSAL_MS, SAVE_TIMEOUT_MS } from "./service";
 import type { DuelRecord } from "./store";
 
 const NOW = 1_700_000_000_000;
@@ -1928,6 +1928,154 @@ describe("duel socket", () => {
       alan.send({ type: "accept-proposal" });
       expect(await back.next()).toEqual({ type: "proposal-ended", reason: "accepted" });
       expect(await back.next()).toMatchObject({ type: "duel-found" });
+    });
+
+    test("resuming after a lost connection sends the Match proposal again, its time run on", async () => {
+      const cookie = await signedIn("Ada");
+      const ada = await queued(cookie);
+      const alan = await queued(await signedIn("Alan"));
+
+      await Promise.all([ada.next(), alan.next()]);
+      alan.send({ type: "accept-proposal" });
+      await ada.next();
+      ada.socket.close();
+      await ada.closed;
+      // The opponent is told nothing.
+      await alan.settle();
+
+      setNow(NOW + 6000);
+
+      const back = await connect(cookie);
+
+      expect(await back.next()).toEqual({ type: "elsewhere", place: "queue" });
+      back.send({ type: "resume-duel" });
+      expect(await back.next()).toMatchObject({
+        type: "match-proposed",
+        expiresAt: NOW + 10_000,
+        serverTime: NOW + 6000,
+        selfAccepted: false,
+        opponentAccepted: true,
+      });
+
+      back.send({ type: "accept-proposal" });
+      expect(await back.next()).toEqual({ type: "proposal-ended", reason: "accepted" });
+      expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "accepted" });
+    });
+
+    test("away, the time runs out as usual: the opponent waits no longer than 10 s", async () => {
+      const ada = await queued(await signedIn("Ada"));
+      const alan = await queued(await signedIn("Alan"));
+
+      await Promise.all([ada.next(), alan.next()]);
+      alan.send({ type: "accept-proposal" });
+      await ada.next();
+      ada.socket.close();
+      await ada.closed;
+
+      setNow(NOW + 10_000);
+      expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "opponent-missed" });
+      setNow(NOW + 13_000);
+      expect(await alan.next()).toEqual({ type: "queued" });
+    });
+
+    test("back once the time ran out, the User is told they missed it, out of the Queue", async () => {
+      const cookie = await signedIn("Ada");
+      const ada = await queued(cookie);
+      const alan = await queued(await signedIn("Alan"));
+
+      await Promise.all([ada.next(), alan.next()]);
+      alan.send({ type: "accept-proposal" });
+      await ada.next();
+      ada.socket.close();
+      await ada.closed;
+
+      // Reopened, it plays nothing until it takes the place back: too late.
+      const back = await connect(cookie);
+
+      expect(await back.next()).toEqual({ type: "elsewhere", place: "queue" });
+      setNow(NOW + 10_000);
+      await alan.next();
+      expect(await back.next()).toEqual({ type: "idle" });
+
+      setNow(NOW + 12_000);
+      back.send({ type: "join-queue" });
+      expect(await back.next()).toMatchObject({
+        type: "match-proposed",
+        expiresAt: NOW + 10_000,
+        serverTime: NOW + 12_000,
+        opponent: { handle: "alan" },
+        selfAccepted: false,
+        opponentAccepted: true,
+      });
+      expect(await back.next()).toEqual({ type: "proposal-ended", reason: "missed" });
+
+      // Out of the Queue: Alan, back in it, is not paired with them. Joining again is a new join.
+      setNow(NOW + 13_000);
+      expect(await alan.next()).toEqual({ type: "queued" });
+      await Promise.all([back.settle(), alan.settle()]);
+      back.send({ type: "join-queue" });
+      expect(await back.next()).toEqual({ type: "queued" });
+    });
+
+    test("back once the time ran out, resuming tells it too, once", async () => {
+      const cookie = await signedIn("Ada");
+      const ada = await queued(cookie);
+      const alan = await queued(await signedIn("Alan"));
+
+      await Promise.all([ada.next(), alan.next()]);
+      ada.socket.close();
+      await ada.closed;
+
+      const back = await connect(cookie);
+
+      await back.next();
+      setNow(NOW + 10_000);
+      await Promise.all([alan.next(), back.next()]);
+      back.send({ type: "resume-duel" });
+      expect(await back.next()).toMatchObject({ type: "match-proposed", selfAccepted: false });
+      expect(await back.next()).toEqual({ type: "proposal-ended", reason: "missed" });
+      back.send({ type: "resume-duel" });
+      await back.settle();
+    });
+
+    test("back long after the time ran out, the User simply joins the Queue", async () => {
+      const cookie = await signedIn("Ada");
+      const ada = await queued(cookie);
+      const alan = await queued(await signedIn("Alan"));
+
+      await Promise.all([ada.next(), alan.next()]);
+      ada.socket.close();
+      await ada.closed;
+
+      const back = await connect(cookie);
+
+      await back.next();
+      setNow(NOW + 10_000);
+      await Promise.all([alan.next(), back.next()]);
+
+      setNow(NOW + 10_000 + MISSED_PROPOSAL_MS);
+      back.send({ type: "join-queue" });
+      expect(await back.next()).toEqual({ type: "queued" });
+    });
+
+    test("only the tab that plays is sent the Match proposal and answers it", async () => {
+      const cookie = await signedIn("Ada");
+      const ada = await queued(cookie);
+      const alan = await queued(await signedIn("Alan"));
+      const other = await connect(cookie);
+
+      await Promise.all([ada.next(), alan.next()]);
+      expect(await other.next()).toEqual({ type: "elsewhere", place: "queue" });
+
+      other.send({ type: "accept-proposal" });
+      other.send({ type: "decline-proposal" });
+      await Promise.all([other.settle(), alan.settle(), ada.settle()]);
+
+      // A tab opened meanwhile is told the place only.
+      const opened = await connect(cookie);
+
+      expect(await opened.next()).toEqual({ type: "elsewhere", place: "queue" });
+      await opened.settle();
     });
   });
 

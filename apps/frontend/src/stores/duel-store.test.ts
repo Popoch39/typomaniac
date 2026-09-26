@@ -374,6 +374,62 @@ describe("the Duel on the app's connection", () => {
 
       expect(server().sent).toEqual([{ type: "join-queue" }]);
     });
+
+    test("back from a lost connection, it comes back as it stood, its end on this tab's clock", () => {
+      inQueue();
+      server().receive(matchProposed);
+      useDuelStore.getState().acceptProposal();
+      server().drop();
+      vi.advanceTimersByTime(1_000);
+      server().receive({ type: "elsewhere", place: "queue" });
+      server().receive({
+        ...matchProposed,
+        serverTime: 23_000,
+        selfAccepted: true,
+        opponentAccepted: true,
+      });
+
+      expect(proposal()).toEqual({
+        stage: "accepted",
+        expiresAt: 2000,
+        opponent: { handle: "kaelis", image: null },
+        selfRank: orIv,
+        opponentRank: { placementsLeft: 3 },
+        selfAccepted: true,
+        opponentAccepted: true,
+      });
+    });
+
+    test("back once its time ran out, it says so", () => {
+      inQueue();
+      server().receive(matchProposed);
+      server().drop();
+      vi.advanceTimersByTime(1_000);
+      server().receive({ type: "idle" });
+
+      expect(server().sent).toEqual([{ type: "join-queue" }]);
+
+      server().receive({ ...matchProposed, serverTime: 27_000 });
+      server().receive({ type: "proposal-ended", reason: "missed" });
+
+      expect(proposal()).toMatchObject({ stage: "missed", selfAccepted: false });
+      expect(useConnectionStore.getState().place).toEqual({ at: "idle" });
+    });
+
+    test.each(["declined", "missed"] as const)(
+      "%s, a lost connection keeps it as it ended, out of the Queue",
+      (reason) => {
+        inQueue();
+        server().receive(matchProposed);
+        server().receive({ type: "proposal-ended", reason });
+        server().drop();
+        vi.advanceTimersByTime(1_000);
+        server().receive({ type: "idle" });
+
+        expect(proposal()?.stage).toBe(reason);
+        expect(server().sent).toEqual([]);
+      },
+    );
   });
 
   test("back from a lost connection with the Duel gone, says it was lost", () => {

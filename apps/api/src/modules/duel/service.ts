@@ -42,6 +42,10 @@ const ACCEPTED_MS = 1000;
 // back in the Queue: « Reprise automatique dans 3 s ».
 const REQUEUE_MS = 3000;
 
+// How long a User whose Match proposal ran out while they were away is told so on their return
+// (a reload, a lost connection): back later, they are simply out of the Queue.
+export const MISSED_PROPOSAL_MS = 60_000;
+
 // How long a player whose connection dropped has to come back before forfeiting.
 const RECONNECT_GRACE_MS = 10_000;
 
@@ -137,6 +141,10 @@ export class DuelQueue implements ChallengeArena {
   // The entry of the Queue of each User whose opponent declined or let their Match proposal run
   // out, until it is back in the Queue: a new entry each time, whose identity its timer checks.
   readonly #returning = new Map<string, QueueEntry>();
+
+  // The Match proposal each User let run out while no connection played their place, to tell them
+  // on their return: out of the Queue, they see it ran out.
+  readonly #missedProposals = new Map<string, Proposal>();
 
   // The write of each User's last Duel, until it is done: their Pace waits for it. It gives the id
   // the Duel was written under, null if the write failed.
@@ -318,6 +326,7 @@ export class DuelQueue implements ChallengeArena {
       this.#queue.delete(user.id);
       this.#returning.delete(user.id);
       this.#missed.delete(user.id);
+      this.#missedProposals.delete(user.id);
       this.#playOn(user.id, connection);
     }
 
@@ -429,15 +438,19 @@ export class DuelQueue implements ChallengeArena {
   // until now is told, and the time to come back stops. A Duel that ended while no connection
   // played it: its end, told once, and the other connections that the User is idle. Otherwise,
   // ignored. A Duel over but not written yet: its end is told here once it is. A Match proposal
-  // goes on here too.
+  // goes on here too, and one that ran out meanwhile is told here.
   #resumeOn(userId: string, connection: Connection) {
     const duel = this.#duels.get(userId);
     const missed = this.#missed.get(userId);
     const proposal = this.#proposals.get(userId);
+    const missedProposal = this.#missedProposals.get(userId);
 
     if (proposal) {
       this.#playOn(userId, connection);
       this.#send(userId, this.#proposalMessage(userId, proposal));
+    } else if (missedProposal) {
+      this.#playOn(userId, connection);
+      this.#tellMissedProposal(userId, missedProposal);
     } else if (duel) {
       this.#playOn(userId, connection);
       this.#resume(userId, duel);
@@ -606,6 +619,15 @@ export class DuelQueue implements ChallengeArena {
 
     if (proposal) {
       this.#send(userId, this.#proposalMessage(userId, proposal));
+
+      return;
+    }
+
+    // Back once their Match proposal ran out: told so, still out of the Queue.
+    const missedProposal = this.#missedProposals.get(userId);
+
+    if (missedProposal) {
+      this.#tellMissedProposal(userId, missedProposal);
 
       return;
     }
@@ -861,7 +883,8 @@ export class DuelQueue implements ChallengeArena {
   // The Match proposal ends without a Duel: those at fault are out of the Queue, without losing
   // anything; the other one is told, and is back in it REQUEUE_MS later, as when they joined (or at
   // once on `join-queue`). Their acceptance is forgotten. A disconnection meanwhile changes
-  // nothing: back in time, `join-queue` brings them back at once.
+  // nothing: back in time, `join-queue` brings them back at once. One at fault while no connection
+  // plays their place is told on their return.
   #endProposal(
     proposal: Proposal,
     atFault: (userId: string) => boolean,
@@ -871,7 +894,13 @@ export class DuelQueue implements ChallengeArena {
       this.#proposals.delete(user.id);
 
       if (atFault(user.id)) {
-        this.#send(user.id, { type: "proposal-ended", reason });
+        // Only its time runs out without a connection that plays: declining takes one.
+        if (reason === "missed" && !this.#playing.has(user.id)) {
+          this.#keepMissedProposal(user.id, proposal);
+        } else {
+          this.#send(user.id, { type: "proposal-ended", reason });
+        }
+
         this.#tellOthers(user.id);
       } else {
         const entry: QueueEntry = { user, paced: { pace, form, rating }, joinedAt };
@@ -885,6 +914,23 @@ export class DuelQueue implements ChallengeArena {
         });
       }
     }
+  }
+
+  // Kept for the User's return, MISSED_PROPOSAL_MS at most: past that, they are simply idle.
+  #keepMissedProposal(userId: string, proposal: Proposal) {
+    this.#missedProposals.set(userId, proposal);
+    this.#clock.at(this.#clock.now() + MISSED_PROPOSAL_MS, () => {
+      if (this.#missedProposals.get(userId) === proposal) {
+        this.#missedProposals.delete(userId);
+      }
+    });
+  }
+
+  // The Match proposal that ran out while they were away, as it stood, then its end: told once.
+  #tellMissedProposal(userId: string, proposal: Proposal) {
+    this.#missedProposals.delete(userId);
+    this.#send(userId, this.#proposalMessage(userId, proposal));
+    this.#send(userId, { type: "proposal-ended", reason: "missed" });
   }
 
   // Back in the Queue at their place of arrival (a Map iterates in insertion order): their window

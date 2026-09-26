@@ -558,9 +558,16 @@ const ticked = (state: DuelState, now: number): DuelState => {
   return { phase: "finishing", duel: state.duel };
 };
 
+// A Match proposal the User declined or let run out: out of the Queue, it stays as it ended.
+const isOutOfQueue = (state: DuelState) =>
+  state.phase === "proposed" &&
+  (state.proposal.stage === "declined" || state.proposal.stage === "missed");
+
 // The Queue's place, or on the way to it: waiting in the Queue or its Match proposal.
-const inQueuePlace = ({ phase }: DuelState) =>
-  phase === "queued" || phase === "proposed" || phase === "connecting";
+const inQueuePlace = (state: DuelState) =>
+  state.phase === "queued" ||
+  state.phase === "connecting" ||
+  (state.phase === "proposed" && !isOutOfQueue(state));
 
 // The connection is lost: the server keeps the Duel played here for a few seconds, marked
 // disconnected until resumed; it drops the User from the Queue, which they join again once back.
