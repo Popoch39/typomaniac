@@ -6,7 +6,8 @@ import { ProfileRank } from "@/components/profile/profile-rank";
 import { UserAvatar } from "@/components/user-avatar/user-avatar";
 import { atHandle } from "@/lib/at-handle";
 
-// The top of a Profile, on a card: the squircle avatar and the Handle of today, as the API spells it.
+// The top of a Profile, on a card: the squircle avatar, shown large enough for the full Aura, and
+// the Handle of today, as the API spells it.
 // On the User's own Profile, the Ornament picker under it.
 export const ProfileHeader = ({ handle }: { handle: string }) => {
   const { data: profile } = useSuspenseQuery(profileQueryOptions(handle));
@@ -18,6 +19,7 @@ export const ProfileHeader = ({ handle }: { handle: string }) => {
           handle={profile.handle}
           image={profile.image}
           ornament={profile.ornament}
+          aura="full"
           className="size-16"
           fallbackClassName="bg-primary text-lg font-bold text-primary-foreground"
         />

@@ -1,10 +1,12 @@
 import type { Tier } from "ranked";
 
-import { TierOrnamentArt } from "@/components/tier/tier-ornament-art";
+import { AuraFrame } from "@/components/aura/aura-frame";
+import type { Aura } from "@/components/aura/aura-paint";
+import { TierOrnamentDrawing } from "@/components/tier/tier-ornament-drawing";
 
-// A Tier's Ornament alone: its glow and its flames overflow the box. Only seen.
-export const TierOrnament = ({ tier }: { tier: Tier }) => (
-  <svg viewBox="0 0 120 120" className="size-full overflow-visible" aria-hidden>
-    <TierOrnamentArt tier={tier} />
-  </svg>
+type TierOrnamentProps = { tier: Tier; aura?: Aura };
+
+// A Tier's Ornament alone, with its Aura, light unless asked full. Only seen.
+export const TierOrnament = ({ tier, aura = "light" }: TierOrnamentProps) => (
+  <AuraFrame tier={tier} aura={aura} Drawing={TierOrnamentDrawing} />
 );

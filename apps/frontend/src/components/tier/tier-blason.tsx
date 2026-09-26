@@ -1,13 +1,13 @@
 import type { Tier } from "ranked";
 
-import { TierOrnamentArt } from "@/components/tier/tier-ornament-art";
-import { emblemId, ref } from "@/components/tier/tier-sprite-paint";
+import { AuraFrame } from "@/components/aura/aura-frame";
+import type { Aura } from "@/components/aura/aura-paint";
+import { TierBlasonDrawing } from "@/components/tier/tier-blason-drawing";
 
-// A Tier's Blason: its Emblem laid on its Ornament, shown large where the rank stands out. Both
-// grow from one Tier to the next; the glow overflows the box. Only seen.
-export const TierBlason = ({ tier }: { tier: Tier }) => (
-  <svg viewBox="0 0 120 120" className="size-full overflow-visible" aria-hidden data-tier-blason>
-    <TierOrnamentArt tier={tier} />
-    <use href={ref(emblemId(tier))} width="120" height="120" />
-  </svg>
+type TierBlasonProps = { tier: Tier; aura?: Aura };
+
+// A Tier's Blason: its Emblem laid on its Ornament, shown large where the rank stands out, with
+// its Aura, light unless asked full. Both grow from one Tier to the next. Only seen.
+export const TierBlason = ({ tier, aura = "light" }: TierBlasonProps) => (
+  <AuraFrame tier={tier} aura={aura} Drawing={TierBlasonDrawing} />
 );

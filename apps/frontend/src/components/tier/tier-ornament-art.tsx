@@ -18,17 +18,18 @@ import { useOrnamentMotion } from "@/components/tier/use-ornament-motion";
 // One Ornament, on the 120 × 120 grid of the svg around it: its own glow from Or up, the Maniac's
 // own rays, its shared symbol from the sprite, then its light Aura over the metal (a sheen from
 // Or up, sparks for the Diamant and the Maniac). All but the symbol belong to this instance, so
-// they can move without moving every other Ornament.
-export const TierOrnamentArt = ({ tier }: { tier: Tier }) => {
+// they can move without moving every other Ornament. Without `glow` where the full Aura draws its
+// own light behind.
+export const TierOrnamentArt = ({ tier, glow }: { tier: Tier; glow: boolean }) => {
   const scope = useRef<SVGGElement>(null);
-  const glow = GLOWS.find((each) => each.tier === tier);
+  const halo = glow ? GLOWS.find((each) => each.tier === tier) : undefined;
 
   useOrnamentMotion(scope);
 
   return (
     <g ref={scope}>
-      {glow === undefined ? null : (
-        <circle data-ornament-glow cx={60} cy={60} r={glow.radius} fill={paint(glowId(tier))} />
+      {halo === undefined ? null : (
+        <circle data-ornament-glow cx={60} cy={60} r={halo.radius} fill={paint(glowId(tier))} />
       )}
       {tier === "maniac" ? (
         <g data-ornament-rays>

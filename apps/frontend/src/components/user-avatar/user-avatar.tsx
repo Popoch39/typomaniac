@@ -1,6 +1,7 @@
 import type { ComponentProps } from "react";
 import type { Tier } from "ranked";
 
+import type { Aura } from "@/components/aura/aura-paint";
 import { TierOrnament } from "@/components/tier/tier-ornament";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/initials";
@@ -11,6 +12,8 @@ type UserAvatarProps = {
   image: string | null;
   // The Ornament the User wears, as the API resolved it: none in Placement or by choice.
   ornament?: Tier | null;
+  // How much Aura the Ornament gives off: light unless asked full, where the avatar is shown large.
+  aura?: Aura;
   size?: ComponentProps<typeof Avatar>["size"];
   className?: string;
   // The initials' own look, where the avatar stands out: colour, weight, type size.
@@ -24,6 +27,7 @@ export const UserAvatar = ({
   handle,
   image,
   ornament,
+  aura = "light",
   size,
   className,
   fallbackClassName,
@@ -37,7 +41,7 @@ export const UserAvatar = ({
           data-ornament
           className="pointer-events-none absolute top-1/2 left-1/2 -z-10 size-[200%] -translate-1/2"
         >
-          <TierOrnament tier={worn} />
+          <TierOrnament tier={worn} aura={aura} />
         </span>
       ) : null}
       {image ? <AvatarImage src={image} alt="" /> : null}

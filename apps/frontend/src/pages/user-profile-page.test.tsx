@@ -14,6 +14,9 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { type Me, meQueryOptions } from "@/api/me";
 import { type Profile, profileQueryOptions } from "@/api/profile";
+import { AuraRuntimeContext } from "@/components/aura/aura-runtime-context";
+import type { AuraRuntime } from "@/lib/aura-runtime";
+import { fakeAuraRuntime } from "@/test/fake-aura-runtime";
 import { UserProfileNotFoundPage } from "@/pages/user-profile-not-found-page";
 import { UserProfilePage } from "@/pages/user-profile-page";
 
@@ -44,7 +47,12 @@ const grace: Profile = {
 
 // The page at `/u/<handle>`, loaded the way the real route loads it: the Profile read through
 // Query from `profiles`, the not-found page for a Handle nobody holds.
-const renderAt = async (user: Me | null, handle: string, profiles: Profile[]) => {
+const renderAt = async (
+  user: Me | null,
+  handle: string,
+  profiles: Profile[],
+  auraRuntime: AuraRuntime = fakeAuraRuntime().runtime,
+) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
   queryClient.setQueryData(meQueryOptions.queryKey, user);
@@ -79,7 +87,9 @@ const renderAt = async (user: Me | null, handle: string, profiles: Profile[]) =>
 
   render(
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <AuraRuntimeContext value={auraRuntime}>
+        <RouterProvider router={router} />
+      </AuraRuntimeContext>
     </QueryClientProvider>,
   );
 
@@ -121,6 +131,22 @@ describe("UserProfilePage", () => {
     await screen.findByText("Or II · 42 TP");
 
     expect(document.querySelector('[data-ornament] use[href="#tier-ornament-or"]')).not.toBeNull();
+  });
+
+  test("the avatar of an Or User gives off the full Aura", async () => {
+    const browser = fakeAuraRuntime();
+
+    await renderAt(
+      me,
+      "grace",
+      [{ ...grace, rank: { tier: "or", division: 2, tp: 42, shielded: false }, ornament: "or" }],
+      browser.runtime,
+    );
+
+    await screen.findByText("Or II · 42 TP");
+    await waitFor(() => expect(browser.painters).toHaveLength(1));
+
+    expect(browser.painters[0]?.canvas.closest("[data-ornament]")).not.toBeNull();
   });
 
   test("an avatar without an Ornament wears none", async () => {

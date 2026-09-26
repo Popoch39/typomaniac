@@ -5,13 +5,16 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { TIERS } from "ranked";
 import { describe, expect, test } from "vitest";
 
+import { AuraRuntimeContext } from "@/components/aura/aura-runtime-context";
+import type { AuraRuntime } from "@/lib/aura-runtime";
 import { AuraGalleryPage } from "@/pages/aura-gallery-page";
+import { fakeAuraRuntime } from "@/test/fake-aura-runtime";
 
-const renderPage = async () => {
+const renderPage = async (runtime: AuraRuntime = fakeAuraRuntime().runtime) => {
   const rootRoute = createRootRoute();
 
   const galleryRoute = createRoute({
@@ -25,7 +28,11 @@ const renderPage = async () => {
     history: createMemoryHistory({ initialEntries: ["/dev/aura"] }),
   });
 
-  render(<RouterProvider router={router} />);
+  render(
+    <AuraRuntimeContext value={runtime}>
+      <RouterProvider router={router} />
+    </AuraRuntimeContext>,
+  );
 
   await screen.findByRole("heading", { level: 1 });
 };
@@ -43,12 +50,25 @@ describe("AuraGalleryPage", () => {
   test.each(TIERS)("shows %s as an Ornament at every avatar size and as a Blason", async (tier) => {
     await renderPage();
 
-    const row = screen.getByRole("region", { name: `Tier ${tier}` });
+    const row = screen.getByRole("region", { name: `Aura légère de ${tier}` });
 
     // From the Friends' 64 px box up to the Face-off's 352 px one.
     expect(ornaments(row)).toEqual(Array(6).fill(`#tier-ornament-${tier}`));
     // The Blason of the large Tier badge, then of the Tier-up celebration.
     expect(blasons(row)).toEqual(Array(2).fill(`#tier-emblem-${tier}`));
+  });
+
+  test("draws the full Aura of Or wherever the app shows it large", async () => {
+    const browser = fakeAuraRuntime();
+
+    await renderPage(browser.runtime);
+    await waitFor(() => expect(browser.painters).toHaveLength(5));
+
+    const full = screen.getByRole("region", { name: "Aura pleine de or" });
+
+    // The Profile, the Match proposal and the Queue, the Face-off, then both Blasons.
+    expect(browser.painters.every((painter) => full.contains(painter.canvas))).toBe(true);
+    expect(browser.painters.map((painter) => painter.tier)).toEqual(Array(5).fill("or"));
   });
 
   test("lists a hundred fake Users wearing every Tier's Ornament", async () => {

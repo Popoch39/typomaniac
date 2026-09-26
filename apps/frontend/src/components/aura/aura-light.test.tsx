@@ -9,6 +9,7 @@ import { TierBlason } from "@/components/tier/tier-blason";
 import { TierSprite } from "@/components/tier/tier-sprite";
 import { UserAvatar } from "@/components/user-avatar/user-avatar";
 import type { AuraRuntime } from "@/lib/aura-runtime";
+import { fakeAuraRuntime } from "@/test/fake-aura-runtime";
 
 const SHINING: readonly Tier[] = ["or", "platine", "diamant", "maniac"];
 
@@ -28,45 +29,7 @@ const TIMING = new Set([
 // GSAP adds its own `overwrite` and `delay`.
 const HOW = new Set([...TIMING, "overwrite", "delay"]);
 
-// A browser the test drives: every Ornament starts on screen in a shown tab.
-const fakeRuntime = () => {
-  const screens = new Map<Element, (onScreen: boolean) => void>();
-  const tabs = new Set<(shown: boolean) => void>();
-
-  const runtime: AuraRuntime = {
-    watchScreen: (element, onChange) => {
-      screens.set(element, onChange);
-      onChange(true);
-
-      return () => {
-        screens.delete(element);
-      };
-    },
-    watchTab: (onChange) => {
-      tabs.add(onChange);
-      onChange(true);
-
-      return () => {
-        tabs.delete(onChange);
-      };
-    },
-  };
-
-  return {
-    runtime,
-    // The Ornaments watched, in the order they mounted.
-    watched: () => [...screens.keys()],
-    setOnScreen: (element: Element, onScreen: boolean) => screens.get(element)?.(onScreen),
-    setTabShown: (shown: boolean) => {
-      for (const report of tabs) {
-        report(shown);
-      }
-    },
-    watching: () => screens.size + tabs.size,
-  };
-};
-
-const renderAura = (children: ReactNode, runtime: AuraRuntime = fakeRuntime().runtime) =>
+const renderAura = (children: ReactNode, runtime: AuraRuntime = fakeAuraRuntime().runtime) =>
   render(
     <>
       <TierSprite />
@@ -184,7 +147,7 @@ describe("the light Aura", () => {
   });
 
   test("off screen nothing moves; back on screen, the same tweens go on", () => {
-    const browser = fakeRuntime();
+    const browser = fakeAuraRuntime();
 
     const { container } = renderAura(
       <>
@@ -210,7 +173,7 @@ describe("the light Aura", () => {
   });
 
   test("a hidden tab stops every Aura, and starts them again once shown", () => {
-    const browser = fakeRuntime();
+    const browser = fakeAuraRuntime();
 
     const { container } = renderAura(
       <>
@@ -232,7 +195,7 @@ describe("the light Aura", () => {
   });
 
   test("an Ornament that is on screen but in a hidden tab stays still", () => {
-    const browser = fakeRuntime();
+    const browser = fakeAuraRuntime();
     const { container } = renderAura(avatar("or"), browser.runtime);
     const [ornament] = browser.watched();
 
@@ -283,7 +246,7 @@ describe("the light Aura", () => {
   });
 
   test("once unmounted, no tween is left alive and nothing is watched", () => {
-    const browser = fakeRuntime();
+    const browser = fakeAuraRuntime();
 
     const { unmount } = renderAura(
       <>
