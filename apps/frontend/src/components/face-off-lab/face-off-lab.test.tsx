@@ -45,6 +45,25 @@ describe("FaceOffLab", () => {
     expect(stakeCard()).toHaveTextContent("Gagne et passe Or II");
   });
 
+  test("shows the Stake of a loss that moves down, one the shield holds, Fer IV and Maître", async () => {
+    renderLab();
+
+    await userEvent.click(screen.getByRole("button", { name: "Face-off" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Descente" }));
+    expect(stakeCard()).toHaveTextContent("Défaite −12 TP → Or III · 75 TP");
+
+    await userEvent.click(screen.getByRole("button", { name: "Protégé" }));
+    expect(stakeCard()).toHaveTextContent("Défaite −12 TP, protégé : tu restes Or II");
+
+    await userEvent.click(screen.getByRole("button", { name: "Fer IV" }));
+    expect(stakeCard()).toHaveTextContent("Défaite −12 TP, tu restes Fer IV · 0 TP");
+
+    await userEvent.click(screen.getByRole("button", { name: "Maître" }));
+    expect(stakeCard()).toHaveTextContent("Victoire +11 TP → Maître · 259 TP");
+    expect(stakeCard()).not.toHaveTextContent("/ 100 TP");
+  });
+
   test("switches the opponent to a Challenge", async () => {
     renderLab();
 

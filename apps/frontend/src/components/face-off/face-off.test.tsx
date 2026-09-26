@@ -40,6 +40,10 @@ const challenge: FaceOffPairing = {
 
 const orIv = (tp: number) => ({ tier: "or", division: 4, tp, shielded: false }) as const;
 
+const ferIv = (tp: number) => ({ tier: "fer", division: 4, tp, shielded: false }) as const;
+
+const maitre = (tp: number) => ({ tier: "maitre", tp, shielded: false }) as const;
+
 // A ranked Duel between equals, at the MMR their rank expects: 20 TP either way.
 const ranked: FaceOffPairing = {
   selfRank: orIv(50),
@@ -177,7 +181,8 @@ describe("FaceOff", () => {
     expect(card).toHaveTextContent("En jeu");
     expect(card).toHaveTextContent("50 / 100 TP");
     expect(card).toHaveTextContent("Victoire +20 TP → Or IV · 70 TP");
-    expect(card).toHaveTextContent("Défaite −20 TP");
+    // The last line, with nothing after its TP.
+    expect(card).toHaveTextContent(/Défaite −20 TP$/);
     expect(within(card).getByText("+20 TP")).toHaveClass("text-win");
     expect(within(card).getByText("−20 TP")).toHaveClass("text-destructive");
   });
@@ -197,6 +202,82 @@ describe("FaceOff", () => {
     expect(card).toHaveTextContent("Gagne et passe Or III");
     expect(card).not.toHaveTextContent("En jeu");
     expect(card).toHaveTextContent("Victoire +20 TP → Or III · 11 TP");
+  });
+
+  test("says what a loss would do to the rank: down, held by the shield, or kept by a move up", () => {
+    faceOffAt(-3500, {
+      ...ranked,
+      selfRank: { tier: "or", division: 2, tp: 8, shielded: false },
+      selfStake: {
+        win: { tp: 12, standing: { tier: "or", division: 2, tp: 20, shielded: false } },
+        loss: { tp: -12, standing: { tier: "or", division: 3, tp: 75, shielded: false } },
+      },
+    });
+    expect(stakeCard()).toHaveTextContent("Défaite −12 TP → Or III · 75 TP");
+    cleanup();
+
+    faceOffAt(-3500, {
+      ...ranked,
+      selfRank: { tier: "or", division: 2, tp: 4, shielded: true },
+      selfStake: {
+        win: { tp: 12, standing: { tier: "or", division: 2, tp: 16, shielded: true } },
+        loss: { tp: -12, standing: { tier: "or", division: 2, tp: 0, shielded: false } },
+      },
+    });
+    expect(stakeCard()).toHaveTextContent("Défaite −12 TP, protégé : tu restes Or II");
+    cleanup();
+
+    faceOffAt(-3500, {
+      ...ranked,
+      selfRank: { tier: "or", division: 1, tp: 92, shielded: false },
+      selfStake: {
+        win: { tp: 14, standing: { tier: "platine", division: 4, tp: 6, shielded: true } },
+        loss: { tp: -11, standing: { tier: "or", division: 1, tp: 81, shielded: false } },
+      },
+    });
+    expect(stakeCard()).toHaveTextContent("Défaite −11 TP, tu restes Or I");
+  });
+
+  test("in Fer IV, says a loss below 0 TP stays there", () => {
+    faceOffAt(-3500, {
+      ...ranked,
+      selfRank: ferIv(6),
+      selfStake: { win: { tp: 14, standing: ferIv(20) }, loss: { tp: -12, standing: ferIv(0) } },
+    });
+
+    expect(stakeCard()).toHaveTextContent("Défaite −12 TP, tu restes Fer IV · 0 TP");
+  });
+
+  test("in Maître, the Stake has no bar: TP without a cap", () => {
+    faceOffAt(-3500, {
+      ...ranked,
+      selfRank: maitre(248),
+      selfStake: {
+        win: { tp: 11, standing: maitre(259) },
+        loss: { tp: -11, standing: maitre(237) },
+      },
+    });
+
+    const card = stakeCard();
+
+    expect(card).toHaveTextContent("En jeu");
+    expect(card).toHaveTextContent("Victoire +11 TP → Maître · 259 TP");
+    expect(card).toHaveTextContent(/Défaite −11 TP$/);
+    expect(card).not.toHaveTextContent("/ 100 TP");
+    expect(card.querySelector('[data-face-off="stake-gain"]')).toBeNull();
+  });
+
+  test("in Maître, a loss that moves down leads to Diamant I at 75 TP", () => {
+    faceOffAt(-3500, {
+      ...ranked,
+      selfRank: maitre(5),
+      selfStake: {
+        win: { tp: 11, standing: maitre(16) },
+        loss: { tp: -11, standing: { tier: "diamant", division: 1, tp: 75, shielded: false } },
+      },
+    });
+
+    expect(stakeCard()).toHaveTextContent("Défaite −11 TP → Diamant I · 75 TP");
   });
 
   test("shows no Stake in Placement nor in a Challenge", () => {

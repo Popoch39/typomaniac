@@ -4,8 +4,7 @@ import { DIVISION_TP, type Rank, type Stake } from "ranked";
 import { FaceOffStakeBar } from "@/components/face-off/face-off-stake-bar";
 import { FaceOffStakeHeader } from "@/components/face-off/face-off-stake-header";
 import { FaceOffStakeOutcome } from "@/components/face-off/face-off-stake-outcome";
-import { stakePromotion } from "@/components/face-off/stake-promotion";
-import { rankLabel } from "@/components/tier/rank-label";
+import { stakeCopy } from "@/components/face-off/stake-copy";
 import { TIER_COLORS } from "@/components/tier/tier";
 
 type FaceOffStakeProps = { rank: Rank | null; stake: Stake | null };
@@ -18,7 +17,7 @@ export const FaceOffStake = ({ rank, stake }: FaceOffStakeProps) => {
     return null;
   }
 
-  const promotion = stakePromotion(rank, stake);
+  const { promotion, win, loss } = stakeCopy(rank, stake);
 
   // The card's colour, which the hatches and the rank moved up to take: the Tier aimed at, or
   // this User's. Each text sets its own.
@@ -45,11 +44,13 @@ export const FaceOffStake = ({ rank, stake }: FaceOffStakeProps) => {
           </span>
         )}{" "}
         <FaceOffStakeOutcome label="Victoire" tp={stake.win.tp}>
-          {` → ${rankLabel(stake.win.standing)}`}
+          {win}
         </FaceOffStakeOutcome>
       </p>
       <p className="text-sm text-muted-foreground">
-        <FaceOffStakeOutcome label="Défaite" tp={stake.loss.tp} />
+        <FaceOffStakeOutcome label="Défaite" tp={stake.loss.tp}>
+          {loss}
+        </FaceOffStakeOutcome>
       </p>
     </section>
   );

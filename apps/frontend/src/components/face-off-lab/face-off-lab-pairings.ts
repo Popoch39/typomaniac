@@ -7,7 +7,15 @@ import type { DuelOpponent } from "@/stores/duel-store";
 // The opponent the lab faces, with every rank, Form and Stake the Face-off can show.
 export const LAB_OPPONENT: DuelOpponent = { handle: "kzr_", image: null };
 
-export type LabPairing = "ranked" | "division" | "placement" | "challenge";
+export type LabPairing =
+  | "ranked"
+  | "division"
+  | "demotion"
+  | "shielded"
+  | "ferIv"
+  | "maitre"
+  | "placement"
+  | "challenge";
 
 const selfForm: Form = { avgWpm: 84.2, outcomes: ["win", "win", "loss", "win", "draw"] };
 
@@ -36,6 +44,50 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
       loss: { tp: -13, standing: { tier: "or", division: 3, tp: 81, shielded: false } },
     },
   },
+  // A loss moves this User down a Division.
+  demotion: {
+    selfRank: { tier: "or", division: 2, tp: 8, shielded: false },
+    opponentRank: { tier: "or", division: 2, tp: 47, shielded: false },
+    selfForm,
+    opponentForm,
+    selfStake: {
+      win: { tp: 12, standing: { tier: "or", division: 2, tp: 20, shielded: false } },
+      loss: { tp: -12, standing: { tier: "or", division: 3, tp: 75, shielded: false } },
+    },
+  },
+  // Just moved up: the shield holds a loss below 0 TP in the Division.
+  shielded: {
+    selfRank: { tier: "or", division: 2, tp: 4, shielded: true },
+    opponentRank: { tier: "or", division: 2, tp: 47, shielded: false },
+    selfForm,
+    opponentForm,
+    selfStake: {
+      win: { tp: 12, standing: { tier: "or", division: 2, tp: 16, shielded: true } },
+      loss: { tp: -12, standing: { tier: "or", division: 2, tp: 0, shielded: false } },
+    },
+  },
+  // The lowest rank: a loss below 0 TP stays at 0.
+  ferIv: {
+    selfRank: { tier: "fer", division: 4, tp: 6, shielded: false },
+    opponentRank: { tier: "fer", division: 3, tp: 30, shielded: false },
+    selfForm,
+    opponentForm,
+    selfStake: {
+      win: { tp: 14, standing: { tier: "fer", division: 4, tp: 20, shielded: false } },
+      loss: { tp: -12, standing: { tier: "fer", division: 4, tp: 0, shielded: false } },
+    },
+  },
+  // TP without a cap: no bar.
+  maitre: {
+    selfRank: { tier: "maitre", tp: 248, shielded: false },
+    opponentRank: { tier: "maitre", tp: 310, shielded: false },
+    selfForm,
+    opponentForm,
+    selfStake: {
+      win: { tp: 11, standing: { tier: "maitre", tp: 259, shielded: false } },
+      loss: { tp: -11, standing: { tier: "maitre", tp: 237, shielded: false } },
+    },
+  },
   // This User without a Ranked Duel yet: their Form is absent, and no TP at stake.
   placement: {
     selfRank: { placementsLeft: 5 },
@@ -56,6 +108,10 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
 export const LAB_PAIRING_OPTIONS: readonly SettingOption<LabPairing>[] = [
   { value: "ranked", label: "Classé" },
   { value: "division", label: "Montée de Division" },
+  { value: "demotion", label: "Descente" },
+  { value: "shielded", label: "Protégé" },
+  { value: "ferIv", label: "Fer IV" },
+  { value: "maitre", label: "Maître" },
   { value: "placement", label: "Placement" },
   { value: "challenge", label: "Challenge" },
 ];
