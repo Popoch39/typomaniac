@@ -1,13 +1,15 @@
 import type { Tier } from "ranked";
 
 import type { AuraRuntime } from "@/lib/aura-runtime";
+import { fullAuraShader } from "@/lib/full-aura-shaders";
 import { type FullAuraPainter, openFullAuraRuntime } from "@/lib/full-aura-runtime";
 
-// A painter the test reads: how often it drew, whether it was let go, and a way to lose its
-// context as a driver would.
+// A painter the test reads: the program the WebGL2 painter would compile, how often it drew,
+// whether it was let go, and a way to lose its context as a driver would.
 export type FakePainter = {
   canvas: HTMLCanvasElement;
   tier: Tier;
+  program: string;
   draws: number;
   disposed: boolean;
   lose: () => void;
@@ -31,13 +33,17 @@ export const fakeAuraRuntime = ({ webgl2 = true, pixelRatio = 1 }: FakeAuraRunti
 
   const full = openFullAuraRuntime({
     open: (canvas, tier, onLost) => {
-      if (!webgl2) {
+      // Like the WebGL2 painter: nothing to compile for a Tier without a shader.
+      const program = fullAuraShader(tier)?.fragment;
+
+      if (!webgl2 || program === undefined) {
         return null;
       }
 
       const painter: FakePainter = {
         canvas,
         tier,
+        program,
         draws: 0,
         disposed: false,
         lose: () => onLost(),

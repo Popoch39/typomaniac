@@ -1,9 +1,8 @@
 import { gsap } from "gsap";
 import type { Tier } from "ranked";
 
-import { hasFullAura } from "@/components/aura/aura-paint";
 import type { FullAuraRuntime } from "@/lib/aura-runtime";
-import { FULL_AURA_SHADERS, QUAD_VERTEX, rgb } from "@/lib/full-aura-shaders";
+import { fullAuraShader, QUAD_VERTEX, rgb } from "@/lib/full-aura-shaders";
 import {
   type FrameClock,
   type FullAuraPainter,
@@ -75,7 +74,7 @@ const openWebGl2Painter = (
   tier: Tier,
   onLost: () => void,
 ): FullAuraPainter | null => {
-  const shader = hasFullAura(tier) ? FULL_AURA_SHADERS[tier] : undefined;
+  const shader = fullAuraShader(tier);
   const gl = shader === undefined ? null : canvas.getContext("webgl2", CONTEXT);
 
   if (shader === undefined || gl === null) {

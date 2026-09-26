@@ -6,6 +6,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { TIERS } from "ranked";
 import { describe, expect, test } from "vitest";
 
@@ -58,17 +59,42 @@ describe("AuraGalleryPage", () => {
     expect(blasons(row)).toEqual(Array(2).fill(`#tier-emblem-${tier}`));
   });
 
-  test("draws the full Aura of Or wherever the app shows it large", async () => {
-    const browser = fakeAuraRuntime();
+  test.each(["or", "platine"] as const)(
+    "draws the full Aura of %s wherever the app shows it large, once shown",
+    async (tier) => {
+      const browser = fakeAuraRuntime();
 
-    await renderPage(browser.runtime);
-    await waitFor(() => expect(browser.painters).toHaveLength(5));
+      await renderPage(browser.runtime);
 
-    const full = screen.getByRole("region", { name: "Aura pleine de or" });
+      const card = screen.getByRole("region", { name: `Tier ${tier}` });
+      const toggle = within(card).getByRole("button", { name: "Aura pleine" });
 
-    // The Profile, the Match proposal and the Queue, the Face-off, then both Blasons.
-    expect(browser.painters.every((painter) => full.contains(painter.canvas))).toBe(true);
-    expect(browser.painters.map((painter) => painter.tier)).toEqual(Array(5).fill("or"));
+      // Hidden at first: no full Aura holds a place until asked for.
+      expect(toggle).toHaveAttribute("aria-pressed", "false");
+      expect(screen.queryByRole("region", { name: `Aura pleine de ${tier}` })).toBeNull();
+
+      await userEvent.click(toggle);
+      await waitFor(() => expect(browser.painters).toHaveLength(5));
+
+      const full = screen.getByRole("region", { name: `Aura pleine de ${tier}` });
+
+      // The Profile, the Match proposal and the Queue, the Face-off, then both Blasons.
+      expect(toggle).toHaveAttribute("aria-pressed", "true");
+      expect(browser.painters.every((painter) => full.contains(painter.canvas))).toBe(true);
+      expect(browser.painters.map((painter) => painter.tier)).toEqual(Array(5).fill(tier));
+
+      await userEvent.click(toggle);
+
+      expect(browser.painters.every((painter) => painter.disposed)).toBe(true);
+    },
+  );
+
+  test("offers no full Aura for a Tier without one", async () => {
+    await renderPage();
+
+    const card = screen.getByRole("region", { name: "Tier argent" });
+
+    expect(within(card).queryByRole("button", { name: "Aura pleine" })).toBeNull();
   });
 
   test("lists a hundred fake Users wearing every Tier's Ornament", async () => {

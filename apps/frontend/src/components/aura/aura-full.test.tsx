@@ -51,6 +51,36 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("the full Aura of Platine", () => {
+  test("is drawn by its own program, not Or's, behind the avatar and the Blason", async () => {
+    const browser = fakeAuraRuntime();
+
+    const { container } = renderAura(
+      <>
+        {fullOr}
+        <UserAvatar handle="ada" image={null} ornament="platine" aura="full" />
+        <TierBlason tier="platine" aura="full" />
+      </>,
+      browser.runtime,
+    );
+
+    await settle();
+    browser.tick();
+
+    const [or, avatar, blason] = browser.painters;
+
+    expect(browser.painters.map((painter) => [painter.tier, painter.draws])).toEqual([
+      ["or", 1],
+      ["platine", 1],
+      ["platine", 1],
+    ]);
+    expect(avatar?.program).not.toBe(or?.program);
+    expect(blason?.program).toBe(avatar?.program);
+    expect(glows(container)).toHaveLength(0);
+    expect(sheens(container)).toHaveLength(3);
+  });
+});
+
 describe("the full Aura of Or", () => {
   test("is drawn on a canvas behind the Ornament, in place of its glow, under its sheen", async () => {
     const browser = fakeAuraRuntime();
@@ -100,7 +130,7 @@ describe("the full Aura of Or", () => {
     const browser = fakeAuraRuntime();
 
     const { container } = renderAura(
-      <UserAvatar handle="ada" image={null} ornament="platine" aura="full" />,
+      <UserAvatar handle="ada" image={null} ornament="diamant" aura="full" />,
       browser.runtime,
     );
 

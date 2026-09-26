@@ -133,19 +133,23 @@ describe("UserProfilePage", () => {
     expect(document.querySelector('[data-ornament] use[href="#tier-ornament-or"]')).not.toBeNull();
   });
 
-  test("the avatar of an Or User gives off the full Aura", async () => {
+  test.each([
+    ["Or", "or"],
+    ["Platine", "platine"],
+  ] as const)("the avatar of a %s User gives off its full Aura", async (name, tier) => {
     const browser = fakeAuraRuntime();
 
     await renderAt(
       me,
       "grace",
-      [{ ...grace, rank: { tier: "or", division: 2, tp: 42, shielded: false }, ornament: "or" }],
+      [{ ...grace, rank: { tier, division: 2, tp: 42, shielded: false }, ornament: tier }],
       browser.runtime,
     );
 
-    await screen.findByText("Or II · 42 TP");
+    await screen.findByText(`${name} II · 42 TP`);
     await waitFor(() => expect(browser.painters).toHaveLength(1));
 
+    expect(browser.painters[0]?.tier).toBe(tier);
     expect(browser.painters[0]?.canvas.closest("[data-ornament]")).not.toBeNull();
   });
 

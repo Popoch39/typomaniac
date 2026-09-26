@@ -1,11 +1,13 @@
 import { cn } from "cn";
 import type { Tier } from "ranked";
 
+import { hasFullAura } from "@/components/aura/aura-paint";
+import { AuraGalleryFull } from "@/components/aura-gallery/aura-gallery-full";
 import { AuraGalleryRow } from "@/components/aura-gallery/aura-gallery-row";
 import { TIER_COLORS, TIER_NAMES } from "@/components/tier/tier";
 
-// One Tier as the app shows it: with its light Aura at every size, then with its full Aura at the
-// sizes shown large (light again for a Tier without one yet).
+// One Tier as the app shows it: with its light Aura at every size, then, for a Tier with one, its
+// full Aura at the sizes shown large, on demand.
 export const AuraGalleryTier = ({ tier }: { tier: Tier }) => (
   <section
     aria-label={`Tier ${tier}`}
@@ -13,6 +15,6 @@ export const AuraGalleryTier = ({ tier }: { tier: Tier }) => (
   >
     <h2 className={cn("text-lg font-extrabold", TIER_COLORS[tier])}>{TIER_NAMES[tier]}</h2>
     <AuraGalleryRow tier={tier} aura="light" />
-    <AuraGalleryRow tier={tier} aura="full" />
+    {hasFullAura(tier) ? <AuraGalleryFull tier={tier} /> : null}
   </section>
 );
