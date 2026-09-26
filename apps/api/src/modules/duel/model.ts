@@ -1,5 +1,6 @@
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { t } from "elysia";
+import { TIERS } from "ranked";
 
 import { ActivityModel } from "../activity/model";
 import { ChallengeModel } from "../challenge/model";
@@ -93,6 +94,9 @@ const Standing = t.Union([
   }),
   t.Object({ tier: t.Literal("maniac"), tp: t.Integer(), shielded: t.Boolean() }),
 ]);
+
+// A Tier of the ranked package, Maniac included.
+const Tier = t.UnionEnum(TIERS);
 
 // A Standing, or the Placement Duels still to play.
 const Rank = t.Union([...Standing.anyOf, t.Object({ placementsLeft: t.Integer() })]);
@@ -292,4 +296,5 @@ export const DuelModel = {
   score: DuelScore,
   rank: Rank,
   standing: Standing,
+  tier: Tier,
 };

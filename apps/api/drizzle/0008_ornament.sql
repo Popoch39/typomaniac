@@ -1,0 +1,1 @@
+ALTER TABLE "ranked_rating" ADD COLUMN "ornament" text DEFAULT 'follow' NOT NULL;

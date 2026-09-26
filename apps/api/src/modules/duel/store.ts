@@ -1,4 +1,4 @@
-import type { Rank, Rating, Standing } from "ranked";
+import { type OrnamentChoice, ornamentOf, type Rank, type Rating, type Standing } from "ranked";
 import { type Keystroke, paceDuels, paceOf, type Result } from "typing-engine";
 
 import type { Duel, DuelScore, Form } from "./model";
@@ -111,6 +111,8 @@ export type DuelStore = {
   ensureRating: (userId: string, initial: Rating) => Promise<Rating>;
   // The User's visible rank, never their MMR: null until they first join the Queue.
   rankOf: (userId: string) => Promise<Rank | null>;
+  // The Ornament the User chose, raw: "follow" until they choose, or without a Rating.
+  ornamentChoiceOf: (userId: string) => Promise<OrnamentChoice>;
   // The first `limit` Users of the Classement, past Placement, in its order (`byStanding` of the
   // ranked package, ties by User id).
   leaderboard: (limit: number) => Promise<LeaderboardRow[]>;
@@ -157,6 +159,14 @@ export const outcomeFor = (
 // A User's Pace, from the wpm of their last Duels (the engine's paceOf).
 export const readPace = async (store: DuelStore, userId: string) =>
   paceOf(await store.recentWpms(userId, paceDuels));
+
+// A User's rank, never their MMR, and the Ornament they wear, resolved from their choice: never
+// the raw choice, which is theirs alone. Both null until they first join the Queue.
+export const readRankAndOrnament = async (store: DuelStore, userId: string) => {
+  const [rank, choice] = await Promise.all([store.rankOf(userId), store.ornamentChoiceOf(userId)]);
+
+  return { rank, ornament: rank === null ? null : ornamentOf(rank, choice) };
+};
 
 // How many Ranked Duels the Form shows.
 export const FORM_DUELS = 5;

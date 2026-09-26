@@ -15,6 +15,7 @@ const ada: Me = {
   image: null,
   handle: null,
   rank: null,
+  ornament: null,
 };
 
 beforeEach(() => {

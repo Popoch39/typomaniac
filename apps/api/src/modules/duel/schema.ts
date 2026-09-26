@@ -1,4 +1,4 @@
-import { TIERS } from "ranked";
+import { ORNAMENT_CHOICES, TIERS } from "ranked";
 import {
   bigint,
   boolean,
@@ -54,6 +54,9 @@ export const rankedRating = pgTable("ranked_rating", {
   tp: integer("tp").notNull(),
   // Just moved up: the next loss below 0 TP keeps the Division.
   shielded: boolean("shielded").notNull(),
+  // The Ornament the User chose to wear (`OrnamentChoice`), resolved by `ornamentOf`: never sent
+  // as is for another User.
+  ornament: text("ornament", { enum: ORNAMENT_CHOICES }).notNull().default("follow"),
 });
 
 // Each of the two players of a finished Duel: their Result and the Keystrokes the server accepted,

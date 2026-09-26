@@ -14,10 +14,14 @@ export const ProfileHeader = ({ handle }: { handle: string }) => {
       <UserAvatar
         handle={profile.handle}
         image={profile.image}
+        ornament={profile.ornament}
         className="size-16"
         fallbackClassName="bg-primary text-lg font-bold text-primary-foreground"
       />
-      <h1 className="text-3xl font-extrabold tracking-tight">{atHandle(profile.handle)}</h1>
+      {/* Positioned after the avatar: drawn over the Ornament's overflow, never under it. */}
+      <h1 className="relative text-3xl font-extrabold tracking-tight">
+        {atHandle(profile.handle)}
+      </h1>
       {profile.rank ? <ProfileRank rank={profile.rank} /> : null}
     </div>
   );

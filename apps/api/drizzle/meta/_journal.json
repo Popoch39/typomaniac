@@ -57,6 +57,13 @@
       "when": 1790449573207,
       "tag": "0007_maniac_tier",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790450995165,
+      "tag": "0008_ornament",
+      "breakpoints": true
     }
   ]
 }

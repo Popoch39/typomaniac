@@ -9,6 +9,8 @@ const imagesLoad = () => {
   vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockReturnValue(64);
 };
 
+const ornamentOf = (container: HTMLElement) => container.querySelector("[data-ornament]");
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
@@ -33,5 +35,35 @@ describe("UserAvatar", () => {
     const { container } = render(<UserAvatar handle="ada" image={null} size="sm" />);
 
     expect(container.querySelector("[data-slot=avatar]")?.getAttribute("data-size")).toBe("sm");
+  });
+
+  describe("the Ornament", () => {
+    test("lies behind the avatar, twice its size, never catching the pointer", () => {
+      const { container } = render(<UserAvatar handle="ada" image={null} ornament="platine" />);
+      const ornament = ornamentOf(container);
+
+      expect(ornament?.querySelector("use")?.getAttribute("href")).toBe("#tier-ornament-platine");
+      expect(ornament?.getAttribute("class")).toContain("pointer-events-none");
+      expect(ornament?.getAttribute("class")).toContain("-z-10");
+      expect(ornament?.getAttribute("class")).toContain("size-[200%]");
+      // Behind its siblings, never behind what holds the avatar.
+      expect(container.querySelector("[data-slot=avatar]")?.getAttribute("class")).toContain(
+        "isolate",
+      );
+    });
+
+    test("is absent without one", () => {
+      const { container } = render(<UserAvatar handle="ada" image={null} ornament={null} />);
+
+      expect(ornamentOf(container)).toBeNull();
+    });
+
+    test("is never worn in the small size", () => {
+      const { container } = render(
+        <UserAvatar handle="ada" image={null} ornament="maniac" size="sm" />,
+      );
+
+      expect(ornamentOf(container)).toBeNull();
+    });
   });
 });

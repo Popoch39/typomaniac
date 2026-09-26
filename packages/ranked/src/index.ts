@@ -1,6 +1,7 @@
 export {
   DIVISION_TP,
   DIVISIONS,
+  ORNAMENT_CHOICES,
   PLACEMENT_DUELS,
   TIERS,
   applyTp,
@@ -12,6 +13,7 @@ export {
   matchWindow,
   nextMmr,
   nextWidening,
+  ornamentOf,
   rankFromMmr,
   rateDuel,
   seedMmr,
@@ -19,6 +21,7 @@ export {
   stepOf,
   tpDelta,
   type Division,
+  type OrnamentChoice,
   type Placement,
   type Rank,
   type RankedOutcome,

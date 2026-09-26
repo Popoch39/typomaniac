@@ -31,6 +31,7 @@ const me: Me = {
   image: null,
   handle: "ada",
   rank: null,
+  ornament: null,
 };
 
 const friends: Friend[] = [{ id: "alan-id", handle: "alan", image: null }];

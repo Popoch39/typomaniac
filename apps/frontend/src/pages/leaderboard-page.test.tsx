@@ -24,6 +24,7 @@ const me: Me = {
   image: null,
   handle: "ada",
   rank: null,
+  ornament: null,
 };
 
 const entry = (position: number, handle: string): LeaderboardEntry => ({

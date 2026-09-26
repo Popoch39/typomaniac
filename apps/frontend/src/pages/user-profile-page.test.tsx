@@ -22,12 +22,14 @@ const me: Me = {
   image: null,
   handle: "ada",
   rank: null,
+  ornament: null,
 };
 
 const grace: Profile = {
   handle: "grace",
   image: null,
   rank: null,
+  ornament: null,
   stats: {
     duels: 3,
     record: { wins: 2, losses: 1, draws: 0 },
@@ -104,6 +106,24 @@ describe("UserProfilePage", () => {
     expect(
       document.querySelector('[data-tier-blason] use[href="#tier-ornament-or"]'),
     ).not.toBeNull();
+  });
+
+  test("the User's avatar wears their Ornament", async () => {
+    await renderAt(me, "grace", [
+      { ...grace, rank: { tier: "or", division: 2, tp: 42, shielded: false }, ornament: "or" },
+    ]);
+
+    await screen.findByText("Or II · 42 TP");
+
+    expect(document.querySelector('[data-ornament] use[href="#tier-ornament-or"]')).not.toBeNull();
+  });
+
+  test("an avatar without an Ornament wears none", async () => {
+    await renderAt(me, "grace", [grace]);
+
+    await screen.findByRole("heading", { name: "@grace" });
+
+    expect(document.querySelector("[data-ornament]")).toBeNull();
   });
 
   test("shows the Placement Duels a User has left", async () => {

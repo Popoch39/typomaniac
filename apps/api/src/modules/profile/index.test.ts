@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
+import type { Standing } from "ranked";
 import { currentWordListVersion, defaultPace } from "typing-engine";
 
 import { createApp } from "../../app";
@@ -72,6 +73,32 @@ const played = (count: number, ada: string, alan: string, outcome?: DuelRecord["
       ],
     }),
   );
+
+const standing = (tier: "argent" | "or" | "platine", tp = 50): Standing => ({
+  tier,
+  division: 1,
+  tp,
+  shielded: false,
+});
+
+// A Ranked Duel `userId` won, which moved them from `before` to `after`.
+const rankedDuel = (userId: string, opponentId: string, before: Standing, after: Standing) => {
+  const record = finishedDuel({
+    winnerId: userId,
+    players: [
+      { userId, wpm: 80, score: null },
+      { userId: opponentId, wpm: 60, score: null },
+    ],
+  });
+
+  record.players[0].rated = {
+    before: { mmr: 900, rank: before },
+    after: { mmr: 920, rank: after },
+    tp: 20,
+  };
+
+  return record;
+};
 
 // The wpm of the last `count` of `total` Duels from `played`: up to `total`.
 const last = (count: number, total: number) =>
@@ -177,7 +204,13 @@ describe("GET /api/users/:handle/profile", () => {
 
     const profile = await profileOf(ada.cookie, "alan");
 
-    expect(Object.keys(profile).toSorted()).toEqual(["handle", "image", "rank", "stats"]);
+    expect(Object.keys(profile).toSorted()).toEqual([
+      "handle",
+      "image",
+      "ornament",
+      "rank",
+      "stats",
+    ]);
     expect(JSON.stringify(profile)).not.toContain("@example.com");
     expect(JSON.stringify(profile)).not.toContain("User 2");
   });
@@ -213,6 +246,59 @@ describe("GET /api/users/:handle/profile", () => {
       duels.ratings.set(ada.id, { mmr: 600, rank: { placementsLeft: 3 } });
 
       expect((await profileOf(ada.cookie, "ada")).rank).toEqual({ placementsLeft: 3 });
+    });
+  });
+
+  describe("the Ornament", () => {
+    test("is null for a User who never joined the Queue, and in Placement", async () => {
+      const { duels, newUser, profileOf } = setup();
+      const ada = await newUser("ada");
+
+      expect((await profileOf(ada.cookie, "ada")).ornament).toBeNull();
+
+      duels.ratings.set(ada.id, { mmr: 600, rank: { placementsLeft: 3 } });
+
+      expect((await profileOf(ada.cookie, "ada")).ornament).toBeNull();
+    });
+
+    test("is the one of the User's current Tier, seen by any User", async () => {
+      const { duels, newUser, profileOf } = setup();
+      const ada = await newUser("ada");
+      const alan = await newUser("alan");
+
+      duels.ratings.set(alan.id, { mmr: 987, rank: standing("or") });
+
+      expect((await profileOf(ada.cookie, "alan")).ornament).toBe("or");
+      expect((await profileOf(alan.cookie, "alan")).ornament).toBe("or");
+    });
+
+    test("follows a move up and a move down of Tier after a Ranked Duel", async () => {
+      const { duels, newUser, profileOf } = setup();
+      const ada = await newUser("ada");
+      const alan = await newUser("alan");
+
+      duels.ratings.set(alan.id, { mmr: 900, rank: standing("or", 95) });
+      await duels.store.save(rankedDuel(alan.id, ada.id, standing("or", 95), standing("platine")));
+
+      expect((await profileOf(ada.cookie, "alan")).ornament).toBe("platine");
+
+      await duels.store.save(rankedDuel(alan.id, ada.id, standing("platine"), standing("or")));
+
+      expect((await profileOf(ada.cookie, "alan")).ornament).toBe("or");
+    });
+
+    test("is resolved by the server, never the User's raw choice", async () => {
+      const { duels, newUser, profileOf } = setup();
+      const ada = await newUser("ada");
+      const alan = await newUser("alan");
+
+      duels.ratings.set(alan.id, { mmr: 700, rank: standing("argent") });
+      duels.ornaments.set(alan.id, "platine");
+
+      const profile = await profileOf(ada.cookie, "alan");
+
+      expect(profile.ornament).toBe("argent");
+      expect(JSON.stringify(profile)).not.toContain("platine");
     });
   });
 

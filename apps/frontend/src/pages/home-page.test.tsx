@@ -272,6 +272,7 @@ describe("HomePage", () => {
       image: null,
       handle: "ada",
       rank: null,
+      ornament: null,
     };
 
     // At a Pace of 500 wpm, a Burst takes 600 wpm: "help " in 150 ms, 400 wpm, is not one, when it

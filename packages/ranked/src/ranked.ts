@@ -104,6 +104,25 @@ export const stepOf = (standing: Standing) =>
 // A move from one rank to another crosses a Tier, Maniac included: what makes a Promotion Duel.
 export const changesTier = (from: Standing, to: Standing) => from.tier !== to.tier;
 
+// The Ornament a User chooses to wear: their current Tier's, one Tier's frozen, or none.
+export const ORNAMENT_CHOICES = ["follow", "none", ...TIERS] as const;
+
+export type OrnamentChoice = (typeof ORNAMENT_CHOICES)[number];
+
+// The Ornament a User wears: none in Placement, never one of a Tier above their own. Below the
+// frozen Tier, they wear their current Tier's.
+export const ornamentOf = (rank: Rank, choice: OrnamentChoice): Tier | null => {
+  if (isPlacement(rank) || choice === "none") {
+    return null;
+  }
+
+  if (choice === "follow" || TIERS.indexOf(choice) > TIERS.indexOf(rank.tier)) {
+    return rank.tier;
+  }
+
+  return choice;
+};
+
 // The Classement's order: the higher step first, then the more TP. Maniac is ordered by TP alone.
 export const byStanding = (a: Standing, b: Standing) => stepOf(b) - stepOf(a) || b.tp - a.tp;
 

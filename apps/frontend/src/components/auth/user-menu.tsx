@@ -52,8 +52,15 @@ export const UserMenu = ({ me }: UserMenuProps) => {
           />
         }
       >
-        <UserAvatar handle={shownName} image={me.image} size="lg" className="size-9" />
-        <span className="flex flex-col items-start leading-tight">
+        <UserAvatar
+          handle={shownName}
+          image={me.image}
+          ornament={me.ornament}
+          size="lg"
+          className="size-9"
+        />
+        {/* Positioned after the avatar: drawn over the Ornament's overflow, never under it. */}
+        <span className="relative flex flex-col items-start leading-tight">
           <span className="max-w-32 truncate text-sm font-bold">{shownName}</span>
           {me.rank ? <RankChip rank={me.rank} /> : null}
         </span>

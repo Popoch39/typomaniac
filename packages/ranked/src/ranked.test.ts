@@ -9,6 +9,7 @@ import {
   matchWindow,
   nextMmr,
   nextWidening,
+  ornamentOf,
   PLACEMENT_DUELS,
   rankFromMmr,
   rateDuel,
@@ -360,5 +361,38 @@ describe("stakeOf", () => {
   test("is null in Placement: no TP moves", () => {
     expect(stakeOf({ mmr: 600, rank: { placementsLeft: 5 } }, 600)).toBeNull();
     expect(stakeOf({ mmr: 600, rank: { placementsLeft: 1 } }, 600)).toBeNull();
+  });
+});
+
+describe("ornamentOf", () => {
+  const maniac: Standing = { tier: "maniac", tp: 120, shielded: false };
+
+  test("follows the current Tier by default", () => {
+    expect(ornamentOf(standing({ tier: "fer" }), "follow")).toBe("fer");
+    expect(ornamentOf(standing({ tier: "platine", division: 1 }), "follow")).toBe("platine");
+    expect(ornamentOf(maniac, "follow")).toBe("maniac");
+  });
+
+  test("is none when the User wears none", () => {
+    expect(ornamentOf(standing(), "none")).toBeNull();
+    expect(ornamentOf(maniac, "none")).toBeNull();
+  });
+
+  test("is the frozen Tier when it is at or under the current Tier", () => {
+    expect(ornamentOf(standing({ tier: "or" }), "or")).toBe("or");
+    expect(ornamentOf(standing({ tier: "diamant" }), "bronze")).toBe("bronze");
+    expect(ornamentOf(maniac, "argent")).toBe("argent");
+    expect(ornamentOf(maniac, "maniac")).toBe("maniac");
+  });
+
+  test("is the current Tier once the User falls under the frozen one", () => {
+    expect(ornamentOf(standing({ tier: "argent" }), "diamant")).toBe("argent");
+    expect(ornamentOf(standing({ tier: "diamant", division: 1 }), "maniac")).toBe("diamant");
+  });
+
+  test("is none in Placement, whatever the choice", () => {
+    for (const choice of ["follow", "none", "or", "maniac"] as const) {
+      expect(ornamentOf({ placementsLeft: 3 }, choice)).toBeNull();
+    }
   });
 });

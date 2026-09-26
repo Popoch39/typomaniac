@@ -27,12 +27,14 @@ const me: Me = {
   image: null,
   handle: "ada",
   rank: null,
+  ornament: null,
 };
 
 const profile = (stats: Partial<Profile["stats"]>): Profile => ({
   handle: "ada",
   image: null,
   rank: null,
+  ornament: null,
   stats: {
     duels: 0,
     record: { wins: 0, losses: 0, draws: 0 },

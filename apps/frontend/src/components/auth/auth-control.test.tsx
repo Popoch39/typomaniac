@@ -33,6 +33,7 @@ describe("AuthControl", () => {
       image: null,
       handle: "ada",
       rank: null,
+      ornament: null,
     });
 
     expect(screen.getByRole("button", { name: "Menu de Ada Lovelace" })).toBeInTheDocument();
@@ -47,6 +48,7 @@ describe("AuthControl", () => {
       image: null,
       handle: "alan turing",
       rank: null,
+      ornament: null,
     });
 
     expect(screen.getByText("AT")).toBeInTheDocument();
@@ -61,6 +63,7 @@ describe("AuthControl", () => {
       image: null,
       handle: null,
       rank: null,
+      ornament: null,
     });
 
     expect(screen.getByText("AL")).toBeInTheDocument();
@@ -74,10 +77,29 @@ describe("AuthControl", () => {
       image: null,
       handle: "ada",
       rank: { tier: "platine", division: 3, tp: 10, shielded: false },
+      ornament: null,
     });
 
     expect(screen.getByRole("button", { name: "Menu de Ada Lovelace" })).toHaveTextContent(
       "Platine III · 10 TP",
+    );
+  });
+
+  test("the User chip's avatar wears the User's Ornament", () => {
+    renderWithSession({
+      id: "u1",
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      image: null,
+      handle: "ada",
+      rank: { tier: "platine", division: 3, tp: 10, shielded: false },
+      ornament: "platine",
+    });
+
+    const chip = screen.getByRole("button", { name: "Menu de Ada Lovelace" });
+
+    expect(chip.querySelector("[data-ornament] use")?.getAttribute("href")).toBe(
+      "#tier-ornament-platine",
     );
   });
 
@@ -89,6 +111,7 @@ describe("AuthControl", () => {
       image: null,
       handle: "ada",
       rank: { placementsLeft: 2 },
+      ornament: null,
     });
 
     expect(screen.getByRole("button", { name: "Menu de Ada Lovelace" })).toHaveTextContent(

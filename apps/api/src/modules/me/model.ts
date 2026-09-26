@@ -12,6 +12,8 @@ export const MeModel = {
     handle: t.Nullable(t.String()),
     // Their rank, never their MMR: null until they first join the Queue.
     rank: t.Nullable(DuelModel.rank),
+    // The Ornament they wear, resolved from their choice: null in Placement or without a Rating.
+    ornament: t.Nullable(DuelModel.tier),
   }),
   // In wpm: the median wpm of the User's last Duels, or the default Pace without any.
   pace: t.Object({ pace: t.Number() }),

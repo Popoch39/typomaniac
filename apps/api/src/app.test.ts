@@ -446,7 +446,23 @@ describe("auth", () => {
       image: "https://img/ada",
       handle: null,
       rank: null,
+      ornament: null,
     });
+  });
+
+  test("GET /api/me carries the Ornament of the User's Tier, none in Placement", async () => {
+    const { user, cookie } = await signIn();
+
+    duels.ratings.set(user.id, { mmr: 600, rank: { placementsLeft: 2 } });
+
+    expect(await (await getMe(cookie)).json()).toMatchObject({ ornament: null });
+
+    duels.ratings.set(user.id, {
+      mmr: 900,
+      rank: { tier: "platine", division: 3, tp: 10, shielded: false },
+    });
+
+    expect(await (await getMe(cookie)).json()).toMatchObject({ ornament: "platine" });
   });
 
   test("GET /api/me carries the User's rank, never their MMR", async () => {

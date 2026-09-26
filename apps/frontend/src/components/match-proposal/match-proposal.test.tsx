@@ -20,6 +20,7 @@ const me: Me = {
   image: null,
   handle: "popoch",
   rank: null,
+  ornament: null,
 };
 
 const pending: ProposalView = {

@@ -27,6 +27,7 @@ const me: Me = {
   image: null,
   handle: "ada",
   rank: null,
+  ornament: null,
 };
 
 type Entry = DuelHistoryPage["duels"][number];

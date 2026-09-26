@@ -34,11 +34,13 @@ export const ProfileModel = {
   query: t.Object({ window: t.Optional(t.UnionEnum(PROGRESSION_WINDOWS)) }),
   // A User's Profile: their Handle of today, their avatar and their Stats, never their name nor
   // their email.
-  // Their rank is null until they first join the Queue.
+  // Their rank is null until they first join the Queue; their Ornament, resolved by the server
+  // (never their raw choice), is null in Placement too.
   profile: t.Object({
     handle: t.String(),
     image: t.Nullable(t.String()),
     rank: t.Nullable(DuelModel.rank),
+    ornament: t.Nullable(DuelModel.tier),
     stats,
   }),
 };

@@ -4,7 +4,7 @@ import { betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { testUtils } from "better-auth/plugins";
 import pino from "pino";
-import { byStanding, type Rating } from "ranked";
+import { byStanding, type OrnamentChoice, type Rating } from "ranked";
 import { currentWordListVersion, defaultPace } from "typing-engine";
 
 import type { AppConfig } from "./app";
@@ -134,6 +134,8 @@ export const memoryDuelStore = () => {
   const deleted = new Set<string>();
   // Each User's Rating, by id: a test can give one before the User joins the Queue.
   const ratings = new Map<string, Rating>();
+  // Each User's Ornament choice, by id: "follow" when absent, as the column's default.
+  const ornaments = new Map<string, OrnamentChoice>();
 
   const playersOf = (record: DuelRecord) =>
     record.players.filter((player) => !deleted.has(player.userId));
@@ -217,6 +219,7 @@ export const memoryDuelStore = () => {
       return rating;
     },
     rankOf: async (userId) => ratings.get(userId)?.rank ?? null,
+    ornamentChoiceOf: async (userId) => ornaments.get(userId) ?? "follow",
     leaderboard: async (limit) => classement().slice(0, limit),
     leaderboardPosition: async (userId) =>
       classement().find((row) => row.userId === userId)?.position ?? null,
@@ -321,7 +324,7 @@ export const memoryDuelStore = () => {
     deleted.add(userId);
   };
 
-  return { store, saved, ratings, deleteUser };
+  return { store, saved, ratings, ornaments, deleteUser };
 };
 
 // The Friend requests and the friendships in memory, in the order they were written. `now` dates

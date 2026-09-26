@@ -15,6 +15,7 @@ const me: Me = {
   image: null,
   handle: "popoch",
   rank: null,
+  ornament: null,
 };
 
 let now = 0;

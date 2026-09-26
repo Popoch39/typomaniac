@@ -65,3 +65,30 @@ describe(MANIAC_TIER, () => {
     ]);
   });
 });
+
+const ORNAMENT = "0008_ornament.sql";
+
+describe(ORNAMENT, () => {
+  test("every existing Rating follows its Tier, and so does a new one", async () => {
+    const db = await migratedUpTo(ORNAMENT);
+
+    await addUser(db, "ada");
+    await addUser(db, "alan");
+    await db.exec(`
+      insert into ranked_rating (user_id, mmr, placements_played, tier, division, tp, shielded)
+      values ('ada', 1900, 5, 'maniac', null, 250, false)
+    `);
+
+    await apply(db, [ORNAMENT]);
+    await db.exec(`
+      insert into ranked_rating (user_id, mmr, placements_played, tier, division, tp, shielded)
+      values ('alan', 600, 2, null, null, 0, false)
+    `);
+
+    const { rows } = await db.query<{ ornament: string }>(
+      "select ornament from ranked_rating order by user_id",
+    );
+
+    expect(rows).toEqual([{ ornament: "follow" }, { ornament: "follow" }]);
+  });
+});

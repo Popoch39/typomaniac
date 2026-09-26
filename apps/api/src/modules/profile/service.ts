@@ -1,5 +1,5 @@
 import { ApiError } from "../../lib/errors";
-import type { DuelStore } from "../duel/store";
+import { type DuelStore, readRankAndOrnament } from "../duel/store";
 import type { Users } from "../user/users";
 import type { Profile, ProgressionWindow } from "./model";
 
@@ -22,11 +22,17 @@ export const profileOfHandle = async (
     throw new ApiError("NOT_FOUND", "User not found");
   }
 
-  const [stats, progression, rank] = await Promise.all([
+  const [stats, progression, { rank, ornament }] = await Promise.all([
     store.stats(userId),
     store.progression(userId, progressionLimits[window]),
-    store.rankOf(userId),
+    readRankAndOrnament(store, userId),
   ]);
 
-  return { handle: profile.handle, image: profile.image, rank, stats: { ...stats, progression } };
+  return {
+    handle: profile.handle,
+    image: profile.image,
+    rank,
+    ornament,
+    stats: { ...stats, progression },
+  };
 };
