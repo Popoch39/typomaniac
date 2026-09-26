@@ -36,10 +36,13 @@ export const DuelTypingArea = ({
   const press = useDuelStore((store) => store.press);
   const elapsed = useDuelElapsed(startsAt);
   const opponentLabel = atHandle(opponent.handle);
+  // The non-modal « C'est parti ! » leaves the page visible: the Text waits for the Face-off to
+  // cover it, so neither player reads it ahead.
+  const goingIn = beforeCountdown(elapsed);
 
   return (
     <div className="flex flex-col gap-4">
-      {beforeCountdown(elapsed) ? <MatchProposalGo opponent={opponent} pairing={pairing} /> : null}
+      {goingIn ? <MatchProposalGo opponent={opponent} pairing={pairing} /> : null}
       <FaceOff
         key={id}
         opponent={opponent}
@@ -58,7 +61,7 @@ export const DuelTypingArea = ({
         <DuelLiveScore name={opponentLabel} opponent />
       </div>
       <div className="relative rounded-card bg-card px-8 py-6">
-        <DuelText />
+        {goingIn ? null : <DuelText />}
         {focused ? null : <FocusOverlay onResume={focus} />}
       </div>
       <div className="flex justify-center">
