@@ -36,6 +36,8 @@ const ClientMessage = t.Union([
   t.Object({ type: t.Literal("resume-duel") }),
   // Accepts the User's Match proposal: they have one at a time.
   t.Object({ type: t.Literal("accept-proposal") }),
+  // Declines it: out of the Queue, without losing anything. `leave-queue` during one does the same.
+  t.Object({ type: t.Literal("decline-proposal") }),
   // The same socket carries the User's Challenges.
   ChallengeModel.challengeClientMessage,
 ]);
@@ -174,11 +176,18 @@ const ServerMessage = t.Union([
     opponentAccepted: t.Boolean(),
   }),
   t.Object({ type: t.Literal("opponent-accepted") }),
-  // The Match proposal is over: both accepted, `duel-found` follows; or its time ran out before,
-  // and both are out of the Queue.
+  // The Match proposal is over: both accepted, `duel-found` follows. Or the User declined it or
+  // let its time run out: out of the Queue. Or their opponent did: back in the Queue a few seconds
+  // later (`queued`), as when they joined, or at once on `join-queue`.
   t.Object({
     type: t.Literal("proposal-ended"),
-    reason: t.Union([t.Literal("accepted"), t.Literal("missed")]),
+    reason: t.Union([
+      t.Literal("accepted"),
+      t.Literal("declined"),
+      t.Literal("missed"),
+      t.Literal("opponent-declined"),
+      t.Literal("opponent-missed"),
+    ]),
   }),
   t.Object({
     type: t.Literal("duel-found"),

@@ -76,9 +76,16 @@ export type QueueView = {
 
 type MatchProposed = Extract<ServerMessage, { type: "match-proposed" }>;
 
+type ProposalEnded = Extract<ServerMessage, { type: "proposal-ended" }>;
+
 // Where the User's Match proposal stands, as the dialog shows it: to answer, accepted and waiting
-// for the opponent, accepted by both (the Duel follows), or out of time.
-export type ProposalStage = "pending" | "accepted" | "ready" | "missed";
+// for the opponent, accepted by both (the Duel follows), or over without a Duel, as the server
+// said why (the User declined or let the time run out, or the opponent did).
+export type ProposalStage =
+  | "pending"
+  | "accepted"
+  | "ready"
+  | Exclude<ProposalEnded["reason"], "accepted">;
 
 // A Match proposal as this tab shows it: until when to answer, on this tab's clock, the opponent,
 // both ranks (never the MMR) and whether each accepted (kept once the time ran out).
@@ -126,8 +133,10 @@ type DuelStore = {
   claim: () => void;
   // Nouveau Duel, once the previous one is over: back to the Queue.
   joinQueue: () => void;
-  // Accepts the Match proposal, while it waits for this User's answer.
+  // Accepts or declines the Match proposal, while it waits for this User's answer. Leaving Duel
+  // during one declines it too (`exit`: the server takes `leave-queue` as such).
   acceptProposal: () => void;
+  declineProposal: () => void;
   // Quitter le Duel: a Forfeit, the server ends the Duel.
   leave: () => void;
   press: (key: Key, now: number) => void;
@@ -255,14 +264,24 @@ const updateProposal = (
 ): DuelState =>
   state.phase === "proposed" ? { phase: "proposed", proposal: update(state.proposal) } : state;
 
-type ProposalEnded = Extract<ServerMessage, { type: "proposal-ended" }>;
-
+// Each User's acceptance is kept as it was: the dialog still shows who was ready.
 const proposalEnded = (state: DuelState, { reason }: ProposalEnded) =>
   updateProposal(state, (proposal) =>
     reason === "accepted"
       ? { ...proposal, stage: "ready", selfAccepted: true, opponentAccepted: true }
-      : { ...proposal, stage: "missed" },
+      : { ...proposal, stage: reason },
   );
+
+// The User's answer, while the Match proposal waits for it: told to the server, shown at once.
+const answered = (state: DuelState, stage: "accepted" | "declined") =>
+  updateProposal(state, (proposal) => ({
+    ...proposal,
+    stage,
+    selfAccepted: stage === "accepted",
+  }));
+
+const awaitsAnswer = (state: DuelState) =>
+  state.phase === "proposed" && state.proposal.stage === "pending";
 
 // The Duel from the server's state: Countdown first, the next frame starts it if already due.
 const playing = (
@@ -606,15 +625,17 @@ export const useDuelStore = create<DuelStore>()((set, get) => ({
   acceptProposal: () => {
     const { state } = get();
 
-    if (state.phase === "proposed" && state.proposal.stage === "pending") {
+    if (awaitsAnswer(state)) {
       send({ type: "accept-proposal" });
-      set({
-        state: updateProposal(state, (proposal) => ({
-          ...proposal,
-          stage: "accepted",
-          selfAccepted: true,
-        })),
-      });
+      set({ state: answered(state, "accepted") });
+    }
+  },
+  declineProposal: () => {
+    const { state } = get();
+
+    if (awaitsAnswer(state)) {
+      send({ type: "decline-proposal" });
+      set({ state: answered(state, "declined") });
     }
   },
   leave: () => send({ type: "leave-duel" }),

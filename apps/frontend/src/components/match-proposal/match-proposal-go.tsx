@@ -22,6 +22,7 @@ export const MatchProposalGo = ({ opponent, pairing }: MatchProposalGoProps) => 
       opponentAccepted: true,
     }}
     onAccept={noop}
+    onDecline={noop}
     onSearchAgain={noop}
     onSolo={noop}
   />

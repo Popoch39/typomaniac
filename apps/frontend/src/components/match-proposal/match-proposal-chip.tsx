@@ -10,7 +10,9 @@ const TONES: Record<PlayerStatus, string> = {
   turn: "bg-card text-muted-foreground",
   ready: "bg-win/14 text-win",
   thinking: "bg-card text-muted-foreground",
+  declined: "bg-destructive/14 text-destructive",
   missed: "bg-destructive/14 text-destructive",
+  requeued: "bg-card text-muted-foreground",
 };
 
 // Under a player's name: where they stand, a check once ready, a spinner while thinking.

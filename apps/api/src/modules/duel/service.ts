@@ -38,6 +38,10 @@ export const PROPOSAL_MS = 10_000;
 // Between the double acceptance of a Match proposal and the Countdown: « C'est parti ! ».
 const ACCEPTED_MS = 1000;
 
+// How long the User whose opponent declined or let the Match proposal run out waits before being
+// back in the Queue: « Reprise automatique dans 3 s ».
+const REQUEUE_MS = 3000;
+
 // How long a player whose connection dropped has to come back before forfeiting.
 const RECONNECT_GRACE_MS = 10_000;
 
@@ -130,6 +134,10 @@ export class DuelQueue implements ChallengeArena {
   // The Match proposal of each User in one: out of the Queue, not in a Duel yet.
   readonly #proposals = new Map<string, Proposal>();
 
+  // The entry of the Queue of each User whose opponent declined or let their Match proposal run
+  // out, until it is back in the Queue: a new entry each time, whose identity its timer checks.
+  readonly #returning = new Map<string, QueueEntry>();
+
   // The write of each User's last Duel, until it is done: their Pace waits for it. It gives the id
   // the Duel was written under, null if the write failed.
   readonly #saving = new Map<string, Promise<string | null>>();
@@ -212,8 +220,19 @@ export class DuelQueue implements ChallengeArena {
     }
 
     switch (message.type) {
+      // During a Match proposal, a refusal; on the way back to the Queue, the way back given up.
       case "leave-queue":
-        this.#leaveQueue(userId);
+        if (this.#proposals.has(userId)) {
+          this.#decline(userId);
+        } else if (this.#returning.delete(userId)) {
+          this.#tellOthers(userId);
+        } else {
+          this.#leaveQueue(userId);
+        }
+
+        break;
+      case "decline-proposal":
+        this.#decline(userId);
         break;
       case "keystrokes":
         this.#type(userId, message.keystrokes);
@@ -297,6 +316,7 @@ export class DuelQueue implements ChallengeArena {
       }
 
       this.#queue.delete(user.id);
+      this.#returning.delete(user.id);
       this.#missed.delete(user.id);
       this.#playOn(user.id, connection);
     }
@@ -312,13 +332,17 @@ export class DuelQueue implements ChallengeArena {
   // The User's place as a connection that does not play it is told. A Duel whose end they were not
   // told is still their place: only a connection that resumes it is told the end. Still being
   // read, the Queue is no place yet: it becomes one with `queued`. A Match proposal is still the
-  // Queue's.
+  // Queue's, and so is the way back to it.
   #placeOf(userId: string): ServerMessage {
     if (this.isInDuel(userId) || this.#missed.has(userId)) {
       return { type: "elsewhere", place: "duel" };
     }
 
-    if (this.#queue.get(userId)?.user || this.#proposals.has(userId)) {
+    if (
+      this.#queue.get(userId)?.user ||
+      this.#proposals.has(userId) ||
+      this.#returning.has(userId)
+    ) {
       return { type: "elsewhere", place: "queue" };
     }
 
@@ -586,6 +610,14 @@ export class DuelQueue implements ChallengeArena {
       return;
     }
 
+    const returning = this.#returning.get(userId);
+
+    if (returning) {
+      this.#requeue(userId, returning);
+
+      return;
+    }
+
     const queued = this.#queue.get(userId);
 
     if (queued) {
@@ -810,15 +842,85 @@ export class DuelQueue implements ChallengeArena {
     this.#start(players, ACCEPTED_MS);
   }
 
-  // Out of time before both accepted: both are out of the Queue.
+  // Declining, or leaving the Queue during a Match proposal.
+  #decline(userId: string) {
+    const proposal = this.#proposals.get(userId);
+
+    if (proposal) {
+      this.#endProposal(proposal, (id) => id === userId, "declined");
+    }
+  }
+
+  // Out of time before both accepted: whoever did not answer missed it.
   #expire(proposal: Proposal) {
-    for (const { user } of proposal.players) {
-      if (this.#proposals.get(user.id) === proposal) {
-        this.#proposals.delete(user.id);
-        this.#send(user.id, { type: "proposal-ended", reason: "missed" });
+    if (this.#proposals.get(proposal.players[0].user.id) === proposal) {
+      this.#endProposal(proposal, (id) => !proposal.accepted.has(id), "missed");
+    }
+  }
+
+  // The Match proposal ends without a Duel: those at fault are out of the Queue, without losing
+  // anything; the other one is told, and is back in it REQUEUE_MS later, as when they joined (or at
+  // once on `join-queue`). Their acceptance is forgotten. A disconnection meanwhile changes
+  // nothing: back in time, `join-queue` brings them back at once.
+  #endProposal(
+    proposal: Proposal,
+    atFault: (userId: string) => boolean,
+    reason: "declined" | "missed",
+  ) {
+    for (const { user, pace, form, rating, joinedAt } of proposal.players) {
+      this.#proposals.delete(user.id);
+
+      if (atFault(user.id)) {
+        this.#send(user.id, { type: "proposal-ended", reason });
         this.#tellOthers(user.id);
+      } else {
+        const entry: QueueEntry = { user, paced: { pace, form, rating }, joinedAt };
+
+        this.#returning.set(user.id, entry);
+        this.#send(user.id, { type: "proposal-ended", reason: `opponent-${reason}` });
+        this.#clock.at(this.#clock.now() + REQUEUE_MS, () => {
+          if (this.#returning.get(user.id) === entry) {
+            this.#requeue(user.id, entry);
+          }
+        });
       }
     }
+  }
+
+  // Back in the Queue at their place of arrival (a Map iterates in insertion order): their window
+  // as wide as it was, and their wait shown from when they joined. Without a connection that plays
+  // their place anymore, they are out.
+  #requeue(userId: string, entry: QueueEntry) {
+    this.#returning.delete(userId);
+
+    if (!this.#playing.has(userId)) {
+      this.#tellOthers(userId);
+
+      return;
+    }
+
+    const later: [string, QueueEntry][] = [];
+
+    for (const queued of this.#queue) {
+      if (queued[1].joinedAt > entry.joinedAt) {
+        later.push(queued);
+      }
+    }
+
+    for (const [id] of later) {
+      this.#queue.delete(id);
+    }
+
+    this.#queue.set(userId, entry);
+
+    for (const [id, queued] of later) {
+      this.#queue.set(id, queued);
+    }
+
+    this.#send(userId, { type: "queued" });
+    this.#send(userId, this.#statusOf(entry));
+    this.#queueChanged();
+    this.#pair();
   }
 
   // Seed drawn here, same format for every Duel, the Countdown starting in `delay` ms. Each player

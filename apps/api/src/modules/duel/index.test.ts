@@ -1684,7 +1684,7 @@ describe("duel socket", () => {
       await ada.settle();
     });
 
-    test("out of time before both accepted, both leave the Queue", async () => {
+    test("out of time before either accepted, both leave the Queue", async () => {
       const cookie = await signedIn("Ada");
       const ada = await queued(cookie);
       const alan = await queued(await signedIn("Alan"));
@@ -1692,8 +1692,6 @@ describe("duel socket", () => {
 
       await Promise.all([ada.next(), alan.next()]);
       expect(await watching.next()).toEqual({ type: "elsewhere", place: "queue" });
-      ada.send({ type: "accept-proposal" });
-      await alan.next();
 
       setNow(NOW + 9999);
       await ada.settle();
@@ -1703,12 +1701,190 @@ describe("duel socket", () => {
       expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "missed" });
       expect(await watching.next()).toEqual({ type: "idle" });
 
-      // Accepting now changes nothing, and neither is paired with the next User.
+      // Accepting now changes nothing, and neither is paired with the next User, even later.
       alan.send({ type: "accept-proposal" });
 
       const grace = await queued(await signedIn("Grace"));
 
+      setNow(NOW + 13_000);
       await Promise.all([ada.settle(), alan.settle(), grace.settle()]);
+    });
+
+    test("out of time, the one who did not answer leaves the Queue, the other is told", async () => {
+      const ada = await queued(await signedIn("Ada"));
+      const alan = await queued(await signedIn("Alan"));
+
+      await Promise.all([ada.next(), alan.next()]);
+      ada.send({ type: "accept-proposal" });
+      await alan.next();
+
+      setNow(NOW + 10_000);
+      expect(await ada.next()).toEqual({ type: "proposal-ended", reason: "opponent-missed" });
+      expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "missed" });
+
+      // Back in the Queue 3 s later, as when they joined; Alan is not.
+      setNow(NOW + 12_999);
+      await ada.settle();
+      setNow(NOW + 13_000);
+      expect(await ada.next()).toEqual({ type: "queued" });
+      expect(await ada.nextQueueStatus()).toMatchObject({ joinedAt: NOW, size: 1 });
+      await alan.settle();
+    });
+
+    test("declining ends it: the decliner leaves the Queue, the other is told", async () => {
+      const cookie = await signedIn("Ada");
+      const ada = await queued(cookie);
+      const alan = await queued(await signedIn("Alan"));
+      const watching = await connect(cookie);
+
+      await Promise.all([ada.next(), alan.next()]);
+      await watching.next();
+      alan.send({ type: "accept-proposal" });
+      await ada.next();
+
+      setNow(NOW + 2000);
+      ada.send({ type: "decline-proposal" });
+      expect(await ada.next()).toEqual({ type: "proposal-ended", reason: "declined" });
+      expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "opponent-declined" });
+      expect(await watching.next()).toEqual({ type: "idle" });
+
+      // Its time running out later changes nothing: Alan is back in the Queue, Ada is not.
+      setNow(NOW + 10_000);
+      expect(await alan.next()).toEqual({ type: "queued" });
+      await Promise.all([ada.settle(), alan.settle()]);
+    });
+
+    test("leaving the Queue during a Match proposal declines it", async () => {
+      const ada = await queued(await signedIn("Ada"));
+      const alan = await queued(await signedIn("Alan"));
+
+      await Promise.all([ada.next(), alan.next()]);
+      ada.send({ type: "leave-queue" });
+      expect(await ada.next()).toEqual({ type: "proposal-ended", reason: "declined" });
+      expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "opponent-declined" });
+    });
+
+    test("the other is back in the Queue 3 s later, as when they joined, and paired again", async () => {
+      const ada = await queued(await signedIn("Ada"));
+      const alan = await queued(await signedIn("Alan"));
+
+      await Promise.all([ada.next(), alan.next()]);
+      setNow(NOW + 4000);
+      alan.send({ type: "decline-proposal" });
+      await Promise.all([ada.next(), alan.next()]);
+
+      // The decliner is out: nobody to pair a newcomer with.
+      setNow(NOW + 5000);
+
+      const grace = await queued(await signedIn("Grace"));
+
+      await Promise.all([ada.settle(), grace.settle(), alan.settle()]);
+      ada.queueStatuses();
+
+      setNow(NOW + 7000);
+      expect(await ada.next()).toEqual({ type: "queued" });
+      expect(await ada.nextQueueStatus()).toMatchObject({ joinedAt: NOW, serverTime: NOW + 7000 });
+      expect(await ada.next()).toMatchObject({
+        type: "match-proposed",
+        opponent: { handle: "grace" },
+        selfAccepted: false,
+        opponentAccepted: false,
+      });
+      expect(await grace.next()).toMatchObject({
+        type: "match-proposed",
+        opponent: { handle: "ada" },
+      });
+    });
+
+    test("joining the Queue brings the other back at once", async () => {
+      const cookie = await signedIn("Ada");
+      const ada = await queued(cookie);
+      const alan = await queued(await signedIn("Alan"));
+      const watching = await connect(cookie);
+
+      await Promise.all([ada.next(), alan.next()]);
+      await watching.next();
+      alan.send({ type: "decline-proposal" });
+      await Promise.all([ada.next(), alan.next()]);
+      await ada.settle();
+      ada.queueStatuses();
+
+      setNow(NOW + 1000);
+      ada.send({ type: "join-queue" });
+      expect(await ada.next()).toEqual({ type: "queued" });
+      expect(await ada.nextQueueStatus()).toMatchObject({ joinedAt: NOW, serverTime: NOW + 1000 });
+
+      // Not twice.
+      setNow(NOW + 4000);
+      await Promise.all([ada.settle(), watching.settle()]);
+    });
+
+    test("reloading before the 3 s are up keeps the other's place in the Queue", async () => {
+      const cookie = await signedIn("Ada");
+      const ada = await queued(cookie);
+      const alan = await queued(await signedIn("Alan"));
+
+      await Promise.all([ada.next(), alan.next()]);
+      alan.send({ type: "decline-proposal" });
+      await Promise.all([ada.next(), alan.next()]);
+      ada.socket.close();
+      await ada.closed;
+
+      setNow(NOW + 1000);
+
+      const back = await connect(cookie);
+
+      expect(await back.next()).toEqual({ type: "elsewhere", place: "queue" });
+      back.send({ type: "join-queue" });
+      expect(await back.next()).toEqual({ type: "queued" });
+      expect(await back.nextQueueStatus()).toMatchObject({ joinedAt: NOW });
+    });
+
+    test("away when the 3 s are up, the other is out of the Queue", async () => {
+      const cookie = await signedIn("Ada");
+      const ada = await queued(cookie);
+      const alan = await queued(await signedIn("Alan"));
+      const watching = await connect(cookie);
+
+      await Promise.all([ada.next(), alan.next()]);
+      await watching.next();
+      alan.send({ type: "decline-proposal" });
+      await Promise.all([ada.next(), alan.next()]);
+      ada.socket.close();
+      await ada.closed;
+
+      setNow(NOW + 3000);
+      expect(await watching.next()).toEqual({ type: "idle" });
+    });
+
+    test("leaving before the 3 s are up keeps the other out of the Queue", async () => {
+      const ada = await queued(await signedIn("Ada"));
+      const alan = await queued(await signedIn("Alan"));
+
+      await Promise.all([ada.next(), alan.next()]);
+      alan.send({ type: "decline-proposal" });
+      await Promise.all([ada.next(), alan.next()]);
+      ada.send({ type: "leave-queue" });
+      await ada.settle();
+
+      setNow(NOW + 3000);
+
+      const grace = await queued(await signedIn("Grace"));
+
+      await Promise.all([ada.settle(), grace.settle()]);
+    });
+
+    test("a declined Match proposal does not count for the Estimated wait", async () => {
+      const { ada, alan } = await queuedApart(1000, 1250);
+
+      setNow(NOW + 15_000);
+      await Promise.all([ada.next(), alan.next()]);
+      ada.send({ type: "decline-proposal" });
+      await Promise.all([ada.next(), alan.next()]);
+
+      const grace = await queued(await signedIn("Grace"));
+
+      expect(await grace.nextQueueStatus()).toMatchObject({ estimatedWait: null });
     });
 
     test("an unanswered Match proposal does not count for the Estimated wait", async () => {

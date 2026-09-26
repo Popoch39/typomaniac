@@ -39,7 +39,13 @@ const at = (stage: ProposalStage, accepted: Partial<ProposalView> = {}): Proposa
 
 const shown = (proposal: ProposalView) => {
   const queryClient = new QueryClient();
-  const handlers = { onAccept: vi.fn(), onSearchAgain: vi.fn(), onSolo: vi.fn() };
+
+  const handlers = {
+    onAccept: vi.fn(),
+    onDecline: vi.fn(),
+    onSearchAgain: vi.fn(),
+    onSolo: vi.fn(),
+  };
 
   queryClient.setQueryData(meQueryOptions.queryKey, me);
   render(
@@ -90,6 +96,19 @@ describe("MatchProposalDialog", () => {
     expect(onAccept).toHaveBeenCalledTimes(2);
   });
 
+  test("Refuser or Échap declines", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const { onDecline, onAccept } = shown(pending);
+
+    await user.click(await screen.findByRole("button", { name: /Refuser/ }));
+    expect(onDecline).toHaveBeenCalledTimes(1);
+
+    await user.keyboard("{Escape}");
+    expect(onDecline).toHaveBeenCalledTimes(2);
+    expect(onAccept).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
   test("the count and the ring turn to the alert in the last 3 seconds", async () => {
     shown(pending);
 
@@ -104,7 +123,10 @@ describe("MatchProposalDialog", () => {
 
   test("accepted: waiting for the opponent, who is shown ready once they accept", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    const { onAccept } = shown(at("accepted", { selfAccepted: true, opponentAccepted: true }));
+
+    const { onAccept, onDecline } = shown(
+      at("accepted", { selfAccepted: true, opponentAccepted: true }),
+    );
 
     expect(await screen.findByRole("dialog", { name: "Accepté" })).toHaveAccessibleDescription(
       "On attend la réponse de kaelis.",
@@ -113,9 +135,11 @@ describe("MatchProposalDialog", () => {
     expect(screen.getAllByText("Prêt")).toHaveLength(2);
     expect(screen.queryByRole("button", { name: /Accepter/ })).not.toBeInTheDocument();
 
-    // Entrée does nothing anymore.
+    // Entrée and Échap do nothing anymore.
     await user.keyboard("{Enter}");
+    await user.keyboard("{Escape}");
     expect(onAccept).not.toHaveBeenCalled();
+    expect(onDecline).not.toHaveBeenCalled();
   });
 
   test("accepted by both: « C'est parti ! », GO and Au Face-off", async () => {
@@ -127,17 +151,48 @@ describe("MatchProposalDialog", () => {
     expect(screen.getByText("Au Face-off")).toBeInTheDocument();
   });
 
-  test("out of time: searching again or back to Solo", async () => {
+  test.each([
+    ["declined", "Duel refusé", "Refusé"],
+    ["missed", "Temps écoulé", "Pas de réponse"],
+  ] as const)(
+    "%s: out of the Queue, searching again or back to Solo",
+    async (stage, title, chip) => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { onSearchAgain, onSolo, onDecline } = shown(at(stage));
+
+      expect(await screen.findByRole("dialog", { name: title })).toBeInTheDocument();
+      expect(screen.getByText(chip)).toBeInTheDocument();
+      expect(screen.getByText("Remis en file")).toBeInTheDocument();
+      expect(screen.getByText("–")).not.toHaveClass("text-destructive");
+      expect(screen.getByText("annulé")).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: "Relancer la recherche" }));
+      await user.click(screen.getByRole("button", { name: "Retour au Solo" }));
+      await user.keyboard("{Escape}");
+      expect(onSearchAgain).toHaveBeenCalledTimes(1);
+      expect(onSolo).toHaveBeenCalledTimes(1);
+      expect(onDecline).not.toHaveBeenCalled();
+    },
+  );
+
+  test.each([
+    ["opponent-declined", "kaelis a refusé", "Refusé"],
+    ["opponent-missed", "kaelis n'a pas répondu", "Pas de réponse"],
+  ] as const)("%s: the search goes on, at once on demand", async (stage, title, chip) => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    const { onSearchAgain, onSolo } = shown(at("missed"));
+    const { onSearchAgain } = shown(at(stage, { selfAccepted: true }));
 
-    expect(await screen.findByRole("dialog", { name: "Temps écoulé" })).toBeInTheDocument();
-    expect(screen.getAllByText("Pas de réponse")).toHaveLength(2);
+    expect(await screen.findByRole("dialog", { name: title })).toHaveAccessibleDescription(
+      "Tu gardes ta place en tête de file, la recherche reprend.",
+    );
+    expect(screen.getByText(chip)).toBeInTheDocument();
+    expect(screen.getByText("Prêt")).toBeInTheDocument();
     expect(screen.getByText("annulé")).toBeInTheDocument();
+    expect(screen.getByText(/Reprise automatique dans/)).toHaveTextContent(
+      "Reprise automatique dans 3 s",
+    );
 
-    await user.click(screen.getByRole("button", { name: "Relancer la recherche" }));
-    await user.click(screen.getByRole("button", { name: "Retour au Solo" }));
+    await user.click(screen.getByRole("button", { name: "Reprendre la recherche" }));
     expect(onSearchAgain).toHaveBeenCalledTimes(1);
-    expect(onSolo).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,11 +1,14 @@
 import type { Ref } from "react";
 import { CheckIcon } from "lucide-react";
 
+import { REQUEUE_SECONDS } from "@/components/match-proposal/match-proposal-copy";
 import { Button } from "@/components/ui/button";
 import type { ProposalStage } from "@/stores/duel-store";
 
 export type MatchProposalHandlers = {
   onAccept: () => void;
+  onDecline: () => void;
+  // Back to the Queue: after leaving it, or at once when the opponent was at fault.
   onSearchAgain: () => void;
   onSolo: () => void;
 };
@@ -25,13 +28,15 @@ const SECONDARY = `${ACTION} bg-muted text-base font-bold`;
 
 const KEY = "rounded-md px-1.75 py-0.75 font-mono text-[0.6875rem] font-medium";
 
-// What the User can do at each stage: accept (Entrée) while it is theirs to answer, wait for the
-// opponent, go to the Face-off, or once the time ran out, search again or go back to Solo.
+// What the User can do at each stage: decline (Échap) or accept (Entrée) while it is theirs to
+// answer, wait for the opponent, go to the Face-off; once out of the Queue, search again or go back
+// to Solo; once the opponent was at fault, search again without waiting for the server to.
 export const MatchProposalActions = ({
   stage,
   opponent,
   acceptRef,
   onAccept,
+  onDecline,
   onSearchAgain,
   onSolo,
 }: MatchProposalActionsProps) => {
@@ -39,8 +44,7 @@ export const MatchProposalActions = ({
     case "pending":
       return (
         <div className="grid w-full grid-cols-[1fr_1.6fr] gap-3">
-          {/* Declining comes with the next slice of the Match proposal. */}
-          <Button variant="secondary" disabled className={SECONDARY}>
+          <Button variant="secondary" onClick={onDecline} className={SECONDARY}>
             Refuser
             <kbd className={`${KEY} bg-card text-muted-foreground`}>Échap</kbd>
           </Button>
@@ -71,6 +75,20 @@ export const MatchProposalActions = ({
           Au Face-off
         </div>
       );
+    case "opponent-declined":
+    case "opponent-missed":
+      return (
+        <div className="flex w-full flex-col gap-2.5">
+          <Button onClick={onSearchAgain} className={PRIMARY}>
+            Reprendre la recherche
+          </Button>
+          <p className="text-center text-[0.8125rem] text-muted-foreground">
+            Reprise automatique dans{" "}
+            <span className="font-mono text-foreground">{REQUEUE_SECONDS} s</span>
+          </p>
+        </div>
+      );
+    case "declined":
     case "missed":
       return (
         <div className="grid w-full grid-cols-[1fr_1.6fr] gap-3">

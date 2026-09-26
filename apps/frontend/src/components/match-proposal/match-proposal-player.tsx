@@ -14,28 +14,34 @@ type MatchProposalPlayerProps = {
   status: PlayerStatus;
   // This User: « (toi) » after the Handle, their avatar in the accent.
   self?: boolean;
+  // Greyed out: the opponent, once the Match proposal ended without a Duel.
+  faded?: boolean;
 };
 
 const RINGS: Record<PlayerStatus, string> = {
   turn: "ring-2 ring-primary",
   ready: "ring-2 ring-win",
   thinking: "",
-  missed: "opacity-55",
+  declined: "",
+  missed: "",
+  requeued: "",
 };
 
 // One of the two players of the Match proposal: avatar, Handle, rank and where they stand, their
-// card ringed in the accent while it is their turn, in green once ready, faded once out.
+// card ringed in the accent while it is their turn, in green once ready.
 export const MatchProposalPlayer = ({
   handle,
   image,
   rank,
   status,
   self = false,
+  faded = false,
 }: MatchProposalPlayerProps) => (
   <div
     className={cn(
       "flex flex-col items-center gap-3 rounded-[1.375rem] bg-muted px-3 py-5 transition-[box-shadow,opacity] duration-300",
       RINGS[status],
+      faded && "opacity-55",
     )}
   >
     <Avatar className="size-21 rounded-[33%] after:hidden">

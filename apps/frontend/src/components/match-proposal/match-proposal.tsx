@@ -5,9 +5,11 @@ import { type ProposalView, useDuelStore } from "@/stores/duel-store";
 import { usePlayStore } from "@/stores/play-store";
 
 // The Match proposal of the Queue, over its screen: accepting (a click or Entrée) lets the
-// Face-off sound; once the time ran out, back to the Queue or to Solo.
+// Face-off sound; once ended without a Duel, back to the Queue (joining it again lets the sound
+// too) or to Solo.
 export const MatchProposal = ({ proposal }: { proposal: ProposalView }) => {
   const acceptProposal = useDuelStore((store) => store.acceptProposal);
+  const declineProposal = useDuelStore((store) => store.declineProposal);
   const setPlay = usePlayStore((state) => state.setPlay);
   const { unlock } = useFaceOffSounds();
   const searchDuel = useSearchDuel();
@@ -21,6 +23,7 @@ export const MatchProposal = ({ proposal }: { proposal: ProposalView }) => {
     <MatchProposalDialog
       proposal={proposal}
       onAccept={accept}
+      onDecline={declineProposal}
       onSearchAgain={searchDuel}
       onSolo={() => setPlay("solo")}
     />

@@ -300,11 +300,51 @@ describe("the Duel on the app's connection", () => {
       server().receive({ type: "proposal-ended", reason: "missed" });
 
       expect(proposal()).toMatchObject({ stage: "missed", selfAccepted: false });
+      expect(useConnectionStore.getState().place).toEqual({ at: "idle" });
 
       useDuelStore.getState().joinQueue();
       server().receive({ type: "queued" });
       expect(phase()).toBe("queued");
     });
+
+    test("declining tells the server once, and says the User left the Queue", () => {
+      inQueue();
+      server().receive(matchProposed);
+      useDuelStore.getState().declineProposal();
+      useDuelStore.getState().declineProposal();
+
+      expect(server().sent).toEqual([{ type: "join-queue" }, { type: "decline-proposal" }]);
+      expect(proposal()?.stage).toBe("declined");
+
+      server().receive({ type: "proposal-ended", reason: "declined" });
+      expect(proposal()?.stage).toBe("declined");
+      expect(useConnectionStore.getState().place).toEqual({ at: "idle" });
+    });
+
+    test("declining is only for a Match proposal still to answer", () => {
+      inQueue();
+      server().receive(matchProposed);
+      useDuelStore.getState().acceptProposal();
+      useDuelStore.getState().declineProposal();
+
+      expect(server().sent).toEqual([{ type: "join-queue" }, { type: "accept-proposal" }]);
+    });
+
+    test.each(["opponent-declined", "opponent-missed"] as const)(
+      "%s, the User keeps their acceptance and is back in the Queue once told",
+      (reason) => {
+        inQueue();
+        server().receive(matchProposed);
+        useDuelStore.getState().acceptProposal();
+        server().receive({ type: "proposal-ended", reason });
+
+        expect(proposal()).toMatchObject({ stage: reason, selfAccepted: true });
+        expect(useConnectionStore.getState().place).toEqual({ at: "queue", here: true });
+
+        server().receive({ type: "queued" });
+        expect(useDuelStore.getState().state).toEqual({ phase: "queued", queue: null });
+      },
+    );
 
     test("comes back as it stood, joining the Queue again from another tab", () => {
       enter();

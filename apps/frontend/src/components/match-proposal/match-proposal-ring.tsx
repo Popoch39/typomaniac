@@ -1,6 +1,10 @@
 import { cn } from "cn";
 
-import { ALERT_SECONDS, PROPOSAL_SECONDS } from "@/components/match-proposal/match-proposal-copy";
+import {
+  ALERT_SECONDS,
+  isCancelled,
+  PROPOSAL_SECONDS,
+} from "@/components/match-proposal/match-proposal-copy";
 import type { ProposalStage } from "@/stores/duel-store";
 
 type MatchProposalRingProps = { stage: ProposalStage; secondsLeft: number };
@@ -11,23 +15,22 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 // The count at the centre and the word under it.
 const countOf = (stage: ProposalStage, secondsLeft: number) => {
-  switch (stage) {
-    case "ready":
-      return { count: "GO", unit: "Face-off" };
-    case "missed":
-      return { count: "–", unit: "annulé" };
-    case "pending":
-    case "accepted":
-      return { count: String(secondsLeft), unit: "secondes" };
+  if (stage === "ready") {
+    return { count: "GO", unit: "Face-off" };
   }
+
+  return isCancelled(stage)
+    ? { count: "–", unit: "annulé" }
+    : { count: String(secondsLeft), unit: "secondes" };
 };
 
 // Between the two players: the time left to answer as a ring that empties, in the alert colour
-// in the last seconds; full and green once both accepted, empty once the time ran out.
+// in the last seconds; full and green once both accepted, empty once it ended without a Duel.
 export const MatchProposalRing = ({ stage, secondsLeft }: MatchProposalRingProps) => {
   const ready = stage === "ready";
-  const alert = !ready && stage !== "missed" && secondsLeft <= ALERT_SECONDS;
-  const filled = ready ? 1 : stage === "missed" ? 0 : secondsLeft / PROPOSAL_SECONDS;
+  const cancelled = isCancelled(stage);
+  const alert = !ready && !cancelled && secondsLeft <= ALERT_SECONDS;
+  const filled = ready ? 1 : cancelled ? 0 : secondsLeft / PROPOSAL_SECONDS;
   const { count, unit } = countOf(stage, secondsLeft);
 
   return (

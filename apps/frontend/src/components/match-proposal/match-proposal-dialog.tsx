@@ -9,6 +9,7 @@ import {
 } from "@/components/match-proposal/match-proposal-actions";
 import { MatchProposalAnnouncer } from "@/components/match-proposal/match-proposal-announcer";
 import {
+  isCancelled,
   opponentStatus,
   proposalHeadline,
   selfStatus,
@@ -27,16 +28,16 @@ type MatchProposalDialogProps = MatchProposalHandlers & {
   modal?: boolean;
 };
 
-// Closing is not the User's to do: the server ends the Match proposal.
-const stayOpen = () => {};
-
 // The Match proposal over the page, as in the Match found mock-up: the format and what the stage
 // says, both players with the time left between them, then what the User can do. Entrée accepts,
-// and the focus goes to Accepter.
+// Échap declines, both only while it waits for an answer, and the focus goes to Accepter. Once it
+// ends without a Duel, the opponent's card fades: out of the Queue, or back in it while the User
+// is out.
 export const MatchProposalDialog = ({
   proposal,
   modal = true,
   onAccept,
+  onDecline,
   onSearchAgain,
   onSolo,
 }: MatchProposalDialogProps) => {
@@ -44,12 +45,20 @@ export const MatchProposalDialog = ({
   const acceptRef = useRef<HTMLButtonElement>(null);
   const left = useSecondsLeft(proposal.expiresAt);
   const { stage, opponent } = proposal;
-  const headline = proposalHeadline(stage, opponent.handle, proposal.selfAccepted);
+  const headline = proposalHeadline(stage, opponent.handle);
 
   useAcceptOnEnter(stage === "pending", onAccept);
 
+  // Closing is not the User's to do: the server ends the Match proposal. Échap declines instead,
+  // while it waits for an answer.
+  const dismissed = (_open: boolean, { reason }: Dialog.Root.ChangeEventDetails) => {
+    if (reason === "escape-key" && stage === "pending") {
+      onDecline();
+    }
+  };
+
   return (
-    <Dialog.Root open modal={modal} onOpenChange={stayOpen}>
+    <Dialog.Root open modal={modal} onOpenChange={dismissed}>
       <Dialog.Portal>
         <Dialog.Backdrop className="fixed inset-0 z-[60] bg-background/78 backdrop-blur-sm max-lg:hidden" />
         <Dialog.Popup
@@ -72,6 +81,7 @@ export const MatchProposalDialog = ({
               image={opponent.image}
               rank={proposal.opponentRank}
               status={opponentStatus(stage, proposal.opponentAccepted)}
+              faded={isCancelled(stage)}
             />
           </div>
           <MatchProposalActions
@@ -79,6 +89,7 @@ export const MatchProposalDialog = ({
             opponent={opponent.handle}
             acceptRef={acceptRef}
             onAccept={onAccept}
+            onDecline={onDecline}
             onSearchAgain={onSearchAgain}
             onSolo={onSolo}
           />
