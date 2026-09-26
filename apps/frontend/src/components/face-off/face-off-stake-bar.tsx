@@ -3,7 +3,7 @@ import type { Standing } from "ranked";
 
 import { TIER_COLORS } from "@/components/tier/tier";
 
-// The Division's TP bar, out of 100 (never Maître, uncapped): the TP now in the Tier's colour,
+// The Division's TP bar, out of 100 (never Maniac, uncapped): the TP now in the Tier's colour,
 // then up to `reached`, what a win would bring, in hatches of the card's colour. The timeline fills
 // the hatches in (`stake-gain`); they slide along, but not under reduced motion.
 type FaceOffStakeBarProps = { standing: Standing; reached: number };

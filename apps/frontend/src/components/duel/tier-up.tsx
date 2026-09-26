@@ -11,7 +11,7 @@ import { standingName } from "@/components/tier/tier";
 
 type TierUpProps = { tp: number; standing: Standing };
 
-// A ranked Duel that moved up into a new Tier or Maître: its moment, in place of the plain TP.
+// A ranked Duel that moved up into a new Tier or Maniac: its moment, in place of the plain TP.
 // The emblem lands in its halo with a sound, then the title, the TP won and the rank reached,
 // which fills its bar from the start of the Division. Still under reduced motion.
 export const TierUp = ({ tp, standing }: TierUpProps) => {
@@ -29,7 +29,7 @@ export const TierUp = ({ tp, standing }: TierUpProps) => {
           <TpDelta tp={tp} />
           <RankReached standing={standing} />
         </div>
-        {standing.tier === "maitre" ? null : (
+        {standing.tier === "maniac" ? null : (
           <div className="w-full">
             <TpBar before={0} after={standing.tp} />
           </div>

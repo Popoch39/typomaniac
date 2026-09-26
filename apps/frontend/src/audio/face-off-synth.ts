@@ -135,7 +135,7 @@ const FANFARE = [523.25, 659.25, 783.99, 1046.5];
 // Seconds between two notes of the fanfare.
 const FANFARE_STEP_S = 0.09;
 
-// A move up into a new Tier or Maître: a rising fanfare of bells, its last note held, over a
+// A move up into a new Tier or Maniac: a rising fanfare of bells, its last note held, over a
 // bright shimmer of airy noise.
 const rankUp = (voice: Voice) => {
   const shimmer = voice.context.createBiquadFilter();

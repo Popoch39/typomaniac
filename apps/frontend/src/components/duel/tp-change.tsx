@@ -32,7 +32,7 @@ export const TpChange = ({ kind, tp, from, standing }: TpChangeProps) => {
           <RankReached standing={standing} />
         </div>
       </div>
-      {standing.tier === "maitre" ? null : <TpBar before={before} after={standing.tp} />}
+      {standing.tier === "maniac" ? null : <TpBar before={before} after={standing.tp} />}
     </div>
   );
 };

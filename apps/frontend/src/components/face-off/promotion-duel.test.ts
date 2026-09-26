@@ -26,14 +26,14 @@ describe("promotionDuel", () => {
     });
   });
 
-  test("is a Duel pour Maître when a win reaches Maître", () => {
+  test("is a Duel pour Maniac when a win reaches Maniac", () => {
     const diamantI: Standing = { tier: "diamant", division: 1, tp: 95, shielded: false };
-    const maitre: Standing = { tier: "maitre", tp: 4, shielded: true };
+    const maniac: Standing = { tier: "maniac", tp: 4, shielded: true };
 
-    expect(promotionDuel(diamantI, stakeTo(maitre, diamantI))).toEqual({
-      title: "Duel pour Maître",
+    expect(promotionDuel(diamantI, stakeTo(maniac, diamantI))).toEqual({
+      title: "Duel pour Maniac",
       from: diamantI,
-      to: maitre,
+      to: maniac,
     });
   });
 

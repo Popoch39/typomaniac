@@ -16,7 +16,7 @@ describe("TierBadge", () => {
       const { container, unmount } = render(
         <TierBadge
           standing={
-            tier === "maitre"
+            tier === "maniac"
               ? { tier, tp: 0, shielded: false }
               : { tier, division: 1, tp: 0, shielded: false }
           }
@@ -43,12 +43,12 @@ describe("TierBadge", () => {
     expect(container.querySelectorAll("[data-division-bar]")).toHaveLength(4);
   });
 
-  test("Maître has no Division", () => {
+  test("Maniac has no Division", () => {
     const { container } = render(
-      <TierBadge standing={{ tier: "maitre", tp: 0, shielded: false }} />,
+      <TierBadge standing={{ tier: "maniac", tp: 0, shielded: false }} />,
     );
 
     expect(container.querySelectorAll("[data-division-bar]")).toHaveLength(0);
-    expect(screen.getByText("Maître")).toBeInTheDocument();
+    expect(screen.getByText("Maniac")).toBeInTheDocument();
   });
 });

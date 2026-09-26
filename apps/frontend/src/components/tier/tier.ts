@@ -7,7 +7,7 @@ export const TIER_NAMES: Record<Tier, string> = {
   or: "Or",
   platine: "Platine",
   diamant: "Diamant",
-  maitre: "Maître",
+  maniac: "Maniac",
 };
 
 // Each Tier's colour token, so the badge reads without it too (the emblem differs).
@@ -18,13 +18,13 @@ export const TIER_COLORS: Record<Tier, string> = {
   or: "text-tier-gold",
   platine: "text-tier-platinum",
   diamant: "text-tier-diamond",
-  maitre: "text-tier-master",
+  maniac: "text-tier-maniac",
 };
 
 export const DIVISION_NUMERALS: Record<Division, string> = { 4: "IV", 3: "III", 2: "II", 1: "I" };
 
-// "Or IV", or "Maître", without Division.
+// "Or IV", or "Maniac", without Division.
 export const standingName = (standing: Standing) =>
-  standing.tier === "maitre"
-    ? TIER_NAMES.maitre
+  standing.tier === "maniac"
+    ? TIER_NAMES.maniac
     : `${TIER_NAMES[standing.tier]} ${DIVISION_NUMERALS[standing.division]}`;

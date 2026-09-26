@@ -12,7 +12,7 @@ const or = (division: 1 | 2 | 3 | 4, tp: number, shielded = false): Standing => 
 
 const ferIv = (tp: number): Standing => ({ tier: "fer", division: 4, tp, shielded: false });
 
-const maitre = (tp: number): Standing => ({ tier: "maitre", tp, shielded: false });
+const maniac = (tp: number): Standing => ({ tier: "maniac", tp, shielded: false });
 
 describe("the Stake's words", () => {
   test("an ordinary Duel: « En jeu », where a win leads, a loss only its TP", () => {
@@ -73,19 +73,19 @@ describe("the Stake's words", () => {
     });
   });
 
-  test("in Maître, TP without a cap: « En jeu », a win and a loss as ordinary", () => {
+  test("in Maniac, TP without a cap: « En jeu », a win and a loss as ordinary", () => {
     expect(
-      stakeCopy(maitre(248), {
-        win: { tp: 11, standing: maitre(259) },
-        loss: { tp: -11, standing: maitre(237) },
+      stakeCopy(maniac(248), {
+        win: { tp: 11, standing: maniac(259) },
+        loss: { tp: -11, standing: maniac(237) },
       }),
-    ).toEqual({ promotion: null, win: " → Maître · 259 TP", loss: "" });
+    ).toEqual({ promotion: null, win: " → Maniac · 259 TP", loss: "" });
   });
 
-  test("a loss that moves down from Maître leads to Diamant I at 75 TP", () => {
+  test("a loss that moves down from Maniac leads to Diamant I at 75 TP", () => {
     expect(
-      stakeCopy(maitre(5), {
-        win: { tp: 11, standing: maitre(16) },
+      stakeCopy(maniac(5), {
+        win: { tp: 11, standing: maniac(16) },
         loss: { tp: -11, standing: { tier: "diamant", division: 1, tp: 75, shielded: false } },
       }).loss,
     ).toBe(" → Diamant I · 75 TP");

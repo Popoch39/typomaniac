@@ -5,7 +5,7 @@ import { TierUp } from "@/components/duel/tier-up";
 import { TpChange } from "@/components/duel/tp-change";
 
 // What a ranked Duel did to the User's rank, on its end screen: a move up into a new Tier or
-// Maître is celebrated.
+// Maniac is celebrated.
 export const DuelRank = ({ ranked }: { ranked: DuelRanked }) => {
   const change = rankChange(ranked);
   const reached = tierReached(change);

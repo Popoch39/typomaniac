@@ -7,8 +7,8 @@ describe("rankLabel", () => {
     expect(rankLabel({ tier: "or", division: 2, tp: 42, shielded: false })).toBe("Or II · 42 TP");
   });
 
-  test("Maître without Division", () => {
-    expect(rankLabel({ tier: "maitre", tp: 250, shielded: true })).toBe("Maître · 250 TP");
+  test("Maniac without Division", () => {
+    expect(rankLabel({ tier: "maniac", tp: 250, shielded: true })).toBe("Maniac · 250 TP");
   });
 
   test("the Placement Duels left", () => {

@@ -49,7 +49,7 @@ export const rankedRating = pgTable("ranked_rating", {
   placementsPlayed: integer("placements_played").notNull(),
   // Null in Placement.
   tier: text("tier", { enum: TIERS }),
-  // Null in Placement and in Maître.
+  // Null in Placement and in Maniac.
   division: integer("division"),
   tp: integer("tp").notNull(),
   // Just moved up: the next loss below 0 TP keeps the Division.

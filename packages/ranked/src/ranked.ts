@@ -2,11 +2,11 @@
 
 const DIVISION_TIERS = ["fer", "bronze", "argent", "or", "platine", "diamant"] as const;
 
-export const TIERS = [...DIVISION_TIERS, "maitre"] as const;
+export const TIERS = [...DIVISION_TIERS, "maniac"] as const;
 
 export type Tier = (typeof TIERS)[number];
 
-// IV is the lowest Division of a Tier, I the highest. Maître has none.
+// IV is the lowest Division of a Tier, I the highest. Maniac has none.
 export const DIVISIONS = [4, 3, 2, 1] as const;
 
 export type Division = (typeof DIVISIONS)[number];
@@ -15,7 +15,7 @@ export type Division = (typeof DIVISIONS)[number];
 // goes below 0 TP, keeps the Division. Any loss spends it.
 export type Standing =
   | { tier: (typeof DIVISION_TIERS)[number]; division: Division; tp: number; shielded: boolean }
-  | { tier: "maitre"; tp: number; shielded: boolean };
+  | { tier: "maniac"; tp: number; shielded: boolean };
 
 export type Placement = { placementsLeft: number };
 
@@ -60,8 +60,8 @@ const DEMOTED_TP = 75;
 
 const DIVISIONS_PER_TIER = 4;
 
-// The Divisions from Fer IV up, then Maître as the last step.
-const MAITRE_STEP = DIVISION_TIERS.length * DIVISIONS_PER_TIER;
+// The Divisions from Fer IV up, then Maniac as the last step.
+const MANIAC_STEP = DIVISION_TIERS.length * DIVISIONS_PER_TIER;
 
 const MATCH_WINDOW = 100;
 
@@ -93,23 +93,23 @@ export const nextMmr = (
         (OUTCOME_SCORES[outcome] - expectedScore(mmr, opponentMmr)),
   );
 
-// Fer IV is step 0, Diamant I step 23, Maître step 24.
+// Fer IV is step 0, Diamant I step 23, Maniac step 24.
 export const stepOf = (standing: Standing) =>
-  standing.tier === "maitre"
-    ? MAITRE_STEP
+  standing.tier === "maniac"
+    ? MANIAC_STEP
     : DIVISION_TIERS.indexOf(standing.tier) * DIVISIONS_PER_TIER +
       DIVISIONS_PER_TIER -
       standing.division;
 
-// A move from one rank to another crosses a Tier, Maître included: what makes a Promotion Duel.
+// A move from one rank to another crosses a Tier, Maniac included: what makes a Promotion Duel.
 export const changesTier = (from: Standing, to: Standing) => from.tier !== to.tier;
 
-// The Classement's order: the higher step first, then the more TP. Maître is ordered by TP alone.
+// The Classement's order: the higher step first, then the more TP. Maniac is ordered by TP alone.
 export const byStanding = (a: Standing, b: Standing) => stepOf(b) - stepOf(a) || b.tp - a.tp;
 
 const standingAt = (step: number, tp: number, shielded: boolean): Standing => {
-  if (step >= MAITRE_STEP) {
-    return { tier: "maitre", tp, shielded };
+  if (step >= MANIAC_STEP) {
+    return { tier: "maniac", tp, shielded };
   }
 
   return {
@@ -149,12 +149,12 @@ export const tpDelta = (
 };
 
 // The rank after a Duel's TP: up a Division at 100 with the surplus carried and a shield, down to
-// the Division below at 75 when not shielded, never below Fer IV, and no cap in Maître.
+// the Division below at 75 when not shielded, never below Fer IV, and no cap in Maniac.
 export const applyTp = (standing: Standing, delta: number): Standing => {
   const tp = standing.tp + delta;
   const step = stepOf(standing);
 
-  if (step < MAITRE_STEP && tp >= DIVISION_TP) {
+  if (step < MANIAC_STEP && tp >= DIVISION_TP) {
     return standingAt(step + 1, tp - DIVISION_TP, true);
   }
 
@@ -171,7 +171,7 @@ export const applyTp = (standing: Standing, delta: number): Standing => {
 
 // The rank a User gets at the end of Placement: the Division whose expected MMR theirs reaches.
 export const rankFromMmr = (mmr: number): Standing =>
-  standingAt(clamp(Math.floor((mmr - FER_IV_MMR) / MMR_PER_DIVISION), 0, MAITRE_STEP), 0, false);
+  standingAt(clamp(Math.floor((mmr - FER_IV_MMR) / MMR_PER_DIVISION), 0, MANIAC_STEP), 0, false);
 
 // The MMR gap the Queue accepts after `waitMs` of waiting: it widens so that everyone gets a Duel.
 export const matchWindow = (waitMs: number) =>

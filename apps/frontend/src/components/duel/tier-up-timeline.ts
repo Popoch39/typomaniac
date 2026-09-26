@@ -7,7 +7,7 @@ const EMBLEM = '[data-tier-up="emblem"]';
 
 const DETAILS = '[data-tier-up="details"]';
 
-// A move up into a new Tier or Maître: the halo blooms, the emblem lands in it with an overshoot,
+// A move up into a new Tier or Maniac: the halo blooms, the emblem lands in it with an overshoot,
 // the title, TP and rank rise under it, then the halo keeps breathing. Transforms and opacity
 // only. Built inside the celebration's GSAP context: its selectors stay within it.
 export const tierUpTimeline = () =>

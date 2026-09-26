@@ -33,7 +33,7 @@ const ratingRow = (userId: string, { mmr, rank }: Rating) => ({
   shielded: "shielded" in rank ? rank.shielded : false,
 });
 
-// A row always written by ratingRow: past Placement, a Tier, and a Division below Maître.
+// A row always written by ratingRow: past Placement, a Tier, and a Division below Maniac.
 const ratingOf = (row: typeof rankedRating.$inferSelect): Rating => {
   const { mmr, placementsPlayed, tier, division, tp, shielded } = row;
 
@@ -41,7 +41,7 @@ const ratingOf = (row: typeof rankedRating.$inferSelect): Rating => {
     return { mmr, rank: { placementsLeft: PLACEMENT_DUELS - placementsPlayed } };
   }
 
-  if (tier === "maitre") {
+  if (tier === "maniac") {
     return { mmr, rank: { tier, tp, shielded } };
   }
 
@@ -56,7 +56,7 @@ const ratingOf = (row: typeof rankedRating.$inferSelect): Rating => {
 
 const pastPlacement = gte(rankedRating.placementsPlayed, PLACEMENT_DUELS);
 
-// `stepOf` of the ranked package in SQL: 4 steps per Tier, the Division within it, Maître last.
+// `stepOf` of the ranked package in SQL: 4 steps per Tier, the Division within it, Maniac last.
 const tierList = sql.raw(`array[${TIERS.map((tier) => `'${tier}'`).join(", ")}]::text[]`);
 
 const step = sql`(array_position(${tierList}, ${rankedRating.tier}) - 1) * 4 + coalesce(4 - ${rankedRating.division}, 0)`;

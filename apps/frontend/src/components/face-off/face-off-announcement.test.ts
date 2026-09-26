@@ -12,8 +12,8 @@ describe("faceOffAnnouncement", () => {
     expect(faceOffAnnouncement(-4500, "alan", "Duel de promotion")).toBe(
       "Duel de promotion contre @alan",
     );
-    expect(faceOffAnnouncement(-3100, "alan", "Duel pour Maître")).toBe(
-      "Duel pour Maître contre @alan",
+    expect(faceOffAnnouncement(-3100, "alan", "Duel pour Maniac")).toBe(
+      "Duel pour Maniac contre @alan",
     );
     expect(faceOffAnnouncement(-2000, "alan", "Duel de promotion")).toBe("2");
   });

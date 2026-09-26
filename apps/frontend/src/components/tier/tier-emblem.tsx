@@ -48,7 +48,7 @@ const EMBLEMS: Record<Tier, ReactNode> = {
       />
     </>
   ),
-  maitre: (
+  maniac: (
     <>
       <path d="M3 10 L10 16 L16 6 L22 16 L29 10 L26 25 H6 Z" />
       <path d="M6 27 H26 V29 H6 Z" />

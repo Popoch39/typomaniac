@@ -128,10 +128,10 @@ const orIv = { tier: "or" as const, division: 4 as const, tp: 15, shielded: true
 
 const intoOr = { tp: 25, previousRank: argentI, rank: orIv };
 
-const intoMaitre = {
+const intoManiac = {
   tp: 30,
   previousRank: { tier: "diamant" as const, division: 1 as const, tp: 80, shielded: false },
-  rank: { tier: "maitre" as const, tp: 10, shielded: true },
+  rank: { tier: "maniac" as const, tp: 10, shielded: true },
 };
 
 // The celebration's emblem: only seen, so found by the part its timeline animates.
@@ -252,13 +252,13 @@ describe("DuelEnded", () => {
     expect(played).toEqual(["rank-up"]);
   });
 
-  test("a Duel into Maître celebrates it", async () => {
-    await renderEnded(null, null, intoMaitre);
+  test("a Duel into Maniac celebrates it", async () => {
+    await renderEnded(null, null, intoManiac);
 
     expect(celebration()).not.toBeNull();
     const rank = screen.getByRole("region", { name: "Rang" });
 
-    expect(rank).toHaveTextContent("Nouveau Tier : Maître !");
+    expect(rank).toHaveTextContent("Nouveau Tier : Maniac !");
     expect(rank).toHaveTextContent("+30 TP");
     expect(rank).toHaveTextContent("10 TP");
     expect(played).toEqual(["rank-up"]);

@@ -31,14 +31,14 @@ export const FaceOffStake = ({ rank, stake }: FaceOffStakeProps) => {
       )}
     >
       <FaceOffStakeHeader promotion={promotion} />
-      {rank.tier === "maitre" ? null : (
+      {rank.tier === "maniac" ? null : (
         <FaceOffStakeBar
           standing={rank}
           reached={promotion === null ? stake.win.standing.tp : DIVISION_TP}
         />
       )}
       <p className="flex items-center justify-between text-sm text-muted-foreground">
-        {rank.tier === "maitre" ? null : (
+        {rank.tier === "maniac" ? null : (
           <span className="font-mono text-[0.8125rem] tabular-nums">
             <span className="text-foreground">{rank.tp}</span> / {DIVISION_TP} TP
           </span>

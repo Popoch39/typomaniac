@@ -80,14 +80,14 @@ describe("GET /api/leaderboard", () => {
     expect(await leaderboardOf(ada.cookie)).toEqual({ entries: [], me: null });
   });
 
-  test("orders by Tier, then Division, then TP, Maître by TP", async () => {
+  test("orders by Tier, then Division, then TP, Maniac by TP", async () => {
     const { newUser, leaderboardOf } = setup();
     const ada = await newUser("ada", or(4, 90));
 
-    await newUser("alan", { tier: "maitre", tp: 10, shielded: false });
+    await newUser("alan", { tier: "maniac", tp: 10, shielded: false });
     await newUser("grace", or(3, 5));
     await newUser("linus", { tier: "platine", division: 4, tp: 0, shielded: true });
-    await newUser("barbara", { tier: "maitre", tp: 320, shielded: false });
+    await newUser("barbara", { tier: "maniac", tp: 320, shielded: false });
     await newUser("ken", or(4, 20));
 
     const { entries } = await leaderboardOf(ada.cookie);

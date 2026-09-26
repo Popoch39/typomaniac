@@ -42,7 +42,7 @@ const orIv = (tp: number) => ({ tier: "or", division: 4, tp, shielded: false }) 
 
 const ferIv = (tp: number) => ({ tier: "fer", division: 4, tp, shielded: false }) as const;
 
-const maitre = (tp: number) => ({ tier: "maitre", tp, shielded: false }) as const;
+const maniac = (tp: number) => ({ tier: "maniac", tp, shielded: false }) as const;
 
 // A ranked Duel between equals, at the MMR their rank expects: 20 TP either way.
 const ranked: FaceOffPairing = {
@@ -67,12 +67,12 @@ const promotion: FaceOffPairing = {
   },
 };
 
-// A win moves Ada from Diamant I into Maître.
-const forMaitre: FaceOffPairing = {
+// A win moves Ada from Diamant I into Maniac.
+const forManiac: FaceOffPairing = {
   ...ranked,
   selfRank: diamantI(95),
   selfStake: {
-    win: { tp: 9, standing: { tier: "maitre", tp: 4, shielded: true } },
+    win: { tp: 9, standing: { tier: "maniac", tp: 4, shielded: true } },
     loss: { tp: -16, standing: diamantI(79) },
   },
 };
@@ -88,7 +88,7 @@ const division: FaceOffPairing = {
 };
 
 // The Promotion Duel's banner, found by its title.
-const banner = () => screen.queryByText(/^Duel (de promotion|pour Maître)$/);
+const banner = () => screen.queryByText(/^Duel (de promotion|pour Maniac)$/);
 
 // Only seen, around the disc: found by the part the timeline shows.
 const ring = () => document.querySelector('[data-face-off="ring"]');
@@ -322,31 +322,31 @@ describe("FaceOff", () => {
     expect(stakeCard()).toHaveTextContent("Défaite −12 TP, tu restes Fer IV · 0 TP");
   });
 
-  test("in Maître, the Stake has no bar: TP without a cap", () => {
+  test("in Maniac, the Stake has no bar: TP without a cap", () => {
     faceOffAt(-3500, {
       ...ranked,
-      selfRank: maitre(248),
+      selfRank: maniac(248),
       selfStake: {
-        win: { tp: 11, standing: maitre(259) },
-        loss: { tp: -11, standing: maitre(237) },
+        win: { tp: 11, standing: maniac(259) },
+        loss: { tp: -11, standing: maniac(237) },
       },
     });
 
     const card = stakeCard();
 
     expect(card).toHaveTextContent("En jeu");
-    expect(card).toHaveTextContent("Victoire +11 TP → Maître · 259 TP");
+    expect(card).toHaveTextContent("Victoire +11 TP → Maniac · 259 TP");
     expect(card).toHaveTextContent(/Défaite −11 TP$/);
     expect(card).not.toHaveTextContent("/ 100 TP");
     expect(card.querySelector('[data-face-off="stake-gain"]')).toBeNull();
   });
 
-  test("in Maître, a loss that moves down leads to Diamant I at 75 TP", () => {
+  test("in Maniac, a loss that moves down leads to Diamant I at 75 TP", () => {
     faceOffAt(-3500, {
       ...ranked,
-      selfRank: maitre(5),
+      selfRank: maniac(5),
       selfStake: {
-        win: { tp: 11, standing: maitre(16) },
+        win: { tp: 11, standing: maniac(16) },
         loss: { tp: -11, standing: { tier: "diamant", division: 1, tp: 75, shielded: false } },
       },
     });
@@ -395,11 +395,11 @@ describe("FaceOff", () => {
     expect(ring()).not.toBeNull();
   });
 
-  test("stages a Duel for Maître the same way", () => {
-    faceOffAt(-3500, forMaitre);
+  test("stages a Duel for Maniac the same way", () => {
+    faceOffAt(-3500, forManiac);
 
-    expect(bannerPart()).toHaveTextContent("Duel pour Maître");
-    expect(bannerPart()).toHaveTextContent("Diamant I → Maître");
+    expect(bannerPart()).toHaveTextContent("Duel pour Maniac");
+    expect(bannerPart()).toHaveTextContent("Diamant I → Maniac");
     expect(ring()).not.toBeNull();
   });
 
@@ -413,9 +413,9 @@ describe("FaceOff", () => {
   });
 
   test("announces a Promotion Duel for what it is", () => {
-    faceOffAt(-4500, forMaitre);
+    faceOffAt(-4500, forManiac);
 
-    expect(screen.getByRole("status")).toHaveTextContent("Duel pour Maître contre @alan");
+    expect(screen.getByRole("status")).toHaveTextContent("Duel pour Maniac contre @alan");
   });
 
   test("brings the banner in with the reveal and takes it out at GO", () => {

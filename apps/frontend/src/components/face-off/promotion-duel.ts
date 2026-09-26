@@ -1,6 +1,6 @@
 import { changesTier, type Rank, type Stake, type Standing } from "ranked";
 
-// A Promotion Duel for this User: a win would move them to another Tier or into Maître. Its title
+// A Promotion Duel for this User: a win would move them to another Tier or into Maniac. Its title
 // heads the banner and the announcement; `from` is the rank held, `to` the rank a win reaches.
 export type PromotionDuel = { title: string; from: Standing; to: Standing };
 
@@ -17,5 +17,5 @@ export const promotionDuel = (rank: Rank | null, stake: Stake | null): Promotion
     return null;
   }
 
-  return { title: to.tier === "maitre" ? "Duel pour Maître" : "Duel de promotion", from: rank, to };
+  return { title: to.tier === "maniac" ? "Duel pour Maniac" : "Duel de promotion", from: rank, to };
 };

@@ -57,12 +57,12 @@ describe("rankChange", () => {
     });
   });
 
-  test("up into Maître", () => {
+  test("up into Maniac", () => {
     expect(
       rankChange({
         tp: 30,
         previousRank: { tier: "diamant", division: 1, tp: 80, shielded: false },
-        rank: { tier: "maitre", tp: 10, shielded: true },
+        rank: { tier: "maniac", tp: 10, shielded: true },
       }),
     ).toMatchObject({ kind: "promoted", newTier: true });
   });
@@ -83,16 +83,16 @@ describe("tierReached", () => {
     ).toEqual(orIv);
   });
 
-  test("is Maître when a Duel moves up into it", () => {
-    const maitre = { tier: "maitre" as const, tp: 10, shielded: true };
+  test("is Maniac when a Duel moves up into it", () => {
+    const maniac = { tier: "maniac" as const, tp: 10, shielded: true };
 
     expect(
       change({
         tp: 30,
         previousRank: { tier: "diamant", division: 1, tp: 80, shielded: false },
-        rank: maitre,
+        rank: maniac,
       }),
-    ).toEqual(maitre);
+    ).toEqual(maniac);
   });
 
   test("is none for a move up a Division, a demotion out of a Tier, or TP within the Division", () => {

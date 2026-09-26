@@ -45,7 +45,7 @@ describe("FaceOffLab", () => {
     expect(stakeCard()).toHaveTextContent("Gagne et passe Or II");
   });
 
-  test("stages a Promotion Duel, then a Duel for Maître", async () => {
+  test("stages a Promotion Duel, then a Duel for Maniac", async () => {
     renderLab();
 
     await userEvent.click(screen.getByRole("button", { name: "Face-off" }));
@@ -54,12 +54,12 @@ describe("FaceOffLab", () => {
     expect(screen.getByText("Or I → Platine IV")).toBeInTheDocument();
     expect(stakeCard()).toHaveTextContent("Défaite −11 TP, tu restes Or I");
 
-    await userEvent.click(screen.getByRole("button", { name: "Duel pour Maître" }));
-    expect(screen.getByText("Diamant I → Maître")).toBeInTheDocument();
-    expect(stakeCard()).toHaveTextContent("Gagne et passe Maître");
+    await userEvent.click(screen.getByRole("button", { name: "Duel pour Maniac" }));
+    expect(screen.getByText("Diamant I → Maniac")).toBeInTheDocument();
+    expect(stakeCard()).toHaveTextContent("Gagne et passe Maniac");
   });
 
-  test("shows the Stake of a loss that moves down, one the shield holds, Fer IV and Maître", async () => {
+  test("shows the Stake of a loss that moves down, one the shield holds, Fer IV and Maniac", async () => {
     renderLab();
 
     await userEvent.click(screen.getByRole("button", { name: "Face-off" }));
@@ -73,8 +73,8 @@ describe("FaceOffLab", () => {
     await userEvent.click(screen.getByRole("button", { name: "Fer IV" }));
     expect(stakeCard()).toHaveTextContent("Défaite −12 TP, tu restes Fer IV · 0 TP");
 
-    await userEvent.click(screen.getByRole("button", { name: "Maître" }));
-    expect(stakeCard()).toHaveTextContent("Victoire +11 TP → Maître · 259 TP");
+    await userEvent.click(screen.getByRole("button", { name: "Maniac" }));
+    expect(stakeCard()).toHaveTextContent("Victoire +11 TP → Maniac · 259 TP");
     expect(stakeCard()).not.toHaveTextContent("/ 100 TP");
   });
 

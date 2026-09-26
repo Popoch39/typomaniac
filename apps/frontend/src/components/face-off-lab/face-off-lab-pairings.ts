@@ -11,11 +11,11 @@ export type LabPairing =
   | "ranked"
   | "division"
   | "promotion"
-  | "forMaitre"
+  | "forManiac"
   | "demotion"
   | "shielded"
   | "ferIv"
-  | "maitre"
+  | "maniac"
   | "placement"
   | "challenge";
 
@@ -57,14 +57,14 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
       loss: { tp: -11, standing: { tier: "or", division: 1, tp: 80, shielded: false } },
     },
   },
-  // A Promotion Duel for Maître: a win moves this User from Diamant I into Maître.
-  forMaitre: {
+  // A Promotion Duel for Maniac: a win moves this User from Diamant I into Maniac.
+  forManiac: {
     selfRank: { tier: "diamant", division: 1, tp: 95, shielded: false },
-    opponentRank: { tier: "maitre", tp: 212, shielded: false },
+    opponentRank: { tier: "maniac", tp: 212, shielded: false },
     selfForm,
     opponentForm,
     selfStake: {
-      win: { tp: 9, standing: { tier: "maitre", tp: 4, shielded: true } },
+      win: { tp: 9, standing: { tier: "maniac", tp: 4, shielded: true } },
       loss: { tp: -16, standing: { tier: "diamant", division: 1, tp: 79, shielded: false } },
     },
   },
@@ -102,14 +102,14 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
     },
   },
   // TP without a cap: no bar.
-  maitre: {
-    selfRank: { tier: "maitre", tp: 248, shielded: false },
-    opponentRank: { tier: "maitre", tp: 310, shielded: false },
+  maniac: {
+    selfRank: { tier: "maniac", tp: 248, shielded: false },
+    opponentRank: { tier: "maniac", tp: 310, shielded: false },
     selfForm,
     opponentForm,
     selfStake: {
-      win: { tp: 11, standing: { tier: "maitre", tp: 259, shielded: false } },
-      loss: { tp: -11, standing: { tier: "maitre", tp: 237, shielded: false } },
+      win: { tp: 11, standing: { tier: "maniac", tp: 259, shielded: false } },
+      loss: { tp: -11, standing: { tier: "maniac", tp: 237, shielded: false } },
     },
   },
   // This User without a Ranked Duel yet: their Form is absent, and no TP at stake.
@@ -133,11 +133,11 @@ export const LAB_PAIRING_OPTIONS: readonly SettingOption<LabPairing>[] = [
   { value: "ranked", label: "Classé" },
   { value: "division", label: "Montée de Division" },
   { value: "promotion", label: "Duel de promotion" },
-  { value: "forMaitre", label: "Duel pour Maître" },
+  { value: "forManiac", label: "Duel pour Maniac" },
   { value: "demotion", label: "Descente" },
   { value: "shielded", label: "Protégé" },
   { value: "ferIv", label: "Fer IV" },
-  { value: "maitre", label: "Maître" },
+  { value: "maniac", label: "Maniac" },
   { value: "placement", label: "Placement" },
   { value: "challenge", label: "Challenge" },
 ];

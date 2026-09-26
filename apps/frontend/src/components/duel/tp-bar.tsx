@@ -1,7 +1,7 @@
 import { DIVISION_TP } from "ranked";
 
 // The TP of the Division out of 100: the TP before the Duel stays faint behind the bar that
-// fills up to the TP after it. Maître has no cap, so no bar.
+// fills up to the TP after it. Maniac has no cap, so no bar.
 export const TpBar = ({ before, after }: { before: number; after: number }) => (
   <div className="relative h-2 overflow-hidden rounded-full bg-muted" aria-hidden>
     <span

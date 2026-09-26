@@ -452,11 +452,11 @@ describe("auth", () => {
   test("GET /api/me carries the User's rank, never their MMR", async () => {
     const { user, cookie } = await signIn();
 
-    duels.ratings.set(user.id, { mmr: 1234, rank: { tier: "maitre", tp: 250, shielded: true } });
+    duels.ratings.set(user.id, { mmr: 1234, rank: { tier: "maniac", tp: 250, shielded: true } });
 
     const body = await (await getMe(cookie)).json();
 
-    expect(body).toMatchObject({ rank: { tier: "maitre", tp: 250, shielded: true } });
+    expect(body).toMatchObject({ rank: { tier: "maniac", tp: 250, shielded: true } });
     expect(JSON.stringify(body)).not.toContain("1234");
   });
 

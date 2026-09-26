@@ -29,17 +29,17 @@ const standing = (over: Partial<Standing> = {}): Standing => ({
 });
 
 describe("byStanding", () => {
-  test("orders by Tier, then Division, then TP, Maître first by its TP", () => {
+  test("orders by Tier, then Division, then TP, Maniac first by its TP", () => {
     const orIIIat10 = standing({ division: 3, tp: 10 });
     const orIVat90 = standing({ tp: 90 });
     const orIVat20 = standing({ tp: 20 });
     const platineIV = standing({ tier: "platine", tp: 0 });
-    const maitreAt5: Standing = { tier: "maitre", tp: 5, shielded: false };
-    const maitreAt300: Standing = { tier: "maitre", tp: 300, shielded: false };
+    const maniacAt5: Standing = { tier: "maniac", tp: 5, shielded: false };
+    const maniacAt300: Standing = { tier: "maniac", tp: 300, shielded: false };
 
     expect(
-      [orIVat20, maitreAt5, orIIIat10, platineIV, maitreAt300, orIVat90].toSorted(byStanding),
-    ).toEqual([maitreAt300, maitreAt5, platineIV, orIIIat10, orIVat90, orIVat20]);
+      [orIVat20, maniacAt5, orIIIat10, platineIV, maniacAt300, orIVat90].toSorted(byStanding),
+    ).toEqual([maniacAt300, maniacAt5, platineIV, orIIIat10, orIVat90, orIVat20]);
   });
 
   test("ties an equal step and TP", () => {
@@ -115,8 +115,8 @@ describe("tpDelta", () => {
     expect(tpDelta(standing(), 0, 0, "draw")).toBe(-35);
   });
 
-  test("expects 1600 from a Maître", () => {
-    expect(tpDelta({ tier: "maitre", tp: 400, shielded: false }, 1600, 1600, "win")).toBe(20);
+  test("expects 1600 from a Maniac", () => {
+    expect(tpDelta({ tier: "maniac", tp: 400, shielded: false }, 1600, 1600, "win")).toBe(20);
   });
 });
 
@@ -135,9 +135,9 @@ describe("applyTp", () => {
     );
   });
 
-  test("moves up from Diamant I to Maître", () => {
+  test("moves up from Diamant I to Maniac", () => {
     expect(applyTp(standing({ tier: "diamant", division: 1, tp: 95 }), 10)).toEqual({
-      tier: "maitre",
+      tier: "maniac",
       tp: 5,
       shielded: true,
     });
@@ -172,16 +172,16 @@ describe("applyTp", () => {
     );
   });
 
-  test("lets a Maître's TP grow without cap", () => {
-    expect(applyTp({ tier: "maitre", tp: 990, shielded: false }, 30)).toEqual({
-      tier: "maitre",
+  test("lets a Maniac's TP grow without cap", () => {
+    expect(applyTp({ tier: "maniac", tp: 990, shielded: false }, 30)).toEqual({
+      tier: "maniac",
       tp: 1020,
       shielded: false,
     });
   });
 
-  test("drops a Maître below 0 to Diamant I at 75 TP", () => {
-    expect(applyTp({ tier: "maitre", tp: 10, shielded: false }, -20)).toEqual(
+  test("drops a Maniac below 0 to Diamant I at 75 TP", () => {
+    expect(applyTp({ tier: "maniac", tp: 10, shielded: false }, -20)).toEqual(
       standing({ tier: "diamant", division: 1, tp: 75 }),
     );
   });
@@ -197,10 +197,10 @@ describe("changesTier", () => {
     ).toBe(true);
   });
 
-  test("is true from Diamant I to Maître", () => {
+  test("is true from Diamant I to Maniac", () => {
     expect(
       changesTier(standing({ tier: "diamant", division: 1, tp: 95 }), {
-        tier: "maitre",
+        tier: "maniac",
         tp: 4,
         shielded: true,
       }),
@@ -219,13 +219,13 @@ describe("changesTier", () => {
     );
   });
 
-  test("is false within a Division, and within Maître", () => {
+  test("is false within a Division, and within Maniac", () => {
     expect(changesTier(standing({ tp: 50 }), standing({ tp: 70 }))).toBe(false);
     expect(
       changesTier(
-        { tier: "maitre", tp: 248, shielded: false },
+        { tier: "maniac", tp: 248, shielded: false },
         {
-          tier: "maitre",
+          tier: "maniac",
           tp: 259,
           shielded: false,
         },
@@ -241,9 +241,9 @@ describe("rankFromMmr", () => {
     expect(rankFromMmr(1150)).toEqual(standing({ division: 1, tp: 0 }));
   });
 
-  test("places at Fer IV at the lowest, Maître at the highest", () => {
+  test("places at Fer IV at the lowest, Maniac at the highest", () => {
     expect(rankFromMmr(100)).toEqual(standing({ tier: "fer", tp: 0 }));
-    expect(rankFromMmr(3000)).toEqual({ tier: "maitre", tp: 0, shielded: false });
+    expect(rankFromMmr(3000)).toEqual({ tier: "maniac", tp: 0, shielded: false });
   });
 
   test("takes 5 Placement Duels to get there", () => {
@@ -324,7 +324,7 @@ describe("stakeOf", () => {
     });
   });
 
-  // Or IV expects 1000, Diamant I 1550, Maître 1600.
+  // Or IV expects 1000, Diamant I 1550, Maniac 1600.
   const ratings: Rating[] = [
     { mmr: 1000, rank: standing() },
     { mmr: 1000, rank: standing({ tp: 91 }) },
@@ -333,8 +333,8 @@ describe("stakeOf", () => {
     { mmr: 1300, rank: standing({ tp: 98 }) },
     { mmr: 400, rank: standing({ tier: "fer", tp: 3 }) },
     { mmr: 1550, rank: standing({ tier: "diamant", division: 1, tp: 95 }) },
-    { mmr: 1600, rank: { tier: "maitre", tp: 4, shielded: false } },
-    { mmr: 1800, rank: { tier: "maitre", tp: 640, shielded: false } },
+    { mmr: 1600, rank: { tier: "maniac", tp: 4, shielded: false } },
+    { mmr: 1800, rank: { tier: "maniac", tp: 640, shielded: false } },
   ];
 
   test("is what the Duel applies, whatever the Ratings and the opponent's MMR", () => {

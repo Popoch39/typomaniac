@@ -30,6 +30,7 @@
     "typing-engine": "workspace:*"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "bun-types": "latest",
     "drizzle-kit": "^0.31.11",
     "pino-pretty": "^13.1.3"
