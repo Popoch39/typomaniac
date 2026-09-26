@@ -79,14 +79,21 @@ export const DEEPS: readonly { tier: Tier; top: string }[] = [
   { tier: "maniac", top: MANIAC.mid },
 ];
 
-// The Tiers that glow: their colour and its opacity at each stop, from the centre out.
-export const GLOWS: readonly { tier: Tier; color: string; stops: [number, number][] }[] = [
-  { tier: "or", color: "#f2c14e", stops: [[0, 0.32]] },
-  { tier: "platine", color: "#6fd1c0", stops: [[0, 0.38]] },
-  { tier: "diamant", color: "#9db4ff", stops: [[0, 0.45]] },
+// The Tiers that glow, from Or up: their colour, its opacity at each stop from the centre out,
+// and how far it reaches on the 120 × 120 grid.
+export const GLOWS: readonly {
+  tier: Tier;
+  color: string;
+  stops: [number, number][];
+  radius: number;
+}[] = [
+  { tier: "or", color: "#f2c14e", stops: [[0, 0.32]], radius: 60 },
+  { tier: "platine", color: "#6fd1c0", stops: [[0, 0.38]], radius: 60 },
+  { tier: "diamant", color: "#9db4ff", stops: [[0, 0.45]], radius: 62 },
   {
     tier: "maniac",
     color: MANIAC.mid,
+    radius: 66,
     stops: [
       [0, 0.6],
       [0.6, 0.18],

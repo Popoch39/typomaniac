@@ -14,7 +14,6 @@ import {
   FEATHER_ID,
   FLAME_ID,
   GLINT,
-  glowId,
   HOT_ID,
   LEAF_ID,
   LINE,
@@ -23,7 +22,6 @@ import {
   OUTLINES,
   paint,
   PLATES,
-  RAYS,
   ref,
   RIM,
   SPARK_ID,
@@ -214,10 +212,6 @@ const bothSides = (id: string) => (
   </>
 );
 
-const glow = (tier: Tier, radius: number) => (
-  <circle cx={60} cy={60} r={radius} fill={paint(glowId(tier))} />
-);
-
 // The riveted ring every Ornament from Fer to Or starts from.
 const ring = (tier: Tier) => (
   <>
@@ -250,7 +244,8 @@ const FLAMES = [
 ] as const;
 
 // The Ornament of each Tier on the 120 × 120 grid, richer at each Tier: each keeps the pieces of
-// the one before it and adds its own.
+// the one before it and adds its own. The glow and the Maniac's rays move, so each Ornament
+// draws them itself (`TierOrnamentArt`): GSAP cannot reach into a shared symbol.
 const ORNAMENT_DRAWINGS: Record<Tier, ReactNode> = {
   fer: (
     <>
@@ -279,7 +274,6 @@ const ORNAMENT_DRAWINGS: Record<Tier, ReactNode> = {
   ),
   or: (
     <>
-      {glow("or", 60)}
       {ring("or")}
       <circle cx={60} cy={60} r={41.2} {...BEADS} />
       {bothSides(laurelId("or"))}
@@ -294,7 +288,6 @@ const ORNAMENT_DRAWINGS: Record<Tier, ReactNode> = {
   ),
   platine: (
     <>
-      {glow("platine", 60)}
       <path d={HEXAGON_PLATE} {...PLATES.platine} />
       <path d={HEXAGON_PLATE} {...BAND_OUTLINE} stroke={OUTLINES.platine} strokeLinejoin="round" />
       <path d={HEXAGON_PLATE} {...BAND} stroke={paint(metalId("platine"))} strokeLinejoin="round" />
@@ -313,7 +306,6 @@ const ORNAMENT_DRAWINGS: Record<Tier, ReactNode> = {
   ),
   diamant: (
     <>
-      {glow("diamant", 62)}
       <path d={STAR_PLATE} {...PLATES.diamant} />
       <path d={STAR_PLATE} {...STAR_EDGE} stroke={paint(metalId("diamant"))} />
       {bothSides(wingId("diamant"))}
@@ -327,8 +319,6 @@ const ORNAMENT_DRAWINGS: Record<Tier, ReactNode> = {
   ),
   maniac: (
     <>
-      {glow("maniac", 66)}
-      <circle cx={60} cy={60} r={40} {...RAYS} stroke={paint(metalId("maniac"))} />
       {FLAMES.map(([x, y, turn, scale]) => (
         <use
           key={turn}
