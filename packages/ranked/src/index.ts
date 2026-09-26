@@ -14,6 +14,7 @@ export {
   rankFromMmr,
   rateDuel,
   seedMmr,
+  stakeOf,
   stepOf,
   tpDelta,
   type Division,
@@ -22,6 +23,8 @@ export {
   type RankedOutcome,
   type RatedDuel,
   type Rating,
+  type Stake,
+  type StakeOutcome,
   type Standing,
   type Tier,
 } from "./ranked";

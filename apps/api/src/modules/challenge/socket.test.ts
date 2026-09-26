@@ -241,6 +241,7 @@ describe("Challenges, on the socket", () => {
       opponentRank: null,
       selfForm: null,
       opponentForm: { avgWpm: 64, outcomes: ["win"] },
+      selfStake: null,
     });
     expect(adaFound).toMatchObject({ type: "duel-found", opponent: { handle: "alan" } });
 

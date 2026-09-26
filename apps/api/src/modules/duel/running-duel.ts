@@ -12,7 +12,7 @@ import {
   startAcceptedRun,
 } from "typing-engine";
 
-import { type RankedOutcome, type Rating, rateDuel } from "ranked";
+import { type RankedOutcome, type Rating, rateDuel, type Stake, stakeOf } from "ranked";
 
 import type { Duel, DuelScore, Form, ServerMessage } from "./model";
 import type { DuelPlayerRecord, DuelRecord, RatedPlayer } from "./store";
@@ -54,7 +54,14 @@ type Player = PacedUser & {
   acceptedRun: AcceptedRun;
   // Every Keystroke received from the player, accepted or not.
   received: number;
+  // What a win and a loss would do to their TP, from the Ratings frozen at the pairing: exactly
+  // what `rate` applies. Null unless the Duel is ranked, and in Placement.
+  stake: Stake | null;
 };
+
+// A player's Stake against the other: only when both have a Rating, as `rate` requires.
+const stakeAgainst = (player: PacedUser, opponent: PacedUser) =>
+  player.rating && opponent.rating ? stakeOf(player.rating, opponent.rating.mmr) : null;
 
 // A player at the end of the Duel: their Result and their Score.
 type Side = { result: Result; score: DuelScore };
@@ -135,11 +142,16 @@ export class RunningDuel {
 
     const [first, second] = users;
 
-    this.#players = [this.#newPlayer(first), this.#newPlayer(second)];
+    this.#players = [this.#newPlayer(first, second), this.#newPlayer(second, first)];
   }
 
-  #newPlayer(paced: PacedUser): Player {
-    return { ...paced, acceptedRun: startAcceptedRun(this.#config), received: 0 };
+  #newPlayer(paced: PacedUser, opponent: PacedUser): Player {
+    return {
+      ...paced,
+      acceptedRun: startAcceptedRun(this.#config),
+      received: 0,
+      stake: stakeAgainst(paced, opponent),
+    };
   }
 
   get #durationMs() {
@@ -307,8 +319,8 @@ export class RunningDuel {
     return profileOf(this.#opponent(userId).user);
   }
 
-  // A player's Pace, rank before the Duel (never the MMR) and Form, and the opponent's, as
-  // `duel-found` and `duel-resumed` send them.
+  // A player's Pace, rank before the Duel (never the MMR) and Form, and the opponent's, then the
+  // player's own Stake, as `duel-found` and `duel-resumed` send them.
   pairingOf(userId: string) {
     const player = this.#player(userId);
     const opponent = this.#opponent(userId);
@@ -320,6 +332,7 @@ export class RunningDuel {
       opponentRank: opponent.rating?.rank ?? null,
       selfForm: player.form,
       opponentForm: opponent.form,
+      selfStake: player.stake,
     };
   }
 }

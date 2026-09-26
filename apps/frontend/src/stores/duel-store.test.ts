@@ -25,9 +25,16 @@ const duelFound: ServerMessage = {
   opponentRank: { placementsLeft: 5 },
   selfForm: null,
   opponentForm: null,
+  selfStake: null,
 };
 
 const orIv = { tier: "or", division: 4, tp: 50, shielded: false } as const;
+
+// What a win and a loss would do from Or IV at 50 TP, against an equal.
+const orIvStake = {
+  win: { tp: 20, standing: { ...orIv, tp: 70 } },
+  loss: { tp: -20, standing: { ...orIv, tp: 30 } },
+};
 
 const adaForm: Form = { avgWpm: 72.4, outcomes: ["win", "loss", "draw"] };
 
@@ -214,7 +221,7 @@ describe("the Duel on the app's connection", () => {
     });
   });
 
-  test("resumed after a reload, shows both ranks and both Forms in the Countdown", () => {
+  test("resumed after a reload, shows both ranks, both Forms and the Stake in the Countdown", () => {
     enter();
     server().receive({ type: "elsewhere", place: "duel" });
     server().receive({
@@ -232,11 +239,18 @@ describe("the Duel on the app's connection", () => {
       opponentRank: null,
       selfForm: adaForm,
       opponentForm: null,
+      selfStake: orIvStake,
     });
 
     expect(useDuelStore.getState().state).toMatchObject({
       phase: "countdown",
-      duel: { selfRank: orIv, opponentRank: null, selfForm: adaForm, opponentForm: null },
+      duel: {
+        selfRank: orIv,
+        opponentRank: null,
+        selfForm: adaForm,
+        opponentForm: null,
+        selfStake: orIvStake,
+      },
     });
   });
 

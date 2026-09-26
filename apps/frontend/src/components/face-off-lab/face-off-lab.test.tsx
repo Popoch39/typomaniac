@@ -17,6 +17,10 @@ const renderLab = () =>
     </QueryClientProvider>,
   );
 
+// The lab's clock stands at the pairing, before the reveal: the Stake is there, still hidden, so
+// without an accessible name yet.
+const stakeCard = () => screen.getByLabelText("Enjeu");
+
 describe("FaceOffLab", () => {
   test("plays the Face-off against a ranked opponent on demand", async () => {
     renderLab();
@@ -29,6 +33,16 @@ describe("FaceOffLab", () => {
     expect(
       screen.getByLabelText("Temps du Face-off", { selector: "input[type=range]" }),
     ).toBeInTheDocument();
+  });
+
+  test("shows the Stake of an ordinary ranked Duel, then of one that moves up a Division", async () => {
+    renderLab();
+
+    await userEvent.click(screen.getByRole("button", { name: "Face-off" }));
+    expect(stakeCard()).toHaveTextContent("En jeu");
+
+    await userEvent.click(screen.getByRole("button", { name: "Montée de Division" }));
+    expect(stakeCard()).toHaveTextContent("Gagne et passe Or II");
   });
 
   test("switches the opponent to a Challenge", async () => {

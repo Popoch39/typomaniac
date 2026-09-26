@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { gsap } from "gsap";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -35,6 +35,31 @@ const challenge: FaceOffPairing = {
   opponentRank: null,
   selfForm: { avgWpm: 80, outcomes: ["win", "loss"] },
   opponentForm: null,
+  selfStake: null,
+};
+
+const orIv = (tp: number) => ({ tier: "or", division: 4, tp, shielded: false }) as const;
+
+// A ranked Duel between equals, at the MMR their rank expects: 20 TP either way.
+const ranked: FaceOffPairing = {
+  selfRank: orIv(50),
+  opponentRank: orIv(30),
+  selfForm: null,
+  opponentForm: null,
+  selfStake: { win: { tp: 20, standing: orIv(70) }, loss: { tp: -20, standing: orIv(30) } },
+};
+
+const stakeCard = () => screen.getByRole("region", { name: "Enjeu" });
+
+// What a win would add to the Stake's bar: only seen, so found by the part the timeline animates.
+const stakeGain = () => {
+  const gain = stakeCard().querySelector('[data-face-off="stake-gain"]');
+
+  if (gain === null) {
+    throw new Error("The Stake has no bar");
+  }
+
+  return gain;
 };
 
 // A sound player for the tests: it writes down what it plays.
@@ -132,6 +157,7 @@ describe("FaceOff", () => {
       opponentRank: { placementsLeft: 3 },
       selfForm: { avgWpm: 80, outcomes: ["win", "loss"] },
       opponentForm: null,
+      selfStake: null,
     });
 
     expect(screen.getByText("Or II · 42 TP")).toBeInTheDocument();
@@ -140,6 +166,79 @@ describe("FaceOff", () => {
     expect(screen.getByText("Défaite")).toBeInTheDocument();
     expect(screen.getByText("80 wpm")).toBeInTheDocument();
     expect(screen.getByText("Aucun Duel classé")).toBeInTheDocument();
+  });
+
+  test("shows this User's Stake under their rank: the bar, what a win and a loss would do", () => {
+    // Past the reveal, the Stake in with the rest.
+    faceOffAt(-3500, ranked);
+
+    const card = stakeCard();
+
+    expect(card).toHaveTextContent("En jeu");
+    expect(card).toHaveTextContent("50 / 100 TP");
+    expect(card).toHaveTextContent("Victoire +20 TP → Or IV · 70 TP");
+    expect(card).toHaveTextContent("Défaite −20 TP");
+    expect(within(card).getByText("+20 TP")).toHaveClass("text-win");
+    expect(within(card).getByText("−20 TP")).toHaveClass("text-destructive");
+  });
+
+  test("heads the Stake with the rank a win would reach when it moves up", () => {
+    faceOffAt(-3500, {
+      ...ranked,
+      selfRank: orIv(91),
+      selfStake: {
+        win: { tp: 20, standing: { tier: "or", division: 3, tp: 11, shielded: true } },
+        loss: { tp: -20, standing: orIv(71) },
+      },
+    });
+
+    const card = stakeCard();
+
+    expect(card).toHaveTextContent("Gagne et passe Or III");
+    expect(card).not.toHaveTextContent("En jeu");
+    expect(card).toHaveTextContent("Victoire +20 TP → Or III · 11 TP");
+  });
+
+  test("shows no Stake in Placement nor in a Challenge", () => {
+    faceOffAt(-3500, { ...ranked, selfRank: { placementsLeft: 2 }, selfStake: null });
+    expect(screen.queryByRole("region", { name: "Enjeu" })).not.toBeInTheDocument();
+    cleanup();
+
+    faceOffAt(-3500);
+    expect(screen.queryByRole("region", { name: "Enjeu" })).not.toBeInTheDocument();
+  });
+
+  test("fills what a win would add to the bar a little after the Stake comes in", () => {
+    // Just in, with the reveal: the bar is still to fill.
+    faceOffAt(-3800, ranked);
+    expect(gsap.getProperty(stakeGain(), "scaleX")).toBe(0);
+
+    tickAt(-2500);
+    expect(gsap.getProperty(stakeGain(), "scaleX")).toBe(1);
+  });
+
+  test("a Face-off resumed during the 3-2-1 finds the Stake as it stands, its bar filled", () => {
+    faceOffAt(-2000, ranked);
+
+    expect(stakeCard()).toHaveTextContent("Victoire +20 TP → Or IV · 70 TP");
+    expect(gsap.getProperty(stakeGain(), "scaleX")).toBe(1);
+  });
+
+  test("under reduced motion, the bar shows what a win would add without filling in", () => {
+    vi.spyOn(window, "matchMedia").mockImplementation((media) => ({
+      matches: media === "(prefers-reduced-motion: reduce)",
+      media,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => true,
+    }));
+
+    faceOffAt(-3800, ranked);
+
+    expect(gsap.getProperty(stakeGain(), "scaleX")).toBe(1);
   });
 
   test("waits for the Countdown: nothing in the second of « C'est parti ! » before it", () => {

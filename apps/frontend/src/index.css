@@ -28,6 +28,8 @@
   --animate-queue-arc: queue-spin 1.2s linear infinite;
   --animate-queue-halo: queue-spin 14s linear infinite reverse;
   --animate-proposal-pop: proposal-pop 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  /* The hatches of what a win would add to the TP bar of the Face-off's Stake, sliding along. */
+  --animate-stake-hatch: stake-hatch 700ms linear infinite;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -96,6 +98,13 @@
     }
   }
 
+  /* One hatch pattern further (the 24px of stake-hatch's background-size). */
+  @keyframes stake-hatch {
+    to {
+      background-position: 24px 0;
+    }
+  }
+
   @keyframes tp-pop {
     from {
       opacity: 0;
@@ -159,6 +168,16 @@
   --sidebar-accent-foreground: var(--text);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--brand);
+}
+
+/* Hatches in the current colour, over a faint text: what a win would add to a TP bar. */
+@utility bg-stake-hatch {
+  background-image: repeating-linear-gradient(
+    135deg,
+    currentColor 0 6px,
+    color-mix(in oklch, var(--text) 14%, transparent) 6px 12px
+  );
+  background-size: 24px 100%;
 }
 
 @layer base {

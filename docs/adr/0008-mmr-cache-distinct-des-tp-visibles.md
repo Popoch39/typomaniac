@@ -10,5 +10,6 @@ La Ranked tient deux mesures par User, sur le modèle de League of Legends. Le M
 ## Consequences
 
 - Le MMR n'apparaît dans aucune réponse HTTP ni message de la socket : seul le rang en sort.
+- La Stake montrée au Face-off (les TP d'une victoire et d'une défaite, et le rang d'arrivée) n'en révèle pas plus sur le MMR que les TP d'un Duel terminé : ce sont les mêmes TP, connus un Duel plus tôt.
 - Rang et niveau peuvent diverger un temps (protection, plancher) ; le rattrapage les recolle au fil des Duels.
 - Les constantes (seed, K, base, bornes, MMR attendu par Division, fenêtre de la Queue) sont des valeurs par défaut du package, à recalibrer sur les vraies données.

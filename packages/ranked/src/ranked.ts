@@ -210,6 +210,21 @@ const isPlacement = (rank: Rank): rank is Placement => "placementsLeft" in rank;
 // What a ranked Duel did to one User: their new Rating and the TP it moved (null in Placement).
 export type RatedDuel = { rating: Rating; tp: number | null };
 
+// Where one outcome of a Duel leads a User past Placement: the TP it moves and their rank after it.
+export type StakeOutcome = { tp: number; standing: Standing };
+
+// The one path from an outcome to TP: rateDuel applies it, the Stake shows it beforehand.
+const stakeOutcome = (
+  standing: Standing,
+  mmr: number,
+  opponentMmr: number,
+  outcome: RankedOutcome,
+): StakeOutcome => {
+  const tp = tpDelta(standing, mmr, opponentMmr, outcome);
+
+  return { tp, standing: applyTp(standing, tp) };
+};
+
 // A ranked Duel for one User: their new MMR, and their new rank. In Placement, no TP moves (`tp`
 // null) and the last Placement reveals the rank the MMR deserves.
 export const rateDuel = (
@@ -227,10 +242,20 @@ export const rateDuel = (
     };
   }
 
-  const tp = tpDelta(rank, mmr, opponentMmr, outcome);
+  const { tp, standing } = stakeOutcome(rank, mmr, opponentMmr, outcome);
 
-  return {
-    rating: { mmr: nextMmr(mmr, opponentMmr, outcome, false), rank: applyTp(rank, tp) },
-    tp,
-  };
+  return { rating: { mmr: nextMmr(mmr, opponentMmr, outcome, false), rank: standing }, tp };
 };
+
+// The Stake of a ranked Duel for one User, shown in the Face-off: what a win and a loss would do to
+// their TP, by the same rules as rateDuel, so exactly what the Duel applies. Never a Draw, too rare
+// to show. Null in Placement, where no TP moves.
+export type Stake = { win: StakeOutcome; loss: StakeOutcome };
+
+export const stakeOf = ({ mmr, rank }: Rating, opponentMmr: number): Stake | null =>
+  isPlacement(rank)
+    ? null
+    : {
+        win: stakeOutcome(rank, mmr, opponentMmr, "win"),
+        loss: stakeOutcome(rank, mmr, opponentMmr, "loss"),
+      };

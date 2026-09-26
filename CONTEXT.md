@@ -96,7 +96,7 @@ Les 4,5 secondes entre l'appariement et le départ d'un Duel, identiques pour le
 _Avoid_ : timer, décompte, compte à rebours
 
 **Face-off** :
-Les 1,5 premières secondes du Countdown, les deux Users face à face en plein écran : le User à gauche, son adversaire à droite, chacun avec son rang (ou « Challenge » quand le Duel n'est pas Ranked) et sa Form.
+Les 1,5 premières secondes du Countdown, les deux Users face à face en plein écran : le User à gauche, son adversaire à droite, chacun avec son rang (ou « Challenge » quand le Duel n'est pas Ranked) et sa Form. Dans un Duel Ranked hors Placement, le User y voit aussi sa Stake, jamais celle de son adversaire ; elle reste visible pendant le 3-2-1.
 _Avoid_ : match trouvé, VS screen, écran de versus
 
 **Form** :
@@ -172,6 +172,10 @@ _Avoid_ : palier, niveau
 **Placement** :
 Les 5 premiers Duels Ranked d'un User, sans Tier visible, où son MMR bouge presque deux fois plus vite. À la fin, il reçoit la Division qui correspond à son MMR, à 0 TP.
 _Avoid_ : placement matches, qualifications
+
+**Stake** :
+Ce qu'un Duel Ranked peut faire aux TP d'un User, montré au Face-off : les TP qu'une victoire lui rapporterait et le rang où elle le mènerait, les TP qu'une défaite lui coûterait. Calculée par le serveur à l'appariement, par les mêmes règles que la fin du Duel, elle est exactement ce que le Duel appliquera. Pas de Stake pour un Draw, ni en Placement, ni dans un Challenge.
+_Avoid_ : preview, pari, prévision
 
 **Classement** :
 La liste des Users Ranked hors Placement, triés par Tier, Division puis TP.

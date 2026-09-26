@@ -50,6 +50,9 @@ export type DuelPlay = {
   // Each player's Form at the pairing; null without a Ranked Duel.
   selfForm: DuelFound["selfForm"];
   opponentForm: DuelFound["opponentForm"];
+  // What a win and a loss would do to this User's TP, from the pairing; null for a Challenge or
+  // in Placement. Never the opponent's.
+  selfStake: DuelFound["selfStake"];
   run: RunState;
   // Every Keystroke typed here, sent or not yet.
   keystrokes: readonly Keystroke[];
@@ -308,6 +311,7 @@ const playing = (
       opponentRank: message.opponentRank,
       selfForm: message.selfForm,
       opponentForm: message.opponentForm,
+      selfStake: message.selfStake,
       run: replayRun(config, played.keystrokes),
       keystrokes: played.keystrokes,
       score: scoreOf(config, played.keystrokes, message.pace),

@@ -110,6 +110,8 @@ const duelFound = (opponent: string) => ({
   opponentRank: { placementsLeft: 5 },
   selfForm: null,
   opponentForm: null,
+  // In Placement: no TP at stake.
+  selfStake: null,
 });
 
 // Or IV expects an MMR of 1000, Diamant IV one of 1400: at those, no catch-up moves the TP.
@@ -266,6 +268,7 @@ describe("duel socket", () => {
       opponentRank: { placementsLeft: 5 },
       selfForm: null,
       opponentForm: null,
+      selfStake: null,
     });
     expect(forAda).toEqual(duelFound("Alan"));
     // The very same Duel (id, Seed, start), only the opponent differs.
@@ -935,6 +938,7 @@ describe("duel socket", () => {
       opponentRank: { placementsLeft: 5 },
       selfForm: null,
       opponentForm: null,
+      selfStake: null,
     });
     expect(await alan.next()).toEqual({ type: "opponent-reconnected" });
 
@@ -2152,9 +2156,11 @@ describe("duel socket", () => {
       const alan = await queued(alanUser.cookie);
       const grace = await queued(graceUser.cookie);
 
+      const ranks = { selfRank: orIv(50), opponentRank: orIv(50), selfStake: expect.any(Object) };
+
       expect(await acceptBoth(ada, grace)).toEqual([
-        { ...duelFound("Grace"), selfRank: orIv(50), opponentRank: orIv(50) },
-        { ...duelFound("Ada"), selfRank: orIv(50), opponentRank: orIv(50) },
+        { ...duelFound("Grace"), ...ranks },
+        { ...duelFound("Ada"), ...ranks },
       ]);
       await alan.settle();
     });
@@ -2193,6 +2199,97 @@ describe("duel socket", () => {
       const again = await resumedOn(adaUser.cookie);
 
       expect(await again.next()).toMatchObject({ type: "duel-resumed", opponentRank: orIv(20) });
+    });
+
+    test("each User is told their own Stake, never the opponent's nor any MMR", async () => {
+      const adaUser = await signedInUser("Ada");
+      const alanUser = await signedInUser("Alan");
+
+      ratings.set(adaUser.id, { mmr: 1000, rank: orIv(50) });
+      ratings.set(alanUser.id, { mmr: 1000, rank: orIv(91) });
+
+      const ada = await queued(adaUser.cookie);
+      const alan = await queued(alanUser.cookie);
+      const [forAda, forAlan] = await acceptBoth(ada, alan);
+
+      // Equal MMRs at the MMR their rank expects: 20 TP either way.
+      expect(forAda).toMatchObject({
+        type: "duel-found",
+        selfStake: { win: { tp: 20, standing: orIv(70) }, loss: { tp: -20, standing: orIv(30) } },
+      });
+      // Past 100 TP, a win carries the surplus into Or III, shielded.
+      expect(forAlan).toMatchObject({
+        type: "duel-found",
+        selfStake: {
+          win: { tp: 20, standing: { tier: "or", division: 3, tp: 11, shielded: true } },
+          loss: { tp: -20, standing: orIv(71) },
+        },
+      });
+      expect(JSON.stringify(forAda)).not.toContain('"tp":71');
+      expect(JSON.stringify(forAlan)).not.toContain('"tp":30');
+      expect(JSON.stringify([forAda, forAlan])).not.toContain("mmr");
+    });
+
+    test("the Stake comes back with the resumed Duel", async () => {
+      const adaUser = await signedInUser("Ada");
+      const alanUser = await signedInUser("Alan");
+
+      ratings.set(adaUser.id, { mmr: 1000, rank: orIv(50) });
+      ratings.set(alanUser.id, { mmr: 1000, rank: orIv(20) });
+
+      const ada = await queued(adaUser.cookie);
+      const alan = await queued(alanUser.cookie);
+
+      await acceptBoth(ada, alan);
+
+      const again = await resumedOn(adaUser.cookie);
+
+      expect(await again.next()).toMatchObject({
+        type: "duel-resumed",
+        selfStake: { win: { tp: 20, standing: orIv(70) }, loss: { tp: -20, standing: orIv(30) } },
+      });
+    });
+
+    test("no Stake for a User in Placement, even against a ranked opponent", async () => {
+      const { found } = await rankedPair(
+        { mmr: 1000, rank: { placementsLeft: 2 } },
+        { mmr: 1000, rank: orIv(50) },
+      );
+
+      expect(found).toMatchObject({ type: "duel-found", selfStake: null });
+    });
+
+    test("the Stake of the outcome played is what the Duel applies", async () => {
+      const adaUser = await signedInUser("Ada");
+      const alanUser = await signedInUser("Alan");
+
+      ratings.set(adaUser.id, { mmr: 1000, rank: orIv(50) });
+      // Above the MMR Or IV expects: he wins more and loses less.
+      ratings.set(alanUser.id, { mmr: 1150, rank: orIv(95) });
+
+      const ada = await queuedLongAgo(adaUser.cookie);
+      const alan = await queued(alanUser.cookie);
+      const [adaFound, alanFound] = await acceptBoth(ada, alan);
+
+      expect(adaFound).toMatchObject({
+        selfStake: { win: { tp: 28, standing: orIv(78) }, loss: { tp: -12, standing: orIv(38) } },
+      });
+      expect(alanFound).toMatchObject({
+        selfStake: {
+          win: { tp: 27, standing: { tier: "or", division: 3, tp: 22, shielded: true } },
+          loss: { tp: -13, standing: orIv(82) },
+        },
+      });
+
+      setNow(STARTS_AT + 5000);
+      ada.send({ type: "keystrokes", keystrokes: typed(firstWordOf(adaFound), 1000) });
+      await alan.next();
+      setNow(ENDS_AT);
+
+      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+      expect(endedOf(forAda).ranked).toMatchObject({ tp: 28, rank: orIv(78) });
+      expect(endedOf(forAlan).ranked).toMatchObject({ tp: -13, rank: orIv(82) });
     });
 
     test("each User is told both ranks and both Forms: the last 5 ranked Duels, the most recent first", async () => {

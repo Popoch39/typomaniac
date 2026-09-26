@@ -107,6 +107,12 @@ const DuelRanked = t.Object({
 
 export type DuelRanked = typeof DuelRanked.static;
 
+// What a win and a loss would do to a User's TP, by the rules the Duel applies (ranked package):
+// the TP moved and the rank reached. Never the MMR, and no Draw.
+const StakeOutcome = t.Object({ tp: t.Integer(), standing: Standing });
+
+const Stake = t.Object({ win: StakeOutcome, loss: StakeOutcome });
+
 // How a Duel ended for one of its players.
 const DuelOutcome = t.Union([t.Literal("win"), t.Literal("loss"), t.Literal("draw")]);
 
@@ -206,6 +212,9 @@ const ServerMessage = t.Union([
     // their Duels could not be read.
     selfForm: t.Nullable(Form),
     opponentForm: t.Nullable(Form),
+    // This User's Stake, computed at the pairing, shown in the Face-off; null for a Challenge, in
+    // Placement or without both Ratings (the Duel is not ranked). The opponent's is sent to no one.
+    selfStake: t.Nullable(Stake),
   }),
   // The User's Duel, played on this connection from now on (`resume-duel`): the Duel as
   // `duel-found` gives it, plus the state that holds, as `resync` gives it.
@@ -225,6 +234,7 @@ const ServerMessage = t.Union([
     opponentRank: t.Nullable(Rank),
     selfForm: t.Nullable(Form),
     opponentForm: t.Nullable(Form),
+    selfStake: t.Nullable(Stake),
   }),
   // The opponent's connection dropped: they have a few seconds to come back, or forfeit.
   t.Object({ type: t.Literal("opponent-disconnected") }),

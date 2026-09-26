@@ -12,7 +12,10 @@ import {
   rankFromMmr,
   rateDuel,
   seedMmr,
+  stakeOf,
   tpDelta,
+  type RankedOutcome,
+  type Rating,
   type Standing,
 } from "./index";
 
@@ -255,5 +258,59 @@ describe("rateDuel", () => {
       rating: { mmr: 1016, rank: standing({ tp: 70 }) },
       tp: 20,
     });
+  });
+});
+
+describe("stakeOf", () => {
+  test("gives the TP and the rank a win and a loss would lead to", () => {
+    expect(stakeOf({ mmr: 1000, rank: standing() }, 1000)).toEqual({
+      win: { tp: 20, standing: standing({ tp: 70 }) },
+      loss: { tp: -20, standing: standing({ tp: 30 }) },
+    });
+  });
+
+  test("carries a win past 100 TP into the next Division, shielded", () => {
+    expect(stakeOf({ mmr: 1000, rank: standing({ tp: 91 }) }, 1000)?.win).toEqual({
+      tp: 20,
+      standing: standing({ division: 3, tp: 11, shielded: true }),
+    });
+  });
+
+  // Or IV expects 1000, Diamant I 1550, Maître 1600.
+  const ratings: Rating[] = [
+    { mmr: 1000, rank: standing() },
+    { mmr: 1000, rank: standing({ tp: 91 }) },
+    { mmr: 1000, rank: standing({ tp: 5 }) },
+    { mmr: 1000, rank: standing({ tp: 5, shielded: true }) },
+    { mmr: 1300, rank: standing({ tp: 98 }) },
+    { mmr: 400, rank: standing({ tier: "fer", tp: 3 }) },
+    { mmr: 1550, rank: standing({ tier: "diamant", division: 1, tp: 95 }) },
+    { mmr: 1600, rank: { tier: "maitre", tp: 4, shielded: false } },
+    { mmr: 1800, rank: { tier: "maitre", tp: 640, shielded: false } },
+  ];
+
+  test("is what the Duel applies, whatever the Ratings and the opponent's MMR", () => {
+    for (const rating of ratings) {
+      for (const opponentMmr of [300, 900, 1000, 1150, 1700]) {
+        const applied = (outcome: RankedOutcome) => {
+          const { rating: after, tp } = rateDuel(rating, opponentMmr, outcome);
+
+          return { tp, standing: after.rank };
+        };
+
+        const stake = stakeOf(rating, opponentMmr);
+
+        if (stake === null) {
+          throw new Error("a User past Placement has a Stake");
+        }
+
+        expect({ win: applied("win"), loss: applied("loss") }).toEqual(stake);
+      }
+    }
+  });
+
+  test("is null in Placement: no TP moves", () => {
+    expect(stakeOf({ mmr: 600, rank: { placementsLeft: 5 } }, 600)).toBeNull();
+    expect(stakeOf({ mmr: 600, rank: { placementsLeft: 1 } }, 600)).toBeNull();
   });
 });

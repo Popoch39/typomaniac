@@ -21,6 +21,9 @@ const CASCADE_S = REVEAL_S + 0.22;
 
 const CASCADE_STAGGER_S = 0.07;
 
+// The Stake comes in with the reveal; what a win would add to its bar fills in a little after.
+const STAKE_FILL_S = 0.9;
+
 // The halves split out on GO, up and down, and are gone this long after.
 const EXIT_S = 0.5;
 
@@ -93,8 +96,9 @@ const shake = () => [
 
 // The whole Face-off overlay on a single timeline, paused: its time is the time since the pairing,
 // set from the Duel's clock (never GSAP's own), so a seek lands anywhere. Transforms and opacity
-// only; the diagonal cut is a static clip-path.
-export const faceOffTimeline = () => {
+// only; the diagonal cut is a static clip-path. `fillStake`: this User's Stake is shown and its bar
+// fills in (not under reduced motion, where it shows full at once).
+export const faceOffTimeline = ({ fillStake }: { fillStake: boolean }) => {
   const timeline = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
   const marquee = { duration: COUNTDOWN_S + EXIT_S, ease: "power2.out" };
 
@@ -153,6 +157,17 @@ export const faceOffTimeline = () => {
       },
       "cascade",
     );
+  }
+
+  if (fillStake) {
+    timeline
+      .addLabel("stake", STAKE_FILL_S)
+      .fromTo(
+        part("stake-gain"),
+        { scaleX: 0 },
+        { scaleX: 1, duration: 0.6, ease: "expo.out" },
+        "stake",
+      );
   }
 
   timeline

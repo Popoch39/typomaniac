@@ -25,7 +25,7 @@ const keepFocus = (event: MouseEvent) => event.preventDefault();
 export const FaceOffOverlay = ({ opponent, pairing, startsAt, elapsed }: FaceOffOverlayProps) => {
   const scope = useRef<HTMLDivElement>(null);
 
-  useFaceOffTimeline(scope, startsAt);
+  useFaceOffTimeline(scope, startsAt, pairing.selfStake !== null);
 
   return (
     <div
@@ -35,7 +35,7 @@ export const FaceOffOverlay = ({ opponent, pairing, startsAt, elapsed }: FaceOff
       onMouseDown={keepFocus}
     >
       <div data-face-off="stage" className="absolute inset-0">
-        <FaceOffSelf rank={pairing.selfRank} form={pairing.selfForm} />
+        <FaceOffSelf rank={pairing.selfRank} form={pairing.selfForm} stake={pairing.selfStake} />
         <FaceOffOpponent
           opponent={opponent}
           rank={pairing.opponentRank}

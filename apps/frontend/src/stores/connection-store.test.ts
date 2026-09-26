@@ -47,6 +47,7 @@ const duelFound: ServerMessage = {
   opponentRank: null,
   selfForm: null,
   opponentForm: null,
+  selfStake: null,
 };
 
 const matchProposed: ServerMessage = {
@@ -75,6 +76,7 @@ const duelResumed: ServerMessage = {
   opponentRank: null,
   selfForm: null,
   opponentForm: null,
+  selfStake: null,
 };
 
 const duelEnded: ServerMessage = {
