@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { useTabAttention } from "@/components/match-proposal/tab-attention-context";
+import { useTabAttention } from "@/components/tab-attention/tab-attention-context";
 
 // How long the tab's title stays on each of its two texts.
 const BLINK_MS = 1000;

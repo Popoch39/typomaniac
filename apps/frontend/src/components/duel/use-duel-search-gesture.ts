@@ -1,5 +1,5 @@
 import { useFaceOffSounds } from "@/components/face-off/face-off-sounds-context";
-import { useTabAttention } from "@/components/match-proposal/tab-attention-context";
+import { useTabAttention } from "@/components/tab-attention/tab-attention-context";
 
 // What the click that searches for a Duel lets happen later, as browsers only allow it from a
 // click: the Face-off's sound, and the notification of a Match proposal. The permission is asked

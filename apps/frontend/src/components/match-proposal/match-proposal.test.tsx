@@ -7,7 +7,7 @@ import { type Me, meQueryOptions } from "@/api/me";
 import type { FaceOffSound, FaceOffSounds } from "@/audio/face-off-sounds";
 import { FaceOffSoundsContext } from "@/components/face-off/face-off-sounds-context";
 import { MatchProposal } from "@/components/match-proposal/match-proposal";
-import { TabAttentionContext } from "@/components/match-proposal/tab-attention-context";
+import { TabAttentionContext } from "@/components/tab-attention/tab-attention-context";
 import { ClockContext } from "@/components/run/clock-context";
 import type { NotificationAccess, TabAttention } from "@/lib/tab-attention";
 import type { ProposalStage, ProposalView } from "@/stores/duel-store";

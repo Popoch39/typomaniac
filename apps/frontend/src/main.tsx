@@ -8,7 +8,7 @@ import { openFaceOffSounds } from "@/audio/face-off-sounds";
 import { previewSound, startSoundReactor } from "@/audio/sound-reactor";
 import { openWebAudio } from "@/audio/web-audio-output";
 import { FaceOffSoundsContext } from "@/components/face-off/face-off-sounds-context";
-import { TabAttentionContext } from "@/components/match-proposal/tab-attention-context";
+import { TabAttentionContext } from "@/components/tab-attention/tab-attention-context";
 import { type SoundPreview, SoundPreviewContext } from "@/components/sound/sound-preview-context";
 import "@/index.css";
 import { browserTabAttention } from "@/lib/tab-attention";

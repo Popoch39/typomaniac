@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 
 import { type Me, meQueryOptions } from "@/api/me";
 import { DuelHandleRequired } from "@/components/duel/duel-handle-required";
-import { TabAttentionContext } from "@/components/match-proposal/tab-attention-context";
+import { TabAttentionContext } from "@/components/tab-attention/tab-attention-context";
 import { PlaySetting } from "@/components/settings/play-setting";
 import { quietTabAttention, type NotificationAccess } from "@/lib/tab-attention";
 import { usePlayStore } from "@/stores/play-store";

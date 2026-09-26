@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 
 import { useFaceOffSounds } from "@/components/face-off/face-off-sounds-context";
 import { proposalNotification } from "@/components/match-proposal/match-proposal-copy";
-import { useTabAttention } from "@/components/match-proposal/tab-attention-context";
+import { useTabAttention } from "@/components/tab-attention/tab-attention-context";
 import type { ProposalStage } from "@/stores/duel-store";
 import { useFaceOffSoundStore } from "@/stores/face-off-sound-store";
 
