@@ -15,7 +15,15 @@ const SHINING: readonly Tier[] = ["or", "platine", "diamant", "maniac"];
 const DULL: readonly Tier[] = ["fer", "bronze", "argent"];
 
 // What a tween may change: transforms and opacity; the rest only says how.
-const TIMING = new Set(["duration", "ease", "repeat", "repeatDelay", "yoyo", "svgOrigin"]);
+const TIMING = new Set([
+  "duration",
+  "ease",
+  "repeat",
+  "repeatDelay",
+  "yoyo",
+  "svgOrigin",
+  "stagger",
+]);
 
 // GSAP adds its own `overwrite` and `delay`.
 const HOW = new Set([...TIMING, "overwrite", "delay"]);
@@ -243,6 +251,24 @@ describe("the light Aura", () => {
     );
 
     const delays = sheens(container).map((sheen) => tweensOf(sheen)[0]?.delay());
+
+    expect(delays).toHaveLength(2);
+    expect(delays[0]).not.toBe(delays[1]);
+  });
+
+  test("two neighbours never twinkle in step", () => {
+    const { container } = renderAura(
+      <>
+        {avatar("diamant")}
+        {avatar("diamant")}
+      </>,
+    );
+
+    const [first, second] = [...container.querySelectorAll("[data-ornament]")].map(
+      (ornament) => ornament.querySelector("[data-aura-spark]") ?? container,
+    );
+
+    const delays = [first, second].map((spark) => tweensOf(spark ?? container)[0]?.delay());
 
     expect(delays).toHaveLength(2);
     expect(delays[0]).not.toBe(delays[1]);

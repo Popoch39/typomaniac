@@ -2,15 +2,17 @@ import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
 import { type RefObject, useId } from "react";
 
+import { SHEEN_TRAVEL, SPARK_PEAK } from "@/components/aura/aura-paint";
+import { useAuraRuntime } from "@/components/aura/aura-runtime-context";
 import {
-  SHEEN_TRAVEL,
-  SPARK_PEAK,
+  SHEEN_REST,
+  SHEEN_SWEEP,
+  sheenDelay,
   SPARK_REST,
   SPARK_STAGGER,
   SPARK_TWINKLE,
-} from "@/components/aura/aura-paint";
-import { useAuraRuntime } from "@/components/aura/aura-runtime-context";
-import { SHEEN_REST, SHEEN_SWEEP, sheenDelay } from "@/components/aura/sheen-delay";
+  sparkDelay,
+} from "@/components/aura/aura-timing";
 
 gsap.registerPlugin(useGSAP);
 
@@ -26,7 +28,8 @@ const SPARK_SELECTOR = "[data-aura-spark]";
 
 // The Ornament inside `scope` moves forever, in opacity and transforms only: its glow breathes,
 // the Maniac's rays turn, its sheen sweeps the metal now and then (first after a delay of its
-// own, so neighbours never shine together) and its sparks twinkle. It only moves while on screen
+// own, so neighbours never shine together) and its sparks twinkle (offset per instance too). It
+// only moves while on screen
 // in a shown tab: the same tweens are paused, then resumed. Nothing is created under reduced
 // motion; all is killed, and nothing watched any more, on unmount.
 export const useOrnamentMotion = (scope: RefObject<SVGGElement | null>) => {
@@ -49,23 +52,24 @@ export const useOrnamentMotion = (scope: RefObject<SVGGElement | null>) => {
       let onScreen = false;
       let tabShown = false;
 
-      const moving = () => onScreen && tabShown;
+      const seen = () => onScreen && tabShown;
 
-      const follow = () => {
+      // Paused while unseen, playing while seen.
+      const syncPaused = () => {
         for (const tween of tweens) {
-          tween.paused(!moving());
+          tween.paused(!seen());
         }
       };
 
       // Watched before the tweens exist: those of an Ornament already seen start as they are.
       const stopScreen = runtime.watchScreen(root, (visible) => {
         onScreen = visible;
-        follow();
+        syncPaused();
       });
 
       const stopTab = runtime.watchTab((shown) => {
         tabShown = shown;
-        follow();
+        syncPaused();
       });
 
       const loop = (targets: NodeListOf<Element>, vars: gsap.TweenVars) => {
@@ -85,25 +89,24 @@ export const useOrnamentMotion = (scope: RefObject<SVGGElement | null>) => {
           delay: sheenDelay(instance),
         });
 
-        // Each spark lights up as it grows around its centre, then shrinks back unlit.
-        for (const [index, spark] of sparks.entries()) {
+        // Each spark lights up as it grows around its centre, then shrinks back unlit, one after
+        // the other, each on its own loop.
+        if (sparks.length > 0) {
           tweens.add(
-            gsap.to(spark, {
+            gsap.to(sparks, {
               scale: SPARK_PEAK,
               opacity: 1,
               svgOrigin: "0 0",
               duration: SPARK_TWINKLE,
               ease: "sine.inOut",
-              yoyo: true,
-              repeat: -1,
-              repeatDelay: SPARK_REST,
-              delay: index * SPARK_STAGGER,
+              delay: sparkDelay(instance),
+              stagger: { each: SPARK_STAGGER, repeat: -1, yoyo: true, repeatDelay: SPARK_REST },
             }),
           );
         }
 
         // Still if the Ornament is not seen yet; left untouched, never paused then resumed, if it is.
-        follow();
+        syncPaused();
 
         return () => tweens.clear();
       });

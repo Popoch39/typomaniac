@@ -45,11 +45,3 @@ export const SPARKS: Partial<Record<Tier, readonly Spark[]>> = {
 };
 
 export const SPARK_PEAK = 2;
-
-// How long a spark takes to light up, how long it rests unlit between two twinkles, and how far
-// apart the sparks of one Ornament start, in seconds.
-export const SPARK_TWINKLE = 0.45;
-
-export const SPARK_REST = 2.4;
-
-export const SPARK_STAGGER = 0.9;

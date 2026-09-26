@@ -36,13 +36,22 @@ type OpenScreenObserver = (report: (entries: readonly ScreenEntry[]) => void) =>
 const openIntersectionObserver: OpenScreenObserver = (report) =>
   new IntersectionObserver(report, { rootMargin: SCREEN_MARGIN });
 
-// The browser's own. One observer for every Ornament, however many a list shows, opened at the
-// first watch.
+const tabShown = () => document.visibilityState !== "hidden";
+
+// The browser's own. One observer and one tab listener for every Ornament, however many a list
+// shows: the observer opened at the first watch, the listener there while anything watches.
 export const browserAuraRuntime = (
   openObserver: OpenScreenObserver = openIntersectionObserver,
 ): AuraRuntime => {
   const listeners = new Map<Element, (onScreen: boolean) => void>();
+  const tabListeners = new Set<(shown: boolean) => void>();
   let observer: ScreenObserver | null = null;
+
+  const reportTab = () => {
+    for (const onChange of tabListeners) {
+      onChange(tabShown());
+    }
+  };
 
   const observe = () => {
     observer ??= openObserver((entries) => {
@@ -65,12 +74,20 @@ export const browserAuraRuntime = (
       };
     },
     watchTab: (onChange) => {
-      const report = () => onChange(document.visibilityState !== "hidden");
+      if (tabListeners.size === 0) {
+        document.addEventListener("visibilitychange", reportTab);
+      }
 
-      report();
-      document.addEventListener("visibilitychange", report);
+      tabListeners.add(onChange);
+      onChange(tabShown());
 
-      return () => document.removeEventListener("visibilitychange", report);
+      return () => {
+        tabListeners.delete(onChange);
+
+        if (tabListeners.size === 0) {
+          document.removeEventListener("visibilitychange", reportTab);
+        }
+      };
     },
   };
 };

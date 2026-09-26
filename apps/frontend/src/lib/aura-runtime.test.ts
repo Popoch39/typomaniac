@@ -99,4 +99,27 @@ describe("browserAuraRuntime", () => {
 
     expect(seen).toEqual([true, false, true]);
   });
+
+  test("listens to the tab once for every Ornament, and no more once none watches", () => {
+    const runtime = browserAuraRuntime(fakeObserver().open);
+    const listen = vi.spyOn(document, "addEventListener");
+    const unlisten = vi.spyOn(document, "removeEventListener");
+    const seen: [string, boolean][] = [];
+
+    const stopFirst = runtime.watchTab((shown) => seen.push(["first", shown]));
+    const stopSecond = runtime.watchTab((shown) => seen.push(["second", shown]));
+
+    hideTab(true);
+    stopFirst();
+    stopSecond();
+
+    expect(listen).toHaveBeenCalledTimes(1);
+    expect(unlisten).toHaveBeenCalledTimes(1);
+    expect(seen).toEqual([
+      ["first", true],
+      ["second", true],
+      ["first", false],
+      ["second", false],
+    ]);
+  });
 });
