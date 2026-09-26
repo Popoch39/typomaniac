@@ -100,12 +100,17 @@ describe("UserProfilePage", () => {
     ]);
 
     expect(await screen.findByText("Or II · 42 TP")).toBeInTheDocument();
+    // The rank stands out in its Blason: the Emblem of Or on its Ornament.
+    expect(
+      document.querySelector('[data-tier-blason] use[href="#tier-ornament-or"]'),
+    ).not.toBeNull();
   });
 
   test("shows the Placement Duels a User has left", async () => {
     await renderAt(me, "grace", [{ ...grace, rank: { placementsLeft: 4 } }]);
 
     expect(await screen.findByText("Placement · 4 Duels restants")).toBeInTheDocument();
+    expect(document.querySelector("[data-tier-blason]")).toBeNull();
   });
 
   test("a Handle has no case: /u/Grace shows @grace", async () => {

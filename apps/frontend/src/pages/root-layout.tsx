@@ -19,6 +19,7 @@ import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
 import { ProfileNavLink } from "@/components/profile/profile-nav-link";
 import { RealtimeConnection } from "@/components/realtime-connection";
 import { LiveRank } from "@/components/tier/live-rank";
+import { TierSprite } from "@/components/tier/tier-sprite";
 import { NavPill } from "@/components/ui/nav-pill";
 import { NavPills } from "@/components/ui/nav-pills";
 import { Toaster } from "@/components/ui/sonner";
@@ -28,6 +29,7 @@ const homeActiveOptions = { exact: true };
 export const RootLayout = () => (
   <div className="mx-auto flex min-h-svh w-full max-w-7xl flex-col gap-5 px-8 py-6">
     <DesktopOnly />
+    <TierSprite />
     <header className="flex items-center gap-6">
       <BrandMark />
       <NavPills label="Navigation principale">

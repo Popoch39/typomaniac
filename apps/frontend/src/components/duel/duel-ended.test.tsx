@@ -137,6 +137,15 @@ const intoManiac = {
 // The celebration's emblem: only seen, so found by the part its timeline animates.
 const celebration = () => document.querySelector('[data-tier-up="emblem"]');
 
+// The Emblem a Blason in this part carries, or null without one: only one Blason there.
+const blasonOf = (part: HTMLElement) => {
+  const blasons = part.querySelectorAll("[data-tier-blason]");
+
+  expect(blasons.length).toBeLessThanOrEqual(1);
+
+  return blasons[0]?.querySelector('use[href^="#tier-emblem"]')?.getAttribute("href") ?? null;
+};
+
 // The User prefers reduced motion: the celebration reads it when its timeline is built.
 const reduceMotion = () =>
   vi.spyOn(window, "matchMedia").mockImplementation((media) => ({
@@ -201,6 +210,7 @@ describe("DuelEnded", () => {
     expect(rank).toHaveTextContent("+20 TP");
     expect(rank).toHaveTextContent("Promotion : Or II");
     expect(rank).toHaveTextContent("10 TP");
+    expect(blasonOf(rank)).toBe("#tier-emblem-or");
   });
 
   test("a lost ranked Duel shows the TP lost, and a demotion", async () => {
@@ -226,6 +236,7 @@ describe("DuelEnded", () => {
     expect(screen.getByRole("region", { name: "Rang" })).toHaveTextContent(
       "Placement : encore 2 Duels avant ton rang",
     );
+    expect(blasonOf(screen.getByRole("region", { name: "Rang" }))).toBeNull();
   });
 
   test("the last Placement reveals the rank", async () => {
@@ -238,6 +249,7 @@ describe("DuelEnded", () => {
     expect(screen.getByRole("region", { name: "Rang" })).toHaveTextContent(
       "Placement terminé, ton rang :Bronze IV",
     );
+    expect(blasonOf(screen.getByRole("region", { name: "Rang" }))).toBe("#tier-emblem-bronze");
   });
 
   test("a Duel into a new Tier celebrates it, with its sound once", async () => {
@@ -246,6 +258,7 @@ describe("DuelEnded", () => {
     const rank = screen.getByRole("region", { name: "Rang" });
 
     expect(celebration()).not.toBeNull();
+    expect(blasonOf(rank)).toBe("#tier-emblem-or");
     expect(rank).toHaveTextContent("Nouveau Tier : Or IV !");
     expect(rank).toHaveTextContent("+25 TP");
     expect(rank).toHaveTextContent("15 TP");
@@ -258,6 +271,7 @@ describe("DuelEnded", () => {
     expect(celebration()).not.toBeNull();
     const rank = screen.getByRole("region", { name: "Rang" });
 
+    expect(blasonOf(rank)).toBe("#tier-emblem-maniac");
     expect(rank).toHaveTextContent("Nouveau Tier : Maniac !");
     expect(rank).toHaveTextContent("+30 TP");
     expect(rank).toHaveTextContent("10 TP");

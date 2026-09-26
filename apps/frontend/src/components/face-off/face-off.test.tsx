@@ -239,6 +239,9 @@ describe("FaceOff", () => {
     });
 
     expect(screen.getByText("Or II · 42 TP")).toBeInTheDocument();
+    // The rank carries its Emblem, never the Blason: that one is for the large formats.
+    expect(document.querySelector('use[href="#tier-emblem-or"]')).not.toBeNull();
+    expect(document.querySelector("[data-tier-blason]")).toBeNull();
     expect(screen.getByText("Placement · 3 Duels restants")).toBeInTheDocument();
     expect(screen.getByText("Victoire")).toBeInTheDocument();
     expect(screen.getByText("Défaite")).toBeInTheDocument();
@@ -392,6 +395,8 @@ describe("FaceOff", () => {
 
     expect(bannerPart()).toHaveTextContent("Duel de promotion");
     expect(bannerPart()).toHaveTextContent("Or I → Platine IV");
+    expect(bannerPart()?.querySelector('use[href="#tier-emblem-platine"]')).not.toBeNull();
+    expect(document.querySelector("[data-tier-blason]")).toBeNull();
     expect(ring()).not.toBeNull();
   });
 

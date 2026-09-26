@@ -33,6 +33,20 @@ describe("TierBadge", () => {
     expect(new Set(emblems).size).toBe(TIERS.length);
   });
 
+  test("in its large size, the Emblem stands on its Ornament: the Blason", () => {
+    const { container, rerender } = render(
+      <TierBadge standing={{ tier: "or", division: 2, tp: 0, shielded: false }} />,
+    );
+
+    expect(container.querySelector("[data-tier-blason]")).toBeNull();
+    rerender(
+      <TierBadge standing={{ tier: "or", division: 2, tp: 0, shielded: false }} size="lg" />,
+    );
+    expect(container.querySelector("[data-tier-blason]")).not.toBeNull();
+    expect(container.querySelector("[data-tier-emblem]")).toBeNull();
+    expect(screen.getByText("Or II")).toBeInTheDocument();
+  });
+
   test("the Division shows as bars: one for IV, four for I", () => {
     const { container, rerender } = render(
       <TierBadge standing={{ tier: "fer", division: 4, tp: 0, shielded: false }} />,
