@@ -2,7 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { meQueryOptions } from "@/api/me";
 import { useInDuel } from "@/components/duel/use-in-duel";
-import { useFaceOffSounds } from "@/components/face-off/face-off-sounds-context";
+import { useDuelSearchGesture } from "@/components/duel/use-duel-search-gesture";
 import { type SettingOption, SettingGroup } from "@/components/settings/setting-group";
 import { useAuthStore } from "@/stores/auth-store";
 import { type Play, usePlayStore } from "@/stores/play-store";
@@ -18,7 +18,7 @@ export const PlaySetting = () => {
   const inDuel = useInDuel();
   const setPlay = usePlayStore((state) => state.setPlay);
   const setSignInOpen = useAuthStore((state) => state.setSignInOpen);
-  const { unlock: unlockSounds } = useFaceOffSounds();
+  const searchGesture = useDuelSearchGesture();
 
   const choose = (play: Play) => {
     if (play === "duel" && me === null) {
@@ -27,9 +27,10 @@ export const PlaySetting = () => {
       return;
     }
 
-    // The Queue is joined on the Duel screen: this click lets its Face-off sound.
+    // The Queue is joined on the Duel screen: this click lets its Face-off sound and its Match
+    // proposal notify.
     if (play === "duel") {
-      unlockSounds();
+      searchGesture();
     }
 
     setPlay(play);

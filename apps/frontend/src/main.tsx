@@ -8,8 +8,10 @@ import { openFaceOffSounds } from "@/audio/face-off-sounds";
 import { previewSound, startSoundReactor } from "@/audio/sound-reactor";
 import { openWebAudio } from "@/audio/web-audio-output";
 import { FaceOffSoundsContext } from "@/components/face-off/face-off-sounds-context";
+import { TabAttentionContext } from "@/components/match-proposal/tab-attention-context";
 import { type SoundPreview, SoundPreviewContext } from "@/components/sound/sound-preview-context";
 import "@/index.css";
+import { browserTabAttention } from "@/lib/tab-attention";
 import { queryClient } from "@/query-client";
 import { router } from "@/router";
 
@@ -34,7 +36,9 @@ createRoot(rootElement).render(
     <QueryClientProvider client={queryClient}>
       <SoundPreviewContext value={preview}>
         <FaceOffSoundsContext value={faceOffSounds}>
-          <RouterProvider router={router} />
+          <TabAttentionContext value={browserTabAttention}>
+            <RouterProvider router={router} />
+          </TabAttentionContext>
         </FaceOffSoundsContext>
       </SoundPreviewContext>
     </QueryClientProvider>

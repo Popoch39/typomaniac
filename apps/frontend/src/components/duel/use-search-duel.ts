@@ -1,13 +1,14 @@
-import { useFaceOffSounds } from "@/components/face-off/face-off-sounds-context";
+import { useDuelSearchGesture } from "@/components/duel/use-duel-search-gesture";
 import { useDuelStore } from "@/stores/duel-store";
 
-// Joins the Queue from a click, which lets the Face-off of the Duel found sound.
+// Joins the Queue from a click, which lets the Face-off of the Duel found sound and its Match
+// proposal notify.
 export const useSearchDuel = () => {
   const joinQueue = useDuelStore((store) => store.joinQueue);
-  const { unlock } = useFaceOffSounds();
+  const searchGesture = useDuelSearchGesture();
 
   return () => {
-    unlock();
+    searchGesture();
     joinQueue();
   };
 };

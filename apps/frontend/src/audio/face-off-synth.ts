@@ -120,7 +120,16 @@ const go = (voice: Voice) => {
   tone(voice, { type: "triangle", from: 1980 }, { peak: 0.25, attack: 0.004, release: 0.4 });
 };
 
-const SYNTHS = { whoosh, impact, beep, go };
+// A Match proposal arriving: a rising chime of two bells, a fifth apart, to call back a User
+// looking elsewhere.
+const proposal = (voice: Voice) => {
+  const bell: Envelope = { peak: 0.35, attack: 0.006, release: 0.5 };
+
+  tone(voice, { type: "triangle", from: 880 }, bell);
+  tone({ ...voice, at: voice.at + 0.14 }, { type: "triangle", from: 1320 }, bell);
+};
+
+const SYNTHS = { whoosh, impact, beep, go, proposal };
 
 // Plays `sound` into `destination` now, built from oscillators and noise: each node is dropped once
 // it has played.

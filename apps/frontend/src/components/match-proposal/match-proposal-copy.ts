@@ -110,6 +110,15 @@ export const proposalAnnouncement = (stage: ProposalStage, opponent: string) => 
   }
 };
 
+// What the tab's title blinks to while the User has to answer.
+export const PROPOSAL_TAB_TITLE = "Adversaire trouvé !";
+
+// The system notification of a Match proposal arriving in a hidden tab.
+export const proposalNotification = (opponent: string) => ({
+  title: "Adversaire trouvé",
+  body: `${opponent} t'attend : ${PROPOSAL_SECONDS} secondes pour accepter.`,
+});
+
 // The whole seconds left before `expiresAt`, between 0 and PROPOSAL_SECONDS.
 export const secondsLeft = (expiresAt: number, now: number) =>
   Math.min(PROPOSAL_SECONDS, Math.max(0, Math.ceil((expiresAt - now) / 1000)));
