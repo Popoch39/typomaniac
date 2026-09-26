@@ -7,11 +7,11 @@ Contexte unique du monorepo : le vocabulaire partagé par le front et l'API.
 ### Identité
 
 **User** :
-Une personne connue de typomaniac, identifiée par son email. C'est la seule entité qui porte l'identité ; son Profile n'est qu'une page qui le montre, pas une entité séparée. Les autres Users ne voient que son Handle, son avatar et ses Stats, jamais son email ni son name.
+Une personne connue de typomaniac, identifiée par son email. C'est la seule entité qui porte l'identité ; son Profile n'est qu'une page qui le montre, pas une entité séparée. Les autres Users ne voient que son Handle, son avatar avec son Ornament, son rang et ses Stats, jamais son email ni son name.
 _Avoid_ : compte, player, membre
 
 **Profile** :
-La page d'un User, trouvée par son Handle, que tout User connecté peut voir : son Handle, son avatar et ses Stats. Sa Duel history, ses Duel charts et ses Replays n'y figurent pas.
+La page d'un User, trouvée par son Handle, que tout User connecté peut voir : son Handle, son avatar avec son Ornament, son rang en Blason et ses Stats. Sur le sien, le User choisit son Ornament. Sa Duel history, ses Duel charts et ses Replays n'y figurent pas.
 _Avoid_ : fiche, page perso, compte
 
 **Handle** :
@@ -166,8 +166,24 @@ Les typing points visibles d'un User dans sa Division, de 0 à 100 : un Duel en 
 _Avoid_ : LP, points, Score
 
 **Tier** :
-Le palier du rang d'un User : Fer, Bronze, Argent, Or, Platine, Diamant, chacun en quatre Divisions, puis Maître, sans Division, où les TP s'accumulent sans plafond.
-_Avoid_ : ligue, rang, elo
+Le palier du rang d'un User : Fer, Bronze, Argent, Or, Platine, Diamant, chacun en quatre Divisions, puis Maniac, sans Division, où les TP s'accumulent sans plafond.
+_Avoid_ : ligue, rang, elo, Maître
+
+**Emblem** :
+Le logo d'un Tier, le même pour toutes ses Divisions : bouclier du Fer à l'Or, hexagone du Platine, gemme du Diamant, couronne du Maniac.
+_Avoid_ : icône de rang, logo de rang, badge
+
+**Ornament** :
+La décoration d'un Tier que porte un User autour de son avatar, plus riche à chaque Tier. Hors Placement, il choisit de suivre son Tier (le défaut), de figer celui d'un Tier atteint à ou sous son Tier actuel, ou de n'en porter aucun. Il ne porte jamais celui d'un Tier au-dessus du sien : s'il descend sous le Tier figé, il porte celui de son Tier actuel. Les autres Users le voient partout où ils voient son avatar.
+_Avoid_ : cadre, bordure, frame, décoration d'avatar
+
+**Aura** :
+La lumière vivante qu'un Ornament dégage à partir de l'Or, plus intense à chaque Tier : un reflet sur le métal à l'Or, des poussières de lumière au Platine, des éclats prismatiques au Diamant, un feu et des braises au Maniac. Pleine là où l'avatar ou le Blason est montré en grand, légère dans les listes.
+_Avoid_ : glow, effet, FX, prestige
+
+**Blason** :
+L'Emblem d'un Tier posé sur son Ornament, montré en grand là où le rang est mis en avant.
+_Avoid_ : crest, écusson
 
 **Division** :
 L'un des quatre échelons d'un Tier, de IV (le plus bas) à I. Chacune vaut 100 TP.
@@ -182,7 +198,7 @@ Ce qu'un Duel Ranked peut faire aux TP d'un User, montré au Face-off : les TP q
 _Avoid_ : preview, pari, prévision
 
 **Promotion Duel** :
-Un Duel Ranked dont la victoire ferait changer un User de Tier ou le ferait entrer en Maître, que le Face-off annonce comme tel. C'est un Duel ordinaire, seul, aux mêmes règles : pas une série. Monter d'une Division sans changer de Tier n'en fait pas un.
+Un Duel Ranked dont la victoire ferait changer un User de Tier ou le ferait entrer en Maniac, que le Face-off annonce comme tel. C'est un Duel ordinaire, seul, aux mêmes règles : pas une série. Monter d'une Division sans changer de Tier n'en fait pas un.
 _Avoid_ : série de promotion, promo, BO
 
 **Classement** :
