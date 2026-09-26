@@ -4,11 +4,11 @@ import type { Tier } from "ranked";
 import { AuraGalleryRow } from "@/components/aura-gallery/aura-gallery-row";
 import { Button } from "@/components/ui/button";
 
-// A Tier's full Aura, shown on demand only: the app holds `FULL_AURA_CAPACITY` at most, fewer
-// than every Tier's row together, so each is mounted while asked for and gives its places back
-// once hidden.
+// A Tier's full Aura, shown at first, hidden on demand: the app holds `FULL_AURA_CAPACITY` at
+// most, fewer than every Tier's row together (the last ones fall back to light), so hiding a
+// row gives its places back to the others.
 export const AuraGalleryFull = ({ tier }: { tier: Tier }) => {
-  const [shown, setShown] = useState(false);
+  const [shown, setShown] = useState(true);
 
   return (
     <>
