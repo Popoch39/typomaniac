@@ -1,5 +1,3 @@
-import { cn } from "cn";
-
 import { AuthControl } from "@/components/auth/auth-control";
 import { BrandMark } from "@/components/brand-mark";
 import { DuelsNavLink } from "@/components/duel-history/duels-nav-link";
@@ -18,7 +16,7 @@ type AppHeaderProps = { inDuelScene: boolean };
 export const AppHeader = ({ inDuelScene }: AppHeaderProps) => (
   <header
     inert={inDuelScene}
-    className={cn("flex items-center", inDuelScene ? "h-11 gap-5 opacity-38" : "gap-6")}
+    className="flex items-center gap-6 duel-scene:h-11 duel-scene:gap-5 duel-scene:opacity-38"
   >
     <BrandMark />
     <NavPills label="Navigation principale">

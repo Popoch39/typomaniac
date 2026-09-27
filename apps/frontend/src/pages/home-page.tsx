@@ -1,5 +1,3 @@
-import { cn } from "cn";
-
 import { DuelArea } from "@/components/duel/duel-area";
 import { useInDuel } from "@/components/duel/use-in-duel";
 import { useInDuelScene } from "@/components/duel-scene/use-in-duel-scene";
@@ -13,7 +11,7 @@ export const HomePage = () => {
   const inDuelScene = useInDuelScene();
 
   return (
-    <section className={cn("flex flex-col", inDuelScene ? "flex-1" : "gap-4 py-12")}>
+    <section className="flex flex-col gap-4 py-12 duel-scene:flex-1 duel-scene:gap-0 duel-scene:py-0">
       <h1 className="sr-only">typomaniac</h1>
       {inDuelScene ? null : <RunSettings />}
       {inDuel ? <DuelArea /> : <SoloArea />}

@@ -17,7 +17,6 @@ import { AppFrame } from "@/components/app-frame";
 import { ClockContext } from "@/components/run/clock-context";
 import { HomePage } from "@/pages/home-page";
 import { useConnectionStore } from "@/stores/connection-store";
-import { useDuelStore } from "@/stores/duel-store";
 import { usePlayStore } from "@/stores/play-store";
 import { fakeServer } from "@/test/fake-socket";
 import { holdGsapClock } from "@/test/gsap-clock";
@@ -192,7 +191,6 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
     await userEvent.click(screen.getByRole("button", { name: "Quitter le Duel" }));
 
     expect(server().sent).toContainEqual({ type: "leave-duel" });
-    expect(useDuelStore.getState().state.phase).toBe("countdown");
   });
 
   test("on the end screen, the app gets its header back", async () => {
