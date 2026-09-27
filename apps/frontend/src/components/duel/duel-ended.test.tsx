@@ -465,6 +465,86 @@ describe("the Tier-up", () => {
     expect(played).toEqual(["tier-up-argent-crack", "tier-up-argent-impact"]);
   });
 
+  test("Argent → Or sounds as the silver ascends, as the Or materializes, then with the name", async () => {
+    await renderEnded({ ranked: intoOr });
+
+    await clock.advance(0.7);
+    expect(played).toEqual([]);
+
+    await clock.advance(0.2);
+    expect(played).toEqual(["tier-up-or-ascend"]);
+
+    await clock.advance(1);
+    expect(played).toEqual(["tier-up-or-ascend"]);
+
+    await clock.advance(0.2);
+    expect(played).toEqual(["tier-up-or-ascend", "tier-up-or-materialize"]);
+
+    await clock.advance(0.6);
+    expect(played).toEqual(["tier-up-or-ascend", "tier-up-or-materialize", "tier-up-or-name"]);
+
+    await clock.advance(1);
+    expect(continueButton()).not.toHaveFocus();
+
+    await clock.advance(0.2);
+    expect(continueButton()).toHaveFocus();
+    await clock.advance(5);
+    expect(played).toHaveLength(3);
+  });
+
+  test("Argent → Or skipped as it materializes: no name heard after", async () => {
+    await renderEnded({ ranked: intoOr });
+    await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
+    await clock.advance(2.1);
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(continueButton()).toHaveFocus();
+    await clock.advance(5);
+    expect(played).toEqual(["tier-up-or-ascend", "tier-up-or-materialize"]);
+  });
+
+  test("Argent → Or traces its laurels and its star, little by little, once it has materialized", async () => {
+    await renderEnded({ ranked: intoOr });
+
+    const tierUp = screen.getByRole("dialog");
+    const laurel = tierUp.querySelector("[data-tier-up=laurel] path");
+    const star = tierUp.querySelector("[data-tier-up=star-trace]");
+
+    await clock.advance(2);
+    expect(drawn(laurel)).toBe(1);
+    expect(drawn(star)).toBe(1);
+
+    await clock.advance(0.35);
+    expect(drawn(star)).toBeGreaterThan(0.05);
+    expect(drawn(star)).toBeLessThan(0.95);
+    expect(drawn(laurel)).toBeGreaterThan(0.05);
+    expect(drawn(laurel)).toBeLessThan(0.95);
+
+    await clock.advance(0.6);
+    expect(drawn(star)).toBe(0);
+    expect(drawn(laurel)).toBe(0);
+  });
+
+  test("Argent → Or pops its leaves in pair by pair, none seen before", async () => {
+    await renderEnded({ ranked: intoOr });
+
+    const leaves = [...screen.getByRole("dialog").querySelectorAll("[data-tier-up^=leaf-]")];
+    const opacities = () => leaves.map((leaf) => gsap.getProperty(leaf, "opacity"));
+
+    expect(leaves).toHaveLength(14);
+
+    await clock.advance(2.3);
+    expect(opacities()).toEqual(Array(14).fill(0));
+
+    await clock.advance(0.2);
+    expect(opacities()[0]).toBeGreaterThan(0);
+    expect(opacities()[13]).toBe(0);
+
+    await clock.advance(1);
+    expect(opacities()).toEqual(Array(14).fill(1));
+  });
+
   test("gives the focus to « Continuer » once its intro is over", async () => {
     await renderEnded({ ranked: intoBronze });
 
@@ -608,6 +688,37 @@ describe("the Tier-up's Aura", () => {
     await userEvent.click(continueButton());
 
     expect(held(browser)).toEqual([]);
+  });
+
+  test("Argent → Or lights its full Aura at the impact, never before", async () => {
+    const browser = fakeAuraRuntime();
+
+    await renderEnded({ ranked: intoOr, aura: browser.runtime });
+    await settle();
+
+    const aura = screen.getByRole("dialog").querySelector("[data-tier-up=aura]");
+
+    await clock.advance(1.95);
+    expect(gsap.getProperty(aura, "opacity")).toBe(0);
+
+    await clock.advance(0.1);
+    expect(gsap.getProperty(aura, "opacity")).toBeGreaterThan(0);
+
+    await clock.advance(0.8);
+    expect(gsap.getProperty(aura, "opacity")).toBe(1);
+    expect(held(browser)).toEqual(["or"]);
+  });
+
+  test("under reduced motion, Argent → Or opens with its full Aura already lit", async () => {
+    reduceMotion();
+
+    await renderEnded({ ranked: intoOr });
+
+    const aura = screen.getByRole("dialog", { name: "Or" }).querySelector("[data-tier-up=aura]");
+
+    await waitFor(() => expect(continueButton()).toHaveFocus());
+    expect(gsap.getProperty(aura, "opacity")).toBe(1);
+    expect(played).toEqual(["tier-up-or-materialize"]);
   });
 
   test("below Or, there is no full Aura to ask for", async () => {

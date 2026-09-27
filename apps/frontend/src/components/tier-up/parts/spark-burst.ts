@@ -2,7 +2,7 @@
 // (px), how long after the impact it leaves and how long it flies (s).
 export type TierUpSpark = { x: number; y: number; size: number; delay: number; duration: number };
 
-type Range = readonly [min: number, max: number];
+export type Range = readonly [min: number, max: number];
 
 type Burst = {
   count: number;
@@ -20,7 +20,8 @@ const random = (n: number) => {
   return x - Math.floor(x);
 };
 
-const within = ([min, max]: Range, n: number) => min + random(n) * (max - min);
+// A number within `range`, the same for the same `n`.
+export const within = ([min, max]: Range, n: number) => min + random(n) * (max - min);
 
 // `count` sparks around the circle, each turned a little off its place, flying out as far as
 // `distance`, all drawn from `seed`.

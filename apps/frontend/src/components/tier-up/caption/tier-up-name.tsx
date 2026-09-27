@@ -2,6 +2,7 @@ import { Dialog } from "@base-ui/react/dialog";
 import type { Tier } from "ranked";
 
 import { TIER_NAMES } from "@/components/tier/tier";
+import type { NameLook } from "@/components/tier-up/choreography/tier-up-choreography";
 import { tierUpPaint } from "@/components/tier-up/parts/tier-up-paint";
 
 // The letters of `name`, each keyed by itself and how many times it came before (« Maniac »
@@ -18,16 +19,22 @@ const lettersOf = (name: string) => {
   });
 };
 
-// The name of the Tier reached, huge, each letter in the metal of its Emblem so that it can come
-// in on its own; read whole, as the dialog's title.
-export const TierUpName = ({ tier }: { tier: Tier }) => {
+// The name of the Tier reached, huge, set as its artboard sets it, each letter in the metal of its
+// Emblem so that it can come in on its own; read whole, as the dialog's title.
+export const TierUpName = ({ tier, look }: { tier: Tier; look: NameLook }) => {
   const name = TIER_NAMES[tier];
   const paint = tierUpPaint(tier);
 
   return (
     <Dialog.Title
-      className="flex pl-[0.06em] text-[124px] leading-[1.02] font-black tracking-[0.06em] uppercase"
-      style={{ filter: paint.nameShadow }}
+      className="flex font-black uppercase"
+      style={{
+        fontSize: look.size,
+        lineHeight: look.leading,
+        letterSpacing: `${look.tracking}em`,
+        paddingLeft: `${look.tracking}em`,
+        filter: paint.nameShadow(look.shadow),
+      }}
     >
       <span className="sr-only">{name}</span>
       {lettersOf(name).map(({ letter, key }) => (

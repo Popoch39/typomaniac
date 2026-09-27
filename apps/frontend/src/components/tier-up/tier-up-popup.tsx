@@ -4,7 +4,7 @@ import { type KeyboardEvent, type MouseEvent, useRef, useState } from "react";
 
 import { reducedMotion, useForcedReducedMotion } from "@/components/motion/reduced-motion-context";
 import { TierUpCaption } from "@/components/tier-up/caption/tier-up-caption";
-import { choreographyOf } from "@/components/tier-up/choreography/tier-up-choreography";
+import { choreographyOf, NAME_LOOK } from "@/components/tier-up/choreography/tier-up-choreography";
 import { TierUpStage } from "@/components/tier-up/stage/tier-up-stage";
 import { useTierUpTimeline } from "@/components/tier-up/use-tier-up-timeline";
 
@@ -26,6 +26,7 @@ export const TierUpPopup = ({ from, to, onClose }: TierUpPopupProps) => {
     proceed,
   });
 
+  const choreography = choreographyOf(to.tier);
   const advance = () => (settled ? onClose() : skip());
 
   // Échap advances wherever the focus is; Entrée only on the dialog itself: on « Continuer », it
@@ -54,8 +55,14 @@ export const TierUpPopup = ({ from, to, onClose }: TierUpPopupProps) => {
       onKeyDown={pressed}
     >
       <TierUpStage ref={stage}>
-        {choreographyOf(to.tier).scene({ from: from.tier, to: to.tier })}
-        <TierUpCaption from={from} to={to} proceed={proceed} onProceed={proceeded} />
+        {choreography.scene({ from: from.tier, to: to.tier })}
+        <TierUpCaption
+          from={from}
+          to={to}
+          proceed={proceed}
+          onProceed={proceeded}
+          look={choreography.title ?? NAME_LOOK}
+        />
       </TierUpStage>
     </Dialog.Popup>
   );

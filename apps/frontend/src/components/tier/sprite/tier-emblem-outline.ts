@@ -13,6 +13,10 @@ export const CROWN = "M3 11 L10 17.5 L13 12.5 L16 16 L19 12.5 L22 17.5 L29 11 L2
 
 export const CROWN_BAND = "M6 26.5 H26 V29.5 H6 Z";
 
+// The star cut in the Or and the Platine, and traced as the Or comes in.
+export const STAR =
+  "M16 8 L18.2 13.4 L24 13.6 L19.5 17.2 L21 22.8 L16 19.6 L11 22.8 L12.5 17.2 L8 13.6 L13.8 13.4 Z";
+
 // Each Emblem's outline and its place on the 120 grid, bigger at each Tier.
 export const EMBLEM_OUTLINES: Record<Tier, { d: string; transform: string }> = {
   fer: { d: SHIELD, transform: "translate(36 34) scale(1.5)" },

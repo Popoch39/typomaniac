@@ -1,7 +1,6 @@
 import { BRONZE_SPARKS } from "@/components/tier-up/choreography/bronze/bronze-sparks";
 import { TierUpEmblem } from "@/components/tier-up/choreography/bronze/tier-up-emblem";
 import { TierUpHalo } from "@/components/tier-up/choreography/bronze/tier-up-halo";
-import { TierUpOldEmblem } from "@/components/tier-up/choreography/bronze/tier-up-old-emblem";
 import type { Choreography } from "@/components/tier-up/choreography/tier-up-choreography";
 import {
   DISSOLVE,
@@ -13,22 +12,18 @@ import {
 import {
   breathe,
   captionIn,
+  DRAWN,
   flash,
   RISE,
   RISEN,
   ringOut,
   sparksOut,
+  UNDRAWN,
 } from "@/components/tier-up/choreography/tier-up-moves";
 import { part } from "@/components/tier-up/choreography/tier-up-part";
 import { TierUpGround } from "@/components/tier-up/parts/tier-up-ground";
+import { TierUpOldEmblem } from "@/components/tier-up/parts/tier-up-old-emblem";
 import { TierUpSparks } from "@/components/tier-up/parts/tier-up-sparks";
-
-// A line traced from nothing to whole: its length set to 1, one dash as long, pushed off it,
-// then back. As SVG attributes, plain numbers: as CSS, GSAP would round the `px` of the offset
-// to 1 or 0, and the line would pop in instead of tracing itself.
-const UNDRAWN = { pathLength: 1, "stroke-dasharray": 1, "stroke-dashoffset": 1 };
-
-const DRAWN = { pathLength: 1, "stroke-dasharray": 1, "stroke-dashoffset": 0 };
 
 // Fer → Bronze, as its artboard « 1 · Fer → Bronze » plays it, keyframe for keyframe, with its
 // timings and its curves: the iron shield rises in, then dissolves into light; the bronze

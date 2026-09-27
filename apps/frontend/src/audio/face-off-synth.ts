@@ -322,6 +322,93 @@ const argentName = (voice: Voice) => {
   noiseBurst(end, filterOf(end, "highpass", 6000), { peak: 0.12, attack: 0.05, release: 0.8 });
 };
 
+// The silver rising into the column of light, for a second: airy noise brightening as it climbs,
+// over two voices rising a fifth apart, as a choir swelling.
+const orAscend = (voice: Voice) => {
+  const air = filterOf(voice, "bandpass", 700);
+
+  air.Q.value = 1.1;
+  air.frequency.exponentialRampToValueAtTime(7000, voice.at + 0.9);
+  noiseBurst(voice, air, { peak: 0.4, attack: 0.7, release: 0.3 });
+  tone(
+    voice,
+    { type: "sine", from: 220, to: 587.33, glide: 0.9 },
+    { peak: 0.14, attack: 0.6, release: 0.5 },
+  );
+  tone(
+    voice,
+    { type: "triangle", from: 330, to: 880, glide: 0.9 },
+    { peak: 0.07, attack: 0.6, release: 0.5 },
+  );
+};
+
+// The partials of the gold ringing as it materializes, in Hz, with their envelopes: a warm D, its
+// fifth and its octave, then inharmonic overtones, fuller and longer than the silver.
+const GOLD_RING: readonly [OscillatorType, number, Envelope][] = [
+  ["triangle", 293.66, { peak: 0.24, attack: 0.004, release: 2.4 }],
+  ["triangle", 440, { peak: 0.14, attack: 0.004, release: 2 }],
+  ["sine", 587.33, { peak: 0.14, attack: 0.003, release: 1.9 }],
+  ["sine", 1244, { peak: 0.07, attack: 0.002, release: 1.1 }],
+  ["sine", 2489, { peak: 0.05, attack: 0.002, release: 0.8 }],
+];
+
+// The Or materializing in a blinding white: a deep thump shaking the screen, a burst of bright
+// noise for the flash, then the gold ringing.
+const orMaterialize = (voice: Voice) => {
+  tone(
+    voice,
+    { type: "sine", from: 110, to: 32, glide: 0.45 },
+    { peak: 1, attack: 0.004, release: 0.8 },
+  );
+  noiseBurst(voice, filterOf(voice, "lowpass", 4200), { peak: 0.6, attack: 0.001, release: 0.3 });
+  noiseBurst(voice, filterOf(voice, "highpass", 5000), { peak: 0.18, attack: 0.01, release: 0.7 });
+
+  for (const [type, from, envelope] of GOLD_RING) {
+    tone(voice, { type, from }, envelope);
+  }
+};
+
+// The notes under the name of Or, in Hz: a D major arpeggio over two octaves, each doubled an
+// octave up, softer.
+const OR_NOTES = [587.33, 739.99, 880, 1174.66, 1479.98, 1760];
+
+// When the glitter tinkles after the name's last note (s), and how high (Hz): a few pieces
+// catching the light as they fall.
+const GLITTER_TINKLES: readonly [number, number][] = [
+  [0.12, 2349.32],
+  [0.27, 2959.96],
+  [0.39, 3520],
+  [0.56, 2637.02],
+  [0.74, 3135.96],
+  [0.95, 3951.07],
+];
+
+// The name of Or: a quick rising arpeggio of plucks with their octaves, richer than Argent's, the last held with its fifth over a long shimmer, then the
+// glitter tinkling as it falls.
+const orName = (voice: Voice) => {
+  for (const [step, note] of OR_NOTES.entries()) {
+    const last = step === OR_NOTES.length - 1;
+    const release = last ? 1.6 : 0.35;
+    const pluck = later(voice, step * LETTER_STEP_S);
+
+    tone(pluck, { type: "triangle", from: note }, { peak: 0.14, attack: 0.004, release });
+    tone(pluck, { type: "sine", from: note * 2 }, { peak: 0.05, attack: 0.004, release });
+  }
+
+  const end = later(voice, (OR_NOTES.length - 1) * LETTER_STEP_S);
+
+  tone(end, { type: "sine", from: 2637.02 }, { peak: 0.05, attack: 0.01, release: 1.4 });
+  noiseBurst(end, filterOf(end, "highpass", 6500), { peak: 0.12, attack: 0.05, release: 0.9 });
+
+  for (const [delay, note] of GLITTER_TINKLES) {
+    tone(
+      later(end, delay),
+      { type: "sine", from: note },
+      { peak: 0.04, attack: 0.002, release: 0.3 },
+    );
+  }
+};
+
 const SYNTHS: Record<FaceOffSound, (voice: Voice) => void> = {
   whoosh,
   impact,
@@ -336,6 +423,9 @@ const SYNTHS: Record<FaceOffSound, (voice: Voice) => void> = {
   "tier-up-argent-stamp": argentStamp,
   "tier-up-argent-sweep": argentSweep,
   "tier-up-argent-name": argentName,
+  "tier-up-or-ascend": orAscend,
+  "tier-up-or-materialize": orMaterialize,
+  "tier-up-or-name": orName,
 };
 
 // Plays `sound` into `destination` now, built from oscillators and noise: each node is dropped once

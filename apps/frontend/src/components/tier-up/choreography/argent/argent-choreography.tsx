@@ -22,14 +22,14 @@ import {
   RISE,
   RISEN,
   ringOut,
+  shake,
   sparksOut,
 } from "@/components/tier-up/choreography/tier-up-moves";
 import { part } from "@/components/tier-up/choreography/tier-up-part";
 import { TierUpGround } from "@/components/tier-up/parts/tier-up-ground";
 import { TierUpSparks } from "@/components/tier-up/parts/tier-up-sparks";
 
-// The screen shaking as the Argent strikes: from x, y (px), each step 12 % of 0.4 s, dying down,
-// then still again over the last 16 %.
+// The screen shaking as the Argent strikes, over 0.4 s: through each x, y (px), dying down.
 const SHAKE = [
   [-12, 8],
   [10, -9],
@@ -126,17 +126,7 @@ export const argentChoreography: Choreography = {
         .fromTo(shard, { opacity: 0 }, { opacity: 1, duration: 0.1375, ease: SHARD }, 1.4);
     }
 
-    timeline.to(
-      part("shake"),
-      {
-        keyframes: [
-          ...SHAKE.map(([x, y]) => ({ x, y, duration: SHAKE_S * 0.12, ease: "none" })),
-          { x: 0, y: 0, duration: SHAKE_S * 0.16, ease: "none" },
-        ],
-      },
-      "impact",
-    );
-
+    shake(timeline, SHAKE, SHAKE_S, "impact");
     flash(timeline, part("seams"), 0.6, "impact");
     flash(timeline, part("flash"), 0.6, "impact")
       .to(

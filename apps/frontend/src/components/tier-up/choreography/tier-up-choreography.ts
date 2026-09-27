@@ -4,6 +4,8 @@ import type { ReactNode } from "react";
 import type { TierUpSound } from "@/audio/face-off-sounds";
 import { argentChoreography } from "@/components/tier-up/choreography/argent/argent-choreography";
 import { bronzeChoreography } from "@/components/tier-up/choreography/bronze/bronze-choreography";
+import { orChoreography } from "@/components/tier-up/choreography/or/or-choreography";
+import type { NameShadow } from "@/components/tier-up/parts/tier-up-paint";
 
 // The highlights every Tier-up's timeline carries, as labels: the old Emblem coming apart, the new
 // Blason's impact, the Tier's name, then the wait, from which the Blason lives on until closed.
@@ -34,12 +36,31 @@ export type Choreography = {
   scene: (tiers: SceneTiers) => ReactNode;
   intro: (timeline: gsap.core.Timeline) => void;
   idle: (timeline: gsap.core.Timeline) => void;
+  // How its artboard sets the name, when not as usual.
+  title?: NameLook;
+};
+
+// How the name is set under the Blason: its size (px), its line height and letter spacing (em),
+// and the light under it.
+export type NameLook = {
+  size: number;
+  leading: number;
+  tracking: number;
+  shadow: NameShadow;
+};
+
+export const NAME_LOOK: NameLook = {
+  size: 124,
+  leading: 1.02,
+  tracking: 0.06,
+  shadow: { y: 6, blur: 24, percent: 45 },
 };
 
 // Each Tier's choreography, by the Tier reached, as each gets its own.
 const CHOREOGRAPHIES: Partial<Record<Tier, Choreography>> = {
   bronze: bronzeChoreography,
   argent: argentChoreography,
+  or: orChoreography,
 };
 
 // Until a Tier has its own, it plays Bronze's, with its own drawing and colours.

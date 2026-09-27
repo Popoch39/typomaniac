@@ -12,6 +12,9 @@ export const TIER_UP_SOUNDS = [
   "tier-up-argent-stamp",
   "tier-up-argent-sweep",
   "tier-up-argent-name",
+  "tier-up-or-ascend",
+  "tier-up-or-materialize",
+  "tier-up-or-name",
 ] as const;
 
 export type TierUpSound = (typeof TIER_UP_SOUNDS)[number];

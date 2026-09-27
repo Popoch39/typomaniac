@@ -1,6 +1,16 @@
 import type { Tier } from "ranked";
 
-import { INK, METAL_STOPS, METALS } from "@/components/tier/sprite/tier-sprite-paint";
+import {
+  deepId,
+  INK,
+  METAL_STOPS,
+  METALS,
+  OUTLINES,
+  paint,
+} from "@/components/tier/sprite/tier-sprite-paint";
+
+// The light under the name: `y` px down, `blur` px wide, as strong as `percent`.
+export type NameShadow = { y: number; blur: number; percent: number };
 
 // `color` at `percent` % over `base`: the Tier-up's lights are its metal fading out.
 const mix = (color: string, percent: number, base = "transparent") =>
@@ -26,7 +36,22 @@ export const tierUpPaint = (tier: Tier) => {
     halo: `radial-gradient(circle, ${mix(metal.sheen, 50)}, ${mix(metal.mid, 0)} 68%)`,
     // The flash of the Emblem's shape as the Blason lands: its light metal, nearly white.
     flash: mix(metal.light, 25, "white"),
-    nameShadow: `drop-shadow(0 6px 24px ${mix(metal.sheen, 45)})`,
+    nameShadow: ({ y, blur, percent }: NameShadow) =>
+      `drop-shadow(0 ${y}px ${blur}px ${mix(metal.sheen, percent)})`,
+    // The crease of the metal, and the outline around it: the laurels' stems and leaves.
+    crease: metal.crease,
+    outline: OUTLINES[tier],
+    // A leaf of the laurels: the sprite's deeper metal of the Tier, drawn for its Ornament.
+    leaf: paint(deepId(tier)),
+    // Rays of light turning slowly around the Blason, fading away from it.
+    rays: `repeating-conic-gradient(from 0deg, ${mix(metal.mid, 0)} 0deg 7deg, ${mix(metal.light, 20)} 10deg, ${mix(metal.mid, 0)} 13deg 20deg)`,
+    // The column of light the old Emblem rises into: white at its heart.
+    column: `linear-gradient(90deg, ${mix(metal.mid, 0)}, ${mix(metal.light, 85)} 44%, white 50%, ${mix(metal.light, 85)} 56%, ${mix(metal.mid, 0)})`,
+    // The whole stage going white as the Blason materializes, from its centre.
+    whiteout: `radial-gradient(circle at 50% 39%, ${mix(metal.light, 25, "white")} 0%, ${mix(metal.light, 60)} 25%, ${mix(metal.mid, 0)} 60%)`,
+    // A piece of glitter, lit at its corner, and its glow.
+    glitter: `linear-gradient(135deg, ${metal.light}, ${metal.mid} 60%, ${metal.crease})`,
+    glitterGlow: `0 0 8px ${mix(metal.mid, 80)}`,
     // The glow of a spark, `blur` px wide.
     glow: (blur: number) => `0 0 ${blur}px ${metal.mid}`,
     // The glow of a crack of light, as bright as its light.

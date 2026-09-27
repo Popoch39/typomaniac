@@ -1,6 +1,7 @@
 import { TIERS } from "ranked";
 
 import { AuraSpriteDefs } from "@/components/aura/aura-sprite-defs";
+import { STAR } from "@/components/tier/sprite/tier-emblem-outline";
 import {
   DEEPS,
   deepId,
@@ -58,10 +59,7 @@ export const TierSpriteDefs = () => (
       id={FLAME_ID}
       d="M0 0 C-5 -4 -5.5 -10 0 -18 C1 -12 5.5 -10.5 4.5 -5.5 C4 -2.5 2 -0.8 0 0 Z"
     />
-    <path
-      id={STAR_ID}
-      d="M16 8 L18.2 13.4 L24 13.6 L19.5 17.2 L21 22.8 L16 19.6 L11 22.8 L12.5 17.2 L8 13.6 L13.8 13.4 Z"
-    />
+    <path id={STAR_ID} d={STAR} />
     <path id={SPARK_ID} d="M0 -6 L1.3 -1.3 L6 0 L1.3 1.3 L0 6 L-1.3 1.3 L-6 0 L-1.3 -1.3 Z" />
     <AuraSpriteDefs />
   </defs>

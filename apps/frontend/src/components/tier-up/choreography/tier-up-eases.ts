@@ -35,3 +35,15 @@ export const STAMP = CustomEase.create("tier-up-stamp", "0.5,0,0.6,1.4");
 
 // The light sweeping over the metal.
 export const SWEEP = CustomEase.create("tier-up-sweep", "0.4,0,0.2,1");
+
+// The old Emblem rising into the column of light, faster and faster.
+export const ASCEND = CustomEase.create("tier-up-ascend", "0.6,0,0.9,0.5");
+
+// The column of light opening, then closing.
+export const COLUMN = CustomEase.create("tier-up-column", "0.3,0,0.2,1");
+
+// A leaf or a stud popping in, overshooting before it settles.
+export const POP_OVER = CustomEase.create("tier-up-pop-over", "0.3,1.5,0.5,1");
+
+// Glitter falling, faster and faster.
+export const FALL = CustomEase.create("tier-up-fall", "0.4,0,0.8,0.6");
