@@ -5,6 +5,7 @@ import type { TierUpSound } from "@/audio/face-off-sounds";
 import { argentChoreography } from "@/components/tier-up/choreography/argent/argent-choreography";
 import { bronzeChoreography } from "@/components/tier-up/choreography/bronze/bronze-choreography";
 import { diamantChoreography } from "@/components/tier-up/choreography/diamant/diamant-choreography";
+import { maniacChoreography } from "@/components/tier-up/choreography/maniac/maniac-choreography";
 import { orChoreography } from "@/components/tier-up/choreography/or/or-choreography";
 import { platineChoreography } from "@/components/tier-up/choreography/platine/platine-choreography";
 import type { NameShadow } from "@/components/tier-up/parts/tier-up-paint";
@@ -44,13 +45,19 @@ export type Choreography = {
 
 // How the name is set under the Blason: its size (px), its line height and letter spacing (em),
 // the light under it, and the colours of the two ghosts of it its artboard leaves on either side
-// as it comes in, if any.
+// as it comes in, if any. Its letters are in the metal of the Emblem, and nothing glows around
+// them but the light under them, unless its artboard paints them (`letters`, a CSS gradient) or
+// sets them glowing (`glow`, a CSS `drop-shadow()`) otherwise. The kicker over it and the arrow of
+// the route under it are muted, unless its artboard lights them (`kicker`, a colour).
 export type NameLook = {
   size: number;
   leading: number;
   tracking: number;
   shadow: NameShadow;
   ghosts?: { left: string; right: string };
+  letters?: string;
+  glow?: string;
+  kicker?: string;
 };
 
 export const NAME_LOOK: NameLook = {
@@ -67,6 +74,7 @@ const CHOREOGRAPHIES: Partial<Record<Tier, Choreography>> = {
   or: orChoreography,
   platine: platineChoreography,
   diamant: diamantChoreography,
+  maniac: maniacChoreography,
 };
 
 // Until a Tier has its own, it plays Bronze's, with its own drawing and colours.

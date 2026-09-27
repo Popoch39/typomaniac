@@ -21,8 +21,8 @@ const lettersOf = (name: string) => {
 };
 
 // The name of the Tier reached, huge, set as its artboard sets it, each letter in the metal of its
-// Emblem so that it can come in on its own, or the whole word at once; read whole, as the dialog's
-// title. Behind it, its ghosts, when its artboard has them.
+// Emblem (or its artboard's own paint) so that it can come in on its own, or the whole word at
+// once; read whole, as the dialog's title. Behind it, its ghosts, when its artboard has them.
 export const TierUpName = ({ tier, look }: { tier: Tier; look: NameLook }) => {
   const name = TIER_NAMES[tier];
   const paint = tierUpPaint(tier);
@@ -35,7 +35,7 @@ export const TierUpName = ({ tier, look }: { tier: Tier; look: NameLook }) => {
         lineHeight: look.leading,
         letterSpacing: `${look.tracking}em`,
         paddingLeft: `${look.tracking}em`,
-        filter: paint.nameShadow(look.shadow),
+        filter: [look.glow, paint.nameShadow(look.shadow)].join(" ").trim(),
       }}
     >
       <span className="sr-only">{name}</span>
@@ -62,7 +62,7 @@ export const TierUpName = ({ tier, look }: { tier: Tier; look: NameLook }) => {
             aria-hidden
             data-tier-up="letter"
             className="inline-block bg-clip-text text-transparent"
-            style={{ backgroundImage: paint.metal }}
+            style={{ backgroundImage: look.letters ?? paint.metal }}
           >
             {letter}
           </span>

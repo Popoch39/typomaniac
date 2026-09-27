@@ -195,6 +195,15 @@ const blasonOf = (part: HTMLElement) => {
 const emblemReached = (tierUp: HTMLElement) =>
   tierUp.querySelector("[data-tier-up=emblem]")?.getAttribute("data-tier") ?? null;
 
+// The Tier whose Emblem the Tier-up takes apart, when it draws it in pieces of its own.
+const emblemLeft = (tierUp: HTMLElement) =>
+  tierUp.querySelector("[data-tier-up=old]")?.getAttribute("data-tier") ?? null;
+
+// The gems of fire set in the Maniac's crown, and the flame over it, as its Emblem engraves them.
+const GEMS_OF_FIRE = "[data-tier-up=engraving] > circle";
+
+const CROWN_FLAME = "[data-tier-up=engraving] > g:last-child";
+
 // How much of a traced line is still to draw, as the browser renders it: 1 for none of it, 0
 // for all of it (the path's length set to 1).
 const drawn = (path: Element | null) => Number(path?.getAttribute("stroke-dashoffset"));
@@ -381,7 +390,7 @@ describe("the Tier-up", () => {
 
     expect(tierUp).toHaveTextContent("Palier ultime");
     expect(tierUp).toHaveTextContent("Diamant I → Maniac");
-    expect(emblemOf(tierUp)).toBe("#tier-emblem-diamant");
+    expect(emblemLeft(tierUp)).toBe("diamant");
     expect(emblemReached(tierUp)).toBe("maniac");
   });
 
@@ -834,6 +843,171 @@ describe("the Tier-up", () => {
     expect(opacitiesOf(ghosts)).toEqual([0, 0]);
   });
 
+  test("Diamant → Maniac sounds with the heat, the vortex, the silence, the crown's quake, the fire and the name", async () => {
+    await renderEnded({ ranked: intoManiac });
+
+    await clock.advance(0.45);
+    expect(played).toEqual([]);
+
+    await clock.advance(0.1);
+    expect(played).toEqual(["tier-up-maniac-heat"]);
+
+    await clock.advance(1.5);
+    expect(played).toHaveLength(1);
+
+    await clock.advance(0.1);
+    expect(played).toEqual(["tier-up-maniac-heat", "tier-up-maniac-vortex"]);
+
+    await clock.advance(0.65);
+    expect(played.at(-1)).toBe("tier-up-maniac-hush");
+
+    await clock.advance(0.95);
+    expect(played).toHaveLength(3);
+
+    await clock.advance(0.1);
+    expect(played.at(-1)).toBe("tier-up-maniac-quake");
+
+    await clock.advance(3);
+    expect(played).toHaveLength(4);
+
+    await clock.advance(0.1);
+    expect(played.at(-1)).toBe("tier-up-maniac-ignite");
+
+    await clock.advance(0.25);
+    expect(played).toEqual([
+      "tier-up-maniac-heat",
+      "tier-up-maniac-vortex",
+      "tier-up-maniac-hush",
+      "tier-up-maniac-quake",
+      "tier-up-maniac-ignite",
+      "tier-up-maniac-name",
+    ]);
+
+    await clock.advance(1.65);
+    expect(continueButton()).not.toHaveFocus();
+
+    await clock.advance(0.2);
+    expect(continueButton()).toHaveFocus();
+    await clock.advance(5);
+    expect(played).toHaveLength(6);
+  });
+
+  test("Diamant → Maniac skipped in its silence: no quake, fire nor name heard after", async () => {
+    await renderEnded({ ranked: intoManiac });
+    await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
+    await clock.advance(3);
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(continueButton()).toHaveFocus();
+    await clock.advance(8);
+    expect(played).toEqual(["tier-up-maniac-heat", "tier-up-maniac-vortex", "tier-up-maniac-hush"]);
+  });
+
+  test("Diamant → Maniac breaks the gem into its facets, flung away as the vortex takes them", async () => {
+    await renderEnded({ ranked: intoManiac });
+
+    const tierUp = screen.getByRole("dialog");
+    const facets = [...tierUp.querySelectorAll("[data-tier-up=gem-facet]")];
+    const gem = tierUp.querySelector("[data-tier-up=gem]");
+
+    expect(facets).toHaveLength(8);
+
+    await clock.advance(2.05);
+    expect(opacitiesOf(facets)).toEqual(Array(8).fill(1));
+    expect(facets.map((facet) => gsap.getProperty(facet, "x"))).toEqual(Array(8).fill(0));
+    expect(gsap.getProperty(gem, "opacity")).toBe(1);
+
+    await clock.advance(0.4);
+    expect(gsap.getProperty(facets[0] ?? tierUp, "x")).toBeLessThan(0);
+    expect(gsap.getProperty(gem, "opacity")).toBe(0);
+
+    await clock.advance(0.8);
+    expect(opacitiesOf(facets)).toEqual(Array(8).fill(0));
+  });
+
+  test("Diamant → Maniac drops its crown after the silence, then lights its gems and its flame", async () => {
+    await renderEnded({ ranked: intoManiac });
+
+    const tierUp = screen.getByRole("dialog");
+    const drop = tierUp.querySelector("[data-tier-up=drop]");
+    const gems = [...tierUp.querySelectorAll(GEMS_OF_FIRE)];
+    const flame = tierUp.querySelector(CROWN_FLAME);
+
+    expect(gems).toHaveLength(5);
+
+    await clock.advance(3.15);
+    expect(gsap.getProperty(drop, "opacity")).toBe(0);
+
+    await clock.advance(0.2);
+    expect(gsap.getProperty(drop, "opacity")).toBe(1);
+    expect(gsap.getProperty(drop, "y")).toBeLessThan(0);
+
+    await clock.advance(0.5);
+    expect(gsap.getProperty(drop, "y")).toBe(0);
+    expect(opacitiesOf(gems)).toEqual(Array(5).fill(0));
+
+    await clock.advance(0.4);
+    expect(opacitiesOf(gems)[0]).toBeGreaterThan(0);
+    expect(opacitiesOf(gems)[4]).toBe(0);
+    expect(gsap.getProperty(flame, "opacity")).toBe(0);
+
+    await clock.advance(1.4);
+    expect(opacitiesOf(gems)).toEqual(Array(5).fill(1));
+    expect(gsap.getProperty(flame, "opacity")).toBe(1);
+  });
+
+  test("Diamant → Maniac spreads its wings feather by feather, none seen before", async () => {
+    await renderEnded({ ranked: intoManiac });
+
+    const feathers = [...screen.getByRole("dialog").querySelectorAll("[data-tier-up=feather]")];
+
+    expect(feathers).toHaveLength(16);
+
+    await clock.advance(4.95);
+    expect(opacitiesOf(feathers)).toEqual(Array(16).fill(0));
+
+    await clock.advance(0.2);
+    expect(opacitiesOf(feathers).some((opacity) => Number(opacity) > 0)).toBe(true);
+    expect(opacitiesOf(feathers).some((opacity) => opacity === 0)).toBe(true);
+
+    await clock.advance(1.5);
+    expect(opacitiesOf(feathers)).toEqual(Array(16).fill(1));
+  });
+
+  test("Diamant → Maniac brings its name in letter by letter once it has caught fire", async () => {
+    await renderEnded({ ranked: intoManiac });
+
+    const letters = [...screen.getByRole("dialog").querySelectorAll("[data-tier-up=letter]")];
+
+    expect(letters).toHaveLength(6);
+
+    await clock.advance(7.1);
+    expect(opacitiesOf(letters)).toEqual(Array(6).fill(0));
+
+    await clock.advance(0.15);
+    expect(opacitiesOf(letters)[0]).toBeGreaterThan(0);
+    expect(opacitiesOf(letters)[5]).toBe(0);
+
+    await clock.advance(0.8);
+    expect(opacitiesOf(letters)).toEqual(Array(6).fill(1));
+  });
+
+  test("Diamant → Maniac holds its breath and burns past its stage too, never cut at its edges", async () => {
+    await renderEnded({ ranked: intoManiac });
+
+    const tierUp = screen.getByRole("dialog");
+
+    for (const light of ["heat", "hush"]) {
+      expect(tierUp.querySelector(`[data-tier-up=${light}]`)).toHaveStyle({
+        left: "-1440px",
+        top: "-900px",
+        width: "4320px",
+        height: "2700px",
+      });
+    }
+  });
+
   test("gives the focus to « Continuer » once its intro is over", async () => {
     await renderEnded({ ranked: intoBronze });
 
@@ -1078,6 +1252,46 @@ describe("the Tier-up's Aura", () => {
     await waitFor(() => expect(continueButton()).toHaveFocus());
     expect(opacitiesOf(lit)).toEqual(Array(lit.length).fill(1));
     expect(played).toEqual(["tier-up-diamant-slam"]);
+  });
+
+  test("Diamant → Maniac lights its full Aura as it catches fire, never before", async () => {
+    const browser = fakeAuraRuntime();
+
+    await renderEnded({ ranked: intoManiac, aura: browser.runtime });
+    await settle();
+
+    const aura = screen.getByRole("dialog").querySelector("[data-tier-up=aura]");
+
+    await clock.advance(6.85);
+    expect(gsap.getProperty(aura, "opacity")).toBe(0);
+
+    await clock.advance(0.15);
+    expect(gsap.getProperty(aura, "opacity")).toBeGreaterThan(0);
+
+    await clock.advance(1.4);
+    expect(gsap.getProperty(aura, "opacity")).toBe(1);
+    expect(held(browser)).toEqual(["maniac"]);
+  });
+
+  test("under reduced motion, Diamant → Maniac opens with its crown ablaze, its wings and full Aura, and its name", async () => {
+    reduceMotion();
+
+    await renderEnded({ ranked: intoManiac });
+
+    const tierUp = screen.getByRole("dialog", { name: "Maniac" });
+
+    const lit = [
+      ...tierUp.querySelectorAll(
+        `[data-tier-up=aura], [data-tier-up=drop], ${GEMS_OF_FIRE}, ${CROWN_FLAME}, [data-tier-up=feather], [data-tier-up=letter]`,
+      ),
+    ];
+
+    const gone = [...tierUp.querySelectorAll("[data-tier-up=gem], [data-tier-up=gem-facet]")];
+
+    await waitFor(() => expect(continueButton()).toHaveFocus());
+    expect(opacitiesOf(lit)).toEqual(Array(lit.length).fill(1));
+    expect(opacitiesOf(gone)).toEqual(Array(gone.length).fill(0));
+    expect(played).toEqual(["tier-up-maniac-quake"]);
   });
 
   test("below Or, there is no full Aura to ask for", async () => {

@@ -2,8 +2,8 @@ import { type FaceOffAudioContext, type SynthNode, synthesize } from "@/audio/fa
 
 // The sounds of a Tier-up, on the highlights of its timeline: the old Emblem coming apart, the
 // new Blason's impact, then the Tier's name; and those some Tiers cue in between (the chevrons
-// stamped into the Argent, the light sweeping it, the Diamant's facets converging). Each Tier's
-// own, as its Tier-up gets it.
+// stamped into the Argent, the light sweeping it, the Diamant's facets converging, the heat, the
+// silence and the fire of the Maniac). Each Tier's own, as its Tier-up gets it.
 export const TIER_UP_SOUNDS = [
   "tier-up-bronze-dissolve",
   "tier-up-bronze-impact",
@@ -23,6 +23,12 @@ export const TIER_UP_SOUNDS = [
   "tier-up-diamant-converge",
   "tier-up-diamant-slam",
   "tier-up-diamant-name",
+  "tier-up-maniac-heat",
+  "tier-up-maniac-vortex",
+  "tier-up-maniac-hush",
+  "tier-up-maniac-quake",
+  "tier-up-maniac-ignite",
+  "tier-up-maniac-name",
 ] as const;
 
 export type TierUpSound = (typeof TIER_UP_SOUNDS)[number];

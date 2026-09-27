@@ -71,3 +71,36 @@ export const SLAM = CustomEase.create("tier-up-slam", "0.2,0.9,0.2,1");
 
 // Glitter falling, faster and faster.
 export const FALL = CustomEase.create("tier-up-fall", "0.4,0,0.8,0.6");
+
+// CSS `ease-in`: the heat rising in the old Emblem, its cracks running through it.
+export const EASE_IN = CustomEase.create("tier-up-ease-in", "0.42,0,1,1");
+
+// The facets of the old gem flung out, fast, then drifting away.
+export const FLING = CustomEase.create("tier-up-fling", "0.1,0.6,0.3,1");
+
+// The embers swirling into the vortex, faster and faster as they near its heart.
+export const VORTEX = CustomEase.create("tier-up-vortex", "0.5,0,0.9,0.6");
+
+// The Maniac's crown dropping from above, faster and faster until it lands.
+export const DROP = CustomEase.create("tier-up-drop", "0.6,0,1,0.5");
+
+// The flame over the crown catching, overshooting before it settles.
+export const IGNITE = CustomEase.create("tier-up-ignite", "0.3,1.4,0.5,1");
+
+// A gust of fire blown out of the crown, fast, then dying away.
+export const GUST = CustomEase.create("tier-up-gust", "0.15,0.7,0.3,1");
+
+// The Maniac's wings beating once: raised, swept down past rest, then back.
+export const BEAT_RAISE = CustomEase.create("tier-up-beat-raise", "0.4,0,0.6,1");
+
+export const BEAT_SWEEP = CustomEase.create("tier-up-beat-sweep", "0.7,0,0.2,1");
+
+export const BEAT_REST = CustomEase.create("tier-up-beat-rest", "0.3,0,0.3,1");
+
+// A letter of the Maniac's name slammed down on its own.
+export const LETTER_SLAM = CustomEase.create("tier-up-letter-slam", "0.5,0,0.2,1");
+
+// A feather of the Maniac's wings spreading: shooting out, then swept round into place.
+export const SPREAD_OUT = CustomEase.create("tier-up-spread-out", "0.2,0.9,0.3,1");
+
+export const SPREAD_ROUND = CustomEase.create("tier-up-spread-round", "0.55,0,0.15,1");

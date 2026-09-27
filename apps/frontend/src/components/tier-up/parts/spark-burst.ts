@@ -11,6 +11,8 @@ type Burst = {
   size: Range;
   delay: Range;
   duration: Range;
+  // How much flatter the burst is than wide: 1, round, unless its artboard flattens it.
+  squash?: number;
 };
 
 // A number in [0, 1) that only depends on `n`: the sparks fly the same way on every Tier-up.
@@ -25,14 +27,14 @@ export const within = ([min, max]: Range, n: number) => min + random(n) * (max -
 
 // `count` sparks around the circle, each turned a little off its place, flying out as far as
 // `distance`, all drawn from `seed`.
-export const sparkBurst = ({ count, seed, distance, size, delay, duration }: Burst) =>
+export const sparkBurst = ({ count, seed, distance, size, delay, duration, squash = 1 }: Burst) =>
   Array.from({ length: count }, (_, i): TierUpSpark => {
     const angle = (i / count) * Math.PI * 2 + random(seed + i) * 0.7;
     const reach = within(distance, seed + i * 3.1);
 
     return {
       x: Math.cos(angle) * reach,
-      y: Math.sin(angle) * reach,
+      y: Math.sin(angle) * reach * squash,
       size: within(size, seed + i * 5.7),
       delay: within(delay, seed + i * 7.3),
       duration: within(duration, seed + i * 9.1),

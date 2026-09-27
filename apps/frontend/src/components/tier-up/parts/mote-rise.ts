@@ -36,3 +36,13 @@ export const moteRise = ({ count, seed, left, top, x, y, delay, duration, size }
     duration: within(duration, seed + i * 3.3),
     size: within(size, seed + i * 5.9),
   }));
+
+// The same motes, every other one sent to the left of the Blason's centre (from the first): where
+// it starts and where it drifts, both mirrored. For motes placed from the centre, as two wings
+// shed them.
+export const onBothSides = (motes: readonly TierUpMote[]) =>
+  motes.map((mote, i): TierUpMote => {
+    const side = i % 2 === 0 ? -1 : 1;
+
+    return { ...mote, left: side * mote.left, x: side * mote.x };
+  });

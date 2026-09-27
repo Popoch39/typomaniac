@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { moteRise } from "@/components/tier-up/parts/mote-rise";
+import { moteRise, onBothSides } from "@/components/tier-up/parts/mote-rise";
 
 // The motes of the Or → Platine artboard: rising, so drawn from -280 up to -480.
 const rise = {
@@ -34,6 +34,23 @@ describe("moteRise", () => {
     expect(first?.left).toBeCloseTo(540 + canvasRandom(6) * 360);
     expect(second?.y).toBeCloseTo(-280 - canvasRandom(6 + 8.9) * 200);
     expect(second?.delay).toBeCloseTo(2.5 + canvasRandom(6 + 1.7) * 2.6);
+  });
+
+  test("sends every other mote to the left of the Blason's centre, as the Maniac's wings shed them", () => {
+    const motes = moteRise(rise);
+    const shed = onBothSides(motes);
+
+    expect(shed).toHaveLength(28);
+
+    for (const [index, mote] of shed.entries()) {
+      const side = index % 2 === 0 ? -1 : 1;
+
+      expect(mote).toEqual({
+        ...motes[index],
+        left: side * (motes[index]?.left ?? 0),
+        x: side * (motes[index]?.x ?? 0),
+      });
+    }
   });
 
   test("keeps every mote within its ranges, each rising", () => {

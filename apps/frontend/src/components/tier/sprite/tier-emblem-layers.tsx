@@ -86,13 +86,18 @@ const engravedStar = (tier: Tier, lift: number) => (
   </g>
 );
 
-// A gem of fire set in the Maniac's crown.
-const ember = (cx: number, radius: number) => (
-  <>
-    <circle cx={cx} cy={21} r={radius + 0.6} {...ENGRAVED} />
-    <circle cx={cx} cy={21} r={radius} fill={paint(HOT_ID)} />
-  </>
-);
+// The gems of fire of the Maniac's crown (centre, radius): three set in its band, in the order the
+// Tier-up lights them, then one on each of its outer points.
+export const MANIAC_GEMS = [
+  [11, 21, 1.3],
+  [16, 21, 1.5],
+  [21, 21, 1.3],
+  [3, 11, 1.7],
+  [29, 11, 1.7],
+] as const;
+
+// The three gems set in the band, each in a socket cut around it.
+export const MANIAC_SET_GEMS = MANIAC_GEMS.slice(0, 3);
 
 // The studs set at the corners of the Platine, from its top round: the Tier-up pops them in one
 // by one.
@@ -185,15 +190,22 @@ export const EMBLEM_LAYERS: Record<Tier, EmblemLayers> = {
         <path d="M6.6 27.1 H25.4" {...BEVEL} />
       </>
     ),
+    // Its sockets, its gems, then the flame over it: the gems and the flame each on their own, that
+    // the Tier-up can light one by one.
     engraving: (
       <>
-        {ember(11, 1.3)}
-        {ember(16, 1.5)}
-        {ember(21, 1.3)}
-        <circle cx={3} cy={11} r={1.7} fill={paint(HOT_ID)} />
-        <circle cx={29} cy={11} r={1.7} fill={paint(HOT_ID)} />
-        <path d={CROWN_FLAME} fill={paint(HOT_ID)} />
-        <path d={CROWN_FLAME_CORE} {...BRIGHT} />
+        <g>
+          {MANIAC_SET_GEMS.map(([cx, cy, r]) => (
+            <circle key={cx} cx={cx} cy={cy} r={r + 0.6} {...ENGRAVED} />
+          ))}
+        </g>
+        {MANIAC_GEMS.map(([cx, cy, r]) => (
+          <circle key={`${cx} ${cy}`} cx={cx} cy={cy} r={r} fill={paint(HOT_ID)} />
+        ))}
+        <g>
+          <path d={CROWN_FLAME} fill={paint(HOT_ID)} />
+          <path d={CROWN_FLAME_CORE} {...BRIGHT} />
+        </g>
       </>
     ),
   },

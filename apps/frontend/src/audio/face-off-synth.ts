@@ -48,8 +48,9 @@ const SILENT = 0.0001;
 // A source stops this long after its envelope has died away.
 const TAIL_S = 0.02;
 
-// White noise, drawn once per context, long enough for the longest noisy sound.
-const NOISE_S = 1;
+// White noise, drawn once per context, long enough for the longest noisy sound (the Maniac's
+// heat and fire).
+const NOISE_S = 3;
 
 const noises = new WeakMap<SynthContext, SynthBuffer>();
 
@@ -755,6 +756,300 @@ const diamantName = (voice: Voice) => {
   }
 };
 
+// How long the heat rises before the gem breaks (s).
+const HEAT_S = 1.6;
+
+// The gem crackling as it heats and trembles, closer and closer (s after the heat starts, Hz).
+const HEAT_CRACKLES: readonly [number, number][] = [
+  [0.35, 2400],
+  [0.6, 3100],
+  [0.8, 2000],
+  [0.95, 3600],
+  [1.05, 2700],
+  [1.15, 4200],
+  [1.22, 2300],
+  [1.3, 3800],
+  [1.36, 3000],
+  [1.42, 4600],
+  [1.47, 2600],
+  [1.52, 5000],
+];
+
+// When each crack of white heat runs through the gem after the heat starts (s).
+const HEAT_CRACKS = [0.7, 0.95, 1.1];
+
+// The heat rising under the Diamant: a deep rumble swelling and brightening, a sub-bass rising a
+// fifth under a growl, the gem crackling closer and closer as it trembles, and a hiss for each
+// crack of white heat running through it.
+const maniacHeat = (voice: Voice) => {
+  const rumble = filterOf(voice, "lowpass", 90);
+
+  rumble.frequency.exponentialRampToValueAtTime(700, voice.at + HEAT_S);
+  noiseBurst(voice, rumble, { peak: 0.55, attack: HEAT_S - 0.05, release: 0.2 });
+  tone(
+    voice,
+    { type: "sine", from: 36.71, to: 55, glide: HEAT_S },
+    { peak: 0.32, attack: HEAT_S - 0.1, release: 0.3 },
+  );
+  tone(
+    voice,
+    { type: "sawtooth", from: 73.42, to: 110, glide: HEAT_S },
+    { peak: 0.04, attack: HEAT_S - 0.1, release: 0.2 },
+  );
+
+  for (const [delay, frequency] of HEAT_CRACKLES) {
+    snap(later(voice, delay), frequency, 0.05 + delay * 0.05);
+  }
+
+  for (const delay of HEAT_CRACKS) {
+    const crack = later(voice, delay);
+
+    noiseBurst(crack, filterOf(crack, "highpass", 5000), {
+      peak: 0.12,
+      attack: 0.25,
+      release: 0.1,
+    });
+  }
+};
+
+// When the heart of the vortex beats after the gem breaks, two beats at a time (s).
+const HEARTBEATS = [0.3, 0.45, 0.85, 1];
+
+// The gem breaking into the vortex: a shatter of snaps, the embers whirling in (noise swept up and
+// down, twice, around the heart), a tone sucked up as the heart grows, and the heart beating.
+const maniacVortex = (voice: Voice) => {
+  tone(
+    voice,
+    { type: "sine", from: 160, to: 50, glide: 0.25 },
+    { peak: 0.6, attack: 0.003, release: 0.35 },
+  );
+
+  for (const [delay, frequency] of SHARD_SNAPS.slice(0, 6)) {
+    snap(later(voice, delay), frequency, 0.14);
+  }
+
+  for (const [delay, from, to] of [
+    [0.1, 400, 3200],
+    [0.6, 3200, 500],
+  ] as const) {
+    const swirl = later(voice, delay);
+    const filter = filterOf(swirl, "bandpass", from);
+
+    filter.Q.value = 2.4;
+    filter.frequency.exponentialRampToValueAtTime(to, swirl.at + 0.55);
+    noiseBurst(swirl, filter, { peak: 0.3, attack: 0.3, release: 0.3 });
+  }
+
+  const heart = later(voice, 0.1);
+
+  tone(
+    heart,
+    { type: "sine", from: 110, to: 440, glide: 1.4 },
+    { peak: 0.08, attack: 1.3, release: 0.15 },
+  );
+  tone(
+    heart,
+    { type: "triangle", from: 164.81, to: 659.25, glide: 1.4 },
+    { peak: 0.04, attack: 1.3, release: 0.15 },
+  );
+
+  for (const [beat, delay] of HEARTBEATS.entries()) {
+    tone(
+      later(voice, delay),
+      { type: "sine", from: 70, to: 40, glide: 0.12 },
+      { peak: beat % 2 === 0 ? 0.45 : 0.3, attack: 0.004, release: 0.18 },
+    );
+  }
+};
+
+// When the crown starts to drop after the silence starts (s).
+const DROP_S = 0.45;
+
+// The silence: every sound sucked out in a breath held, a faint high drone fading to nothing,
+// then the crown whistling down from above, louder and lower as it falls.
+const maniacHush = (voice: Voice) => {
+  const breath = filterOf(voice, "bandpass", 5000);
+
+  breath.Q.value = 3;
+  breath.frequency.exponentialRampToValueAtTime(1200, voice.at + 0.4);
+  noiseBurst(voice, breath, { peak: 0.1, attack: 0.05, release: 0.4 });
+  tone(voice, { type: "sine", from: 1760 }, { peak: 0.012, attack: 0.1, release: 0.35 });
+
+  const fall = later(voice, DROP_S);
+
+  tone(
+    fall,
+    { type: "sine", from: 1400, to: 180, glide: 0.6 },
+    { peak: 0.08, attack: 0.55, release: 0.05 },
+  );
+
+  const rush = filterOf(fall, "bandpass", 3500);
+
+  rush.Q.value = 1.2;
+  rush.frequency.exponentialRampToValueAtTime(300, fall.at + 0.6);
+  noiseBurst(fall, rush, { peak: 0.35, attack: 0.57, release: 0.03 });
+};
+
+// The partials of the crown ringing as it lands, in Hz, with their envelopes: a deep D, its fifth,
+// its octave and its tenth, then inharmonic overtones, the longest and deepest ring of all.
+const CROWN_RING: readonly [OscillatorType, number, Envelope][] = [
+  ["triangle", 146.83, { peak: 0.24, attack: 0.004, release: 3.6 }],
+  ["triangle", 220, { peak: 0.14, attack: 0.004, release: 3.2 }],
+  ["sine", 293.66, { peak: 0.14, attack: 0.003, release: 3 }],
+  ["sine", 369.99, { peak: 0.08, attack: 0.003, release: 2.6 }],
+  ["sine", 587.33, { peak: 0.07, attack: 0.003, release: 2.2 }],
+  ["sine", 1021, { peak: 0.05, attack: 0.002, release: 1.6 }],
+  ["sine", 1763, { peak: 0.04, attack: 0.002, release: 1.2 }],
+  ["sine", 2894, { peak: 0.03, attack: 0.002, release: 0.8 }],
+];
+
+// When each ring of the quake flies out after the landing (s): three.
+const QUAKE_WHOOMS = [0, 0.1, 0.25];
+
+// When each gem of the crown lights after the landing (s), how high it rings (Hz), and when the
+// flame catches.
+const GEM_LIGHTS: readonly [number, number][] = [
+  [0.35, 1174.66],
+  [0.55, 1396.91],
+  [0.75, 1760],
+  [0.95, 2349.32],
+];
+
+const FLAME_S = 1.15;
+
+// The crown landing after the silence with a quake: the deepest thump of all shaking the ground,
+// a long rumble under it, a crack, the crown ringing, its three rings whooming out; then each gem
+// lighting with a bright ring, and the flame catching with a soft roar.
+const maniacQuake = (voice: Voice) => {
+  tone(
+    voice,
+    { type: "sine", from: 90, to: 20, glide: 0.8 },
+    { peak: 1, attack: 0.003, release: 1.4 },
+  );
+  noiseBurst(voice, filterOf(voice, "lowpass", 260), { peak: 0.8, attack: 0.005, release: 1.2 });
+  noiseBurst(voice, filterOf(voice, "lowpass", 5000), { peak: 0.6, attack: 0.001, release: 0.3 });
+  snap(voice, 2600, 0.4);
+
+  for (const [type, from, envelope] of CROWN_RING) {
+    tone(voice, { type, from }, envelope);
+  }
+
+  for (const delay of QUAKE_WHOOMS) {
+    tone(
+      later(voice, delay),
+      { type: "sine", from: 160, to: 60, glide: 0.4 },
+      { peak: 0.2, attack: 0.01, release: 0.5 },
+    );
+  }
+
+  for (const [delay, note] of GEM_LIGHTS) {
+    const gem = later(voice, delay);
+
+    tone(gem, { type: "triangle", from: note }, { peak: 0.07, attack: 0.002, release: 0.5 });
+    tone(gem, { type: "sine", from: note * 2 }, { peak: 0.025, attack: 0.002, release: 0.35 });
+  }
+
+  const flame = later(voice, FLAME_S);
+  const roar = filterOf(flame, "bandpass", 300);
+
+  roar.Q.value = 0.8;
+  roar.frequency.exponentialRampToValueAtTime(1800, flame.at + 0.4);
+  noiseBurst(flame, roar, { peak: 0.3, attack: 0.15, release: 0.6 });
+};
+
+// The embers crackling as the fire spreads, over two seconds (s after it catches, Hz).
+const FIRE_CRACKLES: readonly [number, number][] = [
+  [0.05, 3200],
+  [0.12, 4800],
+  [0.2, 2600],
+  [0.31, 5600],
+  [0.4, 3900],
+  [0.52, 2900],
+  [0.61, 5200],
+  [0.75, 3400],
+  [0.9, 4400],
+  [1.04, 2800],
+  [1.2, 5000],
+  [1.38, 3600],
+  [1.55, 4600],
+  [1.75, 3000],
+  [1.95, 5400],
+];
+
+// The crown catching fire: a heartbeat of a thump as it swells, a great roar of fire blown out
+// and dying away over the gusts, a low drone of the fire's D and its fifth, and the embers
+// crackling all around as the fire spreads.
+const maniacIgnite = (voice: Voice) => {
+  tone(
+    voice,
+    { type: "sine", from: 110, to: 32, glide: 0.5 },
+    { peak: 0.9, attack: 0.004, release: 0.8 },
+  );
+
+  const roar = filterOf(voice, "bandpass", 200);
+
+  roar.Q.value = 0.7;
+  roar.frequency.exponentialRampToValueAtTime(2400, voice.at + 0.25);
+  noiseBurst(voice, roar, { peak: 0.7, attack: 0.12, release: 1.8 });
+  noiseBurst(voice, filterOf(voice, "lowpass", 400), { peak: 0.5, attack: 0.05, release: 2.2 });
+
+  for (const from of [73.42, 110, 146.83]) {
+    tone(voice, { type: "sawtooth", from }, { peak: 0.03, attack: 0.3, release: 2.4 });
+  }
+
+  for (const [delay, frequency] of FIRE_CRACKLES) {
+    snap(later(voice, delay), frequency, 0.1);
+  }
+};
+
+// The notes the letters of Maniac slam down on, in Hz: a D minor arpeggio climbing two octaves,
+// one letter every 0.1 s.
+const MANIAC_NOTES = [293.66, 349.23, 440, 587.33, 698.46, 880];
+
+const MANIAC_LETTER_S = 0.1;
+
+// The chord the name ends on, in Hz: D, its fifth and its octave, the fire's power chord.
+const MANIAC_CHORD = [146.83, 220, 293.66, 440, 587.33];
+
+// The name of Maniac, letter by letter: each letter slammed down with a thud and a note of a D
+// minor arpeggio climbing two octaves; then, on the last, a power chord struck over a pad of three
+// detuned voices, a shimmer rising over it and the fire crackling on, the richest of all.
+const maniacName = (voice: Voice) => {
+  for (const [step, note] of MANIAC_NOTES.entries()) {
+    const letter = later(voice, step * MANIAC_LETTER_S);
+
+    tone(
+      letter,
+      { type: "sine", from: 120, to: 50, glide: 0.1 },
+      { peak: 0.35, attack: 0.003, release: 0.14 },
+    );
+    tone(letter, { type: "triangle", from: note }, { peak: 0.09, attack: 0.004, release: 0.4 });
+    snap(letter, 3500, 0.06);
+  }
+
+  const end = later(voice, (MANIAC_NOTES.length - 1) * MANIAC_LETTER_S);
+
+  for (const note of MANIAC_CHORD) {
+    tone(end, { type: "sawtooth", from: note }, { peak: 0.035, attack: 0.01, release: 2.4 });
+    tone(end, { type: "triangle", from: note * 2 }, { peak: 0.05, attack: 0.005, release: 2 });
+  }
+
+  for (const from of [146.83, 147.6, 220.8]) {
+    tone(end, { type: "sine", from }, { peak: 0.05, attack: 0.3, release: 2.8 });
+  }
+
+  tone(
+    end,
+    { type: "sine", from: 1760, to: 3520, glide: 0.8 },
+    { peak: 0.04, attack: 0.5, release: 0.6 },
+  );
+  noiseBurst(end, filterOf(end, "highpass", 7000), { peak: 0.09, attack: 0.1, release: 1.2 });
+
+  for (const [delay, frequency] of FIRE_CRACKLES.slice(0, 8)) {
+    snap(later(end, 0.3 + delay), frequency, 0.05);
+  }
+};
+
 const SYNTHS: Record<FaceOffSound, (voice: Voice) => void> = {
   whoosh,
   impact,
@@ -779,6 +1074,12 @@ const SYNTHS: Record<FaceOffSound, (voice: Voice) => void> = {
   "tier-up-diamant-converge": diamantConverge,
   "tier-up-diamant-slam": diamantSlam,
   "tier-up-diamant-name": diamantName,
+  "tier-up-maniac-heat": maniacHeat,
+  "tier-up-maniac-vortex": maniacVortex,
+  "tier-up-maniac-hush": maniacHush,
+  "tier-up-maniac-quake": maniacQuake,
+  "tier-up-maniac-ignite": maniacIgnite,
+  "tier-up-maniac-name": maniacName,
 };
 
 // Plays `sound` into `destination` now, built from oscillators and noise: each node is dropped once

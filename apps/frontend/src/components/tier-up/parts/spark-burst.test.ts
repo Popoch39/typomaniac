@@ -34,6 +34,17 @@ describe("sparkBurst", () => {
     }
   });
 
+  test("flattens the burst by `squash`, as the canvas's floor of sparks", () => {
+    const round = sparkBurst(burst);
+    const flat = sparkBurst({ ...burst, squash: 0.45 });
+
+    expect(flat.map(({ x }) => x)).toEqual(round.map(({ x }) => x));
+
+    for (const [index, { y }] of flat.entries()) {
+      expect(y).toBeCloseTo((round[index]?.y ?? 0) * 0.45);
+    }
+  });
+
   test("spreads the sparks all around the Blason", () => {
     const sparks = sparkBurst(burst);
 

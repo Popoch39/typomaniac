@@ -32,6 +32,8 @@ import {
 } from "@/components/tier/sprite/tier-sprite-paint";
 import {
   DIAMANT_FANS,
+  MANIAC_FANS,
+  MANIAC_WING_EMBERS,
   PLATINE_FAN,
   WING_CRYSTAL,
   WING_ROOT,
@@ -116,22 +118,13 @@ const WINGS: Partial<Record<Tier, ReactNode>> = {
   maniac: (
     <>
       <g transform={ROOTED}>
-        {feathers(paint(deepId("maniac")), [
-          [70, 0.75],
-          [48, 0.95],
-          [26, 1.12],
-          [4, 1.1],
-          [-18, 0.9],
-        ])}
-        {feathers(paint(HOT_ID), [
-          [50, 0.66],
-          [27, 0.78],
-          [4, 0.74],
-        ])}
+        {feathers(paint(deepId("maniac")), MANIAC_FANS.deep)}
+        {feathers(paint(HOT_ID), MANIAC_FANS.hot)}
       </g>
-      <use href={ref(SPARK_ID)} fill={paint(HOT_ID)} transform="translate(12 26) scale(0.5)" />
-      <circle cx={22} cy={14} r={1.5} fill={paint(HOT_ID)} />
-      <circle cx={3} cy={70} r={1.3} fill={paint(HOT_ID)} />
+      <use href={ref(SPARK_ID)} fill={paint(HOT_ID)} transform={MANIAC_WING_EMBERS.spark} />
+      {MANIAC_WING_EMBERS.dots.map(([cx, cy, r]) => (
+        <circle key={`${cx} ${cy}`} cx={cx} cy={cy} r={r} fill={paint(HOT_ID)} />
+      ))}
     </>
   ),
 };

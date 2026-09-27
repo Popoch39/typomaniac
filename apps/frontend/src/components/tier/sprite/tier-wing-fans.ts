@@ -28,6 +28,33 @@ export const DIAMANT_FANS = {
   ],
 } as const satisfies Record<string, WingFan>;
 
+// The Maniac's wing: five feathers of its deeper metal behind, three of its fire in front, each
+// from the lowest. The Tier-up spreads them one by one.
+export const MANIAC_FANS = {
+  deep: [
+    [70, 0.75],
+    [48, 0.95],
+    [26, 1.12],
+    [4, 1.1],
+    [-18, 0.9],
+  ],
+  hot: [
+    [50, 0.66],
+    [27, 0.78],
+    [4, 0.74],
+  ],
+} as const satisfies Record<string, WingFan>;
+
+// The embers by the Maniac's wing, in its fire: a spark, then two dots (centre, radius). The
+// Tier-up pops them in one by one.
+export const MANIAC_WING_EMBERS = {
+  spark: "translate(12 26) scale(0.5)",
+  dots: [
+    [22, 14, 1.5],
+    [3, 70, 1.3],
+  ],
+} as const;
+
 // The crystal over the Diamant's wing, turned about its heart, and its lit half. The Tier-up pops
 // it in.
 export const WING_CRYSTAL = {

@@ -24,11 +24,12 @@ export const TierUpCaption = ({ from, to, proceed, onProceed, look }: TierUpCapt
     <p
       data-tier-up="kicker"
       className="font-mono text-sm leading-[normal] tracking-[0.42em] text-muted-foreground uppercase"
+      style={{ color: look.kicker }}
     >
       {to.tier === "maniac" ? "Palier ultime" : "Nouveau palier"}
     </p>
     <TierUpName tier={to.tier} look={look} />
-    <TierUpRoute from={from} to={to} />
+    <TierUpRoute from={from} to={to} arrow={look.kicker} />
     <Button
       ref={proceed}
       data-tier-up="continue"

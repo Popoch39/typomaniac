@@ -13,9 +13,17 @@ export type TierUpRay = {
   spin: number;
 };
 
-type Burst = { count: number; seed: number; reach: Range; delay: Range; duration: Range };
+type Burst = {
+  count: number;
+  seed: number;
+  reach: Range;
+  delay: Range;
+  duration: Range;
+  // How far a line is turned off its place around the circle, at most (deg): 20, unless its
+  // artboard scatters them more.
+  off?: number;
+};
 
-// How far a line is turned off its place around the circle, at most (deg).
 const OFF_DEG = 20;
 
 // Every piece's length and width (px), and its spin (deg), as the canvas draws them all.
@@ -27,9 +35,9 @@ const SPIN: Range = [-540, 540];
 
 // `count` pieces around the circle, each on a line turned a little off its place, all drawn from
 // `seed`, as the canvas draws them.
-export const polarBurst = ({ count, seed, reach, delay, duration }: Burst) =>
+export const polarBurst = ({ count, seed, reach, delay, duration, off = OFF_DEG }: Burst) =>
   Array.from({ length: count }, (_, i): TierUpRay => ({
-    angle: (i / count) * 360 + within([0, OFF_DEG], seed + i),
+    angle: (i / count) * 360 + within([0, off], seed + i),
     reach: within(reach, seed + i * 3.1),
     delay: within(delay, seed + i * 7.3),
     duration: within(duration, seed + i * 9.1),

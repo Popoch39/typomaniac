@@ -1,5 +1,6 @@
 import { EASE_IN_OUT, EASE_OUT, POP, SPARK } from "@/components/tier-up/choreography/tier-up-eases";
 import { part } from "@/components/tier-up/choreography/tier-up-part";
+import type { TierUpMote } from "@/components/tier-up/parts/mote-rise";
 import type { TierUpSpark } from "@/components/tier-up/parts/spark-burst";
 
 // The moves every Tier-up makes, each at its own time: its caption coming in, its sparks, its
@@ -25,15 +26,22 @@ type Letters = { duration: number; stagger: number; scale: number };
 
 const LETTERS: Letters = { duration: 0.5, stagger: 0.05, scale: 1.25 };
 
-// When each line of the caption rises around the name.
-type LineTimes = { kicker: number; route: number; proceed: number };
+// When each line of the caption rises around the name, and in how long (s): half a second, unless
+// its artboard takes longer.
+type LineTimes = { kicker: number; route: number; proceed: number; rise?: number };
 
 // « Nouveau palier », the route and « Continuer », each rising in turn.
-export const captionLinesIn = (timeline: Timeline, { kicker, route, proceed }: LineTimes) =>
-  timeline
-    .fromTo(part("kicker"), RISE, RISEN, kicker)
-    .fromTo(part("route"), RISE, RISEN, route)
-    .fromTo(part("continue"), RISE, RISEN, proceed);
+export const captionLinesIn = (
+  timeline: Timeline,
+  { kicker, route, proceed, rise = RISEN.duration }: LineTimes,
+) => {
+  const risen = { ...RISEN, duration: rise };
+
+  return timeline
+    .fromTo(part("kicker"), RISE, risen, kicker)
+    .fromTo(part("route"), RISE, risen, route)
+    .fromTo(part("continue"), RISE, risen, proceed);
+};
 
 // When each line of the caption rises: the name comes in at the `name` label, its letters as
 // `letters` says (its artboard's own, or the usual ones).
@@ -56,15 +64,23 @@ export const captionIn = (timeline: Timeline, { letters = LETTERS, ...lines }: C
     "name",
   );
 
+// Which sparks fly, by their part's name (`spark`, unless the scene has several bursts), and from
+// which label: the impact, unless they burst out later.
+type Burst = { name?: string; from?: string };
+
 // Each spark on its own flight from the impact, all from the Emblem's centre, unseen until it
 // leaves.
-export const sparksOut = (timeline: Timeline, sparks: readonly TierUpSpark[]) => {
+export const sparksOut = (
+  timeline: Timeline,
+  sparks: readonly TierUpSpark[],
+  { name = "spark", from = "impact" }: Burst = {},
+) => {
   for (const [index, { x, y, delay, duration }] of sparks.entries()) {
     timeline.fromTo(
-      `${part("spark")}:nth-child(${index + 1})`,
+      `${part(name)}:nth-child(${index + 1})`,
       { x: 0, y: 0, scale: 1, opacity: 1 },
       { x, y, scale: 0, opacity: 0, duration, ease: SPARK, immediateRender: false },
-      `impact+=${delay}`,
+      `${from}+=${delay}`,
     );
   }
 };
@@ -102,8 +118,9 @@ export const flash = (
     at,
   );
 
-// A step of a shake: where the screen is (px) once `share` of the shake has gone.
-type ShakeStep = readonly [share: number, x: number, y: number];
+// A step of a shake: where the screen is (px) once `share` of the shake has gone, and how far it
+// is turned (deg), if a quake turns it.
+type ShakeStep = readonly [share: number, x: number, y: number, rotation?: number];
 
 // The screen shaking as the Blason lands, over `duration`: through each step at its share of it,
 // dying down, then still again at its end.
@@ -114,14 +131,19 @@ export const shakeThrough = (
   at: number | string,
 ) => {
   const shares = [0, ...steps.map(([share]) => share), 1];
-  const places = [...steps.map(([, x, y]) => ({ x, y })), { x: 0, y: 0 }];
+
+  const places = [
+    ...steps.map(([, x, y, rotation = 0]) => ({ x, y, rotation })),
+    { x: 0, y: 0, rotation: 0 },
+  ];
 
   return timeline.to(
     part("shake"),
     {
-      keyframes: places.map(({ x, y }, index) => ({
+      keyframes: places.map(({ x, y, rotation }, index) => ({
         x,
         y,
+        rotation,
         duration: ((shares[index + 1] ?? 1) - (shares[index] ?? 0)) * duration,
         ease: "none",
       })),
@@ -170,14 +192,57 @@ export const popIn = (
     )
     .to(target, { "--pop": 1, duration: duration * 0.4, ease, stagger }, at + duration * 0.6);
 
-// The halo breathing, every `period` s (3, unless its artboard says otherwise), for as long as the
-// Tier-up waits.
-export const breathe = (timeline: Timeline, at: number, period = 3) =>
+// How a mote glows on each rise: lit by `lit` of it, down to 0.8 by `dimmed` of it, then out by its
+// end; and how small it ends (as it started, unless it shrinks as it goes up).
+type Glimmer = { lit: number; dimmed: number; shrink?: number };
+
+// Each mote (by its part's name) rising and drifting from where it sits, lit, then fading as it
+// goes up, again and again from its first rise.
+export const motesRise = (
+  timeline: Timeline,
+  name: string,
+  motes: readonly TierUpMote[],
+  { lit, dimmed, shrink = 1 }: Glimmer,
+) => {
+  for (const [index, { x, y, delay, duration }] of motes.entries()) {
+    const mote = `${part(name)}:nth-child(${index + 1})`;
+
+    timeline
+      .fromTo(
+        mote,
+        { x: 0, y: 0, scale: 1 },
+        { x, y, scale: shrink, duration, ease: EASE_OUT, repeat: -1 },
+        delay,
+      )
+      .fromTo(
+        mote,
+        { opacity: 0 },
+        {
+          keyframes: [
+            { opacity: 1, duration: duration * lit, ease: EASE_OUT },
+            { opacity: 0.8, duration: duration * (dimmed - lit), ease: EASE_OUT },
+            { opacity: 0, duration: duration * (1 - dimmed), ease: EASE_OUT },
+          ],
+          repeat: -1,
+        },
+        delay,
+      );
+  }
+};
+
+// How far the halo swells as it breathes in, and how faint it goes.
+type Breath = { scale: number; opacity: number };
+
+const BREATH: Breath = { scale: 1.08, opacity: 0.75 };
+
+// The halo breathing, every `period` s (3, unless its artboard says otherwise), as deep as
+// `breath`, for as long as the Tier-up waits.
+export const breathe = (timeline: Timeline, at: number, period = 3, breath = BREATH) =>
   timeline.to(
     part("breath"),
     {
       keyframes: [
-        { scale: 1.08, opacity: 0.75, duration: period / 2, ease: EASE_IN_OUT },
+        { ...breath, duration: period / 2, ease: EASE_IN_OUT },
         { scale: 1, opacity: 1, duration: period / 2, ease: EASE_IN_OUT },
       ],
       repeat: -1,

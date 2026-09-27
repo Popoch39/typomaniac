@@ -30,6 +30,7 @@ import {
   captionIn,
   DRAWN,
   flash,
+  motesRise,
   popIn,
   RISE,
   RISEN,
@@ -329,25 +330,7 @@ export const platineChoreography: Choreography = {
         );
     }
 
-    // Each mote rising and drifting, lit, then fading as it goes up, again and again.
-    for (const [index, { x, y, delay, duration }] of PLATINE_MOTES.entries()) {
-      const mote = `${part("mote")}:nth-child(${index + 1})`;
-
-      timeline
-        .fromTo(mote, { x: 0, y: 0 }, { x, y, duration, ease: EASE_OUT, repeat: -1 }, delay)
-        .fromTo(
-          mote,
-          { opacity: 0 },
-          {
-            keyframes: [
-              { opacity: 1, duration: duration * 0.15, ease: EASE_OUT },
-              { opacity: 0.8, duration: duration * 0.65, ease: EASE_OUT },
-              { opacity: 0, duration: duration * 0.2, ease: EASE_OUT },
-            ],
-            repeat: -1,
-          },
-          delay,
-        );
-    }
+    // Each mote rising and drifting, lit by 15 % of its rise, dimmed by 80 %, again and again.
+    motesRise(timeline, "mote", PLATINE_MOTES, { lit: 0.15, dimmed: 0.8 });
   },
 };

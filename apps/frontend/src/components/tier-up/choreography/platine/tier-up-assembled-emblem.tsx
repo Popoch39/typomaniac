@@ -7,7 +7,7 @@ import { PLATINE_TRIANGLES } from "@/components/tier-up/choreography/platine/pla
 import { TierUpWings } from "@/components/tier-up/choreography/platine/tier-up-wings";
 import { TierUpEmblemBody } from "@/components/tier-up/parts/tier-up-emblem-body";
 import { tierUpPaint } from "@/components/tier-up/parts/tier-up-paint";
-import { POPPED_STUDS } from "@/components/tier-up/parts/tier-up-popped";
+import { PINGED, POPPED_STUDS } from "@/components/tier-up/parts/tier-up-popped";
 import { TierUpSheenBand } from "@/components/tier-up/parts/tier-up-sheen-band";
 
 // A layer of the Emblem, over the others, on its 32 × 32 grid.
@@ -15,12 +15,6 @@ const LAYER = "absolute inset-0 size-full overflow-visible";
 
 // The seams between the triangles, from the centre to each corner of the hexagon.
 const SEAMS = "M16 16 L16 2 M16 16 L28 9 M16 16 L28 23 M16 16 L16 30 M16 16 L4 23 M16 16 L4 9";
-
-// Each ring around a stud scaled about its own centre by `--ping`, as the artboard's
-// `transform-box: fill-box` does: small and lit until it flies off, as in the canvas. GSAP moves
-// the variable, never an SVG transform.
-const PINGED =
-  "[&>circle]:origin-center [&>circle]:[transform-box:fill-box] [&>circle]:[transform:scale(var(--ping,1))]";
 
 // The Emblem of the Tier reached, as the Or → Platine artboard assembles it, 320 px: its six
 // triangles fly in and meet in a blinding white, with a flash along their seams and of its shape;

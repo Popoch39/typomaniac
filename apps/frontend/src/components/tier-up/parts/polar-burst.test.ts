@@ -37,6 +37,13 @@ describe("polarBurst", () => {
     expect(second?.spin).toBeCloseTo(-540 + canvasRandom(8 + 6.6) * 1080);
   });
 
+  test("turns each line further off its place when asked, as the Maniac's vortex does", () => {
+    const [first, second] = polarBurst({ ...burst, off: 30 });
+
+    expect(first?.angle).toBeCloseTo(canvasRandom(8) * 30);
+    expect(second?.angle).toBeCloseTo(360 / 34 + canvasRandom(9) * 30);
+  });
+
   test("spreads them all around the circle, each within its ranges", () => {
     const pieces = polarBurst(burst);
 
