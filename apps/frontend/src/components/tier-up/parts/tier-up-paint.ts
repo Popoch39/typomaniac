@@ -8,6 +8,8 @@ import {
   OUTLINES,
   paint,
 } from "@/components/tier/sprite/tier-sprite-paint";
+import { BEYOND_STAGE } from "@/components/tier-up/stage/beyond-stage";
+import { STAGE } from "@/components/tier-up/stage/stage-scale";
 
 // The light under the name: `y` px down, `blur` px wide, as strong as `percent`.
 export type NameShadow = { y: number; blur: number; percent: number };
@@ -18,6 +20,16 @@ export type GroundTint = { tint: "mid" | "crease" | "outline"; percent: number }
 // `color` at `percent` % over `base`: the Tier-up's lights are its metal fading out.
 const mix = (color: string, percent: number, base = "transparent") =>
   `color-mix(in srgb, ${color} ${percent}%, ${base})`;
+
+// The ink nearly black, where a vignette darkens the stage most.
+const DUSK = mix(INK, 25, "black");
+
+// Lights drawn on the box reaching past the stage (`BEYOND_STAGE`), sized in the stage's pixels as
+// the canvas sizes them in its own: from the Blason's centre, the vignette's ellipse (half the
+// stage wide, 55 % of it tall), and how far the glare reaches (the stage's farthest corner).
+const VIGNETTE_REACH = `${STAGE.width * 0.5}px ${STAGE.height * 0.55}px`;
+
+const GLARE_REACH = `${Math.hypot(STAGE.width * 0.5, STAGE.height * 0.61)}px`;
 
 // The paint of a Tier-up, all from the metal of its Tier in the sprite: no colour of its own.
 export const tierUpPaint = (tier: Tier) => {
@@ -68,8 +80,8 @@ export const tierUpPaint = (tier: Tier) => {
     // A dashed ring turning around the Blason, at `percent` of its metal.
     orbit: (percent: number) => mix(metal.mid, percent),
     sheen: metal.sheen,
-    // The stage darkened all around the Blason, nearly black at its edges.
-    vignette: `radial-gradient(ellipse 50% 55% at 50% 39%, ${mix(INK, 0)} 20%, ${mix(INK, 25, "black")} 80%)`,
+    // The stage darkened all around the Blason, nearly black at its edges, and as dark beyond them.
+    vignette: `radial-gradient(ellipse ${VIGNETTE_REACH} at ${BEYOND_STAGE.centre}, ${mix(INK, 0)} 20%, ${DUSK} 80%)`,
     // Two hazes of the metal drifting over the ground, off the Blason, up left and down right.
     haze: `radial-gradient(ellipse 30% 36% at 34% 30%, ${mix(metal.mid, 22)}, transparent 70%), radial-gradient(ellipse 34% 30% at 68% 58%, ${mix(metal.sheen, 16)}, transparent 70%)`,
     // Rays of light around the Blason: fine ones, close together, and broad ones, far apart.
@@ -83,7 +95,7 @@ export const tierUpPaint = (tier: Tier) => {
     // A shard of glass, lit at its tip.
     glass: `linear-gradient(160deg, ${metal.light}, ${metal.sheen} 50%, ${metal.crease})`,
     // The whole stage blinded white from the Blason's centre, further than a whiteout.
-    glare: `radial-gradient(circle at 50% 39%, white 0%, ${mix(metal.light, 90)} 30%, ${mix(metal.mid, 30)} 65%, ${mix(metal.mid, 0)} 100%)`,
+    glare: `radial-gradient(circle ${GLARE_REACH} at ${BEYOND_STAGE.centre}, white 0%, ${mix(metal.light, 90)} 30%, ${mix(metal.mid, 30)} 65%, ${mix(metal.mid, 0)} 100%)`,
     // A line of light across the stage, white at its heart, and one down it.
     horizon: `linear-gradient(90deg, ${mix(metal.mid, 0)}, ${mix(metal.mid, 80)} 38%, white 50%, ${mix(metal.mid, 80)} 62%, ${mix(metal.mid, 0)})`,
     beam: `linear-gradient(180deg, ${mix(metal.mid, 0)}, white 50%, ${mix(metal.mid, 0)})`,

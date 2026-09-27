@@ -743,6 +743,25 @@ describe("the Tier-up", () => {
     expect(played).toEqual(["tier-up-diamant-implode", "tier-up-diamant-converge"]);
   });
 
+  test("Platine → Diamant darkens and blinds past its stage too, never cut at its edges", async () => {
+    await renderEnded({ ranked: intoDiamant });
+
+    const tierUp = screen.getByRole("dialog");
+    const stage = tierUp.querySelector("[data-tier-up=stage]");
+
+    // In a window wider or taller than the stage, its vignette and its white go on past its edges.
+    expect(stage).not.toHaveClass("overflow-hidden");
+
+    for (const light of ["vignette", "whiteout"]) {
+      expect(tierUp.querySelector(`[data-tier-up=${light}]`)).toHaveStyle({
+        left: "-1440px",
+        top: "-900px",
+        width: "4320px",
+        height: "2700px",
+      });
+    }
+  });
+
   test("Platine → Diamant cuts its gem facet by facet, all in place before it slams down", async () => {
     await renderEnded({ ranked: intoDiamant });
 

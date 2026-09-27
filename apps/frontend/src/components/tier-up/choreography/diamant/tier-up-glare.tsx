@@ -1,9 +1,11 @@
 import type { Tier } from "ranked";
 
 import { tierUpPaint } from "@/components/tier-up/parts/tier-up-paint";
+import { BEYOND_STAGE } from "@/components/tier-up/stage/beyond-stage";
 
 // The light of the Platine → Diamant impact over the whole stage, unseen until the gem slams
-// down: a white more blinding than a whiteout, from the Blason's centre; a line of light across
+// down: a white more blinding than a whiteout, from the Blason's centre, fading out past the
+// stage's edges as it does on them; a line of light across
 // the stage, stretching as it fades; and a thin beam down it.
 export const TierUpGlare = ({ tier }: { tier: Tier }) => {
   const paint = tierUpPaint(tier);
@@ -12,8 +14,8 @@ export const TierUpGlare = ({ tier }: { tier: Tier }) => {
     <>
       <div
         data-tier-up="whiteout"
-        className="absolute inset-0 opacity-0"
-        style={{ background: paint.glare }}
+        className="absolute opacity-0"
+        style={{ ...BEYOND_STAGE.box, background: paint.glare }}
       />
       <div
         data-tier-up="horizon"

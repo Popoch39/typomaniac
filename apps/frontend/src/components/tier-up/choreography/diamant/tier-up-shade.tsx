@@ -1,10 +1,11 @@
 import type { Tier } from "ranked";
 
 import { tierUpPaint } from "@/components/tier-up/parts/tier-up-paint";
+import { BEYOND_STAGE } from "@/components/tier-up/stage/beyond-stage";
 
 // What lies over the ground of the Platine → Diamant artboard, unseen until each fades in: the
 // hazes of the metal that drift in after the impact, and the stage darkening all around the
-// Platine as it implodes, then clearing for the gem.
+// Platine as it implodes, then clearing for the gem, as dark past its edges as on them.
 export const TierUpShade = ({ tier }: { tier: Tier }) => {
   const paint = tierUpPaint(tier);
 
@@ -17,8 +18,8 @@ export const TierUpShade = ({ tier }: { tier: Tier }) => {
       />
       <div
         data-tier-up="vignette"
-        className="absolute inset-0 opacity-0"
-        style={{ background: paint.vignette }}
+        className="absolute opacity-0"
+        style={{ ...BEYOND_STAGE.box, background: paint.vignette }}
       />
     </>
   );
