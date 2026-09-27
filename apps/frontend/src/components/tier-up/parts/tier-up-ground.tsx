@@ -9,7 +9,8 @@ export type Bloom = { reach: string; percent: number };
 // The ink warmed by 12 % of the metal, unless the artboard warms it otherwise.
 const WARMED: GroundTint = { tint: "mid", percent: 12 };
 
-type TierUpGroundProps = { tier: Tier; bloom: Bloom; ground?: GroundTint };
+// Without `bloom`, its artboard opens no light over the ground.
+type TierUpGroundProps = { tier: Tier; bloom?: Bloom; ground?: GroundTint };
 
 // The stage's ground, the ink warmed by the Tier's metal around the Blason, and the light that
 // opens behind it as it lands.
@@ -23,11 +24,13 @@ export const TierUpGround = ({ tier, bloom, ground = WARMED }: TierUpGroundProps
         className="absolute inset-0"
         style={{ background: paint.ground(ground) }}
       />
-      <div
-        data-tier-up="bloom"
-        className="absolute inset-0 opacity-0"
-        style={{ background: paint.bloom(bloom.reach, bloom.percent) }}
-      />
+      {bloom === undefined ? null : (
+        <div
+          data-tier-up="bloom"
+          className="absolute inset-0 opacity-0"
+          style={{ background: paint.bloom(bloom.reach, bloom.percent) }}
+        />
+      )}
     </>
   );
 };

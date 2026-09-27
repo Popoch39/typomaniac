@@ -1,0 +1,25 @@
+import type { Tier } from "ranked";
+
+import { tierUpPaint } from "@/components/tier-up/parts/tier-up-paint";
+
+// What lies over the ground of the Platine → Diamant artboard, unseen until each fades in: the
+// hazes of the metal that drift in after the impact, and the stage darkening all around the
+// Platine as it implodes, then clearing for the gem.
+export const TierUpShade = ({ tier }: { tier: Tier }) => {
+  const paint = tierUpPaint(tier);
+
+  return (
+    <>
+      <div
+        data-tier-up="haze"
+        className="absolute inset-0 opacity-0"
+        style={{ background: paint.haze }}
+      />
+      <div
+        data-tier-up="vignette"
+        className="absolute inset-0 opacity-0"
+        style={{ background: paint.vignette }}
+      />
+    </>
+  );
+};

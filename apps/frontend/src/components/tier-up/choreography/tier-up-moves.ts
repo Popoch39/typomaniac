@@ -25,33 +25,36 @@ type Letters = { duration: number; stagger: number; scale: number };
 
 const LETTERS: Letters = { duration: 0.5, stagger: 0.05, scale: 1.25 };
 
-// When each line of the caption rises: the name comes in at the `name` label, its letters as
-// `letters` says (its artboard's own, or the usual ones).
-type CaptionTimes = { kicker: number; route: number; proceed: number; letters?: Letters };
+// When each line of the caption rises around the name.
+type LineTimes = { kicker: number; route: number; proceed: number };
 
-// « Nouveau palier », then the name letter by letter, the route and « Continuer ».
-export const captionIn = (
-  timeline: Timeline,
-  { kicker, route, proceed, letters = LETTERS }: CaptionTimes,
-) =>
+// « Nouveau palier », the route and « Continuer », each rising in turn.
+export const captionLinesIn = (timeline: Timeline, { kicker, route, proceed }: LineTimes) =>
   timeline
     .fromTo(part("kicker"), RISE, RISEN, kicker)
-    .fromTo(
-      part("letter"),
-      { opacity: 0, y: 46, scale: letters.scale, filter: "blur(10px)" },
-      {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        filter: "blur(0px)",
-        duration: letters.duration,
-        ease: POP,
-        stagger: letters.stagger,
-      },
-      "name",
-    )
     .fromTo(part("route"), RISE, RISEN, route)
     .fromTo(part("continue"), RISE, RISEN, proceed);
+
+// When each line of the caption rises: the name comes in at the `name` label, its letters as
+// `letters` says (its artboard's own, or the usual ones).
+type CaptionTimes = LineTimes & { letters?: Letters };
+
+// « Nouveau palier », then the name letter by letter, the route and « Continuer ».
+export const captionIn = (timeline: Timeline, { letters = LETTERS, ...lines }: CaptionTimes) =>
+  captionLinesIn(timeline, lines).fromTo(
+    part("letter"),
+    { opacity: 0, y: 46, scale: letters.scale, filter: "blur(10px)" },
+    {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      filter: "blur(0px)",
+      duration: letters.duration,
+      ease: POP,
+      stagger: letters.stagger,
+    },
+    "name",
+  );
 
 // Each spark on its own flight from the impact, all from the Emblem's centre, unseen until it
 // leaves.
@@ -99,22 +102,45 @@ export const flash = (
     at,
   );
 
-// The screen shaking as the Blason lands, over `duration`: through each x, y (px), 12 % of it
-// each, dying down, then still again over the rest.
+// A step of a shake: where the screen is (px) once `share` of the shake has gone.
+type ShakeStep = readonly [share: number, x: number, y: number];
+
+// The screen shaking as the Blason lands, over `duration`: through each step at its share of it,
+// dying down, then still again at its end.
+export const shakeThrough = (
+  timeline: Timeline,
+  steps: readonly ShakeStep[],
+  duration: number,
+  at: number | string,
+) => {
+  const shares = [0, ...steps.map(([share]) => share), 1];
+  const places = [...steps.map(([, x, y]) => ({ x, y })), { x: 0, y: 0 }];
+
+  return timeline.to(
+    part("shake"),
+    {
+      keyframes: places.map(({ x, y }, index) => ({
+        x,
+        y,
+        duration: ((shares[index + 1] ?? 1) - (shares[index] ?? 0)) * duration,
+        ease: "none",
+      })),
+    },
+    at,
+  );
+};
+
+// The same, through each x, y (px), 12 % of it each, as most artboards shake.
 export const shake = (
   timeline: Timeline,
   steps: readonly (readonly [x: number, y: number])[],
   duration: number,
   at: number | string,
 ) =>
-  timeline.to(
-    part("shake"),
-    {
-      keyframes: [
-        ...steps.map(([x, y]) => ({ x, y, duration: duration * 0.12, ease: "none" })),
-        { x: 0, y: 0, duration: duration * (1 - steps.length * 0.12), ease: "none" },
-      ],
-    },
+  shakeThrough(
+    timeline,
+    steps.map(([x, y], index): ShakeStep => [(index + 1) * 0.12, x, y]),
+    duration,
     at,
   );
 

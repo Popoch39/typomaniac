@@ -170,6 +170,12 @@ const intoPlatine = {
   rank: standing({ tier: "platine", division: 4, tp: 13, shielded: true }),
 };
 
+const intoDiamant = {
+  tp: 29,
+  previousRank: standing({ tier: "platine", division: 1, tp: 84, shielded: false }),
+  rank: standing({ tier: "diamant", division: 4, tp: 13, shielded: true }),
+};
+
 const intoManiac = {
   tp: 30,
   previousRank: standing({ tier: "diamant", division: 1, tp: 80, shielded: false }),
@@ -680,6 +686,135 @@ describe("the Tier-up", () => {
     expect(opacitiesOf(feathers)).toEqual(Array(6).fill(1));
   });
 
+  test("a Duel into Diamant opens it, the Platine Emblem there to implode", async () => {
+    await renderEnded({ ranked: intoDiamant });
+
+    const tierUp = screen.getByRole("dialog", { name: "Diamant" });
+
+    expect(tierUp).toHaveTextContent("Nouveau palier");
+    expect(tierUp).toHaveTextContent("Platine I → Diamant IV");
+    expect(emblemOf(tierUp)).toBe("#tier-emblem-platine");
+    expect(emblemReached(tierUp)).toBe("diamant");
+  });
+
+  test("Platine → Diamant sounds as the Platine implodes, as its facets converge, as the gem slams down, then with the name", async () => {
+    await renderEnded({ ranked: intoDiamant });
+
+    await clock.advance(0.7);
+    expect(played).toEqual([]);
+
+    await clock.advance(0.2);
+    expect(played).toEqual(["tier-up-diamant-implode"]);
+
+    await clock.advance(1.3);
+    expect(played).toEqual(["tier-up-diamant-implode", "tier-up-diamant-converge"]);
+
+    await clock.advance(1.5);
+    expect(played).toHaveLength(2);
+
+    await clock.advance(0.2);
+    expect(played).toEqual([
+      "tier-up-diamant-implode",
+      "tier-up-diamant-converge",
+      "tier-up-diamant-slam",
+    ]);
+
+    await clock.advance(0.1);
+    expect(played.at(-1)).toBe("tier-up-diamant-name");
+
+    await clock.advance(1.2);
+    expect(continueButton()).not.toHaveFocus();
+
+    await clock.advance(0.2);
+    expect(continueButton()).toHaveFocus();
+    await clock.advance(5);
+    expect(played).toHaveLength(4);
+  });
+
+  test("Platine → Diamant skipped as its facets converge: no slam nor name heard after", async () => {
+    await renderEnded({ ranked: intoDiamant });
+    await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
+    await clock.advance(2.5);
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(continueButton()).toHaveFocus();
+    await clock.advance(5);
+    expect(played).toEqual(["tier-up-diamant-implode", "tier-up-diamant-converge"]);
+  });
+
+  test("Platine → Diamant cuts its gem facet by facet, all in place before it slams down", async () => {
+    await renderEnded({ ranked: intoDiamant });
+
+    const tierUp = screen.getByRole("dialog");
+    const facets = [...tierUp.querySelectorAll("[data-tier-up=facet]")];
+    const body = tierUp.querySelector("[data-tier-up=body]");
+
+    expect(facets).toHaveLength(8);
+
+    await clock.advance(2.05);
+    expect(opacitiesOf(facets)).toEqual(Array(8).fill(0));
+
+    await clock.advance(0.15);
+    expect(opacitiesOf(facets)[0]).toBeGreaterThan(0);
+    expect(opacitiesOf(facets)[7]).toBe(0);
+    expect(gsap.getProperty(facets[0] ?? tierUp, "x")).not.toBe(0);
+
+    await clock.advance(1.3);
+    expect(opacitiesOf(facets)).toEqual(Array(8).fill(1));
+    expect(facets.map((facet) => gsap.getProperty(facet, "x"))).toEqual(Array(8).fill(0));
+    expect(gsap.getProperty(body, "opacity")).toBe(0);
+
+    await clock.advance(0.4);
+    expect(gsap.getProperty(body, "opacity")).toBe(1);
+  });
+
+  test("Platine → Diamant unfurls its wings feather by feather after the impact, none seen before", async () => {
+    await renderEnded({ ranked: intoDiamant });
+
+    const tierUp = screen.getByRole("dialog");
+    const feathers = [...tierUp.querySelectorAll("[data-tier-up=feather]")];
+    const crystals = [...tierUp.querySelectorAll("[data-tier-up=crystal]")];
+
+    expect(feathers).toHaveLength(14);
+    expect(crystals).toHaveLength(2);
+
+    await clock.advance(3.8);
+    expect(opacitiesOf([...feathers, ...crystals])).toEqual(Array(16).fill(0));
+
+    await clock.advance(0.2);
+    expect(opacitiesOf(feathers).some((opacity) => Number(opacity) > 0)).toBe(true);
+    expect(opacitiesOf(feathers).some((opacity) => opacity === 0)).toBe(true);
+    expect(opacitiesOf(crystals)).toEqual([0, 0]);
+
+    await clock.advance(0.7);
+    expect(opacitiesOf([...feathers, ...crystals])).toEqual(Array(16).fill(1));
+  });
+
+  test("Platine → Diamant slams its name down whole, its two ghosts gone once it has", async () => {
+    await renderEnded({ ranked: intoDiamant });
+
+    const tierUp = screen.getByRole("dialog");
+    const name = tierUp.querySelector("[data-tier-up=name]");
+    const ghosts = [...tierUp.querySelectorAll("[data-tier-up^=ghost-]")];
+    const letters = [...tierUp.querySelectorAll("[data-tier-up=letter]")];
+
+    expect(ghosts).toHaveLength(2);
+
+    await clock.advance(3.9);
+    expect(gsap.getProperty(name, "opacity")).toBe(0);
+    expect(opacitiesOf(ghosts)).toEqual([0, 0]);
+
+    await clock.advance(0.15);
+    expect(gsap.getProperty(name, "opacity")).toBeGreaterThan(0);
+    expect(opacitiesOf(ghosts).every((opacity) => Number(opacity) > 0)).toBe(true);
+
+    await clock.advance(1);
+    expect(gsap.getProperty(name, "opacity")).toBe(1);
+    expect(opacitiesOf(letters)).toEqual(Array(7).fill(1));
+    expect(opacitiesOf(ghosts)).toEqual([0, 0]);
+  });
+
   test("gives the focus to « Continuer » once its intro is over", async () => {
     await renderEnded({ ranked: intoBronze });
 
@@ -887,6 +1022,43 @@ describe("the Tier-up's Aura", () => {
     await waitFor(() => expect(continueButton()).toHaveFocus());
     expect(gsap.getProperty(aura, "opacity")).toBe(1);
     expect(played).toEqual(["tier-up-platine-assemble"]);
+  });
+
+  test("Platine → Diamant lights its full Aura at the impact, never before", async () => {
+    const browser = fakeAuraRuntime();
+
+    await renderEnded({ ranked: intoDiamant, aura: browser.runtime });
+    await settle();
+
+    const aura = screen.getByRole("dialog").querySelector("[data-tier-up=aura]");
+
+    await clock.advance(3.75);
+    expect(gsap.getProperty(aura, "opacity")).toBe(0);
+
+    await clock.advance(0.1);
+    expect(gsap.getProperty(aura, "opacity")).toBeGreaterThan(0);
+
+    await clock.advance(0.8);
+    expect(gsap.getProperty(aura, "opacity")).toBe(1);
+    expect(held(browser)).toEqual(["diamant"]);
+  });
+
+  test("under reduced motion, Platine → Diamant opens with its gem, wings and full Aura in place, and its name", async () => {
+    reduceMotion();
+
+    await renderEnded({ ranked: intoDiamant });
+
+    const tierUp = screen.getByRole("dialog", { name: "Diamant" });
+
+    const lit = [
+      ...tierUp.querySelectorAll(
+        "[data-tier-up=aura], [data-tier-up=body], [data-tier-up=feather], [data-tier-up=crystal], [data-tier-up=name]",
+      ),
+    ];
+
+    await waitFor(() => expect(continueButton()).toHaveFocus());
+    expect(opacitiesOf(lit)).toEqual(Array(lit.length).fill(1));
+    expect(played).toEqual(["tier-up-diamant-slam"]);
   });
 
   test("below Or, there is no full Aura to ask for", async () => {

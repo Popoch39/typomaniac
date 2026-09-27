@@ -51,5 +51,23 @@ export const STUD_POP = CustomEase.create("tier-up-stud-pop", "0.3,1.6,0.5,1");
 // A feather of the Platine's wings unfurling, overshooting before it settles.
 export const UNFURL = CustomEase.create("tier-up-unfurl", "0.3,1.45,0.5,1");
 
+// A feather of the Diamant's wings unfurling, overshooting further.
+export const FAN_OUT = CustomEase.create("tier-up-fan-out", "0.25,1.6,0.5,1");
+
+// The old Emblem sucked into itself, faster and faster.
+export const IMPLODE = CustomEase.create("tier-up-implode", "0.7,0,0.9,0.3");
+
+// The streaks of light rushing into the heart of light.
+export const CONVERGE = CustomEase.create("tier-up-converge", "0.6,0,0.9,0.6");
+
+// A facet of the Diamant flying in, fast, then settling into place.
+export const FACET = CustomEase.create("tier-up-facet", "0.16,0.84,0.3,1");
+
+// The Diamant landing, swelling as it strikes.
+export const LAND = CustomEase.create("tier-up-land", "0.2,0.9,0.3,1");
+
+// The name slammed in as a whole.
+export const SLAM = CustomEase.create("tier-up-slam", "0.2,0.9,0.2,1");
+
 // Glitter falling, faster and faster.
 export const FALL = CustomEase.create("tier-up-fall", "0.4,0,0.8,0.6");

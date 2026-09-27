@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import type { TierUpSound } from "@/audio/face-off-sounds";
 import { argentChoreography } from "@/components/tier-up/choreography/argent/argent-choreography";
 import { bronzeChoreography } from "@/components/tier-up/choreography/bronze/bronze-choreography";
+import { diamantChoreography } from "@/components/tier-up/choreography/diamant/diamant-choreography";
 import { orChoreography } from "@/components/tier-up/choreography/or/or-choreography";
 import { platineChoreography } from "@/components/tier-up/choreography/platine/platine-choreography";
 import type { NameShadow } from "@/components/tier-up/parts/tier-up-paint";
@@ -42,12 +43,14 @@ export type Choreography = {
 };
 
 // How the name is set under the Blason: its size (px), its line height and letter spacing (em),
-// and the light under it.
+// the light under it, and the colours of the two ghosts of it its artboard leaves on either side
+// as it comes in, if any.
 export type NameLook = {
   size: number;
   leading: number;
   tracking: number;
   shadow: NameShadow;
+  ghosts?: { left: string; right: string };
 };
 
 export const NAME_LOOK: NameLook = {
@@ -63,6 +66,7 @@ const CHOREOGRAPHIES: Partial<Record<Tier, Choreography>> = {
   argent: argentChoreography,
   or: orChoreography,
   platine: platineChoreography,
+  diamant: diamantChoreography,
 };
 
 // Until a Tier has its own, it plays Bronze's, with its own drawing and colours.

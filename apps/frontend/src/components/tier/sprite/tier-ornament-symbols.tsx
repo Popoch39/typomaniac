@@ -30,7 +30,13 @@ import {
   STEM,
   STUD,
 } from "@/components/tier/sprite/tier-sprite-paint";
-import { PLATINE_FAN, WING_ROOT, type WingFan } from "@/components/tier/sprite/tier-wing-fans";
+import {
+  DIAMANT_FANS,
+  PLATINE_FAN,
+  WING_CRYSTAL,
+  WING_ROOT,
+  type WingFan,
+} from "@/components/tier/sprite/tier-wing-fans";
 
 // The pieces an Ornament draws on its left, mirrored on its right.
 const laurelId = (tier: Tier) => `tier-laurel-${tier}`;
@@ -95,24 +101,15 @@ const WINGS: Partial<Record<Tier, ReactNode>> = {
   diamant: (
     <>
       <path
-        d="M45 6 L49.5 17 L45 31 L40.5 17 Z"
+        d={WING_CRYSTAL.d}
         fill={paint(metalId("diamant"))}
         {...LINE}
-        transform="rotate(-18 45 19)"
+        transform={WING_CRYSTAL.transform}
       />
-      <path d="M45 6 L45 31 L40.5 17 Z" {...BRIGHT} transform="rotate(-18 45 19)" />
+      <path d={WING_CRYSTAL.lit} {...BRIGHT} transform={WING_CRYSTAL.transform} />
       <g transform={ROOTED}>
-        {feathers(paint(deepId("diamant")), [
-          [60, 0.8],
-          [38, 1],
-          [16, 1.1],
-          [-6, 0.95],
-        ])}
-        {feathers(paint(metalId("diamant")), [
-          [45, 0.66],
-          [22, 0.76],
-          [0, 0.72],
-        ])}
+        {feathers(paint(deepId("diamant")), DIAMANT_FANS.deep)}
+        {feathers(paint(metalId("diamant")), DIAMANT_FANS.metal)}
       </g>
     </>
   ),

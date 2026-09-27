@@ -9,6 +9,9 @@ export const HEXAGON = "M16 2 L28 9 V23 L16 30 L4 23 V9 Z";
 
 export const GEM = "M9 4 H23 L30 12 L16 30 L2 12 Z";
 
+// The lines the Diamant's gem is cut along, and traced as it comes in.
+export const GEM_FACETS = "M2 12 H30 M9 4 L12 12 L16 30 L20 12 L23 4 M12 12 L16 4 L20 12";
+
 export const CROWN = "M3 11 L10 17.5 L13 12.5 L16 16 L19 12.5 L22 17.5 L29 11 L26 25 H6 Z";
 
 export const CROWN_BAND = "M6 26.5 H26 V29.5 H6 Z";

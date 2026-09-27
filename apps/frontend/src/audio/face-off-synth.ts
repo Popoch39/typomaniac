@@ -542,6 +542,219 @@ const platineName = (voice: Voice) => {
   }
 };
 
+// When the Platine is gone after it starts imploding, and when the heart of light appears (s).
+const IMPLODED_S = 0.7;
+
+const CORE_S = 0.55;
+
+// The Platine imploding: noise sucked down in pitch as it turns into itself, a glassy tone falling
+// with its fifth, a hollow pop as it is gone, then the heart of light humming, rising an octave
+// with its fifth as it grows, up to the impact.
+const diamantImplode = (voice: Voice) => {
+  const suck = filterOf(voice, "bandpass", 6000);
+
+  suck.Q.value = 1.6;
+  suck.frequency.exponentialRampToValueAtTime(400, voice.at + IMPLODED_S);
+  noiseBurst(voice, suck, { peak: 0.4, attack: 0.55, release: 0.2 });
+  tone(
+    voice,
+    { type: "sine", from: 1975.53, to: 246.94, glide: IMPLODED_S },
+    { peak: 0.1, attack: 0.5, release: 0.25 },
+  );
+  tone(
+    voice,
+    { type: "triangle", from: 2959.96, to: 369.99, glide: IMPLODED_S },
+    { peak: 0.05, attack: 0.5, release: 0.25 },
+  );
+
+  const gone = later(voice, IMPLODED_S);
+
+  tone(
+    gone,
+    { type: "sine", from: 220, to: 60, glide: 0.15 },
+    { peak: 0.35, attack: 0.003, release: 0.2 },
+  );
+  snap(gone, 6000, 0.2);
+
+  const core = later(voice, CORE_S);
+
+  tone(
+    core,
+    { type: "sine", from: 123.47, to: 246.94, glide: 2.4 },
+    { peak: 0.12, attack: 2.35, release: 0.15 },
+  );
+  tone(
+    core,
+    { type: "triangle", from: 185, to: 369.99, glide: 2.4 },
+    { peak: 0.06, attack: 2.35, release: 0.15 },
+  );
+};
+
+// The Diamant's run, in Hz: a B major arpeggio climbing past two octaves from B5. Each facet pings
+// a note of it as it settles into place, and the sparkle over the name climbs it.
+const DIAMANT_RUN = [987.77, 1244.51, 1479.98, 1975.53, 2489.02, 2959.96, 3951.07, 4978.03];
+
+// Seconds between two facets, and how long after it leaves a facet has nearly settled.
+const FACET_STEP_S = 0.08;
+
+const FACET_SETTLED_S = 0.3;
+
+// When the cut is traced in light after the first facet leaves (s).
+const CUT_TRACED_S = 1.2;
+
+// The Diamant's facets converging: the rush of the streaks and facets rising, each facet pinging
+// as it settles into place, then a glissando shimmering up as its cut is traced in light.
+const diamantConverge = (voice: Voice) => {
+  const rush = filterOf(voice, "bandpass", 900);
+
+  rush.Q.value = 1.2;
+  rush.frequency.exponentialRampToValueAtTime(7500, voice.at + 0.9);
+  noiseBurst(voice, rush, { peak: 0.22, attack: 0.8, release: 0.15 });
+
+  for (const [step, note] of DIAMANT_RUN.entries()) {
+    const ping = later(voice, step * FACET_STEP_S + FACET_SETTLED_S);
+
+    tone(ping, { type: "triangle", from: note }, { peak: 0.06, attack: 0.002, release: 0.4 });
+    tone(ping, { type: "sine", from: note * 2 }, { peak: 0.02, attack: 0.002, release: 0.3 });
+  }
+
+  const cut = later(voice, CUT_TRACED_S);
+
+  tone(
+    cut,
+    { type: "sine", from: 1975.53, to: 3951.07, glide: 0.5 },
+    { peak: 0.05, attack: 0.3, release: 0.3 },
+  );
+  noiseBurst(cut, filterOf(cut, "highpass", 7000), { peak: 0.08, attack: 0.45, release: 0.2 });
+};
+
+// The partials of the diamond ringing as it slams down, in Hz, with their envelopes: a clear B,
+// its fifth, its octave, its twelfth and its double octave, then high inharmonic overtones,
+// brighter and longer than the platinum.
+const DIAMOND_RING: readonly [OscillatorType, number, Envelope][] = [
+  ["triangle", 246.94, { peak: 0.22, attack: 0.004, release: 3.2 }],
+  ["triangle", 369.99, { peak: 0.13, attack: 0.004, release: 2.8 }],
+  ["sine", 493.88, { peak: 0.14, attack: 0.003, release: 2.6 }],
+  ["sine", 739.99, { peak: 0.09, attack: 0.003, release: 2.2 }],
+  ["sine", 987.77, { peak: 0.07, attack: 0.003, release: 2 }],
+  ["sine", 1683, { peak: 0.06, attack: 0.002, release: 1.5 }],
+  ["sine", 2766, { peak: 0.05, attack: 0.002, release: 1.2 }],
+  ["sine", 4213, { peak: 0.04, attack: 0.002, release: 0.9 }],
+  ["sine", 6011, { peak: 0.03, attack: 0.002, release: 0.6 }],
+];
+
+// When each wider ring flies out after the impact (s).
+const RING_WHOOMS = [0.15, 0.32];
+
+// When each shard of glass cracks off after the impact (s), and how bright (Hz).
+const SHARD_SNAPS: readonly [number, number][] = [
+  [0.01, 7800],
+  [0.03, 5200],
+  [0.06, 9000],
+  [0.08, 6400],
+  [0.11, 4600],
+  [0.15, 8200],
+  [0.19, 5800],
+  [0.24, 7000],
+  [0.3, 9400],
+  [0.37, 6600],
+];
+
+// The Diamant slamming down in a blinding white: the deepest thump yet shaking the screen, a crack
+// and a snap of noise, a long bright hiss for the white, the diamond ringing, the wider rings
+// whooming out, and the glass shattering all around.
+const diamantSlam = (voice: Voice) => {
+  tone(
+    voice,
+    { type: "sine", from: 100, to: 26, glide: 0.6 },
+    { peak: 1, attack: 0.003, release: 1.1 },
+  );
+  noiseBurst(voice, filterOf(voice, "lowpass", 6500), { peak: 0.7, attack: 0.001, release: 0.28 });
+  noiseBurst(voice, filterOf(voice, "bandpass", 3000), {
+    peak: 0.35,
+    attack: 0.001,
+    release: 0.06,
+  });
+  noiseBurst(voice, filterOf(voice, "highpass", 7000), { peak: 0.24, attack: 0.01, release: 0.95 });
+
+  for (const [type, from, envelope] of DIAMOND_RING) {
+    tone(voice, { type, from }, envelope);
+  }
+
+  for (const delay of RING_WHOOMS) {
+    tone(
+      later(voice, delay),
+      { type: "sine", from: 180, to: 90, glide: 0.3 },
+      { peak: 0.18, attack: 0.01, release: 0.4 },
+    );
+  }
+
+  for (const [delay, frequency] of SHARD_SNAPS) {
+    snap(later(voice, delay), frequency, 0.12);
+  }
+};
+
+// The chord struck as the name slams down, in Hz: B major, each doubled an octave up, softer.
+const DIAMANT_CHORD = [493.88, 622.25, 739.99, 987.77];
+
+// The sparkle climbing the run over it: one note every 35 ms.
+const SPARKLE_STEP_S = 0.035;
+
+// When the glint pops in on the gem after the name (s).
+const GLINT_S = 0.45;
+
+// When the stars twinkle after the name (s), and how high (Hz).
+const STAR_TWINKLES: readonly [number, number][] = [
+  [0.6, 4434.92],
+  [0.9, 3729.31],
+  [1.25, 4978.03],
+  [1.6, 3322.44],
+  [2, 4186.01],
+  [2.4, 3951.07],
+];
+
+// The name of Diamant, slammed down whole: a B major chord struck with its octaves over a pad of
+// two slightly detuned voices and its fifth, a sparkle climbing four octaves, the last held over a
+// long shimmer, richer than Platine's; then the glint popping in on the gem, and the stars
+// twinkling around it.
+const diamantName = (voice: Voice) => {
+  for (const note of DIAMANT_CHORD) {
+    tone(voice, { type: "triangle", from: note }, { peak: 0.1, attack: 0.004, release: 1.8 });
+    tone(voice, { type: "sine", from: note * 2 }, { peak: 0.04, attack: 0.004, release: 1.4 });
+  }
+
+  for (const from of [246.94, 247.9, 370.5]) {
+    tone(voice, { type: "sine", from }, { peak: 0.045, attack: 0.25, release: 2.5 });
+  }
+
+  for (const [step, note] of DIAMANT_RUN.entries()) {
+    const last = step === DIAMANT_RUN.length - 1;
+
+    tone(
+      later(voice, step * SPARKLE_STEP_S),
+      { type: "triangle", from: note },
+      { peak: 0.06, attack: 0.003, release: last ? 1.6 : 0.3 },
+    );
+  }
+
+  const end = later(voice, (DIAMANT_RUN.length - 1) * SPARKLE_STEP_S);
+
+  noiseBurst(end, filterOf(end, "highpass", 7500), { peak: 0.1, attack: 0.05, release: 0.9 });
+
+  const glint = later(voice, GLINT_S);
+
+  tone(glint, { type: "sine", from: 3951.07 }, { peak: 0.06, attack: 0.002, release: 0.5 });
+  noiseBurst(glint, filterOf(glint, "highpass", 8000), { peak: 0.08, attack: 0.005, release: 0.3 });
+
+  for (const [delay, note] of STAR_TWINKLES) {
+    tone(
+      later(voice, delay),
+      { type: "sine", from: note },
+      { peak: 0.035, attack: 0.002, release: 0.4 },
+    );
+  }
+};
+
 const SYNTHS: Record<FaceOffSound, (voice: Voice) => void> = {
   whoosh,
   impact,
@@ -562,6 +775,10 @@ const SYNTHS: Record<FaceOffSound, (voice: Voice) => void> = {
   "tier-up-platine-flip": platineFlip,
   "tier-up-platine-assemble": platineAssemble,
   "tier-up-platine-name": platineName,
+  "tier-up-diamant-implode": diamantImplode,
+  "tier-up-diamant-converge": diamantConverge,
+  "tier-up-diamant-slam": diamantSlam,
+  "tier-up-diamant-name": diamantName,
 };
 
 // Plays `sound` into `destination` now, built from oscillators and noise: each node is dropped once

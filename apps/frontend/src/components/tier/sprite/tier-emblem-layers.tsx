@@ -28,6 +28,7 @@ import {
   CROWN,
   CROWN_BAND,
   GEM,
+  GEM_FACETS,
   HEXAGON,
   SHIELD,
 } from "@/components/tier/sprite/tier-emblem-outline";
@@ -160,12 +161,16 @@ export const EMBLEM_LAYERS: Record<Tier, EmblemLayers> = {
     ),
     engraving: (
       <>
-        <path d="M2 12 H30 M9 4 L12 12 L16 30 L20 12 L23 4 M12 12 L16 4 L20 12" {...FACETS} />
+        <path d={GEM_FACETS} {...FACETS} />
         <circle cx={9} cy={4} r={1.1} {...STUD} />
         <circle cx={23} cy={4} r={1.1} {...STUD} />
         <circle cx={2} cy={12} r={1.1} {...STUD} />
         <circle cx={30} cy={12} r={1.1} {...STUD} />
-        <use href={ref(SPARK_ID)} {...GLINT} transform="translate(9.5 8) scale(0.5)" />
+        {/* The glint on its lit facet: a group of its own, that the Tier-up can pop in and make
+            twinkle on its own. */}
+        <g>
+          <use href={ref(SPARK_ID)} {...GLINT} transform="translate(9.5 8) scale(0.5)" />
+        </g>
       </>
     ),
   },

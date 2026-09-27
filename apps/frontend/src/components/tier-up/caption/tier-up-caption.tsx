@@ -23,7 +23,7 @@ export const TierUpCaption = ({ from, to, proceed, onProceed, look }: TierUpCapt
   <div className="absolute top-[556px] left-0 flex w-[1440px] flex-col items-center gap-3.5 text-center">
     <p
       data-tier-up="kicker"
-      className="font-mono text-sm tracking-[0.42em] text-muted-foreground uppercase"
+      className="font-mono text-sm leading-[normal] tracking-[0.42em] text-muted-foreground uppercase"
     >
       {to.tier === "maniac" ? "Palier ultime" : "Nouveau palier"}
     </p>
