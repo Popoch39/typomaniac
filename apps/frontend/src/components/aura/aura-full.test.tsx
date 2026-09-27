@@ -29,6 +29,8 @@ const glows = (root: HTMLElement) => root.querySelectorAll("[data-ornament-glow]
 
 const sheens = (root: HTMLElement) => root.querySelectorAll("[data-aura-sheen]");
 
+const rays = (root: HTMLElement) => root.querySelectorAll("[data-ornament-rays]");
+
 // The initials of the avatars whose Aura is light.
 const light = (root: HTMLElement) =>
   [...root.querySelectorAll("[data-slot=avatar]")].flatMap((avatar) =>
@@ -113,6 +115,73 @@ describe("the full Aura of Diamant", () => {
   });
 });
 
+describe("the full Aura of Maniac", () => {
+  test("is drawn by its own program, not Diamant's, in place of its rays and its glow", async () => {
+    const browser = fakeAuraRuntime();
+
+    const { container } = renderAura(
+      <>
+        <UserAvatar handle="ada" image={null} ornament="diamant" aura="full" />
+        <UserAvatar handle="ada" image={null} ornament="maniac" aura="full" />
+        <TierBlason tier="maniac" aura="full" />
+      </>,
+      browser.runtime,
+    );
+
+    await settle();
+    browser.tick();
+
+    const [diamant, avatar, blason] = browser.painters;
+
+    expect(browser.painters.map((painter) => [painter.tier, painter.draws])).toEqual([
+      ["diamant", 1],
+      ["maniac", 1],
+      ["maniac", 1],
+    ]);
+    expect(avatar?.program).not.toBe(diamant?.program);
+    expect(blason?.program).toBe(avatar?.program);
+    // The fire takes the place of the rays and the glow, and its embers of the sparks.
+    expect(rays(container)).toHaveLength(0);
+    expect(glows(container)).toHaveLength(0);
+    expect(container.querySelectorAll("[data-aura-spark]")).toHaveLength(0);
+    expect(sheens(container)).toHaveLength(3);
+  });
+
+  test("the light Aura keeps its rays and its glow", async () => {
+    const browser = fakeAuraRuntime();
+
+    const { container } = renderAura(
+      <>
+        <UserAvatar handle="ada" image={null} ornament="maniac" />
+        <TierBlason tier="maniac" />
+      </>,
+      browser.runtime,
+    );
+
+    await settle();
+
+    expect(browser.painters).toEqual([]);
+    expect(rays(container)).toHaveLength(2);
+    expect(glows(container)).toHaveLength(2);
+  });
+});
+
+describe("a Tier without an Aura", () => {
+  test("has no full one, even when asked for", async () => {
+    const browser = fakeAuraRuntime();
+
+    const { container } = renderAura(
+      <UserAvatar handle="ada" image={null} ornament="argent" aura="full" />,
+      browser.runtime,
+    );
+
+    await settle();
+
+    expect(browser.painters).toEqual([]);
+    expect(canvases(container)).toHaveLength(0);
+  });
+});
+
 describe("the full Aura of Or", () => {
   test("is drawn on a canvas behind the Ornament, in place of its glow, under its sheen", async () => {
     const browser = fakeAuraRuntime();
@@ -156,20 +225,6 @@ describe("the full Aura of Or", () => {
     expect(canvases(container)).toHaveLength(0);
     expect(browser.painters).toEqual([]);
     expect(glows(container)).toHaveLength(2);
-  });
-
-  test("stays light for a Tier without one yet", async () => {
-    const browser = fakeAuraRuntime();
-
-    const { container } = renderAura(
-      <UserAvatar handle="ada" image={null} ornament="maniac" aura="full" />,
-      browser.runtime,
-    );
-
-    await settle();
-
-    expect(browser.painters).toEqual([]);
-    expect(glows(container)).toHaveLength(1);
   });
 
   test("without WebGL2, the light Aura is drawn instead, without an error", async () => {

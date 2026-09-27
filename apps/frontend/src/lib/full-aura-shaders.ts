@@ -1,7 +1,7 @@
 import type { Tier } from "ranked";
 
 import { type FullAuraTier, hasFullAura } from "@/components/aura/aura-paint";
-import { METALS } from "@/components/tier/tier-sprite-paint";
+import { HOT, METALS } from "@/components/tier/tier-sprite-paint";
 
 // The shaders of the full Aura: a quad over the whole canvas, then one fragment shader per Tier
 // that has one, all procedural (hash and noise, no texture, no particle buffer). The canvas is
@@ -218,6 +218,90 @@ void main() {
   color = vec4(body * (1.0 - sparkle) + uLight * sparkle, veil * (1.0 - sparkle) + sparkle);
 }`;
 
+// Maniac: the most intense, a living fire. Tongues of flame lick out from behind the metal all
+// around the Ornament, twisted by a turbulence that climbs, taller above than below, from a hot
+// pale core to the brand's orange at their tips. A flickering halo glows behind them, and embers
+// rise fast in two layers, swaying and dying as they climb. Premultiplied alpha.
+const MANIAC_FRAGMENT = `#version 300 es
+precision highp float;
+
+uniform vec2 uResolution;
+uniform float uTime;
+uniform vec3 uLight;
+uniform vec3 uMid;
+uniform vec3 uDeep;
+
+out vec4 color;
+${NOISE}
+
+// Three octaves of noise, each finer and fainter: from 0 to 0.875.
+float fbm(vec2 p) {
+  float sum = 0.0;
+  float amp = 0.5;
+
+  for (int i = 0; i < 3; i++) {
+    sum += amp * noise(p);
+    p = p * 2.03 + 11.7;
+    amp *= 0.5;
+  }
+
+  return sum;
+}
+
+// One layer of embers: columns of cells scrolling up faster than Platine's motes, one ember at
+// most per cell, swaying and flickering hard. The larger the scale, the smaller and slower.
+float embers(vec2 p, float scale, float rise) {
+  vec2 q = p * scale;
+  float column = floor(q.x);
+  float pace = 0.7 + 0.6 * hash(vec2(column, scale));
+  q.y -= uTime * rise * scale * pace;
+  vec2 cell = floor(q);
+  float seed = hash(cell + scale);
+  vec2 spot = vec2(0.5 + 0.3 * sin(uTime * (1.5 + seed) + seed * 30.0), 0.2 + 0.6 * hash(cell + 9.1));
+  float d = length(fract(q) - spot);
+  float size = 0.05 + 0.05 * seed;
+  // A bright core in a soft glow.
+  float ember = smoothstep(size, 0.0, d) + 0.4 * pow(smoothstep(size * 3.0, 0.0, d), 2.0);
+  float flicker = 0.55 + 0.45 * sin(uTime * (5.0 + 6.0 * seed) + seed * 17.0);
+
+  return ember * flicker * step(0.66, seed);
+}
+
+void main() {
+  vec2 p = gl_FragCoord.xy / uResolution * 2.0 - 1.0;
+  float r = length(p);
+  // Fire rises: its tongues reach farther above the Ornament than below it.
+  float up = smoothstep(-0.9, 0.9, p.y);
+
+  // A turbulence climbing fast, warped by a slower one, so the tongues twist as they rise.
+  float warp = noise(p * 2.0 - vec2(0.0, uTime * 0.6));
+  float turb = fbm(vec2(p.x * 3.2, p.y * 2.4 - uTime * 1.6) + warp * 1.2);
+
+  // Each tongue starts behind the metal and ends where the turbulence lets it, always short of
+  // the canvas's edge: hottest at its root, cooling to its tip.
+  float tip = 0.5 + (0.12 + 0.26 * up) * turb * 1.4;
+  float heat = smoothstep(tip, tip - 0.22, r) * smoothstep(0.28, 0.42, r);
+  float edge = smoothstep(1.0, 0.85, r);
+  float flame = smoothstep(0.0, 0.3, heat) * edge;
+  vec3 fire = mix(uDeep, uMid, smoothstep(0.15, 0.55, heat));
+  fire = mix(fire, uLight, smoothstep(0.65, 1.0, heat));
+
+  // Behind the flames, a halo that flickers with them.
+  float halo = smoothstep(1.0, 0.35, r) * smoothstep(0.2, 0.4, r);
+  float flicker = 0.8 + 0.2 * noise(vec2(uTime * 3.0, 0.0));
+  float glow = halo * halo * 0.45 * flicker;
+
+  // Born in the fire, the embers rise above it, and die before the canvas's edge.
+  float rising = smoothstep(-0.2, 0.3, p.y) * smoothstep(0.3, 0.55, r) * smoothstep(0.98, 0.7, r);
+  float spark = clamp(embers(p, 8.0, 0.22) + 0.7 * embers(p, 13.0, 0.16), 0.0, 1.0) * rising;
+
+  // The halo, the flames over it, then the embers over both.
+  vec3 body = fire * flame + uDeep * glow * (1.0 - flame);
+  float alpha = flame + glow * (1.0 - flame);
+  vec3 ember = mix(uMid, uLight, spark) * spark;
+  color = vec4(body * (1.0 - spark) + ember, alpha * (1.0 - spark) + spark);
+}`;
+
 // Three colours of a Tier's metal, from the sprite's paint rather than the CSS tokens: the Aura
 // matches the drawing, and never follows a change of accent.
 export type AuraColors = { light: string; mid: string; deep: string };
@@ -236,6 +320,9 @@ const FULL_AURA_SHADERS: Record<FullAuraTier, FullAuraShader> = {
   or: { fragment: OR_FRAGMENT, colors: metalColors("or") },
   platine: { fragment: PLATINE_FRAGMENT, colors: metalColors("platine") },
   diamant: { fragment: DIAMANT_FRAGMENT, colors: metalColors("diamant") },
+  // The sprite's fire rather than its metal: its pale core, its gold, and the Maniac's fixed
+  // orange, which never follows a change of accent.
+  maniac: { fragment: MANIAC_FRAGMENT, colors: HOT },
 };
 
 // The shader of `tier`'s full Aura, or undefined for a Tier without one.

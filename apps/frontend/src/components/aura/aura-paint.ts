@@ -12,9 +12,9 @@ export const shines = (tier: Tier) => SHINING_TIERS.includes(tier);
 // where the caller asks for it.
 export type Aura = "light" | "full";
 
-// The Tiers with a full Aura so far, each with its shader (`fullAuraShader`'s table is keyed on them):
-// the others stay light, even when asked for a full one.
-const FULL_AURA_TIERS = ["or", "platine", "diamant"] as const;
+// The Tiers with a full Aura, each with its shader (`fullAuraShader`'s table is keyed on them):
+// the others have no Aura at all, even when asked for a full one.
+const FULL_AURA_TIERS = ["or", "platine", "diamant", "maniac"] as const;
 
 export type FullAuraTier = (typeof FULL_AURA_TIERS)[number];
 

@@ -19,7 +19,7 @@ import { useOrnamentMotion } from "@/components/tier/use-ornament-motion";
 // own rays, its shared symbol from the sprite, then its light Aura over the metal (a sheen from
 // Or up, sparks for the Diamant and the Maniac). All but the symbol belong to this instance, so
 // they can move without moving every other Ornament. Without `glow` where the full Aura draws its
-// own light behind: neither the glow nor the sparks, which its shader draws.
+// own light behind: neither the glow, the rays nor the sparks, which its shader draws.
 export const TierOrnamentArt = ({ tier, glow }: { tier: Tier; glow: boolean }) => {
   const scope = useRef<SVGGElement>(null);
   const halo = glow ? GLOWS.find((each) => each.tier === tier) : undefined;
@@ -31,7 +31,7 @@ export const TierOrnamentArt = ({ tier, glow }: { tier: Tier; glow: boolean }) =
       {halo === undefined ? null : (
         <circle data-ornament-glow cx={60} cy={60} r={halo.radius} fill={paint(glowId(tier))} />
       )}
-      {tier === "maniac" ? (
+      {glow && tier === "maniac" ? (
         <g data-ornament-rays>
           <circle cx={60} cy={60} r={40} {...RAYS} stroke={paint(metalId(tier))} />
         </g>

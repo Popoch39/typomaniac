@@ -75,17 +75,18 @@ describe("AuraGalleryPage", () => {
     await renderPage(browser.runtime);
     await waitFor(() => expect(browser.painters).toHaveLength(5));
 
-    const full = screen.getByRole("region", { name: "Aura pleine de diamant" });
+    const full = screen.getByRole("region", { name: "Aura pleine de maniac" });
 
     // The Profile, the Match proposal and the Queue, the Face-off, then both Blasons.
-    expect(held(browser)).toEqual(Array(5).fill("diamant"));
+    expect(held(browser)).toEqual(Array(5).fill("maniac"));
     expect(browser.painters.every((painter) => full.contains(painter.canvas))).toBe(true);
-    expect(fullToggle("diamant")).toHaveAttribute("aria-pressed", "true");
+    expect(fullToggle("maniac")).toHaveAttribute("aria-pressed", "true");
     expect(fullToggle("or")).toHaveAttribute("aria-pressed", "false");
     expect(fullToggle("platine")).toHaveAttribute("aria-pressed", "false");
+    expect(fullToggle("diamant")).toHaveAttribute("aria-pressed", "false");
   });
 
-  test.each(["or", "platine"] as const)(
+  test.each(["or", "platine", "diamant"] as const)(
     "shows the full Aura of %s in place of the one shown, whole, within the cap",
     async (tier) => {
       const browser = fakeAuraRuntime();
@@ -101,9 +102,9 @@ describe("AuraGalleryPage", () => {
       expect(
         browser.painters.every((painter) => painter.disposed || full.contains(painter.canvas)),
       ).toBe(true);
-      expect(screen.queryByRole("region", { name: "Aura pleine de diamant" })).toBeNull();
+      expect(screen.queryByRole("region", { name: "Aura pleine de maniac" })).toBeNull();
       expect(fullToggle(tier)).toHaveAttribute("aria-pressed", "true");
-      expect(fullToggle("diamant")).toHaveAttribute("aria-pressed", "false");
+      expect(fullToggle("maniac")).toHaveAttribute("aria-pressed", "false");
     },
   );
 
@@ -113,11 +114,11 @@ describe("AuraGalleryPage", () => {
     await renderPage(browser.runtime);
     await waitFor(() => expect(browser.painters).toHaveLength(5));
 
-    await userEvent.click(fullToggle("diamant"));
+    await userEvent.click(fullToggle("maniac"));
 
     expect(held(browser)).toEqual([]);
-    expect(screen.queryByRole("region", { name: "Aura pleine de diamant" })).toBeNull();
-    expect(fullToggle("diamant")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByRole("region", { name: "Aura pleine de maniac" })).toBeNull();
+    expect(fullToggle("maniac")).toHaveAttribute("aria-pressed", "false");
   });
 
   test("offers no full Aura for a Tier without one", async () => {

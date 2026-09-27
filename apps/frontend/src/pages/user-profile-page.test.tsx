@@ -154,6 +154,26 @@ describe("UserProfilePage", () => {
     expect(browser.painters[0]?.canvas.closest("[data-ornament]")).not.toBeNull();
   });
 
+  test("the avatar of a Maniac User gives off its full Aura", async () => {
+    const browser = fakeAuraRuntime();
+
+    await renderAt(
+      me,
+      "grace",
+      [{ ...grace, rank: { tier: "maniac", tp: 42, shielded: false }, ornament: "maniac" }],
+      browser.runtime,
+    );
+
+    await screen.findByText("Maniac · 42 TP");
+    await waitFor(() => expect(browser.painters).toHaveLength(1));
+
+    const ornament = browser.painters[0]?.canvas.closest("[data-ornament]");
+
+    expect(browser.painters[0]?.tier).toBe("maniac");
+    // The fire takes the place of the avatar's rays.
+    expect(ornament?.querySelector("[data-ornament-rays]")).toBeNull();
+  });
+
   test("an avatar without an Ornament wears none", async () => {
     await renderAt(me, "grace", [grace]);
 
