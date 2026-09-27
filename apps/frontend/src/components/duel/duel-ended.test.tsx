@@ -473,6 +473,25 @@ describe("the Tier-up", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  test("brings its name into sight letter by letter, after the Blason lands", async () => {
+    await renderEnded({ ranked: intoBronze });
+
+    const letters = [...screen.getByRole("dialog").querySelectorAll("[data-tier-up=letter]")];
+    const opacities = () => letters.map((letter) => gsap.getProperty(letter, "opacity"));
+
+    expect(letters).toHaveLength(6);
+    // GSAP writes the starting values on its first frame.
+    await clock.advance(0.02);
+    expect(opacities()).toEqual(Array(6).fill(0));
+
+    await clock.advance(2.8);
+    expect(opacities()[0]).toBeGreaterThan(0);
+    expect(opacities()[5]).toBe(0);
+
+    await clock.advance(1.5);
+    expect(opacities()).toEqual(Array(6).fill(1));
+  });
+
   test("stops everything, sounds included, when the end screen goes", async () => {
     await renderEnded({ ranked: intoBronze });
     await clock.advance(0.5);
