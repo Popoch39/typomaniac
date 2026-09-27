@@ -70,12 +70,18 @@ const chevron = (d: string) => (
   </g>
 );
 
-// A star cut in the metal, the light on its lower lip: a group of its own, that the Tier-up can
-// bring in whole without touching the opacity of its layers.
-const engravedStar = (lift: number) => (
+// A star cut in the metal, in the dark of the Tier's own outline as the mock-ups draw it, the light
+// on its lower lip: a group of its own, that the Tier-up can bring in whole without touching the
+// opacity of its layers.
+const engravedStar = (tier: Tier, lift: number) => (
   <g>
     <use href={ref(STAR_ID)} {...ENGRAVED_LIGHT} transform={`translate(0 ${lift + 0.7})`} />
-    <use href={ref(STAR_ID)} {...ENGRAVED} transform={`translate(0 ${lift})`} />
+    <use
+      href={ref(STAR_ID)}
+      fill={OUTLINES[tier]}
+      opacity={0.75}
+      transform={`translate(0 ${lift})`}
+    />
   </g>
 );
 
@@ -120,7 +126,7 @@ export const EMBLEM_LAYERS: Record<Tier, EmblemLayers> = {
   or: shield(
     "or",
     <>
-      {engravedStar(0)}
+      {engravedStar("or", 0)}
       <circle cx={16} cy={3.6} r={1} {...STUD} />
     </>,
   ),
@@ -133,7 +139,7 @@ export const EMBLEM_LAYERS: Record<Tier, EmblemLayers> = {
     ),
     engraving: (
       <>
-        {engravedStar(0.6)}
+        {engravedStar("platine", 0.6)}
         {PLATINE_STUDS.map(([cx, cy]) => (
           <circle key={`${cx} ${cy}`} cx={cx} cy={cy} r={1.1} {...STUD} />
         ))}

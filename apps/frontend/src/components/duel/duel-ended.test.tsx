@@ -630,27 +630,31 @@ describe("the Tier-up", () => {
   });
 
   test.each([
-    ["Argent → Or", intoOr],
-    ["Or → Platine", intoPlatine],
-  ])("%s cuts its star in the metal, never in solid ink", async (_, ranked: DuelRanked) => {
-    await renderEnded({ ranked });
-    await clock.advance(5);
+    ["Argent → Or", intoOr, "#5c3f06"],
+    ["Or → Platine", intoPlatine, "#134a42"],
+  ])(
+    "%s cuts its star in the metal, never in solid ink",
+    async (_, ranked: DuelRanked, outline) => {
+      await renderEnded({ ranked });
+      await clock.advance(5);
 
-    const star = [
-      ...screen
-        .getByRole("dialog")
-        .querySelectorAll('[data-tier-up=engraving] use[href="#tier-star"]'),
-    ];
+      const star = [
+        ...screen
+          .getByRole("dialog")
+          .querySelectorAll('[data-tier-up=engraving] use[href="#tier-star"]'),
+      ];
 
-    // The engraving and the light on its lip keep their own opacity: the timeline fades the star
-    // in as a whole, never each of its layers up to full.
-    expect(star).toHaveLength(2);
-    expect(star.map((layer) => layer.getAttribute("opacity"))).toEqual(["0.38", "0.58"]);
-    expect(star.map((layer) => (layer instanceof SVGElement ? layer.style.opacity : null))).toEqual(
-      ["", ""],
-    );
-    expect(opacitiesOf(star.map((layer) => layer.parentElement ?? layer))).toEqual([1, 1]);
-  });
+      // Cut in the dark of its own metal over a light lip, as the artboards draw it; each layer
+      // keeps its own opacity: the timeline fades the star in whole, never a layer up to full.
+      expect(star).toHaveLength(2);
+      expect(star.map((layer) => layer.getAttribute("fill"))).toEqual(["#fff", outline]);
+      expect(star.map((layer) => layer.getAttribute("opacity"))).toEqual(["0.38", "0.75"]);
+      expect(
+        star.map((layer) => (layer instanceof SVGElement ? layer.style.opacity : null)),
+      ).toEqual(["", ""]);
+      expect(opacitiesOf(star.map((layer) => layer.parentElement ?? layer))).toEqual([1, 1]);
+    },
+  );
 
   test("Or → Platine pops its studs in one by one, then unfurls its wings, none seen before", async () => {
     await renderEnded({ ranked: intoPlatine });
