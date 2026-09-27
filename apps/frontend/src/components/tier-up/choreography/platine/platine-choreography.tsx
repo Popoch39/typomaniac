@@ -262,7 +262,8 @@ export const platineChoreography: Choreography = {
         3.05,
       )
       .fromTo(
-        `${part("engraving")} > use`,
+        // The star as a whole: its layers keep their own opacity.
+        `${part("engraving")} > g`,
         { opacity: 0 },
         { opacity: 1, duration: 0.3, ease: EASE_OUT },
         3.4,

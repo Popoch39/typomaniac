@@ -70,12 +70,13 @@ const chevron = (d: string) => (
   </g>
 );
 
-// A star cut in the metal, the light on its lower lip.
+// A star cut in the metal, the light on its lower lip: a group of its own, that the Tier-up can
+// bring in whole without touching the opacity of its layers.
 const engravedStar = (lift: number) => (
-  <>
+  <g>
     <use href={ref(STAR_ID)} {...ENGRAVED_LIGHT} transform={`translate(0 ${lift + 0.7})`} />
     <use href={ref(STAR_ID)} {...ENGRAVED} transform={`translate(0 ${lift})`} />
-  </>
+  </g>
 );
 
 // A gem of fire set in the Maniac's crown.
