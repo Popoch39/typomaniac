@@ -64,6 +64,17 @@ describe("TierSprite", () => {
     }
   });
 
+  test("no Ornament is clipped to its grid: the gems and flames at its top edge show whole", () => {
+    const { container } = render(<TierSprite />);
+
+    const symbols = [...container.querySelectorAll('symbol[id^="tier-"]')].filter(
+      (symbol) => !symbol.id.startsWith("tier-emblem-"),
+    );
+
+    expect(symbols.length).toBeGreaterThan(TIERS.length);
+    expect(symbols.filter((symbol) => symbol.getAttribute("overflow") !== "visible")).toEqual([]);
+  });
+
   test("it is never seen by screen readers", () => {
     const { container } = render(<TierSprite />);
 

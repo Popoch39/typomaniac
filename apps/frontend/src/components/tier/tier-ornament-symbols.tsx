@@ -340,11 +340,13 @@ const ORNAMENT_DRAWINGS: Record<Tier, ReactNode> = {
   ),
 };
 
-// The pieces as symbols of their own, then one symbol per Tier's Ornament, for the sprite.
+// The pieces as symbols of their own, then one symbol per Tier's Ornament, for the sprite. Each
+// lets its drawing overflow the grid (a symbol clips it by default): the gem, the crystal and the
+// crown flame reach its top edge, their outline beyond it.
 export const TierOrnamentSymbols = () => (
   <>
     {LAURELS.map(({ tier, stemEnd, leaves, backLeaves }) => (
-      <symbol key={tier} id={laurelId(tier)} viewBox="0 0 120 120">
+      <symbol key={tier} id={laurelId(tier)} viewBox="0 0 120 120" overflow="visible">
         <path d={`M52.3 103.3 A44 44 0 0 1 ${stemEnd}`} {...STEM} stroke={OUTLINES[tier]} />
         {BACK_LEAVES.slice(0, backLeaves).map((place) => leaf(paint(deepId(tier)), place, 0.75))}
         {LEAVES.slice(0, leaves).map((place) => leaf(paint(metalId(tier)), place))}
@@ -352,20 +354,20 @@ export const TierOrnamentSymbols = () => (
     ))}
     {TIERS.map((tier) =>
       WINGS[tier] === undefined ? null : (
-        <symbol key={tier} id={wingId(tier)} viewBox="0 0 120 120">
+        <symbol key={tier} id={wingId(tier)} viewBox="0 0 120 120" overflow="visible">
           {WINGS[tier]}
         </symbol>
       ),
     )}
     {TIERS.map((tier) =>
       BANNERS[tier] === undefined ? null : (
-        <symbol key={tier} id={bannerId(tier)} viewBox="0 0 120 120">
+        <symbol key={tier} id={bannerId(tier)} viewBox="0 0 120 120" overflow="visible">
           {BANNERS[tier]}
         </symbol>
       ),
     )}
     {TIERS.map((tier) => (
-      <symbol key={tier} id={ornamentId(tier)} viewBox="0 0 120 120">
+      <symbol key={tier} id={ornamentId(tier)} viewBox="0 0 120 120" overflow="visible">
         {ORNAMENT_DRAWINGS[tier]}
       </symbol>
     ))}
