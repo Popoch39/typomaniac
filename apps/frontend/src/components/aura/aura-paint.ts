@@ -14,7 +14,7 @@ export type Aura = "light" | "full";
 
 // The Tiers with a full Aura so far, each with its shader (`fullAuraShader`'s table is keyed on them):
 // the others stay light, even when asked for a full one.
-const FULL_AURA_TIERS = ["or", "platine"] as const;
+const FULL_AURA_TIERS = ["or", "platine", "diamant"] as const;
 
 export type FullAuraTier = (typeof FULL_AURA_TIERS)[number];
 

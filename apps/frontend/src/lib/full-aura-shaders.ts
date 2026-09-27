@@ -131,6 +131,93 @@ void main() {
   color = vec4(cool * (1.0 - dust) + mote, veil * (1.0 - dust) + dust);
 }`;
 
+// Diamant: a gem's light, richer than Platine's. Its widest halo is cut into facets, each lit on
+// its own beat, crossed by prismatic bands that slide slowly around the Ornament: each channel
+// a little behind the next, as light splits through a prism, always between the metal's colours.
+// A bright arc of refraction turns around it, and four-pointed glints twinkle in two layers.
+// Premultiplied alpha.
+const DIAMANT_FRAGMENT = `#version 300 es
+precision highp float;
+
+uniform vec2 uResolution;
+uniform float uTime;
+uniform vec3 uLight;
+uniform vec3 uMid;
+uniform vec3 uDeep;
+
+out vec4 color;
+${NOISE}
+
+const float TAU = 6.2831853;
+const float FACETS = 12.0;
+
+// The prism's bands at angle a and radius r, shifted by the channel's phase: a whole number of
+// turns around the circle, so they have no seam.
+float bands(float a, float r, float phase) {
+  return 0.5 + 0.5 * cos(a * 3.0 + r * 9.0 - uTime * 0.35 + phase);
+}
+
+// A four-pointed star: a bright core and two thin arms, short enough to stay in its cell.
+float star(vec2 d, float size) {
+  float core = smoothstep(size, 0.0, length(d));
+  float arms = smoothstep(size * 0.18, 0.0, abs(d.x)) * smoothstep(size * 2.2, 0.0, abs(d.y))
+    + smoothstep(size * 0.18, 0.0, abs(d.y)) * smoothstep(size * 2.2, 0.0, abs(d.x));
+
+  return core + 0.7 * arms;
+}
+
+// One layer of glints: one at most per cell, dark most of the time, flashing on its own beat.
+float glints(vec2 p, float scale, float rate) {
+  vec2 q = p * scale;
+  vec2 cell = floor(q);
+  float seed = hash(cell + scale);
+  vec2 spot = 0.35 + 0.3 * vec2(seed, hash(cell + 5.3));
+  float twinkle = pow(max(sin(uTime * rate * (0.7 + seed) + seed * 50.0), 0.0), 12.0);
+
+  return star(fract(q) - spot, 0.14) * twinkle * step(0.4, seed);
+}
+
+// How bright a facet is now: each on its own beat.
+float faceLight(float facet) {
+  return 0.55 + 0.45 * sin(uTime * (0.5 + hash(vec2(facet, 1.0))) + hash(vec2(facet, 2.0)) * TAU);
+}
+
+void main() {
+  vec2 p = gl_FragCoord.xy / uResolution * 2.0 - 1.0;
+  float r = length(p);
+  vec2 around = p / max(r, 0.001);
+  float a = atan(p.y, p.x);
+
+  // The widest halo yet, strongest through the metal, gone at the canvas's edge.
+  float halo = smoothstep(1.0, 0.4, r) * smoothstep(0.2, 0.4, r);
+
+  // Facets turning slowly, each lit on its own beat, blending into the next at their edge.
+  // Counted modulo their number, so the facet across the seam of atan is one facet.
+  float turn = a / TAU * FACETS + uTime * 0.08;
+  float facet = floor(turn);
+  float face = mix(faceLight(mod(facet, FACETS)), faceLight(mod(facet + 1.0, FACETS)), smoothstep(0.75, 1.0, fract(turn)));
+
+  // The light stirs, and an arc of refraction turns around the Ornament.
+  float stir = noise(around * 2.0 + vec2(uTime * 0.15, -uTime * 0.1));
+  float sweep = pow(0.5 + 0.5 * cos(a - uTime * 0.4), 8.0);
+  float breath = 0.88 + 0.12 * sin(uTime * 1.1);
+  float light = halo * halo * (0.45 + 0.3 * stir + 0.35 * face + 0.4 * sweep) * breath;
+
+  // Each channel of the prism a third of a turn behind the next, between the metal's body and its
+  // highlight: the light splits, and never leaves the Diamant's colours.
+  vec3 prism = vec3(bands(a, r, 0.0), bands(a, r, 2.1), bands(a, r, 4.2));
+  vec3 tint = mix(uMid, uLight, prism);
+
+  // Born behind the drawing, the glints show beyond it, and fade out before the canvas's edge.
+  float ring = smoothstep(0.98, 0.75, r) * smoothstep(0.35, 0.5, r);
+  float sparkle = clamp(glints(p, 6.0, 1.1) + 0.7 * glints(p, 10.0, 1.6), 0.0, 1.0) * ring;
+
+  // The halo, then the glints over it.
+  float veil = clamp(light * 0.85, 0.0, 1.0);
+  vec3 body = mix(uDeep, tint, halo) * veil;
+  color = vec4(body * (1.0 - sparkle) + uLight * sparkle, veil * (1.0 - sparkle) + sparkle);
+}`;
+
 // Three colours of a Tier's metal, from the sprite's paint rather than the CSS tokens: the Aura
 // matches the drawing, and never follows a change of accent.
 export type AuraColors = { light: string; mid: string; deep: string };
@@ -148,6 +235,7 @@ const metalColors = (tier: FullAuraTier): AuraColors => {
 const FULL_AURA_SHADERS: Record<FullAuraTier, FullAuraShader> = {
   or: { fragment: OR_FRAGMENT, colors: metalColors("or") },
   platine: { fragment: PLATINE_FRAGMENT, colors: metalColors("platine") },
+  diamant: { fragment: DIAMANT_FRAGMENT, colors: metalColors("diamant") },
 };
 
 // The shader of `tier`'s full Aura, or undefined for a Tier without one.

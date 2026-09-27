@@ -81,6 +81,38 @@ describe("the full Aura of Platine", () => {
   });
 });
 
+describe("the full Aura of Diamant", () => {
+  test("is drawn by its own program, not Platine's, behind the avatar and the Blason", async () => {
+    const browser = fakeAuraRuntime();
+
+    const { container } = renderAura(
+      <>
+        <UserAvatar handle="ada" image={null} ornament="platine" aura="full" />
+        <UserAvatar handle="ada" image={null} ornament="diamant" aura="full" />
+        <TierBlason tier="diamant" aura="full" />
+      </>,
+      browser.runtime,
+    );
+
+    await settle();
+    browser.tick();
+
+    const [platine, avatar, blason] = browser.painters;
+
+    expect(browser.painters.map((painter) => [painter.tier, painter.draws])).toEqual([
+      ["platine", 1],
+      ["diamant", 1],
+      ["diamant", 1],
+    ]);
+    expect(avatar?.program).not.toBe(platine?.program);
+    expect(blason?.program).toBe(avatar?.program);
+    expect(glows(container)).toHaveLength(0);
+    expect(sheens(container)).toHaveLength(3);
+    // Its glints are the shader's, behind the drawing: none of the light Aura's sparks over it.
+    expect(container.querySelectorAll("[data-aura-spark]")).toHaveLength(0);
+  });
+});
+
 describe("the full Aura of Or", () => {
   test("is drawn on a canvas behind the Ornament, in place of its glow, under its sheen", async () => {
     const browser = fakeAuraRuntime();
@@ -130,7 +162,7 @@ describe("the full Aura of Or", () => {
     const browser = fakeAuraRuntime();
 
     const { container } = renderAura(
-      <UserAvatar handle="ada" image={null} ornament="diamant" aura="full" />,
+      <UserAvatar handle="ada" image={null} ornament="maniac" aura="full" />,
       browser.runtime,
     );
 

@@ -136,6 +136,7 @@ describe("UserProfilePage", () => {
   test.each([
     ["Or", "or"],
     ["Platine", "platine"],
+    ["Diamant", "diamant"],
   ] as const)("the avatar of a %s User gives off its full Aura", async (name, tier) => {
     const browser = fakeAuraRuntime();
 
