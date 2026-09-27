@@ -177,6 +177,10 @@ const blasonOf = (part: HTMLElement) => {
 const emblemReached = (tierUp: HTMLElement) =>
   tierUp.querySelector("[data-tier-up=emblem]")?.getAttribute("data-tier") ?? null;
 
+// How much of a traced line is still to draw, as the browser renders it: 1 for none of it, 0
+// for all of it (the path's length set to 1).
+const drawn = (path: Element | null) => Number(path?.getAttribute("stroke-dashoffset"));
+
 // The Emblem drawn on its own in this part.
 const emblemOf = (part: HTMLElement) =>
   part.querySelector("[data-tier-emblem] use")?.getAttribute("href") ?? null;
@@ -492,6 +496,23 @@ describe("the Tier-up", () => {
 
     await clock.advance(1.5);
     expect(opacities()).toEqual(Array(6).fill(1));
+  });
+
+  test("traces the new Emblem's outline, then its engraving, little by little", async () => {
+    await renderEnded({ ranked: intoBronze });
+
+    const tierUp = screen.getByRole("dialog");
+    const outline = tierUp.querySelector("[data-tier-up=outline]");
+    const chevron = tierUp.querySelector("[data-tier-up=engraving] path");
+
+    await clock.advance(1.6);
+    expect(drawn(outline)).toBeGreaterThan(0.05);
+    expect(drawn(outline)).toBeLessThan(0.95);
+
+    await clock.advance(0.65);
+    expect(drawn(outline)).toBe(0);
+    expect(drawn(chevron)).toBeGreaterThan(0.05);
+    expect(drawn(chevron)).toBeLessThan(0.95);
   });
 
   test("stops everything, sounds included, when the end screen goes", async () => {

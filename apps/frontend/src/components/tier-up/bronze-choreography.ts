@@ -11,6 +11,13 @@ import {
 } from "@/components/tier-up/tier-up-eases";
 import { part } from "@/components/tier-up/tier-up-part";
 
+// A line traced from nothing to whole: its length set to 1, one dash as long, pushed off it,
+// then back. As SVG attributes, plain numbers: as CSS, GSAP would round the `px` of the offset
+// to 1 or 0, and the line would pop in instead of tracing itself.
+const UNDRAWN = { pathLength: 1, "stroke-dasharray": 1, "stroke-dashoffset": 1 };
+
+const DRAWN = { pathLength: 1, "stroke-dasharray": 1, "stroke-dashoffset": 0 };
+
 // A caption line rising into place, in half a second.
 const RISE = { opacity: 0, y: 28 };
 
@@ -46,8 +53,8 @@ export const bronzeChoreography: Choreography = {
       )
       .fromTo(
         part("outline"),
-        { strokeDashoffset: 1 },
-        { strokeDashoffset: 0, duration: 1.1, ease: DRAW },
+        { attr: UNDRAWN },
+        { attr: DRAWN, duration: 1.1, ease: DRAW },
         "dissolve+=0.1",
       )
       .fromTo(part("fill"), { opacity: 0 }, { opacity: 1, duration: 0.45, ease: EASE_OUT }, 1.9)
@@ -55,14 +62,8 @@ export const bronzeChoreography: Choreography = {
       // Each line cut in the metal traces itself, as the outline did.
       .fromTo(
         `${part("engraving")} path`,
-        { attr: { pathLength: 1 }, strokeDasharray: 1, strokeDashoffset: 1 },
-        {
-          attr: { pathLength: 1 },
-          strokeDasharray: 1,
-          strokeDashoffset: 0,
-          duration: 0.3,
-          ease: EASE_OUT,
-        },
+        { attr: UNDRAWN },
+        { attr: DRAWN, duration: 0.3, ease: EASE_OUT },
         2.15,
       )
       .to(

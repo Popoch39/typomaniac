@@ -34,6 +34,7 @@ export const TierUpEmblem = ({ tier }: { tier: Tier }) => {
           strokeLinejoin="round"
           pathLength={1}
           strokeDasharray={1}
+          strokeDashoffset={1}
         />
       </svg>
       <div data-tier-up="fill" className="absolute inset-0">
