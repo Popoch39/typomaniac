@@ -69,60 +69,55 @@ describe("AuraGalleryPage", () => {
     expect(blasons(row)).toEqual(Array(2).fill(`#tier-emblem-${tier}`));
   });
 
-  test("draws the full Aura of Or, then Platine's, wherever the app shows it large", async () => {
+  test("draws the full Aura of the highest Tier with one at first, and of no other", async () => {
     const browser = fakeAuraRuntime();
 
     await renderPage(browser.runtime);
-    // Shown at first, within the cap of 8: Or's five, then the first three of Platine.
-    await waitFor(() => expect(browser.painters).toHaveLength(8));
+    await waitFor(() => expect(browser.painters).toHaveLength(5));
 
-    const fullOr = screen.getByRole("region", { name: "Aura pleine de or" });
-
-    const orToggle = fullToggle("or");
+    const full = screen.getByRole("region", { name: "Aura pleine de diamant" });
 
     // The Profile, the Match proposal and the Queue, the Face-off, then both Blasons.
-    expect(orToggle).toHaveAttribute("aria-pressed", "true");
-    expect(held(browser)).toEqual([...Array(5).fill("or"), ...Array(3).fill("platine")]);
-    expect(browser.painters.slice(0, 5).every((painter) => fullOr.contains(painter.canvas))).toBe(
-      true,
-    );
-
-    // Hiding Or gives its places back: shown again, Platine's whole row is full (a light Aura
-    // never asks twice, so its row is hidden and shown).
-    const platineToggle = fullToggle("platine");
-
-    await userEvent.click(orToggle);
-    await userEvent.click(platineToggle);
-    await userEvent.click(platineToggle);
-    await waitFor(() => expect(held(browser)).toEqual(Array(5).fill("platine")));
-
-    const fullPlatine = screen.getByRole("region", { name: "Aura pleine de platine" });
-
-    expect(orToggle).toHaveAttribute("aria-pressed", "false");
-    expect(screen.queryByRole("region", { name: "Aura pleine de or" })).toBeNull();
-    expect(
-      browser.painters.every((painter) => painter.disposed || fullPlatine.contains(painter.canvas)),
-    ).toBe(true);
+    expect(held(browser)).toEqual(Array(5).fill("diamant"));
+    expect(browser.painters.every((painter) => full.contains(painter.canvas))).toBe(true);
+    expect(fullToggle("diamant")).toHaveAttribute("aria-pressed", "true");
+    expect(fullToggle("or")).toHaveAttribute("aria-pressed", "false");
+    expect(fullToggle("platine")).toHaveAttribute("aria-pressed", "false");
   });
 
-  test("draws the full Aura of Diamant once Or and Platine give their places back", async () => {
+  test.each(["or", "platine"] as const)(
+    "shows the full Aura of %s in place of the one shown, whole, within the cap",
+    async (tier) => {
+      const browser = fakeAuraRuntime();
+
+      await renderPage(browser.runtime);
+      await waitFor(() => expect(browser.painters).toHaveLength(5));
+
+      await userEvent.click(fullToggle(tier));
+      await waitFor(() => expect(held(browser)).toEqual(Array(5).fill(tier)));
+
+      const full = screen.getByRole("region", { name: `Aura pleine de ${tier}` });
+
+      expect(
+        browser.painters.every((painter) => painter.disposed || full.contains(painter.canvas)),
+      ).toBe(true);
+      expect(screen.queryByRole("region", { name: "Aura pleine de diamant" })).toBeNull();
+      expect(fullToggle(tier)).toHaveAttribute("aria-pressed", "true");
+      expect(fullToggle("diamant")).toHaveAttribute("aria-pressed", "false");
+    },
+  );
+
+  test("hides the full Aura shown when its button is pressed again", async () => {
     const browser = fakeAuraRuntime();
 
     await renderPage(browser.runtime);
-    await waitFor(() => expect(browser.painters).toHaveLength(8));
+    await waitFor(() => expect(browser.painters).toHaveLength(5));
 
-    // Past the cap of 8 at first, so light; shown again once the others are hidden.
-    await userEvent.click(fullToggle("or"));
-    await userEvent.click(fullToggle("platine"));
     await userEvent.click(fullToggle("diamant"));
-    await userEvent.click(fullToggle("diamant"));
-    await waitFor(() => expect(held(browser)).toEqual(Array(5).fill("diamant")));
 
-    const fullDiamant = screen.getByRole("region", { name: "Aura pleine de diamant" });
-
-    expect(
-      browser.painters.every((painter) => painter.disposed || fullDiamant.contains(painter.canvas)),
-    ).toBe(true);
+    expect(held(browser)).toEqual([]);
+    expect(screen.queryByRole("region", { name: "Aura pleine de diamant" })).toBeNull();
+    expect(fullToggle("diamant")).toHaveAttribute("aria-pressed", "false");
   });
 
   test("offers no full Aura for a Tier without one", async () => {
