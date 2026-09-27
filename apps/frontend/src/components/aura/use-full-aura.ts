@@ -2,12 +2,12 @@ import { type RefObject, useEffect, useEffectEvent } from "react";
 import type { Tier } from "ranked";
 
 import { useAuraRuntime } from "@/components/aura/aura-runtime-context";
+import { reducedMotion, useForcedReducedMotion } from "@/components/motion/reduced-motion-context";
 import type { FullAuraClaim } from "@/lib/aura-runtime";
 
-const REDUCED_MOTION = "(prefers-reduced-motion: reduce)";
-
 // Asks the runtime for a full Aura of `tier` on `canvas`, loading the runtime first if need be:
-// drawn only while on screen in a shown tab, a single still image under reduced motion. Calls
+// drawn only while on screen in a shown tab, a single still image under reduced motion (preferred,
+// or forced by a dev page). Calls
 // `onRefused` if the runtime refuses it (no WebGL2, too many shown) or loses it (context lost):
 // the light Aura then takes its place. Released, and nothing watched any more, on unmount.
 export const useFullAura = (
@@ -16,6 +16,7 @@ export const useFullAura = (
   onRefused: () => void,
 ) => {
   const runtime = useAuraRuntime();
+  const forced = useForcedReducedMotion();
   const refuse = useEffectEvent(onRefused);
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export const useFullAura = (
       claim = full.claim({
         canvas: element,
         tier,
-        still: window.matchMedia(REDUCED_MOTION).matches,
+        still: reducedMotion(forced),
         onLost: () => refuse(),
       });
 
@@ -67,5 +68,5 @@ export const useFullAura = (
       stopScreen();
       stopTab();
     };
-  }, [canvas, runtime, tier]);
+  }, [canvas, forced, runtime, tier]);
 };

@@ -13,7 +13,13 @@ export const withDevRoutes = (tree: typeof routeTree) => {
     component: lazyRouteComponent(() => import("@/pages/aura-gallery-page"), "AuraGalleryPage"),
   });
 
-  tree.addChildren([...Object.values(tree.children ?? {}), auraGallery]);
+  const tierUp = createRoute({
+    getParentRoute: () => tree,
+    path: "/dev/rankup",
+    component: lazyRouteComponent(() => import("@/pages/tier-up-dev-page"), "TierUpDevPage"),
+  });
+
+  tree.addChildren([...Object.values(tree.children ?? {}), auraGallery, tierUp]);
 
   return tree;
 };

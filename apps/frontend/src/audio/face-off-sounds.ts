@@ -1,9 +1,18 @@
-import { synthesize } from "@/audio/face-off-synth";
+import { type FaceOffAudioContext, type SynthNode, synthesize } from "@/audio/face-off-synth";
+
+// The sounds of a Tier-up, on the highlights of its timeline: the old Emblem coming apart, the
+// new Blason's impact, then the Tier's name. Each Tier's own, as its Tier-up gets it.
+export const TIER_UP_SOUNDS = [
+  "tier-up-bronze-dissolve",
+  "tier-up-bronze-impact",
+  "tier-up-bronze-name",
+] as const;
+
+export type TierUpSound = (typeof TIER_UP_SOUNDS)[number];
 
 // The Face-off's highlights, each with its sound: the panels coming in, their impact, each digit
-// of the 3-2-1, GO. And, before it, the Match proposal arriving; after the Duel, a move up into a
-// new Tier or Maniac.
-export type FaceOffSound = "whoosh" | "impact" | "beep" | "go" | "proposal" | "rank-up";
+// of the 3-2-1, GO. And, before it, the Match proposal arriving; after the Duel, a Tier-up.
+export type FaceOffSound = "whoosh" | "impact" | "beep" | "go" | "proposal" | TierUpSound;
 
 // What the Face-off plays through: Web Audio in the browser, a fake in the tests.
 export type FaceOffSounds = {
@@ -19,7 +28,7 @@ export const silentFaceOffSounds: FaceOffSounds = { unlock: () => {}, play: () =
 // The level of every Face-off sound: apart from the typing volume, which is the keys' own.
 const LEVEL = 0.5;
 
-// Null when the browser refuses the context.
+// Null when the browser refuses the context, or has no Web Audio.
 const attempt = <T>(create: () => T) => {
   try {
     return create();
@@ -29,18 +38,23 @@ const attempt = <T>(create: () => T) => {
 };
 
 // A refused resume leaves the context locked: its sounds keep being dropped.
-const resume = (context: AudioContext) => context.resume().catch(() => {});
+const resume = (context: FaceOffAudioContext) => context.resume().catch(() => {});
+
+const browserContext = (): FaceOffAudioContext => new AudioContext();
 
 // The Face-off's sounds, synthesized with Web Audio: no audio file. The context is only created
 // when first needed, from the unlock if the User clicked before the Face-off. Without Web Audio,
-// or with a context refused, the Face-off stays silent.
-export const openFaceOffSounds = (): FaceOffSounds => {
-  let playing: { context: AudioContext; master: GainNode } | null = null;
-  let refused = typeof AudioContext === "undefined";
+// or with a context refused, the Face-off stays silent. The context is the browser's, a fake's in
+// the tests.
+export const openFaceOffSounds = (
+  createContext: () => FaceOffAudioContext = browserContext,
+): FaceOffSounds => {
+  let playing: { context: FaceOffAudioContext; master: SynthNode } | null = null;
+  let refused = false;
 
   const player = () => {
     if (playing === null && !refused) {
-      const context = attempt(() => new AudioContext());
+      const context = attempt(createContext);
 
       refused = context === null;
 

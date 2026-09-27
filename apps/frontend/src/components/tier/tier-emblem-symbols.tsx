@@ -25,21 +25,19 @@ import {
   STAR_ID,
   STUD,
 } from "@/components/tier/tier-sprite-paint";
-
-const SHIELD = "M16 2 L28 6 V15 C28 23 22 28 16 30 C10 28 4 23 4 15 V6 Z";
+import {
+  CROWN,
+  CROWN_BAND,
+  EMBLEM_OUTLINES,
+  GEM,
+  HEXAGON,
+  SHIELD,
+} from "@/components/tier/tier-emblem-outline";
 
 const SHIELD_LIT = "M16 2 L4 6 V15 C4 23 10 28 16 30 Z";
 
 const SHIELD_BEVEL =
   "M16 5 L25.2 8.1 V15 C25.2 21.3 20.6 25.4 16 27 C11.4 25.4 6.8 21.3 6.8 15 V8.1 Z";
-
-const HEXAGON = "M16 2 L28 9 V23 L16 30 L4 23 V9 Z";
-
-const GEM = "M9 4 H23 L30 12 L16 30 L2 12 Z";
-
-const CROWN = "M3 11 L10 17.5 L13 12.5 L16 16 L19 12.5 L22 17.5 L29 11 L26 25 H6 Z";
-
-const CROWN_BAND = "M6 26.5 H26 V29.5 H6 Z";
 
 // A piece of a Tier's metal: its outline, its metal, then its lit half.
 const metalPiece = (tier: Tier, d: string, lit: string) => (
@@ -51,8 +49,8 @@ const metalPiece = (tier: Tier, d: string, lit: string) => (
 );
 
 // The shield of Fer to Or, placed on the 120 grid, its engraving over it.
-const shield = (tier: Tier, transform: string, engraving: ReactNode) => (
-  <g transform={transform}>
+const shield = (tier: Tier, engraving: ReactNode) => (
+  <g transform={EMBLEM_OUTLINES[tier].transform}>
     {metalPiece(tier, SHIELD, SHIELD_LIT)}
     <path d={SHIELD_BEVEL} {...BEVEL} />
     {engraving}
@@ -87,33 +85,23 @@ const ember = (cx: number, radius: number) => (
 const EMBLEM_DRAWINGS: Record<Tier, ReactNode> = {
   fer: shield(
     "fer",
-    "translate(36 34) scale(1.5)",
     <>
       <circle cx={16} cy={15.5} r={3.4} {...ENGRAVED} />
       <circle cx={16} cy={15.5} r={2.3} fill={paint(metalId("fer"))} />
       <circle cx={15.3} cy={14.7} r={0.8} {...BRIGHT} />
     </>,
   ),
-  bronze: shield(
-    "bronze",
-    "translate(35.2 33.2) scale(1.55)",
-    chevrons("M10.5 13 L16 18 L21.5 13"),
-  ),
-  argent: shield(
-    "argent",
-    "translate(34.4 32.4) scale(1.6)",
-    chevrons("M10.5 10 L16 15 L21.5 10 M10.5 16 L16 21 L21.5 16"),
-  ),
+  bronze: shield("bronze", chevrons("M10.5 13 L16 18 L21.5 13")),
+  argent: shield("argent", chevrons("M10.5 10 L16 15 L21.5 10 M10.5 16 L16 21 L21.5 16")),
   or: shield(
     "or",
-    "translate(33.6 31.6) scale(1.65)",
     <>
       {engravedStar(0)}
       <circle cx={16} cy={3.6} r={1} {...STUD} />
     </>,
   ),
   platine: (
-    <g transform="translate(32.5 30.5) scale(1.72)">
+    <g transform={EMBLEM_OUTLINES.platine.transform}>
       {metalPiece("platine", HEXAGON, "M16 2 L4 9 V23 L16 30 Z")}
       <path d="M16 5.5 L25 10.7 V21.3 L16 26.5 L7 21.3 V10.7 Z" {...BEVEL} />
       {engravedStar(0.6)}
@@ -126,7 +114,7 @@ const EMBLEM_DRAWINGS: Record<Tier, ReactNode> = {
     </g>
   ),
   diamant: (
-    <g transform="translate(31.5 29.5) scale(1.78)">
+    <g transform={EMBLEM_OUTLINES.diamant.transform}>
       <path d={GEM} fill={OUTLINES.diamant} stroke={OUTLINES.diamant} {...RIM} />
       <path d={GEM} fill={paint(metalId("diamant"))} />
       <path d="M9 4 L12 12 L2 12 Z" {...BRIGHT} />
@@ -143,7 +131,7 @@ const EMBLEM_DRAWINGS: Record<Tier, ReactNode> = {
     </g>
   ),
   maniac: (
-    <g transform="translate(30.4 28.4) scale(1.85)">
+    <g transform={EMBLEM_OUTLINES.maniac.transform}>
       <path d={CROWN} fill={OUTLINES.maniac} stroke={OUTLINES.maniac} {...RIM} />
       <path d={CROWN_BAND} fill={OUTLINES.maniac} stroke={OUTLINES.maniac} {...RIM} />
       <path d={CROWN} fill={paint(metalId("maniac"))} />

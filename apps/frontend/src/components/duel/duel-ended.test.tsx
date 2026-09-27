@@ -5,18 +5,24 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
 import { gsap } from "gsap";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { type ReplayedDuel, replayedDuelQueryOptions } from "@/api/duel-history";
 import type { FaceOffSound, FaceOffSounds } from "@/audio/face-off-sounds";
+import { AuraRuntimeContext } from "@/components/aura/aura-runtime-context";
 import { DuelEnded } from "@/components/duel/duel-ended";
 import type { DuelRanked } from "@/components/duel/rank-change";
 import { FaceOffSoundsContext } from "@/components/face-off/face-off-sounds-context";
+import { stageScale } from "@/components/tier-up/stage-scale";
+import type { AuraRuntime } from "@/lib/aura-runtime";
 import type { DuelEnding } from "@/stores/duel-store";
 import { useFaceOffSoundStore } from "@/stores/face-off-sound-store";
+import { fakeAuraRuntime } from "@/test/fake-aura-runtime";
+import { holdGsapClock } from "@/test/gsap-clock";
 
 const noResult = {
   wpm: 0,
@@ -74,22 +80,35 @@ const sounds: FaceOffSounds = {
   },
 };
 
+// GSAP's clock, moved by the tests: the Tier-up only plays as far as they say.
+let clock = holdGsapClock();
+
 beforeEach(() => {
   played = [];
   useFaceOffSoundStore.setState({ muted: false });
+  clock = holdGsapClock();
 });
 
 afterEach(() => {
+  clock.release();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
+type RenderOptions = {
+  duelId?: string | null;
+  cached?: ReplayedDuel | null;
+  ranked?: DuelEnding["ranked"];
+  aura?: AuraRuntime;
+};
+
 // The end screen on a router of its own (Revoir is a link), the written Duel in the cache if given.
-const renderEnded = async (
-  duelId: string | null,
-  cached: ReplayedDuel | null = null,
-  ranked: DuelEnding["ranked"] = null,
-) => {
+const renderEnded = async ({
+  duelId = null,
+  cached = null,
+  ranked = null,
+  aura = fakeAuraRuntime().runtime,
+}: RenderOptions = {}) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
   if (cached !== null) {
@@ -107,13 +126,18 @@ const renderEnded = async (
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <FaceOffSoundsContext value={sounds}>
-          <RouterProvider router={router} />
+          <AuraRuntimeContext value={aura}>
+            <RouterProvider router={router} />
+          </AuraRuntimeContext>
         </FaceOffSoundsContext>
       </QueryClientProvider>
     </StrictMode>,
   );
-  await screen.findByRole("button", { name: "Nouveau Duel" });
+  // Found by its text: behind a Tier-up, the end screen is out of reach.
+  await screen.findByText("Nouveau Duel");
 };
+
+const standing = <T extends DuelRanked["rank"]>(rank: T) => rank;
 
 const or = (division: 4 | 3 | 2 | 1, tp: number) => ({
   tier: "or" as const,
@@ -122,20 +146,23 @@ const or = (division: 4 | 3 | 2 | 1, tp: number) => ({
   shielded: false,
 });
 
-const argentI = { tier: "argent" as const, division: 1 as const, tp: 90, shielded: false };
+const argentI = standing({ tier: "argent", division: 1, tp: 90, shielded: false });
 
-const orIv = { tier: "or" as const, division: 4 as const, tp: 15, shielded: true };
+const orIv = standing({ tier: "or", division: 4, tp: 15, shielded: true });
 
 const intoOr = { tp: 25, previousRank: argentI, rank: orIv };
 
-const intoManiac = {
-  tp: 30,
-  previousRank: { tier: "diamant" as const, division: 1 as const, tp: 80, shielded: false },
-  rank: { tier: "maniac" as const, tp: 10, shielded: true },
+const intoBronze = {
+  tp: 28,
+  previousRank: standing({ tier: "fer", division: 1, tp: 85, shielded: false }),
+  rank: standing({ tier: "bronze", division: 4, tp: 13, shielded: true }),
 };
 
-// The celebration's emblem: only seen, so found by the part its timeline animates.
-const celebration = () => document.querySelector('[data-tier-up="emblem"]');
+const intoManiac = {
+  tp: 30,
+  previousRank: standing({ tier: "diamant", division: 1, tp: 80, shielded: false }),
+  rank: standing({ tier: "maniac", tp: 10, shielded: true }),
+};
 
 // The Emblem a Blason in this part carries, or null without one: only one Blason there.
 const blasonOf = (part: HTMLElement) => {
@@ -146,7 +173,16 @@ const blasonOf = (part: HTMLElement) => {
   return blasons[0]?.querySelector('use[href^="#tier-emblem"]')?.getAttribute("href") ?? null;
 };
 
-// The User prefers reduced motion: the celebration reads it when its timeline is built.
+// The Emblem drawn on its own in this part.
+const emblemOf = (part: HTMLElement) =>
+  part.querySelector("[data-tier-emblem] use")?.getAttribute("href") ?? null;
+
+const continueButton = () => screen.getByRole("button", { name: "Continuer" });
+
+// The end screen itself, which the focus comes back to once the Tier-up is closed.
+const endScreen = () => screen.getByText("Nouveau Duel").closest("[tabindex='-1']");
+
+// The User prefers reduced motion: the Tier-up reads it as it opens.
 const reduceMotion = () =>
   vi.spyOn(window, "matchMedia").mockImplementation((media) => ({
     matches: media === "(prefers-reduced-motion: reduce)",
@@ -159,16 +195,23 @@ const reduceMotion = () =>
     dispatchEvent: () => true,
   }));
 
+// The ways to go through the Tier-up: once to skip to its end, once more to close it.
+const ACTIONS = {
+  click: () => userEvent.click(screen.getByRole("dialog")),
+  Escape: () => userEvent.keyboard("{Escape}"),
+  Enter: () => userEvent.keyboard("{Enter}"),
+};
+
 describe("DuelEnded", () => {
   test("Revoir opens the Replay of the Duel just played", async () => {
-    await renderEnded("duel-1", written);
+    await renderEnded({ duelId: "duel-1", cached: written });
 
     // A link styled as a button: Base UI gives it the button role.
     expect(screen.getByRole("button", { name: "Revoir" })).toHaveAttribute("href", "/duels/duel-1");
   });
 
   test("a written Duel shows its Duel chart", async () => {
-    await renderEnded("duel-1", written);
+    await renderEnded({ duelId: "duel-1", cached: written });
 
     expect(await screen.findByRole("figure", { name: "Duel chart" })).toBeInTheDocument();
   });
@@ -179,7 +222,7 @@ describe("DuelEnded", () => {
       vi.fn(async () => new Promise<Response>(() => {})),
     );
 
-    await renderEnded("duel-1");
+    await renderEnded({ duelId: "duel-1" });
 
     expect(screen.getByRole("status", { name: "Chargement du Duel chart" })).toBeInTheDocument();
   });
@@ -190,7 +233,7 @@ describe("DuelEnded", () => {
       vi.fn(async () => new Response("", { status: 404 })),
     );
 
-    await renderEnded("duel-1");
+    await renderEnded({ duelId: "duel-1" });
 
     await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
     expect(screen.getByRole("button", { name: "Nouveau Duel" })).toBeInTheDocument();
@@ -199,10 +242,12 @@ describe("DuelEnded", () => {
   });
 
   test("a ranked Duel shows the TP won and the rank after it", async () => {
-    await renderEnded(null, null, {
-      tp: 20,
-      previousRank: { tier: "or", division: 3, tp: 90, shielded: false },
-      rank: { tier: "or", division: 2, tp: 10, shielded: true },
+    await renderEnded({
+      ranked: {
+        tp: 20,
+        previousRank: { tier: "or", division: 3, tp: 90, shielded: false },
+        rank: { tier: "or", division: 2, tp: 10, shielded: true },
+      },
     });
 
     const rank = screen.getByRole("region", { name: "Rang" });
@@ -214,10 +259,12 @@ describe("DuelEnded", () => {
   });
 
   test("a lost ranked Duel shows the TP lost, and a demotion", async () => {
-    await renderEnded(null, null, {
-      tp: -18,
-      previousRank: { tier: "or", division: 4, tp: 5, shielded: false },
-      rank: { tier: "argent", division: 1, tp: 75, shielded: false },
+    await renderEnded({
+      ranked: {
+        tp: -18,
+        previousRank: { tier: "or", division: 4, tp: 5, shielded: false },
+        rank: { tier: "argent", division: 1, tp: 75, shielded: false },
+      },
     });
 
     const rank = screen.getByRole("region", { name: "Rang" });
@@ -227,10 +274,8 @@ describe("DuelEnded", () => {
   });
 
   test("a Placement Duel shows the Placements left, the last one reveals the rank", async () => {
-    await renderEnded(null, null, {
-      tp: null,
-      previousRank: { placementsLeft: 3 },
-      rank: { placementsLeft: 2 },
+    await renderEnded({
+      ranked: { tp: null, previousRank: { placementsLeft: 3 }, rank: { placementsLeft: 2 } },
     });
 
     expect(screen.getByRole("region", { name: "Rang" })).toHaveTextContent(
@@ -240,10 +285,12 @@ describe("DuelEnded", () => {
   });
 
   test("the last Placement reveals the rank", async () => {
-    await renderEnded(null, null, {
-      tp: null,
-      previousRank: { placementsLeft: 1 },
-      rank: { tier: "bronze", division: 4, tp: 0, shielded: false },
+    await renderEnded({
+      ranked: {
+        tp: null,
+        previousRank: { placementsLeft: 1 },
+        rank: { tier: "bronze", division: 4, tp: 0, shielded: false },
+      },
     });
 
     expect(screen.getByRole("region", { name: "Rang" })).toHaveTextContent(
@@ -252,57 +299,61 @@ describe("DuelEnded", () => {
     expect(blasonOf(screen.getByRole("region", { name: "Rang" }))).toBe("#tier-emblem-bronze");
   });
 
-  test("a Duel into a new Tier celebrates it, with its sound once", async () => {
-    await renderEnded(null, null, intoOr);
+  test("an unranked Duel (a Challenge) shows no rank, and no Tier-up", async () => {
+    await renderEnded();
 
-    const rank = screen.getByRole("region", { name: "Rang" });
-
-    expect(celebration()).not.toBeNull();
-    expect(blasonOf(rank)).toBe("#tier-emblem-or");
-    expect(rank).toHaveTextContent("Nouveau Tier : Or IV !");
-    expect(rank).toHaveTextContent("+25 TP");
-    expect(rank).toHaveTextContent("15 TP");
-    expect(played).toEqual(["rank-up"]);
+    expect(screen.queryByRole("region", { name: "Rang" })).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  test("a Duel into Maniac celebrates it", async () => {
-    await renderEnded(null, null, intoManiac);
+  test("a Duel that was not written: no Revoir, no Duel chart, no loading state", async () => {
+    await renderEnded();
 
-    expect(celebration()).not.toBeNull();
-    const rank = screen.getByRole("region", { name: "Rang" });
+    expect(screen.queryByRole("button", { name: "Revoir" })).toBeNull();
+    expect(screen.queryByRole("figure", { name: "Duel chart" })).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+});
 
-    expect(blasonOf(rank)).toBe("#tier-emblem-maniac");
-    expect(rank).toHaveTextContent("Nouveau Tier : Maniac !");
-    expect(rank).toHaveTextContent("+30 TP");
-    expect(rank).toHaveTextContent("10 TP");
-    expect(played).toEqual(["rank-up"]);
+describe("the Tier-up", () => {
+  test("a Duel into a new Tier opens it, named by the Tier, all its text there at once", async () => {
+    await renderEnded({ ranked: intoOr });
+
+    const tierUp = screen.getByRole("dialog", { name: "Or" });
+
+    expect(tierUp).toHaveTextContent("Nouveau palier");
+    expect(tierUp).toHaveTextContent("Argent I → Or IV");
+    expect(within(tierUp).getByRole("button", { name: "Continuer" })).toBeInTheDocument();
+    expect(emblemOf(tierUp)).toBe("#tier-emblem-argent");
+    expect(blasonOf(tierUp)).toBe("#tier-emblem-or");
   });
 
-  test("the celebration stays silent while the Face-off is muted", async () => {
-    useFaceOffSoundStore.setState({ muted: true });
+  test("leaves the end screen behind it out of reach", async () => {
+    await renderEnded({ ranked: intoOr });
 
-    await renderEnded(null, null, intoOr);
-
-    expect(celebration()).not.toBeNull();
-    expect(played).toEqual([]);
+    expect(screen.getByRole("dialog", { name: "Or" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Nouveau Duel" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Rang" })).toBeNull();
   });
 
-  test("the emblem comes in, animated, and still under reduced motion", async () => {
-    await renderEnded(null, null, intoOr);
+  test("scales its stage to fit the window whole", async () => {
+    await renderEnded({ ranked: intoOr });
 
-    const moving = celebration();
+    const stage = screen.getByRole("dialog").querySelector("[data-tier-up=stage]");
+    const scale = stageScale(window.innerWidth, window.innerHeight);
 
-    expect(moving === null ? [] : gsap.getTweensOf(moving)).not.toHaveLength(0);
+    expect(stage).toHaveStyle({ transform: `translate(-50%, -50%) scale(${scale})` });
+  });
 
-    cleanup();
-    reduceMotion();
-    await renderEnded(null, null, intoOr);
+  test("a Duel into Maniac opens it, as the ultimate Tier", async () => {
+    await renderEnded({ ranked: intoManiac });
 
-    const still = celebration();
+    const tierUp = screen.getByRole("dialog", { name: "Maniac" });
 
-    expect(still === null ? null : gsap.getTweensOf(still)).toEqual([]);
-    expect(still === null ? null : gsap.getProperty(still, "opacity")).toBe(1);
-    expect(still === null ? null : gsap.getProperty(still, "scale")).toBe(1);
+    expect(tierUp).toHaveTextContent("Palier ultime");
+    expect(tierUp).toHaveTextContent("Diamant I → Maniac");
+    expect(emblemOf(tierUp)).toBe("#tier-emblem-diamant");
+    expect(blasonOf(tierUp)).toBe("#tier-emblem-maniac");
   });
 
   test.each([
@@ -311,25 +362,167 @@ describe("DuelEnded", () => {
     ["TP within the Division", { tp: 12, previousRank: or(3, 40), rank: or(3, 52) }],
     ["a Placement", { tp: null, previousRank: { placementsLeft: 3 }, rank: { placementsLeft: 2 } }],
     ["the last Placement", { tp: null, previousRank: { placementsLeft: 1 }, rank: orIv }],
-  ])("no celebration for %s", async (_, ranked: DuelRanked) => {
-    await renderEnded(null, null, ranked);
+  ])("does not open for %s", async (_, ranked: DuelRanked) => {
+    await renderEnded({ ranked });
+    await clock.advance(5);
 
     expect(screen.getByRole("region", { name: "Rang" })).toBeInTheDocument();
-    expect(celebration()).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(played).toEqual([]);
   });
 
-  test("an unranked Duel (a Challenge) shows no rank", async () => {
-    await renderEnded(null);
+  test("Fer → Bronze sounds as the iron comes apart, as the Blason lands, then with the name", async () => {
+    await renderEnded({ ranked: intoBronze });
 
-    expect(screen.queryByRole("region", { name: "Rang" })).toBeNull();
+    await clock.advance(0.9);
+    expect(played).toEqual([]);
+
+    await clock.advance(0.2);
+    expect(played).toEqual(["tier-up-bronze-dissolve"]);
+
+    await clock.advance(1.3);
+    expect(played).toEqual(["tier-up-bronze-dissolve", "tier-up-bronze-impact"]);
+
+    await clock.advance(0.4);
+    expect(played).toEqual([
+      "tier-up-bronze-dissolve",
+      "tier-up-bronze-impact",
+      "tier-up-bronze-name",
+    ]);
+
+    await clock.advance(5);
+    expect(played).toHaveLength(3);
   });
 
-  test("a Duel that was not written: no Revoir, no Duel chart, no loading state", async () => {
-    await renderEnded(null);
+  test("gives the focus to « Continuer » once its intro is over", async () => {
+    await renderEnded({ ranked: intoBronze });
 
-    expect(screen.queryByRole("button", { name: "Revoir" })).toBeNull();
-    expect(screen.queryByRole("figure", { name: "Duel chart" })).toBeNull();
-    expect(screen.queryByRole("status")).toBeNull();
+    await clock.advance(3.5);
+    expect(continueButton()).not.toHaveFocus();
+
+    await clock.advance(0.6);
+    expect(continueButton()).toHaveFocus();
+  });
+
+  test.each(Object.entries(ACTIONS))(
+    "%s skips to its end without the sounds left, then closes it, back on the end screen",
+    async (_, go) => {
+      await renderEnded({ ranked: intoBronze });
+      await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
+      await clock.advance(1.5);
+
+      await go();
+
+      expect(continueButton()).toHaveFocus();
+      await clock.advance(5);
+      expect(played).toEqual(["tier-up-bronze-dissolve"]);
+      expect(screen.getByRole("dialog", { name: "Bronze" })).toBeInTheDocument();
+
+      await go();
+
+      expect(screen.queryByRole("dialog")).toBeNull();
+      await waitFor(() => expect(endScreen()).toHaveFocus());
+      expect(screen.getByRole("region", { name: "Rang" })).toHaveTextContent("+28 TP");
+      expect(screen.getByRole("region", { name: "Rang" })).toHaveTextContent(
+        "Promotion : Bronze IV",
+      );
+    },
+  );
+
+  test("« Continuer » closes it, even before its end, and it never comes back", async () => {
+    await renderEnded({ ranked: intoBronze });
+
+    await userEvent.click(continueButton());
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await clock.advance(10);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(played).toEqual([]);
+  });
+
+  test("stays silent while the Face-off is muted", async () => {
+    useFaceOffSoundStore.setState({ muted: true });
+
+    await renderEnded({ ranked: intoBronze });
+    await clock.advance(6);
+
+    expect(screen.getByRole("dialog", { name: "Bronze" })).toBeInTheDocument();
+    expect(played).toEqual([]);
+  });
+
+  test("under reduced motion, opens still at its end, with the impact's sound alone", async () => {
+    reduceMotion();
+
+    await renderEnded({ ranked: intoBronze });
+
+    const tierUp = screen.getByRole("dialog", { name: "Bronze" });
+    const parts = [...tierUp.querySelectorAll("[data-tier-up]")];
+
+    await waitFor(() => expect(continueButton()).toHaveFocus());
+    expect(gsap.getProperty(continueButton(), "opacity")).toBe(1);
+    expect(played).toEqual(["tier-up-bronze-impact"]);
+
+    await clock.advance(6);
+
+    expect(parts.flatMap((each) => gsap.getTweensOf(each)).some((tween) => tween.isActive())).toBe(
+      false,
+    );
+    expect(played).toEqual(["tier-up-bronze-impact"]);
+
+    await userEvent.keyboard("{Enter}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  test("stops everything, sounds included, when the end screen goes", async () => {
+    await renderEnded({ ranked: intoBronze });
+    await clock.advance(0.5);
+
+    cleanup();
+    await clock.advance(5);
+
+    expect(played).toEqual([]);
+  });
+});
+
+// Once the full Aura's runtime has loaded and answered.
+const settle = () => act(async () => {});
+
+// The full Auras drawn and still held, by Tier.
+const held = (browser: ReturnType<typeof fakeAuraRuntime>) =>
+  browser.painters.flatMap((painter) => (painter.disposed ? [] : [painter.tier]));
+
+describe("the Tier-up's Aura", () => {
+  test("from Or, the Blason lands in its full Aura, let go once the Tier-up is closed", async () => {
+    const browser = fakeAuraRuntime();
+
+    await renderEnded({ ranked: intoOr, aura: browser.runtime });
+    await settle();
+
+    expect(held(browser)).toEqual(["or"]);
+
+    await userEvent.click(continueButton());
+
+    expect(held(browser)).toEqual([]);
+  });
+
+  test("below Or, there is no full Aura to ask for", async () => {
+    const browser = fakeAuraRuntime();
+
+    await renderEnded({ ranked: intoBronze, aura: browser.runtime });
+    await settle();
+
+    expect(browser.painters).toEqual([]);
+  });
+
+  test("refused, the Blason falls back on its light Aura", async () => {
+    const browser = fakeAuraRuntime({ webgl2: false });
+
+    await renderEnded({ ranked: intoOr, aura: browser.runtime });
+    await settle();
+
+    const tierUp = screen.getByRole("dialog", { name: "Or" });
+
+    expect(tierUp.querySelector("[data-aura-canvas]")).toBeNull();
+    expect(tierUp.querySelector("[data-ornament-glow]")).not.toBeNull();
   });
 });

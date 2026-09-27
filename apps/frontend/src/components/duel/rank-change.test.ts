@@ -71,28 +71,24 @@ describe("rankChange", () => {
 const change = (ranked: DuelRanked) => tierReached(rankChange(ranked));
 
 describe("tierReached", () => {
-  test("is the rank reached when a Duel moves up into a new Tier", () => {
+  test("is the rank left and the rank reached when a Duel moves up into a new Tier", () => {
+    const argentI = { tier: "argent" as const, division: 1 as const, tp: 90, shielded: false };
     const orIv = { tier: "or" as const, division: 4 as const, tp: 15, shielded: true };
 
-    expect(
-      change({
-        tp: 25,
-        previousRank: { tier: "argent", division: 1, tp: 90, shielded: false },
-        rank: orIv,
-      }),
-    ).toEqual(orIv);
+    expect(change({ tp: 25, previousRank: argentI, rank: orIv })).toEqual({
+      from: argentI,
+      to: orIv,
+    });
   });
 
   test("is Maniac when a Duel moves up into it", () => {
+    const diamantI = { tier: "diamant" as const, division: 1 as const, tp: 80, shielded: false };
     const maniac = { tier: "maniac" as const, tp: 10, shielded: true };
 
-    expect(
-      change({
-        tp: 30,
-        previousRank: { tier: "diamant", division: 1, tp: 80, shielded: false },
-        rank: maniac,
-      }),
-    ).toEqual(maniac);
+    expect(change({ tp: 30, previousRank: diamantI, rank: maniac })).toEqual({
+      from: diamantI,
+      to: maniac,
+    });
   });
 
   test("is none for a move up a Division, a demotion out of a Tier, or TP within the Division", () => {

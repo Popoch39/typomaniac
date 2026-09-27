@@ -65,7 +65,7 @@ describe("AuraGalleryPage", () => {
 
     // From the Friends' 64 px box up to the Face-off's 352 px one.
     expect(ornaments(row)).toEqual(Array(6).fill(`#tier-ornament-${tier}`));
-    // The Blason of the large Tier badge, then of the Tier-up celebration.
+    // The Blason of the large Tier badge, then of the Tier-up.
     expect(blasons(row)).toEqual(Array(2).fill(`#tier-emblem-${tier}`));
   });
 

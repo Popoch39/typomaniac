@@ -47,8 +47,19 @@ export const INK = "#15141c";
 // (crease, then outline), as the mock-up does. Fixed: the sprite does not follow a change of accent.
 const MANIAC = { light: "#ffc5b2", mid: "#ff8a65", crease: "#ad614b", outline: "#673d36" };
 
-// Stops at 0, 0.44, 0.5, 0.72 and 1: light, mid, crease, sheen, crease.
-export const METALS: Record<Tier, { light: string; mid: string; crease: string; sheen: string }> = {
+type Metal = { light: string; mid: string; crease: string; sheen: string };
+
+// Where each colour of a metal sits down its gradient: light at the top, a dark crease in the
+// middle, a sheen below.
+export const METAL_STOPS: readonly (readonly [offset: number, color: keyof Metal])[] = [
+  [0, "light"],
+  [0.44, "mid"],
+  [0.5, "crease"],
+  [0.72, "sheen"],
+  [1, "crease"],
+];
+
+export const METALS: Record<Tier, Metal> = {
   fer: { light: "#e2e4ea", mid: "#8b8e9c", crease: "#4f525d", sheen: "#8b8e9c" },
   bronze: { light: "#f7d0ad", mid: "#c48154", crease: "#7a4526", sheen: "#c48154" },
   argent: { light: "#ffffff", mid: "#c0c3cc", crease: "#7c808c", sheen: "#d4d6dd" },

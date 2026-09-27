@@ -11,6 +11,7 @@ import {
   HOT,
   HOT_ID,
   LEAF_ID,
+  METAL_STOPS,
   METALS,
   metalId,
   OUTLINES,
@@ -26,11 +27,9 @@ export const TierSpriteDefs = () => (
 
       return (
         <linearGradient key={tier} id={metalId(tier)} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={metal.light} />
-          <stop offset="0.44" stopColor={metal.mid} />
-          <stop offset="0.5" stopColor={metal.crease} />
-          <stop offset="0.72" stopColor={metal.sheen} />
-          <stop offset="1" stopColor={metal.crease} />
+          {METAL_STOPS.map(([offset, color]) => (
+            <stop key={offset} offset={offset} stopColor={metal[color]} />
+          ))}
         </linearGradient>
       );
     })}

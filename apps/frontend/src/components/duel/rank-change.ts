@@ -44,8 +44,8 @@ export const rankChange = ({ tp, previousRank, rank }: DuelRanked): RankChange =
   };
 };
 
-// The rank a Duel moved up into, when it reached another Tier or Maniac: celebrated on the end
-// screen. Null for a move up a Division, a demotion, TP within the Division, and a Placement,
-// last one included (the rank revealed was never held before).
+// The rank a Duel moved up from and the one it reached, when it reached another Tier or Maniac:
+// its Tier-up. Null for a move up a Division, a demotion, TP within the Division, and a
+// Placement, last one included (the rank revealed was never held before).
 export const tierReached = (change: RankChange) =>
-  change.kind === "promoted" && change.newTier ? change.standing : null;
+  change.kind === "promoted" && change.newTier ? { from: change.from, to: change.standing } : null;

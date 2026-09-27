@@ -1,8 +1,43 @@
 import type { FaceOffSound } from "@/audio/face-off-sounds";
 
+// The parts of Web Audio the synth builds its sounds with: a browser's AudioContext has them all,
+// and a test fakes only these.
+export type SynthParam = {
+  value: number;
+  setValueAtTime(value: number, at: number): void;
+  exponentialRampToValueAtTime(value: number, at: number): void;
+};
+
+export type SynthNode = { connect(destination: SynthNode): SynthNode };
+
+export type SynthSource = SynthNode & { start(at: number): void; stop(at: number): void };
+
+export type SynthBuffer = { getChannelData(channel: number): Float32Array };
+
+type SynthContext = {
+  readonly currentTime: number;
+  readonly sampleRate: number;
+  createGain(): SynthNode & { gain: SynthParam };
+  createOscillator(): SynthSource & { type: OscillatorType; frequency: SynthParam };
+  createBiquadFilter(): SynthNode & {
+    type: BiquadFilterType;
+    frequency: SynthParam;
+    Q: SynthParam;
+  };
+  createBufferSource(): SynthSource & { buffer: SynthBuffer | null };
+  createBuffer(channels: number, length: number, sampleRate: number): SynthBuffer;
+};
+
+// The context the Face-off plays through: it is locked until a gesture resumes it.
+export type FaceOffAudioContext = SynthContext & {
+  state: AudioContextState;
+  readonly destination: SynthNode;
+  resume(): Promise<void>;
+};
+
 // Where and when a sound plays: every node of it is built on `context`, starts at `at` and ends in
 // `destination`.
-type Voice = { context: BaseAudioContext; destination: AudioNode; at: number };
+type Voice = { context: SynthContext; destination: SynthNode; at: number };
 
 // A level rising to `peak` in `attack` seconds, then dying away in `release`.
 type Envelope = { peak: number; attack: number; release: number };
@@ -14,11 +49,11 @@ const SILENT = 0.0001;
 const TAIL_S = 0.02;
 
 // White noise, drawn once per context, long enough for the longest noisy sound.
-const NOISE_S = 0.5;
+const NOISE_S = 1;
 
-const noises = new WeakMap<BaseAudioContext, AudioBuffer>();
+const noises = new WeakMap<SynthContext, SynthBuffer>();
 
-const noiseOf = (context: BaseAudioContext) => {
+const noiseOf = (context: SynthContext) => {
   const cached = noises.get(context);
 
   if (typeof cached !== "undefined") {
@@ -42,12 +77,15 @@ const noiseOf = (context: BaseAudioContext) => {
   return buffer;
 };
 
+// The same voice, `delay` seconds later.
+const later = (voice: Voice, delay: number): Voice => ({ ...voice, at: voice.at + delay });
+
 // Plays `source` through `through`, then a gain shaped by `envelope`, into the voice's
 // destination: stopped once the envelope has died away.
 const sound = (
   { context, destination, at }: Voice,
-  source: AudioScheduledSourceNode,
-  through: AudioNode,
+  source: SynthSource,
+  through: SynthNode,
   { peak, attack, release }: Envelope,
 ) => {
   const level = context.createGain();
@@ -60,13 +98,25 @@ const sound = (
   source.stop(at + attack + release + TAIL_S);
 };
 
+type Filter = ReturnType<SynthContext["createBiquadFilter"]>;
+
 // Noise through `filter`.
-const noiseBurst = (voice: Voice, filter: BiquadFilterNode, envelope: Envelope) => {
+const noiseBurst = (voice: Voice, filter: Filter, envelope: Envelope) => {
   const source = voice.context.createBufferSource();
 
   source.buffer = noiseOf(voice.context);
   source.connect(filter);
   sound(voice, source, filter, envelope);
+};
+
+// A filter of `type` at `frequency` Hz, built for `voice`.
+const filterOf = (voice: Voice, type: BiquadFilterType, frequency: number) => {
+  const filter = voice.context.createBiquadFilter();
+
+  filter.type = type;
+  filter.frequency.setValueAtTime(frequency, voice.at);
+
+  return filter;
 };
 
 type Pitch = { type: OscillatorType; from: number; to?: number; glide?: number };
@@ -87,27 +137,21 @@ const tone = (voice: Voice, { type, from, to = from, glide = 0 }: Pitch, envelop
 
 // The panels coming in: noise rising in pitch and level up to their impact, 0.35 s later.
 const whoosh = (voice: Voice) => {
-  const filter = voice.context.createBiquadFilter();
+  const filter = filterOf(voice, "bandpass", 300);
 
-  filter.type = "bandpass";
   filter.Q.value = 1.4;
-  filter.frequency.setValueAtTime(300, voice.at);
   filter.frequency.exponentialRampToValueAtTime(2600, voice.at + 0.35);
   noiseBurst(voice, filter, { peak: 0.9, attack: 0.32, release: 0.08 });
 };
 
 // The panels meeting: a low thump falling in pitch, under a short crack of muffled noise.
 const impact = (voice: Voice) => {
-  const filter = voice.context.createBiquadFilter();
-
-  filter.type = "lowpass";
-  filter.frequency.value = 1400;
   tone(
     voice,
     { type: "sine", from: 150, to: 42, glide: 0.3 },
     { peak: 1, attack: 0.005, release: 0.5 },
   );
-  noiseBurst(voice, filter, { peak: 0.7, attack: 0.002, release: 0.16 });
+  noiseBurst(voice, filterOf(voice, "lowpass", 1400), { peak: 0.7, attack: 0.002, release: 0.16 });
 };
 
 // A digit of the 3-2-1: a short, bright beep.
@@ -126,45 +170,86 @@ const proposal = (voice: Voice) => {
   const bell: Envelope = { peak: 0.35, attack: 0.006, release: 0.5 };
 
   tone(voice, { type: "triangle", from: 880 }, bell);
-  tone({ ...voice, at: voice.at + 0.14 }, { type: "triangle", from: 1320 }, bell);
+  tone(later(voice, 0.14), { type: "triangle", from: 1320 }, bell);
 };
 
-// The notes of the rank-up fanfare, in Hz: a major arpeggio up to the octave (C, E, G, C).
-const FANFARE = [523.25, 659.25, 783.99, 1046.5];
+// The iron shield dissolving into light over half a second: airy noise brightening as it fades,
+// over a soft tone sinking away.
+const bronzeDissolve = (voice: Voice) => {
+  const filter = filterOf(voice, "bandpass", 1600);
 
-// Seconds between two notes of the fanfare.
-const FANFARE_STEP_S = 0.09;
+  filter.Q.value = 0.9;
+  filter.frequency.exponentialRampToValueAtTime(6000, voice.at + 0.55);
+  noiseBurst(voice, filter, { peak: 0.45, attack: 0.35, release: 0.3 });
+  tone(
+    voice,
+    { type: "sine", from: 330, to: 150, glide: 0.5 },
+    { peak: 0.16, attack: 0.05, release: 0.5 },
+  );
+};
 
-// A move up into a new Tier or Maniac: a rising fanfare of bells, its last note held, over a
-// bright shimmer of airy noise.
-const rankUp = (voice: Voice) => {
-  const shimmer = voice.context.createBiquadFilter();
+// The partials of the bronze ringing as it lands, in Hz, with their envelopes: a warm G, then two
+// inharmonic overtones dying away sooner, as struck metal does.
+const BRONZE_RING: readonly [OscillatorType, number, Envelope][] = [
+  ["triangle", 392, { peak: 0.3, attack: 0.004, release: 1.4 }],
+  ["sine", 988, { peak: 0.12, attack: 0.003, release: 0.8 }],
+  ["sine", 1567, { peak: 0.07, attack: 0.002, release: 0.45 }],
+];
 
-  for (const [step, note] of FANFARE.entries()) {
-    const last = step === FANFARE.length - 1;
+// The bronze Blason landing: a heavy thump, a crack of noise, then the metal ringing.
+const bronzeImpact = (voice: Voice) => {
+  tone(
+    voice,
+    { type: "sine", from: 130, to: 45, glide: 0.35 },
+    { peak: 1, attack: 0.005, release: 0.6 },
+  );
+  noiseBurst(voice, filterOf(voice, "lowpass", 2200), { peak: 0.6, attack: 0.002, release: 0.18 });
+
+  for (const [type, from, envelope] of BRONZE_RING) {
+    tone(voice, { type, from }, envelope);
+  }
+};
+
+// The notes under the name coming in letter by letter, in Hz: a G major arpeggio over two
+// octaves, one note a letter.
+const NAME_NOTES = [392, 493.88, 587.33, 783.99, 987.77, 1174.66];
+
+// Seconds between two letters of the name.
+const LETTER_STEP_S = 0.05;
+
+// The name of Bronze, letter by letter: a quick rising arpeggio of plucks, its last note held,
+// then a bright shimmer.
+const bronzeName = (voice: Voice) => {
+  for (const [step, note] of NAME_NOTES.entries()) {
+    const last = step === NAME_NOTES.length - 1;
 
     tone(
-      { ...voice, at: voice.at + step * FANFARE_STEP_S },
+      later(voice, step * LETTER_STEP_S),
       { type: "triangle", from: note },
-      { peak: 0.32, attack: 0.006, release: last ? 0.9 : 0.3 },
+      { peak: 0.16, attack: 0.005, release: last ? 0.9 : 0.25 },
     );
   }
 
-  shimmer.type = "highpass";
-  shimmer.frequency.value = 5000;
-  noiseBurst({ ...voice, at: voice.at + (FANFARE.length - 1) * FANFARE_STEP_S }, shimmer, {
-    peak: 0.12,
-    attack: 0.03,
-    release: 0.4,
-  });
+  const end = later(voice, (NAME_NOTES.length - 1) * LETTER_STEP_S);
+
+  noiseBurst(end, filterOf(end, "highpass", 5000), { peak: 0.1, attack: 0.03, release: 0.45 });
 };
 
-const SYNTHS = { whoosh, impact, beep, go, proposal, "rank-up": rankUp };
+const SYNTHS: Record<FaceOffSound, (voice: Voice) => void> = {
+  whoosh,
+  impact,
+  beep,
+  go,
+  proposal,
+  "tier-up-bronze-dissolve": bronzeDissolve,
+  "tier-up-bronze-impact": bronzeImpact,
+  "tier-up-bronze-name": bronzeName,
+};
 
 // Plays `sound` into `destination` now, built from oscillators and noise: each node is dropped once
 // it has played.
 export const synthesize = (
-  context: BaseAudioContext,
-  destination: AudioNode,
+  context: SynthContext,
+  destination: SynthNode,
   faceOffSound: FaceOffSound,
 ) => SYNTHS[faceOffSound]({ context, destination, at: context.currentTime });

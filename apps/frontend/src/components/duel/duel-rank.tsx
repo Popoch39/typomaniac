@@ -1,14 +1,12 @@
 import { PlacementProgress } from "@/components/duel/placement-progress";
-import { type DuelRanked, rankChange, tierReached } from "@/components/duel/rank-change";
+import { type DuelRanked, rankChange } from "@/components/duel/rank-change";
 import { RankRevealed } from "@/components/duel/rank-revealed";
-import { TierUp } from "@/components/duel/tier-up";
 import { TpChange } from "@/components/duel/tp-change";
 
-// What a ranked Duel did to the User's rank, on its end screen: a move up into a new Tier or
-// Maniac is celebrated.
+// What a ranked Duel did to the User's rank, on its end screen. A move up into a new Tier is
+// celebrated by its Tier-up, over the screen: here, it is the TP moved like any other.
 export const DuelRank = ({ ranked }: { ranked: DuelRanked }) => {
   const change = rankChange(ranked);
-  const reached = tierReached(change);
 
   return (
     <section aria-label="Rang" className="rounded-card bg-card p-8">
@@ -16,10 +14,8 @@ export const DuelRank = ({ ranked }: { ranked: DuelRanked }) => {
         <PlacementProgress placementsLeft={change.placementsLeft} />
       ) : change.kind === "revealed" ? (
         <RankRevealed standing={change.standing} />
-      ) : reached === null ? (
-        <TpChange {...change} />
       ) : (
-        <TierUp tp={change.tp} standing={reached} />
+        <TpChange {...change} />
       )}
     </section>
   );

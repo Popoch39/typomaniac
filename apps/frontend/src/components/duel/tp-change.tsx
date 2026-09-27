@@ -16,8 +16,8 @@ const headlines = {
 };
 
 // The TP of a ranked Duel: the delta, the rank after it and its TP, and a promotion or a
-// demotion when the Division changed. A Division just left starts the bar from the other end.
-// A move up into a new Tier is `TierUp`'s.
+// demotion when the Division changed, into a new Tier too. A Division just left starts the bar
+// from the other end.
 export const TpChange = ({ kind, tp, from, standing }: TpChangeProps) => {
   const headline = headlines[kind](standing);
   const before = { moved: from.tp, promoted: 0, demoted: DIVISION_TP }[kind];

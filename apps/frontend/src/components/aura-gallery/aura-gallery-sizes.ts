@@ -11,8 +11,9 @@ export const AVATAR_SIZES = [
   { where: "Face-off", avatar: "size-44", box: "size-88", full: true },
 ] as const;
 
-// The Blason's boxes: the large Tier badge, then the Tier-up celebration, both shown full.
+// The Blason's boxes: the large Tier badge, then the Tier-up's, on its stage unscaled, both shown
+// full.
 export const BLASON_SIZES = [
   { where: "Badge de Tier", box: "size-24" },
-  { where: "Montée de Tier", box: "size-44" },
+  { where: "Tier-up", box: "size-[420px]" },
 ] as const;
