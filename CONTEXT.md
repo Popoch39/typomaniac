@@ -201,6 +201,10 @@ _Avoid_ : preview, pari, prévision
 Un Duel Ranked dont la victoire ferait changer un User de Tier ou le ferait entrer en Maniac, que le Face-off annonce comme tel. C'est un Duel ordinaire, seul, aux mêmes règles : pas une série. Monter d'une Division sans changer de Tier n'en fait pas un.
 _Avoid_ : série de promotion, promo, BO
 
+**Tier-up** :
+La célébration plein écran, à la fin d'un Duel Ranked, d'un User qui monte dans un nouveau Tier ou entre en Maniac. L'ancien Emblem cède la place au nouveau Blason, puis viennent le nom du Tier et le trajet du rang. Elle est plus intense à chaque Tier. Monter d'une Division sans changer de Tier n'en déclenche pas, et une descente non plus.
+_Avoid_ : promotion, level up, montée de rang
+
 **Classement** :
 La liste des Users Ranked hors Placement, triés par Tier, Division puis TP.
 _Avoid_ : leaderboard, ladder, top
