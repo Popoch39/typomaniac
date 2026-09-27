@@ -1,7 +1,7 @@
 import type { Standing } from "ranked";
 
+import { TierBadge } from "@/components/tier/rank/tier-badge";
 import { standingName } from "@/components/tier/tier";
-import { TierBadge } from "@/components/tier/tier-badge";
 
 // The last Placement Duel: the rank the MMR reached, revealed.
 export const RankRevealed = ({ standing }: { standing: Standing }) => (

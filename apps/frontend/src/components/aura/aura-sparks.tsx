@@ -1,7 +1,7 @@
 import type { Tier } from "ranked";
 
 import { SPARKS } from "@/components/aura/aura-paint";
-import { GLINT, HOT_ID, paint, ref, SPARK_ID } from "@/components/tier/tier-sprite-paint";
+import { GLINT, HOT_ID, paint, ref, SPARK_ID } from "@/components/tier/sprite/tier-sprite-paint";
 
 // The Maniac's sparks burn, the Diamant's glint white.
 const sparkPaint = (tier: Tier) => (tier === "maniac" ? { fill: paint(HOT_ID) } : GLINT);

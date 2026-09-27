@@ -1,9 +1,9 @@
 import { cn } from "cn";
 import type { Rank } from "ranked";
 
-import { rankLabel } from "@/components/tier/rank-label";
+import { TierEmblem } from "@/components/tier/drawing/tier-emblem";
+import { rankLabel } from "@/components/tier/rank/rank-label";
 import { TIER_COLORS } from "@/components/tier/tier";
-import { TierEmblem } from "@/components/tier/tier-emblem";
 
 // A player's rank in the Face-off, never their MMR, on an ink chip over their colour: the Tier's
 // emblem and the rank in words, the Placement Duels left, or the Challenge badge when the Duel is

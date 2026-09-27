@@ -1,6 +1,6 @@
 import { cn } from "cn";
 
-import { signedTp } from "@/components/tier/rank-label";
+import { signedTp } from "@/components/tier/rank/rank-label";
 
 // The TP a ranked Duel moved, signed, popping in.
 export const TpDelta = ({ tp }: { tp: number }) => (

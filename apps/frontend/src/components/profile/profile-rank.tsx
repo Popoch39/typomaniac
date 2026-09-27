@@ -1,7 +1,7 @@
 import type { Rank } from "ranked";
 
-import { rankLabel } from "@/components/tier/rank-label";
-import { TierBadge } from "@/components/tier/tier-badge";
+import { rankLabel } from "@/components/tier/rank/rank-label";
+import { TierBadge } from "@/components/tier/rank/tier-badge";
 
 // A User's rank on their Profile: the badge in its Blason once past Placement (its name already
 // in the words), and the rank in words.

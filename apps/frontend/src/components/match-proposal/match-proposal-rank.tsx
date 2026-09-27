@@ -1,9 +1,9 @@
 import { cn } from "cn";
 import type { Rank } from "ranked";
 
-import { rankLabel } from "@/components/tier/rank-label";
+import { TierEmblem } from "@/components/tier/drawing/tier-emblem";
+import { rankLabel } from "@/components/tier/rank/rank-label";
 import { standingName, TIER_COLORS } from "@/components/tier/tier";
-import { TierEmblem } from "@/components/tier/tier-emblem";
 
 // A player's rank under their name, never their MMR: the Tier's emblem, its name in its colour
 // and the TP, or the Placement Duels left. Nothing when their Rating could not be read.

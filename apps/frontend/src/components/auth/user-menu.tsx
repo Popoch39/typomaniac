@@ -4,7 +4,7 @@ import { LogOutIcon, UserIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { meQueryOptions, type Me } from "@/api/me";
-import { RankChip } from "@/components/tier/rank-chip";
+import { RankChip } from "@/components/tier/rank/rank-chip";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

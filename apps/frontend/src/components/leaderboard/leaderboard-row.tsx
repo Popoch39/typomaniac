@@ -2,7 +2,7 @@ import { cn } from "cn";
 
 import type { LeaderboardEntry } from "@/api/leaderboard";
 import { HandleLink } from "@/components/handle/handle-link";
-import { RankChip } from "@/components/tier/rank-chip";
+import { RankChip } from "@/components/tier/rank/rank-chip";
 import { UserAvatar } from "@/components/user-avatar/user-avatar";
 
 type LeaderboardRowProps = { entry: LeaderboardEntry; mine: boolean };

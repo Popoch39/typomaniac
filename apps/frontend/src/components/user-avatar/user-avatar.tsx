@@ -2,7 +2,7 @@ import type { ComponentProps } from "react";
 import type { Tier } from "ranked";
 
 import type { Aura } from "@/components/aura/aura-paint";
-import { TierOrnament } from "@/components/tier/tier-ornament";
+import { TierOrnament } from "@/components/tier/drawing/tier-ornament";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/initials";
 import { cn } from "cn";

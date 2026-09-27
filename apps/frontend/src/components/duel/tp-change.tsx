@@ -4,8 +4,8 @@ import type { RankChange } from "@/components/duel/rank-change";
 import { RankReached } from "@/components/duel/rank-reached";
 import { TpBar } from "@/components/duel/tp-bar";
 import { TpDelta } from "@/components/duel/tp-delta";
+import { TierBadge } from "@/components/tier/rank/tier-badge";
 import { standingName } from "@/components/tier/tier";
-import { TierBadge } from "@/components/tier/tier-badge";
 
 type TpChangeProps = Extract<RankChange, { kind: "moved" | "promoted" | "demoted" }>;
 

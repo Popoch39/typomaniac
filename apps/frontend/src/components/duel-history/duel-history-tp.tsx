@@ -1,6 +1,6 @@
 import { cn } from "cn";
 
-import { signedTp } from "@/components/tier/rank-label";
+import { signedTp } from "@/components/tier/rank/rank-label";
 
 // The TP a ranked Duel moved for the User, signed; nothing for a Challenge, a Duel in Placement or
 // one played before the ranked.

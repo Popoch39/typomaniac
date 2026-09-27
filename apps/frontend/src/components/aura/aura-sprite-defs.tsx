@@ -5,7 +5,7 @@ import {
   SHINING_TIERS,
   sheenMaskId,
 } from "@/components/aura/aura-paint";
-import { ornamentId, ref } from "@/components/tier/tier-sprite-paint";
+import { ornamentId, ref } from "@/components/tier/sprite/tier-sprite-paint";
 
 // What the light Aura shares in the Tier sprite: the band of the sheen, and one mask per shining
 // Tier cut to its Ornament. The mask reads the drawing's alpha, so the sheen covers the metal

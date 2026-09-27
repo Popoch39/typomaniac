@@ -9,7 +9,7 @@ import {
   choreographyOf,
   SOUND_BEATS,
   TIER_UP_BEATS,
-} from "@/components/tier-up/tier-up-choreography";
+} from "@/components/tier-up/choreography/tier-up-choreography";
 import { useFaceOffSoundStore } from "@/stores/face-off-sound-store";
 
 gsap.registerPlugin(useGSAP);

@@ -1,7 +1,7 @@
 import { cn } from "cn";
 import type { ReactNode } from "react";
 
-import { signedTp } from "@/components/tier/rank-label";
+import { signedTp } from "@/components/tier/rank/rank-label";
 
 type FaceOffStakeOutcomeProps = { label: string; tp: number; children?: ReactNode };
 

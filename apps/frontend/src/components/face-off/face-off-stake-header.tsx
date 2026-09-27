@@ -1,7 +1,7 @@
 import type { Standing } from "ranked";
 
+import { TierEmblem } from "@/components/tier/drawing/tier-emblem";
 import { standingName } from "@/components/tier/tier";
-import { TierEmblem } from "@/components/tier/tier-emblem";
 
 type FaceOffStakeHeaderProps = { promotion: Standing | null };
 

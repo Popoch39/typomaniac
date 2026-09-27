@@ -1,7 +1,7 @@
 import { LockIcon } from "lucide-react";
 
 import type { OrnamentOption as Option } from "@/components/ornament/ornament-options";
-import { TierOrnament } from "@/components/tier/tier-ornament";
+import { TierOrnament } from "@/components/tier/drawing/tier-ornament";
 import { cn } from "cn";
 
 type OrnamentOptionProps = {

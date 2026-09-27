@@ -17,7 +17,7 @@ import { AuraRuntimeContext } from "@/components/aura/aura-runtime-context";
 import { DuelEnded } from "@/components/duel/duel-ended";
 import type { DuelRanked } from "@/components/duel/rank-change";
 import { FaceOffSoundsContext } from "@/components/face-off/face-off-sounds-context";
-import { stageScale } from "@/components/tier-up/stage-scale";
+import { stageScale } from "@/components/tier-up/stage/stage-scale";
 import type { AuraRuntime } from "@/lib/aura-runtime";
 import type { DuelEnding } from "@/stores/duel-store";
 import { useFaceOffSoundStore } from "@/stores/face-off-sound-store";

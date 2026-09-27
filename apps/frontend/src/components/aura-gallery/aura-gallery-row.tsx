@@ -3,8 +3,8 @@ import type { Tier } from "ranked";
 import type { Aura } from "@/components/aura/aura-paint";
 import { AuraGalleryCell } from "@/components/aura-gallery/aura-gallery-cell";
 import { AVATAR_SIZES, BLASON_SIZES } from "@/components/aura-gallery/aura-gallery-sizes";
+import { TierBlason } from "@/components/tier/drawing/tier-blason";
 import { TIER_NAMES } from "@/components/tier/tier";
-import { TierBlason } from "@/components/tier/tier-blason";
 import { UserAvatar } from "@/components/user-avatar/user-avatar";
 
 const LABELS: Record<Aura, string> = { light: "Aura légère", full: "Aura pleine" };

@@ -1,8 +1,8 @@
 import { cn } from "cn";
 
 import type { PromotionDuel } from "@/components/face-off/promotion-duel";
+import { TierEmblem } from "@/components/tier/drawing/tier-emblem";
 import { standingName, TIER_COLORS } from "@/components/tier/tier";
-import { TierEmblem } from "@/components/tier/tier-emblem";
 
 type FaceOffPromotionBannerProps = { promotion: PromotionDuel };
 

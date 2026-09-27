@@ -3,9 +3,9 @@ import type { Standing } from "ranked";
 import { type KeyboardEvent, type MouseEvent, useRef, useState } from "react";
 
 import { reducedMotion, useForcedReducedMotion } from "@/components/motion/reduced-motion-context";
-import { TierUpCaption } from "@/components/tier-up/tier-up-caption";
-import { choreographyOf } from "@/components/tier-up/tier-up-choreography";
-import { TierUpStage } from "@/components/tier-up/tier-up-stage";
+import { TierUpCaption } from "@/components/tier-up/caption/tier-up-caption";
+import { choreographyOf } from "@/components/tier-up/choreography/tier-up-choreography";
+import { TierUpStage } from "@/components/tier-up/stage/tier-up-stage";
 import { useTierUpTimeline } from "@/components/tier-up/use-tier-up-timeline";
 
 type TierUpPopupProps = { from: Standing; to: Standing; onClose: () => void };

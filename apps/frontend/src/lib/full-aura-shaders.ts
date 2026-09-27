@@ -1,7 +1,7 @@
 import type { Tier } from "ranked";
 
 import { type FullAuraTier, hasFullAura } from "@/components/aura/aura-paint";
-import { HOT, METALS } from "@/components/tier/tier-sprite-paint";
+import { HOT, METALS } from "@/components/tier/sprite/tier-sprite-paint";
 
 // The shaders of the full Aura: a quad over the whole canvas, then one fragment shader per Tier
 // that has one, all procedural (hash and noise, no texture, no particle buffer). The canvas is

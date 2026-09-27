@@ -1,6 +1,6 @@
 import { type Stake, type StakeOutcome, type Standing, stepOf } from "ranked";
 
-import { rankLabel } from "@/components/tier/rank-label";
+import { rankLabel } from "@/components/tier/rank/rank-label";
 import { standingName } from "@/components/tier/tier";
 
 // The rank a win would move this User up to, a Division or a Tier: null when it keeps their

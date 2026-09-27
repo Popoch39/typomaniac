@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { AuraRuntimeContext } from "@/components/aura/aura-runtime-context";
-import { TierBlason } from "@/components/tier/tier-blason";
-import { TierSprite } from "@/components/tier/tier-sprite";
+import { TierBlason } from "@/components/tier/drawing/tier-blason";
+import { TierSprite } from "@/components/tier/sprite/tier-sprite";
 import { UserAvatar } from "@/components/user-avatar/user-avatar";
 import type { AuraRuntime } from "@/lib/aura-runtime";
 import { fakeAuraRuntime } from "@/test/fake-aura-runtime";
