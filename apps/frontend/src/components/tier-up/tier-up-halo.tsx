@@ -3,8 +3,9 @@ import type { Tier } from "ranked";
 import { TierUpCenter } from "@/components/tier-up/tier-up-center";
 import { tierUpPaint } from "@/components/tier-up/tier-up-paint";
 
-// The light around the Blason: the halo that opens at the impact and then breathes, and the ring
-// that flies out of it. Unseen until the impact.
+// The light around the Emblem: the halo, unseen until it opens at the impact and then breathes,
+// and the ring that flies out of it, small and lit behind the old Emblem until then, as in the
+// canvas.
 export const TierUpHalo = ({ tier }: { tier: Tier }) => {
   const paint = tierUpPaint(tier);
 
@@ -22,8 +23,8 @@ export const TierUpHalo = ({ tier }: { tier: Tier }) => {
       </div>
       <div
         data-tier-up="ring"
-        className="absolute -top-[320px] -left-[320px] size-[640px] rounded-full border-2 opacity-0"
-        style={{ borderColor: paint.light }}
+        className="absolute -top-[320px] -left-[320px] size-[640px] rounded-full border-2"
+        style={{ borderColor: paint.light, transform: "scale(0.15)" }}
       />
     </TierUpCenter>
   );

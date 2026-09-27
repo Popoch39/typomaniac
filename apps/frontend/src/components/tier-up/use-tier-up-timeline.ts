@@ -25,7 +25,7 @@ type TierUpTimelineOptions = {
 };
 
 // Plays the Tier-up inside `scope` once, on GSAP's clock, from mount: its choreography's timeline,
-// every sound a call placed on its label (none while muted), then the idle loops from the wait.
+// every sound a call placed on its label (none while muted), and its idle loops.
 // Everything is reverted on unmount. `settled` once the intro is over, on its own at the wait, or
 // by `skip`, which sends the timeline straight to its wait: the calls passed over never run, so
 // the sounds left never play, and the loops go on from there. Either way, the focus goes to
@@ -48,7 +48,9 @@ export const useTierUpTimeline = (
   useGSAP(
     () => {
       const choreography = choreographyOf(tier);
-      const built = gsap.timeline({ defaults: { ease: "power1.out" } });
+      // Not lazy: every part takes its starting state before the first paint, never a frame of
+      // the end shown first.
+      const built = gsap.timeline({ defaults: { ease: "none", lazy: false } });
 
       const play = (sound: TierUpSound) => {
         if (!useFaceOffSoundStore.getState().muted) {

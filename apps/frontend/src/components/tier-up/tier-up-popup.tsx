@@ -3,7 +3,7 @@ import type { Standing } from "ranked";
 import { type KeyboardEvent, type MouseEvent, useRef, useState } from "react";
 
 import { reducedMotion, useForcedReducedMotion } from "@/components/motion/reduced-motion-context";
-import { TierUpBlason } from "@/components/tier-up/tier-up-blason";
+import { TierUpEmblem } from "@/components/tier-up/tier-up-emblem";
 import { TierUpCaption } from "@/components/tier-up/tier-up-caption";
 import { TierUpGround } from "@/components/tier-up/tier-up-ground";
 import { TierUpHalo } from "@/components/tier-up/tier-up-halo";
@@ -62,7 +62,7 @@ export const TierUpPopup = ({ from, to, onClose }: TierUpPopupProps) => {
         <TierUpHalo tier={to.tier} />
         <TierUpSparks tier={to.tier} />
         <TierUpOldEmblem tier={from.tier} />
-        <TierUpBlason tier={to.tier} />
+        <TierUpEmblem tier={to.tier} />
         <TierUpCaption from={from} to={to} proceed={proceed} onProceed={proceeded} />
       </TierUpStage>
     </Dialog.Popup>

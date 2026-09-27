@@ -173,6 +173,10 @@ const blasonOf = (part: HTMLElement) => {
   return blasons[0]?.querySelector('use[href^="#tier-emblem"]')?.getAttribute("href") ?? null;
 };
 
+// The Tier whose Emblem the Tier-up brings in, drawn in layers of its own.
+const emblemReached = (tierUp: HTMLElement) =>
+  tierUp.querySelector("[data-tier-up=emblem]")?.getAttribute("data-tier") ?? null;
+
 // The Emblem drawn on its own in this part.
 const emblemOf = (part: HTMLElement) =>
   part.querySelector("[data-tier-emblem] use")?.getAttribute("href") ?? null;
@@ -325,7 +329,7 @@ describe("the Tier-up", () => {
     expect(tierUp).toHaveTextContent("Argent I → Or IV");
     expect(within(tierUp).getByRole("button", { name: "Continuer" })).toBeInTheDocument();
     expect(emblemOf(tierUp)).toBe("#tier-emblem-argent");
-    expect(blasonOf(tierUp)).toBe("#tier-emblem-or");
+    expect(emblemReached(tierUp)).toBe("or");
   });
 
   test("leaves the end screen behind it out of reach", async () => {
@@ -353,7 +357,7 @@ describe("the Tier-up", () => {
     expect(tierUp).toHaveTextContent("Palier ultime");
     expect(tierUp).toHaveTextContent("Diamant I → Maniac");
     expect(emblemOf(tierUp)).toBe("#tier-emblem-diamant");
-    expect(blasonOf(tierUp)).toBe("#tier-emblem-maniac");
+    expect(emblemReached(tierUp)).toBe("maniac");
   });
 
   test.each([
@@ -480,8 +484,6 @@ describe("the Tier-up", () => {
     const opacities = () => letters.map((letter) => gsap.getProperty(letter, "opacity"));
 
     expect(letters).toHaveLength(6);
-    // GSAP writes the starting values on its first frame.
-    await clock.advance(0.02);
     expect(opacities()).toEqual(Array(6).fill(0));
 
     await clock.advance(2.8);
@@ -511,7 +513,7 @@ const held = (browser: ReturnType<typeof fakeAuraRuntime>) =>
   browser.painters.flatMap((painter) => (painter.disposed ? [] : [painter.tier]));
 
 describe("the Tier-up's Aura", () => {
-  test("from Or, the Blason lands in its full Aura, let go once the Tier-up is closed", async () => {
+  test("from Or, the Emblem lands in its full Aura, let go once the Tier-up is closed", async () => {
     const browser = fakeAuraRuntime();
 
     await renderEnded({ ranked: intoOr, aura: browser.runtime });
@@ -533,7 +535,7 @@ describe("the Tier-up's Aura", () => {
     expect(browser.painters).toEqual([]);
   });
 
-  test("refused, the Blason falls back on its light Aura", async () => {
+  test("refused, the Emblem lands without it", async () => {
     const browser = fakeAuraRuntime({ webgl2: false });
 
     await renderEnded({ ranked: intoOr, aura: browser.runtime });
@@ -542,6 +544,6 @@ describe("the Tier-up's Aura", () => {
     const tierUp = screen.getByRole("dialog", { name: "Or" });
 
     expect(tierUp.querySelector("[data-aura-canvas]")).toBeNull();
-    expect(tierUp.querySelector("[data-ornament-glow]")).not.toBeNull();
+    expect(emblemReached(tierUp)).toBe("or");
   });
 });

@@ -15,7 +15,8 @@ export type SoundBeat = Exclude<TierUpBeat, "wait">;
 export const SOUND_BEATS: readonly SoundBeat[] = ["dissolve", "impact", "name"];
 
 // How a Tier-up plays, from its artboard in the canvas: when each highlight comes (s), the sound
-// of each, the intro up to the wait, and the loops from the wait on. Both build onto the timeline
+// of each, the intro up to the wait, and the loops that go on until it is closed, from where the
+// artboard starts them (left out under reduced motion). Both build onto the timeline
 // whose labels are already placed, with the parts' selectors (the timeline is built inside the
 // stage's GSAP context).
 export type Choreography = {
