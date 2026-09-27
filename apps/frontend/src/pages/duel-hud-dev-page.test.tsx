@@ -87,6 +87,12 @@ const statuses = (word: string) =>
     letter.getAttribute("data-status"),
   );
 
+// The Text's rows as shown, each word's letters read in a row.
+const rows = () =>
+  Array.from(document.querySelectorAll("[data-text-row]"), (row) =>
+    Array.from(row.querySelectorAll("[data-word]"), (word) => word.textContent).join(" "),
+  );
+
 // A letter typed right (`c`), typed wrong (`i`), or still to type.
 const statusOf = (letter: string) => {
   if (letter === "c") {
@@ -151,6 +157,41 @@ describe("DuelHudDevPage", () => {
       expect(statuses(current)).toEqual(Array.from(typed, statusOf));
     },
   );
+
+  // The rows the board's Text shows at these moments, as its own engine cuts them: 41 characters at
+  // most, the line of this User's word the second once past the first.
+  test.each([
+    [
+      "mi-duel",
+      [
+        "river light chair after music bright",
+        "story forest garden every simple window",
+        "morning quick travel before friend water",
+      ],
+    ],
+    [
+      "mené",
+      [
+        "morning quick travel before friend water",
+        "paper strange summer happy island",
+        "neighbor shadow market kitchen gentle",
+      ],
+    ],
+    [
+      "fin",
+      [
+        "neighbor shadow market kitchen gentle",
+        "picture always world bridge heavy climb",
+        "coffee number young evening winter narrow",
+      ],
+    ],
+  ])("frozen on « %s », shows the rows of the board's Text", async (moment, shown) => {
+    await renderPage();
+
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Moment" }), moment);
+
+    expect(rows()).toEqual(shown);
+  });
 
   test("plays the Duel in a loop, from GO again once it is over", async () => {
     await renderPage();

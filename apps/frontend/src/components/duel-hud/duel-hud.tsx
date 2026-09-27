@@ -3,11 +3,11 @@ import type { ReactNode } from "react";
 
 import { DuelClock } from "@/components/duel/duel-clock";
 import { DuelConnection } from "@/components/duel/duel-connection";
-import { DuelText } from "@/components/duel/duel-text";
 import { LeaveDuel } from "@/components/duel/leave-duel";
 import { OpponentWpm } from "@/components/duel/opponent-wpm";
 import { PlayerLiveScore } from "@/components/duel/player-live-score";
 import type { DuelHudModel } from "@/components/duel-hud/duel-hud-model";
+import { DuelText } from "@/components/duel-hud/duel-text";
 import { atHandle } from "@/lib/at-handle";
 
 type DuelHudProps = {
@@ -41,14 +41,17 @@ export const DuelHud = ({ model, veil, onLeave }: DuelHudProps) => {
           <PlayerLiveScore name="Toi" score={self.score} />
           <PlayerLiveScore name={opponentLabel} score={opponent.score} opponent />
         </div>
-        <div className="relative rounded-card bg-card px-8 py-6">
+        <div className="relative rounded-card bg-card px-14 py-10">
           {/* Unpainted until the start, so no one reads it ahead; it keeps its place, so nothing
               moves as the Face-off's panels split away on GO. */}
           <div className={cn(elapsed < 0 && "invisible")}>
             <DuelText
               run={self.run}
               lastBurst={self.score.lastBurst}
-              opponentRun={opponent.run}
+              opponent={{
+                wordIndex: opponent.run.wordIndex,
+                letterIndex: opponent.run.letterIndex,
+              }}
               opponentHandle={opponent.handle}
             />
           </div>
