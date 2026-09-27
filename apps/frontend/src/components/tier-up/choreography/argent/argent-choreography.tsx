@@ -2,7 +2,7 @@ import { ARGENT_SPARKS } from "@/components/tier-up/choreography/argent/argent-s
 import { TierUpArgentHalo } from "@/components/tier-up/choreography/argent/tier-up-argent-halo";
 import { TIER_UP_HALVES } from "@/components/tier-up/choreography/argent/tier-up-halves";
 import { TIER_UP_SHARDS } from "@/components/tier-up/choreography/argent/tier-up-shards";
-import { SHEEN } from "@/components/tier-up/choreography/argent/tier-up-sheen";
+import { SHEEN } from "@/components/tier-up/parts/tier-up-sheen";
 import { TierUpSplitEmblem } from "@/components/tier-up/choreography/argent/tier-up-split-emblem";
 import { TierUpStruckEmblem } from "@/components/tier-up/choreography/argent/tier-up-struck-emblem";
 import type { Choreography } from "@/components/tier-up/choreography/tier-up-choreography";

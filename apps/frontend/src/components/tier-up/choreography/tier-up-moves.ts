@@ -118,6 +118,32 @@ export const shake = (
     at,
   );
 
+// How a piece pops in: when and in how long (s), how far over its size it goes at 60 % of it, the
+// curve, and, for several targets, how many seconds after the one before each pops in.
+type Pop = {
+  at: number;
+  duration: number;
+  peak: number;
+  ease: gsap.EaseFunction;
+  stagger?: number;
+};
+
+// Pops `target` in, as the canvas's `pop` does: from nothing to `peak` at 60 %, then to its size,
+// scaled through `--pop` (GSAP never moves an SVG transform). Unseen until then.
+export const popIn = (
+  timeline: Timeline,
+  target: string,
+  { at, duration, peak, ease, stagger = 0 }: Pop,
+) =>
+  timeline
+    .fromTo(
+      target,
+      { "--pop": 0, opacity: 0 },
+      { "--pop": peak, opacity: 1, duration: duration * 0.6, ease, stagger },
+      at,
+    )
+    .to(target, { "--pop": 1, duration: duration * 0.4, ease, stagger }, at + duration * 0.6);
+
 // The halo breathing, every `period` s (3, unless its artboard says otherwise), for as long as the
 // Tier-up waits.
 export const breathe = (timeline: Timeline, at: number, period = 3) =>

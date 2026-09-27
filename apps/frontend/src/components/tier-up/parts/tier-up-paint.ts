@@ -12,6 +12,9 @@ import {
 // The light under the name: `y` px down, `blur` px wide, as strong as `percent`.
 export type NameShadow = { y: number; blur: number; percent: number };
 
+// Which colour of the metal warms the ground, and how much of it: each artboard picks its own.
+export type GroundTint = { tint: "mid" | "crease"; percent: number };
+
 // `color` at `percent` % over `base`: the Tier-up's lights are its metal fading out.
 const mix = (color: string, percent: number, base = "transparent") =>
   `color-mix(in srgb, ${color} ${percent}%, ${base})`;
@@ -26,8 +29,10 @@ export const tierUpPaint = (tier: Tier) => {
     mid: metal.mid,
     // The letters of the name: the gradient of the Emblems' metal, top to bottom.
     metal: `linear-gradient(180deg, ${stops.join(", ")})`,
-    // The ground behind the stage, the metal barely warming the ink around the Blason.
-    ground: `radial-gradient(ellipse 55% 60% at 50% 39%, ${mix(metal.mid, 12, INK)} 0%, ${INK} 72%)`,
+    // The ground behind the stage, the metal (`tint` of it, as much as `percent`) barely warming
+    // the ink around the Blason.
+    ground: ({ tint, percent }: GroundTint) =>
+      `radial-gradient(ellipse 55% 60% at 50% 39%, ${mix(metal[tint], percent, INK)} 0%, ${INK} 72%)`,
     // The light opening behind the Blason as it lands, as far as `reach` (the ellipse's radii)
     // and as strong as `percent`: each Tier-up opens its own.
     bloom: (reach: string, percent: number) =>
@@ -52,8 +57,12 @@ export const tierUpPaint = (tier: Tier) => {
     // A piece of glitter, lit at its corner, and its glow.
     glitter: `linear-gradient(135deg, ${metal.light}, ${metal.mid} 60%, ${metal.crease})`,
     glitterGlow: `0 0 8px ${mix(metal.mid, 80)}`,
-    // The glow of a spark, `blur` px wide.
-    glow: (blur: number) => `0 0 ${blur}px ${metal.mid}`,
+    // The glow of a spark, `blur` px wide, spread by `spread` px.
+    glow: (blur: number, spread = 0) => `0 0 ${blur}px ${spread}px ${metal.mid}`,
+    // The lines of a grid of light, faint.
+    grid: mix(metal.mid, 20),
+    // A plume of light rising behind the Blason, fading out from its heart.
+    plume: `radial-gradient(ellipse at center, ${mix(metal.sheen, 28)}, ${mix(metal.mid, 0)} 70%)`,
     // The glow of a crack of light, as bright as its light.
     crackGlow: `0 0 16px ${metal.light}`,
     // A dashed ring turning around the Blason, at `percent` of its metal.

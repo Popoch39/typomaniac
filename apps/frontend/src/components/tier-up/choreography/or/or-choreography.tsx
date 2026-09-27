@@ -4,7 +4,7 @@ import { LEAF_PAIRS } from "@/components/tier-up/choreography/or/laurel-leaves";
 import { TierUpMaterializedEmblem } from "@/components/tier-up/choreography/or/tier-up-materialized-emblem";
 import { TierUpOrHalo } from "@/components/tier-up/choreography/or/tier-up-or-halo";
 import { TierUpOrLight } from "@/components/tier-up/choreography/or/tier-up-or-light";
-import { TierUpWhiteout } from "@/components/tier-up/choreography/or/tier-up-whiteout";
+import { TierUpWhiteout } from "@/components/tier-up/parts/tier-up-whiteout";
 import type { Choreography } from "@/components/tier-up/choreography/tier-up-choreography";
 import {
   ASCEND,
@@ -21,6 +21,7 @@ import {
   captionIn,
   DRAWN,
   flash,
+  popIn,
   RISE,
   RISEN,
   ringOut,
@@ -58,17 +59,8 @@ const LEAVES_AT = 2.3;
 
 const LEAF_STEP_S = 0.08;
 
-// Pops `target` in at `at`, as its artboard's `pop` does over `duration`: from nothing to a little
-// over its size at 60 %, then to its size, scaled through `--pop`. Unseen until then.
-const popIn = (timeline: Timeline, target: string, at: number, duration: number) =>
-  timeline
-    .fromTo(
-      target,
-      { "--pop": 0, opacity: 0 },
-      { "--pop": 1.25, opacity: 1, duration: duration * 0.6, ease: POP_OVER },
-      at,
-    )
-    .to(target, { "--pop": 1, duration: duration * 0.4, ease: POP_OVER }, at + duration * 0.6);
+// A leaf or the stud popping in, as its artboard's `pop` does: a little over its size, then to it.
+const POP_PEAK = 1.25;
 
 // Each piece of glitter falling from where it starts, turning, seen once it is on its way and
 // gone before it lands.
@@ -231,11 +223,21 @@ export const orChoreography: Choreography = {
 
     // The leaves, pair by pair from the foot up; the stud, once the star is cut.
     for (let pair = 0; pair < LEAF_PAIRS; pair++) {
-      popIn(timeline, part(`leaf-${pair}`), LEAVES_AT + pair * LEAF_STEP_S, 0.32);
+      popIn(timeline, part(`leaf-${pair}`), {
+        at: LEAVES_AT + pair * LEAF_STEP_S,
+        duration: 0.32,
+        peak: POP_PEAK,
+        ease: POP_OVER,
+      });
     }
 
     flash(timeline, part("star-flash"), 0.6, 2.5);
-    popIn(timeline, `${part("engraving")} > circle`, 2.75, 0.35);
+    popIn(timeline, `${part("engraving")} > circle`, {
+      at: 2.75,
+      duration: 0.35,
+      peak: POP_PEAK,
+      ease: POP_OVER,
+    });
     glitterFalls(timeline);
     captionIn(timeline, {
       kicker: 2.5,

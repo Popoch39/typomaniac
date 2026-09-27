@@ -1,11 +1,10 @@
 import type { Tier } from "ranked";
-import { useId } from "react";
 
 import { AuraFrame } from "@/components/aura/aura-frame";
 import { EMBLEM_LAYERS } from "@/components/tier/sprite/tier-emblem-layers";
 import { EMBLEM_OUTLINES } from "@/components/tier/sprite/tier-emblem-outline";
 import { TIER_UP_SHARDS } from "@/components/tier-up/choreography/argent/tier-up-shards";
-import { SHEEN } from "@/components/tier-up/choreography/argent/tier-up-sheen";
+import { TierUpSheenBand } from "@/components/tier-up/parts/tier-up-sheen-band";
 import { TierUpEmblemBody } from "@/components/tier-up/parts/tier-up-emblem-body";
 import { tierUpPaint } from "@/components/tier-up/parts/tier-up-paint";
 
@@ -29,9 +28,6 @@ export const TierUpStruckEmblem = ({ tier }: { tier: Tier }) => {
   const { d } = EMBLEM_OUTLINES[tier];
   const { body, engraving } = EMBLEM_LAYERS[tier];
   const paint = tierUpPaint(tier);
-  const id = useId();
-  const clip = `${id}-clip`;
-  const sheen = `${id}-sheen`;
 
   return (
     <div
@@ -56,16 +52,6 @@ export const TierUpStruckEmblem = ({ tier }: { tier: Tier }) => {
         <AuraFrame tier={tier} aura="full" Drawing={TierUpEmblemBody} />
       </div>
       <svg viewBox="0 0 32 32" className={LAYER}>
-        <defs>
-          <clipPath id={clip}>
-            <path d={d} />
-          </clipPath>
-          <linearGradient id={sheen} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0" stopColor={paint.light} stopOpacity={0} />
-            <stop offset="0.5" stopColor={paint.light} stopOpacity={0.85} />
-            <stop offset="1" stopColor={paint.light} stopOpacity={0} />
-          </linearGradient>
-        </defs>
         <path
           data-tier-up="seams"
           d={SEAMS}
@@ -78,18 +64,7 @@ export const TierUpStruckEmblem = ({ tier }: { tier: Tier }) => {
         <g data-tier-up="engraving" className={STAMPED}>
           {engraving}
         </g>
-        <g clipPath={`url(#${clip})`}>
-          <g transform="rotate(20 16 16)">
-            <rect
-              data-tier-up="sheen"
-              x={SHEEN.x}
-              y={-6}
-              width={8}
-              height={44}
-              fill={`url(#${sheen})`}
-            />
-          </g>
-        </g>
+        <TierUpSheenBand tier={tier} d={d} />
         <path data-tier-up="flash" d={d} fill={paint.flash} opacity={0} />
       </svg>
     </div>

@@ -45,5 +45,11 @@ export const COLUMN = CustomEase.create("tier-up-column", "0.3,0,0.2,1");
 // A leaf or a stud popping in, overshooting before it settles.
 export const POP_OVER = CustomEase.create("tier-up-pop-over", "0.3,1.5,0.5,1");
 
+// A stud of the Platine popping in, overshooting further.
+export const STUD_POP = CustomEase.create("tier-up-stud-pop", "0.3,1.6,0.5,1");
+
+// A feather of the Platine's wings unfurling, overshooting before it settles.
+export const UNFURL = CustomEase.create("tier-up-unfurl", "0.3,1.45,0.5,1");
+
 // Glitter falling, faster and faster.
 export const FALL = CustomEase.create("tier-up-fall", "0.4,0,0.8,0.6");

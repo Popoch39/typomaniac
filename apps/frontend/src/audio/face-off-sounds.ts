@@ -15,6 +15,9 @@ export const TIER_UP_SOUNDS = [
   "tier-up-or-ascend",
   "tier-up-or-materialize",
   "tier-up-or-name",
+  "tier-up-platine-flip",
+  "tier-up-platine-assemble",
+  "tier-up-platine-name",
 ] as const;
 
 export type TierUpSound = (typeof TIER_UP_SOUNDS)[number];

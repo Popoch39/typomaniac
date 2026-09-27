@@ -30,6 +30,7 @@ import {
   STEM,
   STUD,
 } from "@/components/tier/sprite/tier-sprite-paint";
+import { PLATINE_FAN, WING_ROOT, type WingFan } from "@/components/tier/sprite/tier-wing-fans";
 
 // The pieces an Ornament draws on its left, mirrored on its right.
 const laurelId = (tier: Tier) => `tier-laurel-${tier}`;
@@ -74,8 +75,11 @@ const leaf = (fill: string, [x, y, turn]: readonly [number, number, number], sca
   />
 );
 
+// The feathers of a wing drawn from its root.
+const ROOTED = `translate(${WING_ROOT.x} ${WING_ROOT.y})`;
+
 // Feathers fanned from the wing's root: how far each turns, and its size.
-const feathers = (fill: string, fan: readonly (readonly [number, number])[]) =>
+const feathers = (fill: string, fan: WingFan) =>
   fan.map(([turn, scale]) => (
     <use
       key={turn}
@@ -87,15 +91,7 @@ const feathers = (fill: string, fan: readonly (readonly [number, number])[]) =>
   ));
 
 const WINGS: Partial<Record<Tier, ReactNode>> = {
-  platine: (
-    <g transform="translate(46 56)">
-      {feathers(paint(metalId("platine")), [
-        [48, 0.85],
-        [28, 1],
-        [8, 0.9],
-      ])}
-    </g>
-  ),
+  platine: <g transform={ROOTED}>{feathers(paint(metalId("platine")), PLATINE_FAN)}</g>,
   diamant: (
     <>
       <path
@@ -105,7 +101,7 @@ const WINGS: Partial<Record<Tier, ReactNode>> = {
         transform="rotate(-18 45 19)"
       />
       <path d="M45 6 L45 31 L40.5 17 Z" {...BRIGHT} transform="rotate(-18 45 19)" />
-      <g transform="translate(46 56)">
+      <g transform={ROOTED}>
         {feathers(paint(deepId("diamant")), [
           [60, 0.8],
           [38, 1],
@@ -122,7 +118,7 @@ const WINGS: Partial<Record<Tier, ReactNode>> = {
   ),
   maniac: (
     <>
-      <g transform="translate(46 56)">
+      <g transform={ROOTED}>
         {feathers(paint(deepId("maniac")), [
           [70, 0.75],
           [48, 0.95],

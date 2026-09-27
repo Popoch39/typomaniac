@@ -5,6 +5,7 @@ import type { TierUpSound } from "@/audio/face-off-sounds";
 import { argentChoreography } from "@/components/tier-up/choreography/argent/argent-choreography";
 import { bronzeChoreography } from "@/components/tier-up/choreography/bronze/bronze-choreography";
 import { orChoreography } from "@/components/tier-up/choreography/or/or-choreography";
+import { platineChoreography } from "@/components/tier-up/choreography/platine/platine-choreography";
 import type { NameShadow } from "@/components/tier-up/parts/tier-up-paint";
 
 // The highlights every Tier-up's timeline carries, as labels: the old Emblem coming apart, the new
@@ -61,6 +62,7 @@ const CHOREOGRAPHIES: Partial<Record<Tier, Choreography>> = {
   bronze: bronzeChoreography,
   argent: argentChoreography,
   or: orChoreography,
+  platine: platineChoreography,
 };
 
 // Until a Tier has its own, it plays Bronze's, with its own drawing and colours.

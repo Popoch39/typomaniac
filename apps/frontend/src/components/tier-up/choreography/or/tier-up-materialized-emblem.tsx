@@ -6,14 +6,10 @@ import { EMBLEM_OUTLINES, STAR } from "@/components/tier/sprite/tier-emblem-outl
 import { TierUpLaurel } from "@/components/tier-up/choreography/or/tier-up-laurel";
 import { TierUpEmblemBody } from "@/components/tier-up/parts/tier-up-emblem-body";
 import { tierUpPaint } from "@/components/tier-up/parts/tier-up-paint";
+import { POPPED_STUDS } from "@/components/tier-up/parts/tier-up-popped";
 
 // A layer of the Emblem, over the others, on its 32 × 32 grid.
 const LAYER = "absolute inset-0 size-full overflow-visible";
-
-// The stud of the engraving scaled about its own centre by `--pop`, as the artboard's
-// `transform-box: fill-box` does: GSAP moves the variable, never an SVG transform.
-const POPPED =
-  "[&>circle]:origin-center [&>circle]:[transform-box:fill-box] [&>circle]:[transform:scale(var(--pop,1))]";
 
 // The Emblem of the Tier reached, as the Argent → Or artboard brings it, 320 px: it materializes
 // out of a blinding white, squeezed thin then whole, with a flash of its shape; it lands, its full
@@ -52,7 +48,7 @@ export const TierUpMaterializedEmblem = ({ tier }: { tier: Tier }) => {
             strokeDasharray={1}
             strokeDashoffset={1}
           />
-          <g data-tier-up="engraving" className={POPPED}>
+          <g data-tier-up="engraving" className={POPPED_STUDS}>
             {engraving}
           </g>
           <path data-tier-up="star-flash" d={STAR} fill={paint.flash} opacity={0} />

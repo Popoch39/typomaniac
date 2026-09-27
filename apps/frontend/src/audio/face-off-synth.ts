@@ -409,6 +409,139 @@ const orName = (voice: Voice) => {
   }
 };
 
+// When the line of light flashes after the gold starts turning over (s).
+const LINE_FLASH_S = 0.45;
+
+// The Or turning over edge on and fading: air swept up in pitch, two glassy tones rising a fifth
+// apart, then the zing of the line of light splitting the stage.
+const platineFlip = (voice: Voice) => {
+  const air = filterOf(voice, "bandpass", 500);
+
+  air.Q.value = 1.4;
+  air.frequency.exponentialRampToValueAtTime(5200, voice.at + 0.5);
+  noiseBurst(voice, air, { peak: 0.36, attack: 0.4, release: 0.25 });
+  tone(
+    voice,
+    { type: "sine", from: 329.63, to: 987.77, glide: 0.5 },
+    { peak: 0.12, attack: 0.35, release: 0.35 },
+  );
+  tone(
+    voice,
+    { type: "triangle", from: 493.88, to: 1479.98, glide: 0.5 },
+    { peak: 0.06, attack: 0.35, release: 0.35 },
+  );
+
+  const line = later(voice, LINE_FLASH_S);
+
+  tone(
+    line,
+    { type: "sine", from: 1760, to: 3520, glide: 0.18 },
+    { peak: 0.08, attack: 0.01, release: 0.45 },
+  );
+  noiseBurst(line, filterOf(line, "highpass", 7000), { peak: 0.1, attack: 0.005, release: 0.4 });
+};
+
+// The partials of the platinum ringing as it is assembled, in Hz, with their envelopes: a cold E,
+// its fifth, its octave and its twelfth, then high inharmonic overtones, brighter and longer than
+// the gold.
+const PLATINUM_RING: readonly [OscillatorType, number, Envelope][] = [
+  ["triangle", 329.63, { peak: 0.22, attack: 0.004, release: 2.8 }],
+  ["triangle", 493.88, { peak: 0.13, attack: 0.004, release: 2.4 }],
+  ["sine", 659.25, { peak: 0.14, attack: 0.003, release: 2.2 }],
+  ["sine", 987.77, { peak: 0.08, attack: 0.003, release: 1.8 }],
+  ["sine", 1811, { peak: 0.06, attack: 0.002, release: 1.3 }],
+  ["sine", 2953, { peak: 0.05, attack: 0.002, release: 1 }],
+  ["sine", 4187, { peak: 0.03, attack: 0.002, release: 0.7 }],
+];
+
+// When each stud pops in after the impact (s), and how high it ticks (Hz): one by one, around the
+// hexagon.
+const STUD_TICKS: readonly [number, number][] = [
+  [0.2, 2637.02],
+  [0.3, 2959.96],
+  [0.4, 3322.44],
+  [0.5, 3520],
+  [0.6, 3951.07],
+  [0.7, 4434.92],
+];
+
+// The Platine assembled in a blinding white: its triangles locking together in a crack of noise
+// over a deep thump shaking the screen, a long bright hiss for the flash, the platinum ringing,
+// then each stud ticking in.
+const platineAssemble = (voice: Voice) => {
+  tone(
+    voice,
+    { type: "sine", from: 130, to: 34, glide: 0.5 },
+    { peak: 1, attack: 0.004, release: 0.9 },
+  );
+  noiseBurst(voice, filterOf(voice, "lowpass", 5200), { peak: 0.6, attack: 0.001, release: 0.25 });
+  noiseBurst(voice, filterOf(voice, "bandpass", 2400), {
+    peak: 0.3,
+    attack: 0.001,
+    release: 0.08,
+  });
+  noiseBurst(voice, filterOf(voice, "highpass", 6000), { peak: 0.2, attack: 0.01, release: 0.9 });
+
+  for (const [type, from, envelope] of PLATINUM_RING) {
+    tone(voice, { type, from }, envelope);
+  }
+
+  for (const [delay, note] of STUD_TICKS) {
+    tone(
+      later(voice, delay),
+      { type: "triangle", from: note },
+      { peak: 0.05, attack: 0.002, release: 0.18 },
+    );
+  }
+};
+
+// The notes under the name of Platine, in Hz: an E major arpeggio climbing past two octaves, one
+// per letter, each doubled an octave up, softer.
+const PLATINE_NOTES = [659.25, 830.61, 987.77, 1318.51, 1661.22, 1975.53, 2637.02];
+
+// When the motes twinkle after the name's last note (s), and how high (Hz): a few of them catching
+// the light as they rise.
+const MOTE_TWINKLES: readonly [number, number][] = [
+  [0.15, 3322.44],
+  [0.32, 3951.07],
+  [0.5, 2959.96],
+  [0.7, 4434.92],
+  [0.92, 3520],
+  [1.15, 3951.07],
+];
+
+// The name of Platine: a quick rising arpeggio of plucks with their octaves over a cold pad of two
+// slightly detuned fifths, richer than Or's, the last held with its fifth over a long shimmer,
+// then the motes twinkling as they rise.
+const platineName = (voice: Voice) => {
+  const held = PLATINE_NOTES.length * LETTER_STEP_S + 1.4;
+
+  tone(voice, { type: "sine", from: 329.63 }, { peak: 0.05, attack: 0.3, release: held });
+  tone(voice, { type: "sine", from: 494.4 }, { peak: 0.04, attack: 0.3, release: held });
+
+  for (const [step, note] of PLATINE_NOTES.entries()) {
+    const last = step === PLATINE_NOTES.length - 1;
+    const release = last ? 1.8 : 0.35;
+    const pluck = later(voice, step * LETTER_STEP_S);
+
+    tone(pluck, { type: "triangle", from: note }, { peak: 0.13, attack: 0.004, release });
+    tone(pluck, { type: "sine", from: note * 2 }, { peak: 0.05, attack: 0.004, release });
+  }
+
+  const end = later(voice, (PLATINE_NOTES.length - 1) * LETTER_STEP_S);
+
+  tone(end, { type: "sine", from: 3951.07 }, { peak: 0.04, attack: 0.01, release: 1.6 });
+  noiseBurst(end, filterOf(end, "highpass", 7000), { peak: 0.12, attack: 0.05, release: 1.1 });
+
+  for (const [delay, note] of MOTE_TWINKLES) {
+    tone(
+      later(end, delay),
+      { type: "sine", from: note },
+      { peak: 0.035, attack: 0.002, release: 0.35 },
+    );
+  }
+};
+
 const SYNTHS: Record<FaceOffSound, (voice: Voice) => void> = {
   whoosh,
   impact,
@@ -426,6 +559,9 @@ const SYNTHS: Record<FaceOffSound, (voice: Voice) => void> = {
   "tier-up-or-ascend": orAscend,
   "tier-up-or-materialize": orMaterialize,
   "tier-up-or-name": orName,
+  "tier-up-platine-flip": platineFlip,
+  "tier-up-platine-assemble": platineAssemble,
+  "tier-up-platine-name": platineName,
 };
 
 // Plays `sound` into `destination` now, built from oscillators and noise: each node is dropped once

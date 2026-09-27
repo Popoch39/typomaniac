@@ -164,6 +164,12 @@ const intoArgent = {
   rank: standing({ tier: "argent", division: 4, tp: 14, shielded: true }),
 };
 
+const intoPlatine = {
+  tp: 27,
+  previousRank: standing({ tier: "or", division: 1, tp: 86, shielded: false }),
+  rank: standing({ tier: "platine", division: 4, tp: 13, shielded: true }),
+};
+
 const intoManiac = {
   tp: 30,
   previousRank: standing({ tier: "diamant", division: 1, tp: 80, shielded: false }),
@@ -190,6 +196,9 @@ const drawn = (path: Element | null) => Number(path?.getAttribute("stroke-dashof
 // The Emblem drawn on its own in this part.
 const emblemOf = (part: HTMLElement) =>
   part.querySelector("[data-tier-emblem] use")?.getAttribute("href") ?? null;
+
+// How visible each of these parts is, as GSAP left it.
+const opacitiesOf = (parts: Element[]) => parts.map((piece) => gsap.getProperty(piece, "opacity"));
 
 const continueButton = () => screen.getByRole("button", { name: "Continuer" });
 
@@ -545,6 +554,105 @@ describe("the Tier-up", () => {
     expect(opacities()).toEqual(Array(14).fill(1));
   });
 
+  test("a Duel into Platine opens it, the Or Emblem there to turn over", async () => {
+    await renderEnded({ ranked: intoPlatine });
+
+    const tierUp = screen.getByRole("dialog", { name: "Platine" });
+
+    expect(tierUp).toHaveTextContent("Nouveau palier");
+    expect(tierUp).toHaveTextContent("Or I → Platine IV");
+    expect(emblemOf(tierUp)).toBe("#tier-emblem-or");
+    expect(emblemReached(tierUp)).toBe("platine");
+  });
+
+  test("Or → Platine sounds as the gold turns over, as the Platine assembles, then with the name", async () => {
+    await renderEnded({ ranked: intoPlatine });
+
+    await clock.advance(0.8);
+    expect(played).toEqual([]);
+
+    await clock.advance(0.2);
+    expect(played).toEqual(["tier-up-platine-flip"]);
+
+    await clock.advance(1.2);
+    expect(played).toEqual(["tier-up-platine-flip"]);
+
+    await clock.advance(0.2);
+    expect(played).toEqual(["tier-up-platine-flip", "tier-up-platine-assemble"]);
+
+    await clock.advance(0.4);
+    expect(played).toEqual([
+      "tier-up-platine-flip",
+      "tier-up-platine-assemble",
+      "tier-up-platine-name",
+    ]);
+
+    await clock.advance(1.2);
+    expect(continueButton()).not.toHaveFocus();
+
+    await clock.advance(0.2);
+    expect(continueButton()).toHaveFocus();
+    await clock.advance(5);
+    expect(played).toHaveLength(3);
+  });
+
+  test("Or → Platine skipped as it assembles: no name heard after", async () => {
+    await renderEnded({ ranked: intoPlatine });
+    await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
+    await clock.advance(2.4);
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(continueButton()).toHaveFocus();
+    await clock.advance(5);
+    expect(played).toEqual(["tier-up-platine-flip", "tier-up-platine-assemble"]);
+  });
+
+  test("Or → Platine assembles its hexagon triangle by triangle, whole at the impact", async () => {
+    await renderEnded({ ranked: intoPlatine });
+
+    const triangles = [...screen.getByRole("dialog").querySelectorAll("[data-tier-up=triangle]")];
+    const opacities = () => triangles.map((triangle) => gsap.getProperty(triangle, "opacity"));
+
+    expect(triangles).toHaveLength(6);
+
+    await clock.advance(1.45);
+    expect(opacities()).toEqual(Array(6).fill(0));
+
+    await clock.advance(0.4);
+    expect(opacities()[0]).toBeGreaterThan(0);
+    expect(opacities()[5]).toBe(0);
+    expect(triangles.map((triangle) => gsap.getProperty(triangle, "x"))[0]).not.toBe(0);
+
+    await clock.advance(0.5);
+    expect(opacities()).toEqual(Array(6).fill(1));
+    expect(triangles.map((triangle) => gsap.getProperty(triangle, "x"))).toEqual(Array(6).fill(0));
+  });
+
+  test("Or → Platine pops its studs in one by one, then unfurls its wings, none seen before", async () => {
+    await renderEnded({ ranked: intoPlatine });
+
+    const tierUp = screen.getByRole("dialog");
+    const studs = [...tierUp.querySelectorAll("[data-tier-up=engraving] > circle")];
+    const feathers = [...tierUp.querySelectorAll("[data-tier-up=feather]")];
+
+    expect(studs).toHaveLength(6);
+    expect(feathers).toHaveLength(6);
+
+    await clock.advance(2.35);
+    expect(opacitiesOf(studs)).toEqual(Array(6).fill(0));
+    expect(opacitiesOf(feathers)).toEqual(Array(6).fill(0));
+
+    await clock.advance(0.25);
+    expect(opacitiesOf(studs)[0]).toBeGreaterThan(0);
+    expect(opacitiesOf(studs)[5]).toBe(0);
+    expect(opacitiesOf(feathers).some((opacity) => Number(opacity) > 0)).toBe(true);
+
+    await clock.advance(0.8);
+    expect(opacitiesOf(studs)).toEqual(Array(6).fill(1));
+    expect(opacitiesOf(feathers)).toEqual(Array(6).fill(1));
+  });
+
   test("gives the focus to « Continuer » once its intro is over", async () => {
     await renderEnded({ ranked: intoBronze });
 
@@ -719,6 +827,39 @@ describe("the Tier-up's Aura", () => {
     await waitFor(() => expect(continueButton()).toHaveFocus());
     expect(gsap.getProperty(aura, "opacity")).toBe(1);
     expect(played).toEqual(["tier-up-or-materialize"]);
+  });
+
+  test("Or → Platine lights its full Aura at the impact, never before", async () => {
+    const browser = fakeAuraRuntime();
+
+    await renderEnded({ ranked: intoPlatine, aura: browser.runtime });
+    await settle();
+
+    const aura = screen.getByRole("dialog").querySelector("[data-tier-up=aura]");
+
+    await clock.advance(2.25);
+    expect(gsap.getProperty(aura, "opacity")).toBe(0);
+
+    await clock.advance(0.1);
+    expect(gsap.getProperty(aura, "opacity")).toBeGreaterThan(0);
+
+    await clock.advance(0.8);
+    expect(gsap.getProperty(aura, "opacity")).toBe(1);
+    expect(held(browser)).toEqual(["platine"]);
+  });
+
+  test("under reduced motion, Or → Platine opens with its full Aura already lit", async () => {
+    reduceMotion();
+
+    await renderEnded({ ranked: intoPlatine });
+
+    const aura = screen
+      .getByRole("dialog", { name: "Platine" })
+      .querySelector("[data-tier-up=aura]");
+
+    await waitFor(() => expect(continueButton()).toHaveFocus());
+    expect(gsap.getProperty(aura, "opacity")).toBe(1);
+    expect(played).toEqual(["tier-up-platine-assemble"]);
   });
 
   test("below Or, there is no full Aura to ask for", async () => {

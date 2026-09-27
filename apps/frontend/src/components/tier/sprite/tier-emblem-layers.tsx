@@ -86,6 +86,17 @@ const ember = (cx: number, radius: number) => (
   </>
 );
 
+// The studs set at the corners of the Platine, from its top round: the Tier-up pops them in one
+// by one.
+export const PLATINE_STUDS = [
+  [16, 2.6],
+  [27.4, 9.3],
+  [27.4, 22.7],
+  [16, 29.4],
+  [4.6, 22.7],
+  [4.6, 9.3],
+] as const;
+
 // The Emblem of each Tier, on its own grid: placed on the 120 × 120 grid of the mock-up by
 // `EMBLEM_OUTLINES`, bigger at each Tier.
 export const EMBLEM_LAYERS: Record<Tier, EmblemLayers> = {
@@ -122,12 +133,9 @@ export const EMBLEM_LAYERS: Record<Tier, EmblemLayers> = {
     engraving: (
       <>
         {engravedStar(0.6)}
-        <circle cx={16} cy={2.6} r={1.1} {...STUD} />
-        <circle cx={27.4} cy={9.3} r={1.1} {...STUD} />
-        <circle cx={27.4} cy={22.7} r={1.1} {...STUD} />
-        <circle cx={16} cy={29.4} r={1.1} {...STUD} />
-        <circle cx={4.6} cy={22.7} r={1.1} {...STUD} />
-        <circle cx={4.6} cy={9.3} r={1.1} {...STUD} />
+        {PLATINE_STUDS.map(([cx, cy]) => (
+          <circle key={`${cx} ${cy}`} cx={cx} cy={cy} r={1.1} {...STUD} />
+        ))}
       </>
     ),
   },
