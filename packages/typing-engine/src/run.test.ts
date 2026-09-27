@@ -31,6 +31,9 @@ const statuses = (state: RunState, wordIndex: number) =>
 // What was typed in the first two words.
 const typed = (state: RunState) => state.words.slice(0, 2).map((word) => word.typed);
 
+// The words of the Text drawn so far.
+const targets = (state: RunState) => state.words.map((word) => word.target);
+
 describe("createRun", () => {
   test("starts on the first letter of the Text, every letter pending", () => {
     const run = createRun(config);
@@ -255,6 +258,48 @@ describe("time Mode", () => {
     expect(applyKeystroke(run, { kind: "char", char: "l", at: 30_000 })).toEqual(run);
     expect(applyKeystroke(run, { kind: "backspace", at: 30_000 })).toEqual(run);
     expect(applyKeystroke(run, { kind: "char", char: "l", at: 29_999 }).letterIndex).toBe(4);
+  });
+});
+
+describe("a written Text", () => {
+  const text = ["river", "light"];
+
+  const writtenConfig: RunConfig = {
+    mode: "time",
+    seconds: 30,
+    language: "en",
+    wordListVersion: 1,
+    seed: 42,
+    text,
+  };
+
+  test("starts with its words, then goes on with the Text of the Seed", () => {
+    const run = createRun(writtenConfig);
+
+    expect(targets(run)).toEqual([...text, ...generateText(42, "en", 1, 100).slice(2)]);
+  });
+
+  test("is typed as any Text", () => {
+    const run = type(createRun(writtenConfig), "river lx");
+
+    expect(run.validatedWords).toBe(1);
+    expect(statuses(run, 1)).toEqual(["correct", "incorrect", "pending", "pending", "pending"]);
+  });
+
+  test("keeps its words first as more are drawn", () => {
+    let run = createRun(writtenConfig);
+
+    for (let i = 0; i < 60; i++) {
+      run = type(run, `${run.words[run.wordIndex]?.target[0]} `);
+    }
+
+    expect(targets(run)).toEqual([...text, ...generateText(42, "en", 1, 150).slice(2)]);
+  });
+
+  test("a words Run takes as many of them as it has words", () => {
+    const run = createRun({ ...config, text: ["river", "light", "chair", "after"] });
+
+    expect(targets(run)).toEqual(["river", "light", "chair"]);
   });
 });
 

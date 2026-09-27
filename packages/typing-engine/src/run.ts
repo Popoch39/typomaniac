@@ -1,7 +1,13 @@
 import { generateText, type Language } from "./text";
 
-// What fixes the Text of a Run.
-type TextSource = { language: Language; wordListVersion: number; seed: number };
+// What fixes the Text of a Run. `text`, a Text written out word by word (a scripted Duel for
+// instance), comes first; the Seed's words follow it.
+type TextSource = {
+  language: Language;
+  wordListVersion: number;
+  seed: number;
+  text?: readonly string[];
+};
 
 // `words` Mode: the Run ends after `words` words. `time` Mode: the Run ends `seconds` after its
 // first Keystroke, and its Text never runs out.
@@ -72,9 +78,12 @@ const drawText = (state: RunState): RunState => {
     return state;
   }
 
-  const { seed, language, wordListVersion } = state.config;
+  const { seed, language, wordListVersion, text = [] } = state.config;
 
-  const drawn = generateText(seed, language, wordListVersion, count)
+  const drawn = [
+    ...text.slice(0, count),
+    ...generateText(seed, language, wordListVersion, count).slice(text.length),
+  ]
     .slice(state.words.length)
     .map((target, i) => toWord(state.words.length + i, target, ""));
 
