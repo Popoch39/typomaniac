@@ -64,17 +64,17 @@ const renderPage = async () => {
 };
 
 const rise = (name: string) =>
-  within(screen.getByRole("list", { name: "Montées" })).getByRole("button", { name });
+  within(screen.getByRole("list", { name: "Tier-ups" })).getByRole("button", { name });
 
 const continueButton = () => screen.getByRole("button", { name: "Continuer" });
 
 describe("TierUpDevPage", () => {
-  test("lists the six moves up, from Fer to Maniac", async () => {
+  test("lists the six Tier-ups, from Fer to Maniac", async () => {
     await renderPage();
 
-    const rises = within(screen.getByRole("list", { name: "Montées" })).getAllByRole("button");
+    const tierUps = within(screen.getByRole("list", { name: "Tier-ups" })).getAllByRole("button");
 
-    expect(rises.map((each) => each.textContent)).toEqual([
+    expect(tierUps.map((each) => each.textContent)).toEqual([
       "Fer I → Bronze IV",
       "Bronze I → Argent IV",
       "Argent I → Or IV",

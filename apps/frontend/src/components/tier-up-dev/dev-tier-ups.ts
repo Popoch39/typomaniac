@@ -1,8 +1,8 @@
 import type { Standing } from "ranked";
 
-// A move up into a new Tier, as a Duel would make it: from the top Division of a Tier to the
-// bottom one of the next, or into Maniac. The ranks are made up, for the dev page.
-export type TierUpRise = { from: Standing; to: Standing };
+// A Tier-up as a Duel would open it: from the top Division of a Tier to the bottom one of the
+// next, or into Maniac. The ranks are made up, for the dev page.
+export type DevTierUp = { from: Standing; to: Standing };
 
 const top = (tier: Exclude<Standing["tier"], "maniac">): Standing => ({
   tier,
@@ -19,7 +19,7 @@ const bottom = (tier: Exclude<Standing["tier"], "maniac">): Standing => ({
 });
 
 // The six Tier-ups, from Fer → Bronze to Diamant → Maniac.
-export const TIER_UP_RISES: readonly TierUpRise[] = [
+export const DEV_TIER_UPS: readonly DevTierUp[] = [
   { from: top("fer"), to: bottom("bronze") },
   { from: top("bronze"), to: bottom("argent") },
   { from: top("argent"), to: bottom("or") },

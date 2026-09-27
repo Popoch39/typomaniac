@@ -22,6 +22,8 @@ export const tierUpPaint = (tier: Tier) => {
     bloom: `radial-gradient(ellipse 38% 42% at 50% 39%, ${mix(metal.mid, 32)}, ${mix(metal.mid, 0)} 70%)`,
     // The halo right around the Blason, which keeps breathing.
     halo: `radial-gradient(circle, ${mix(metal.mid, 50)}, ${mix(metal.mid, 0)} 68%)`,
+    // The flash of the Emblem's shape as the Blason lands: its light metal, nearly white.
+    flash: mix(metal.light, 25, "white"),
     nameShadow: `drop-shadow(0 6px 24px ${mix(metal.mid, 45)})`,
     sparkGlow: `0 0 10px ${metal.mid}`,
   };

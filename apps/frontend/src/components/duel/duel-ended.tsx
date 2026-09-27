@@ -39,9 +39,11 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
   return (
     <div ref={mount} tabIndex={-1} className="flex flex-col gap-8 outline-none">
       <DuelOutcome outcome={ending.outcome} forfeit={ending.forfeit} opponent={opponent} />
-      {ending.ranked === null ? null : <DuelRank ranked={ending.ranked} />}
       {ending.ranked === null ? null : (
-        <DuelTierUp ranked={ending.ranked} onClosed={() => screen.current?.focus()} />
+        <>
+          <DuelRank ranked={ending.ranked} />
+          <DuelTierUp ranked={ending.ranked} onClosed={() => screen.current?.focus()} />
+        </>
       )}
       <div className="grid gap-8 md:grid-cols-2">
         <PlayerResult name="Toi" result={ending.result} score={ending.score} />

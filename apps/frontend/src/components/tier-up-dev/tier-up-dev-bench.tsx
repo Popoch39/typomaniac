@@ -3,23 +3,23 @@ import { useState } from "react";
 import { useFaceOffSounds } from "@/components/face-off/face-off-sounds-context";
 import { ForcedReducedMotionContext } from "@/components/motion/reduced-motion-context";
 import { TierUp } from "@/components/tier-up/tier-up";
+import type { DevTierUp } from "@/components/tier-up-dev/dev-tier-ups";
 import { TierUpDevControls } from "@/components/tier-up-dev/tier-up-dev-controls";
-import { TierUpDevRises } from "@/components/tier-up-dev/tier-up-dev-rises";
-import type { TierUpRise } from "@/components/tier-up-dev/tier-up-rises";
+import { TierUpDevList } from "@/components/tier-up-dev/tier-up-dev-list";
 
 // The last Tier-up played, and how many times: each play mounts it anew, from its start.
-type Played = { rise: TierUpRise; run: number; open: boolean };
+type Played = { tierUp: DevTierUp; run: number; open: boolean };
 
-// Plays the real Tier-up of any of the six moves up, on made-up ranks, as often as asked: the
-// click that plays it unlocks its sounds, as the one leading to a Duel does.
+// Plays the real Tier-up of any of the six, on made-up ranks, as often as asked: the click that
+// plays it unlocks its sounds, as the one leading to a Duel does.
 export const TierUpDevBench = () => {
   const sounds = useFaceOffSounds();
   const [played, setPlayed] = useState<Played | null>(null);
   const [forced, setForced] = useState(false);
 
-  const play = (rise: TierUpRise) => {
+  const play = (tierUp: DevTierUp) => {
     sounds.unlock();
-    setPlayed((last) => ({ rise, run: (last?.run ?? 0) + 1, open: true }));
+    setPlayed((last) => ({ tierUp, run: (last?.run ?? 0) + 1, open: true }));
   };
 
   const close = () => setPlayed((last) => (last === null ? null : { ...last, open: false }));
@@ -27,14 +27,19 @@ export const TierUpDevBench = () => {
   return (
     <>
       <TierUpDevControls
-        onReplay={played === null ? null : () => play(played.rise)}
+        onReplay={played === null ? null : () => play(played.tierUp)}
         forcedReducedMotion={forced}
         onForcedReducedMotion={setForced}
       />
-      <TierUpDevRises onPlay={play} />
+      <TierUpDevList onPlay={play} />
       {played?.open === true ? (
         <ForcedReducedMotionContext value={forced}>
-          <TierUp key={played.run} from={played.rise.from} to={played.rise.to} onClose={close} />
+          <TierUp
+            key={played.run}
+            from={played.tierUp.from}
+            to={played.tierUp.to}
+            onClose={close}
+          />
         </ForcedReducedMotionContext>
       ) : null}
     </>

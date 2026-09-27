@@ -8,7 +8,7 @@ export const FpsCounter = () => {
   return (
     <output
       aria-label="Images par seconde"
-      className="fixed top-4 right-4 z-[70]rounded-full bg-ink/90 px-4 py-2 font-mono text-sm font-bold tabular-nums ring-1 ring-border"
+      className="fixed top-4 right-4 z-[70] rounded-full bg-ink/90 px-4 py-2 font-mono text-sm font-bold tabular-nums ring-1 ring-border"
     >
       {fps ?? "–"} fps
     </output>

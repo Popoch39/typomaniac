@@ -35,7 +35,7 @@ export const TierUpBlason = ({ tier }: { tier: Tier }) => {
         <TierBlason tier={tier} aura="full" />
       </div>
       <svg viewBox="0 0 120 120" className="absolute inset-0 size-full overflow-visible">
-        <path data-tier-up="flash" d={d} transform={transform} fill="#fff" opacity={0} />
+        <path data-tier-up="flash" d={d} transform={transform} fill={paint.flash} opacity={0} />
       </svg>
     </div>
   );
