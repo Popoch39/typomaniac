@@ -3,12 +3,21 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/onest";
 @import "@fontsource-variable/martian-mono";
+@import "@fontsource-variable/unbounded";
+@import "@fontsource-variable/jetbrains-mono";
+
+/* Inside the Duel's scene (AppFrame), from the Countdown to the end of the Duel. */
+@custom-variant duel-scene (&:where([data-duel-scene] *));
 
 @theme inline {
   --font-sans: "Onest Variable", ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-sans);
   --font-mono: "Martian Mono Variable", ui-monospace, monospace;
+  /* The Duel's HUD only (B2 · Affiche): its titles and figures, and the Text typed in it. */
+  --font-display: "Unbounded Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-text: "JetBrains Mono Variable", ui-monospace, monospace;
   --color-brand: var(--brand);
+  --color-pending: var(--pending);
   --color-opponent: var(--opponent);
   --color-faint: var(--faint);
   --color-caret: var(--caret);
@@ -121,6 +130,8 @@
   --text: #ecebf3;
   --text-secondary: #a09eb3;
   --faint: #55536a;
+  /* The letters of the Duel's Text still to type. */
+  --pending: #75738c;
   /* The one accent: buttons, focus, the caret, the curves. */
   --brand: #ff8a65;
   --opponent: #7fc8f8;

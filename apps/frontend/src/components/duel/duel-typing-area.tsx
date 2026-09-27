@@ -43,8 +43,10 @@ export const DuelTypingArea = ({
   // keeps its place, so nothing moves as the panels split away on GO.
   const beforeStart = elapsed < 0;
 
+  // Laid out on the Duel's scene as its board is: room above the HUD, a little more below it, then
+  // Quitter le Duel.
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-1 flex-col">
       {beforeCountdown(elapsed) ? <MatchProposalGo opponent={opponent} pairing={pairing} /> : null}
       <FaceOff
         key={id}
@@ -53,22 +55,26 @@ export const DuelTypingArea = ({
         startsAt={startsAt}
         elapsed={elapsed}
       />
-      <DuelConnection opponent={opponentLabel} />
       <KeystrokeInput ref={inputRef} onFocusChange={setFocused} onPress={press} />
-      <div className="flex items-baseline justify-between">
-        <DuelClock elapsed={elapsed} seconds={seconds} />
-        <OpponentWpm name={opponentLabel} elapsed={elapsed} />
-      </div>
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <DuelLiveScore name="Toi" />
-        <DuelLiveScore name={opponentLabel} opponent />
-      </div>
-      <div className="relative rounded-card bg-card px-8 py-6">
-        <div className={cn(beforeStart && "invisible")}>
-          <DuelText />
+      <div className="grow" />
+      <div className="flex flex-col gap-4">
+        <DuelConnection opponent={opponentLabel} />
+        <div className="flex items-baseline justify-between">
+          <DuelClock elapsed={elapsed} seconds={seconds} />
+          <OpponentWpm name={opponentLabel} elapsed={elapsed} />
         </div>
-        {focused ? null : <FocusOverlay onResume={focus} />}
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <DuelLiveScore name="Toi" />
+          <DuelLiveScore name={opponentLabel} opponent />
+        </div>
+        <div className="relative rounded-card bg-card px-8 py-6">
+          <div className={cn(beforeStart && "invisible")}>
+            <DuelText />
+          </div>
+          {focused ? null : <FocusOverlay onResume={focus} />}
+        </div>
       </div>
+      <div className="grow-[1.3]" />
       <div className="flex justify-center">
         <LeaveDuel />
       </div>
