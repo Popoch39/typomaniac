@@ -38,6 +38,16 @@ export const sparkBurst = ({ count, seed, distance, size, delay, duration }: Bur
     };
   });
 
+// The sparks of the Bronze → Argent artboard: twenty-six, flying further, 170 to 360 px out.
+export const ARGENT_SPARKS = sparkBurst({
+  count: 26,
+  seed: 2,
+  distance: [170, 360],
+  size: [3, 7],
+  delay: [0, 0.15],
+  duration: [0.8, 1.4],
+});
+
 // The sparks of the Fer → Bronze artboard: sixteen, flying 150 to 280 px out in about a second.
 export const TIER_UP_SPARKS = sparkBurst({
   count: 16,

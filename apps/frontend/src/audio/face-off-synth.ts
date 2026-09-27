@@ -235,6 +235,95 @@ const bronzeName = (voice: Voice) => {
   noiseBurst(end, filterOf(end, "highpass", 5000), { peak: 0.1, attack: 0.03, release: 0.45 });
 };
 
+// A snap of bright noise, a few milliseconds long: metal cracking.
+const snap = (voice: Voice, frequency: number, peak: number) =>
+  noiseBurst(voice, filterOf(voice, "highpass", frequency), { peak, attack: 0.001, release: 0.07 });
+
+// The bronze shield cracking, then splitting in two a tenth of a second later: two snaps, then
+// the halves grinding apart, the noise falling as they part, over a low groan.
+const argentCrack = (voice: Voice) => {
+  snap(voice, 3200, 0.8);
+  snap(later(voice, 0.04), 5200, 0.4);
+
+  const split = later(voice, 0.1);
+  const grind = filterOf(split, "bandpass", 2800);
+
+  grind.Q.value = 2.2;
+  grind.frequency.exponentialRampToValueAtTime(500, split.at + 0.7);
+  noiseBurst(split, grind, { peak: 0.5, attack: 0.02, release: 0.68 });
+  tone(
+    split,
+    { type: "sawtooth", from: 180, to: 70, glide: 0.6 },
+    { peak: 0.08, attack: 0.02, release: 0.6 },
+  );
+};
+
+// The partials of the silver ringing as it is struck, in Hz, with their envelopes: a bright C,
+// its octave, then inharmonic overtones dying away sooner, clearer and longer than the bronze.
+const SILVER_RING: readonly [OscillatorType, number, Envelope][] = [
+  ["triangle", 523.25, { peak: 0.26, attack: 0.003, release: 1.8 }],
+  ["sine", 1046.5, { peak: 0.12, attack: 0.003, release: 1.4 }],
+  ["sine", 1413, { peak: 0.08, attack: 0.002, release: 0.9 }],
+  ["sine", 2637, { peak: 0.05, attack: 0.002, release: 0.6 }],
+];
+
+// A chevron stamped in the metal: a short knock with a high clink.
+const stampKnock = (voice: Voice) => {
+  tone(
+    voice,
+    { type: "sine", from: 260, to: 120, glide: 0.08 },
+    { peak: 0.35, attack: 0.002, release: 0.12 },
+  );
+  tone(voice, { type: "triangle", from: 2093 }, { peak: 0.08, attack: 0.002, release: 0.25 });
+};
+
+// The Argent striking like a stamp: a deep thump under a crack of noise, the silver ringing,
+// the two chevrons knocked in after it, then the light sweeping over the metal.
+const argentImpact = (voice: Voice) => {
+  tone(
+    voice,
+    { type: "sine", from: 120, to: 36, glide: 0.4 },
+    { peak: 1, attack: 0.004, release: 0.7 },
+  );
+  noiseBurst(voice, filterOf(voice, "lowpass", 3200), { peak: 0.7, attack: 0.001, release: 0.22 });
+
+  for (const [type, from, envelope] of SILVER_RING) {
+    tone(voice, { type, from }, envelope);
+  }
+
+  stampKnock(later(voice, 0.35));
+  stampKnock(later(voice, 0.6));
+
+  const sweep = later(voice, 1);
+  const shine = filterOf(sweep, "bandpass", 3000);
+
+  shine.Q.value = 1.2;
+  shine.frequency.exponentialRampToValueAtTime(9000, sweep.at + 0.8);
+  noiseBurst(sweep, shine, { peak: 0.12, attack: 0.4, release: 0.45 });
+};
+
+// The notes under the name of Argent, in Hz: an A major arpeggio over two octaves, one note a
+// letter, each doubled an octave up, softer.
+const ARGENT_NOTES = [440, 554.37, 659.25, 880, 1108.73, 1318.51];
+
+// The name of Argent, letter by letter: brighter plucks than Bronze's, each with its octave, the
+// last held with its fifth, then a long shimmer.
+const argentName = (voice: Voice) => {
+  for (const [step, note] of ARGENT_NOTES.entries()) {
+    const last = step === ARGENT_NOTES.length - 1;
+    const release = last ? 1.2 : 0.3;
+    const pluck = later(voice, step * LETTER_STEP_S);
+
+    tone(pluck, { type: "triangle", from: note }, { peak: 0.15, attack: 0.004, release });
+    tone(pluck, { type: "sine", from: note * 2 }, { peak: 0.05, attack: 0.004, release });
+  }
+
+  const end = later(voice, (ARGENT_NOTES.length - 1) * LETTER_STEP_S);
+
+  tone(end, { type: "sine", from: 1975.53 }, { peak: 0.06, attack: 0.01, release: 1.1 });
+  noiseBurst(end, filterOf(end, "highpass", 6000), { peak: 0.12, attack: 0.05, release: 0.8 });
+};
+
 const SYNTHS: Record<FaceOffSound, (voice: Voice) => void> = {
   whoosh,
   impact,
@@ -244,6 +333,9 @@ const SYNTHS: Record<FaceOffSound, (voice: Voice) => void> = {
   "tier-up-bronze-dissolve": bronzeDissolve,
   "tier-up-bronze-impact": bronzeImpact,
   "tier-up-bronze-name": bronzeName,
+  "tier-up-argent-crack": argentCrack,
+  "tier-up-argent-impact": argentImpact,
+  "tier-up-argent-name": argentName,
 };
 
 // Plays `sound` into `destination` now, built from oscillators and noise: each node is dropped once

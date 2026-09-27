@@ -158,6 +158,12 @@ const intoBronze = {
   rank: standing({ tier: "bronze", division: 4, tp: 13, shielded: true }),
 };
 
+const intoArgent = {
+  tp: 26,
+  previousRank: standing({ tier: "bronze", division: 1, tp: 88, shielded: false }),
+  rank: standing({ tier: "argent", division: 4, tp: 14, shielded: true }),
+};
+
 const intoManiac = {
   tp: 30,
   previousRank: standing({ tier: "diamant", division: 1, tp: 80, shielded: false }),
@@ -400,6 +406,56 @@ describe("the Tier-up", () => {
 
     await clock.advance(5);
     expect(played).toHaveLength(3);
+  });
+
+  test("a Duel into Argent opens it, the bronze Emblem there to split", async () => {
+    await renderEnded({ ranked: intoArgent });
+
+    const tierUp = screen.getByRole("dialog", { name: "Argent" });
+
+    expect(tierUp).toHaveTextContent("Nouveau palier");
+    expect(tierUp).toHaveTextContent("Bronze I → Argent IV");
+    expect(emblemOf(tierUp)).toBe("#tier-emblem-bronze");
+    expect(emblemReached(tierUp)).toBe("argent");
+  });
+
+  test("Bronze → Argent sounds as the bronze cracks, as the Argent strikes, then with the name", async () => {
+    await renderEnded({ ranked: intoArgent });
+
+    await clock.advance(0.8);
+    expect(played).toEqual([]);
+
+    await clock.advance(0.2);
+    expect(played).toEqual(["tier-up-argent-crack"]);
+
+    await clock.advance(1);
+    expect(played).toEqual(["tier-up-argent-crack", "tier-up-argent-impact"]);
+
+    await clock.advance(0.7);
+    expect(played).toEqual([
+      "tier-up-argent-crack",
+      "tier-up-argent-impact",
+      "tier-up-argent-name",
+    ]);
+
+    await clock.advance(1.2);
+    expect(continueButton()).not.toHaveFocus();
+
+    await clock.advance(0.1);
+    expect(continueButton()).toHaveFocus();
+    expect(played).toHaveLength(3);
+  });
+
+  test("Bronze → Argent skips to its end without the sounds left", async () => {
+    await renderEnded({ ranked: intoArgent });
+    await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
+    await clock.advance(1.2);
+
+    await userEvent.keyboard("{Enter}");
+
+    expect(continueButton()).toHaveFocus();
+    await clock.advance(5);
+    expect(played).toEqual(["tier-up-argent-crack"]);
   });
 
   test("gives the focus to « Continuer » once its intro is over", async () => {

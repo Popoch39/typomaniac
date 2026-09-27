@@ -1,15 +1,21 @@
 import { TIER_UP_SPARKS } from "@/components/tier-up/spark-burst";
 import type { Choreography } from "@/components/tier-up/tier-up-choreography";
+import { DISSOLVE, DRAW, EASE_OUT, POP, RING } from "@/components/tier-up/tier-up-eases";
+import { TierUpEmblem } from "@/components/tier-up/tier-up-emblem";
+import { TierUpGround } from "@/components/tier-up/tier-up-ground";
+import { TierUpHalo } from "@/components/tier-up/tier-up-halo";
 import {
-  DISSOLVE,
-  DRAW,
-  EASE_IN_OUT,
-  EASE_OUT,
-  POP,
-  RING,
-  SPARK,
-} from "@/components/tier-up/tier-up-eases";
+  breathe,
+  captionIn,
+  flash,
+  RISE,
+  RISEN,
+  ringOut,
+  sparksOut,
+} from "@/components/tier-up/tier-up-moves";
+import { TierUpOldEmblem } from "@/components/tier-up/tier-up-old-emblem";
 import { part } from "@/components/tier-up/tier-up-part";
+import { TierUpSparks } from "@/components/tier-up/tier-up-sparks";
 
 // A line traced from nothing to whole: its length set to 1, one dash as long, pushed off it,
 // then back. As SVG attributes, plain numbers: as CSS, GSAP would round the `px` of the offset
@@ -17,11 +23,6 @@ import { part } from "@/components/tier-up/tier-up-part";
 const UNDRAWN = { pathLength: 1, "stroke-dasharray": 1, "stroke-dashoffset": 1 };
 
 const DRAWN = { pathLength: 1, "stroke-dasharray": 1, "stroke-dashoffset": 0 };
-
-// A caption line rising into place, in half a second.
-const RISE = { opacity: 0, y: 28 };
-
-const RISEN = { opacity: 1, y: 0, duration: 0.5, ease: EASE_OUT };
 
 // Fer → Bronze, as its artboard « 1 · Fer → Bronze » plays it, keyframe for keyframe, with its
 // timings and its curves: the iron shield rises in, then dissolves into light; the bronze
@@ -35,6 +36,15 @@ export const bronzeChoreography: Choreography = {
     impact: "tier-up-bronze-impact",
     name: "tier-up-bronze-name",
   },
+  scene: ({ from, to }) => (
+    <>
+      <TierUpGround tier={to} bloom={{ reach: "38% 42%", percent: 32 }} />
+      <TierUpHalo tier={to} />
+      <TierUpSparks tier={to} sparks={TIER_UP_SPARKS} glow={10} />
+      <TierUpOldEmblem tier={from} />
+      <TierUpEmblem tier={to} />
+    </>
+  ),
   intro: (timeline) => {
     timeline
       .fromTo(part("ground"), { opacity: 0 }, { opacity: 1, duration: 1.2, ease: EASE_OUT }, 0)
@@ -65,17 +75,9 @@ export const bronzeChoreography: Choreography = {
         { attr: UNDRAWN },
         { attr: DRAWN, duration: 0.3, ease: EASE_OUT },
         2.15,
-      )
-      .to(
-        part("flash"),
-        {
-          keyframes: [
-            { opacity: 1, duration: 0.084, ease: EASE_OUT },
-            { opacity: 0, duration: 0.616, ease: EASE_OUT },
-          ],
-        },
-        2.25,
-      )
+      );
+
+    flash(timeline, part("flash"), 0.7, 2.25)
       .to(
         part("emblem"),
         {
@@ -97,54 +99,13 @@ export const bronzeChoreography: Choreography = {
         { opacity: 0, scale: 0.3 },
         { opacity: 1, scale: 1, duration: 0.8, ease: EASE_OUT },
         "impact",
-      )
-      .fromTo(
-        part("ring"),
-        { opacity: 1, scale: 0.15 },
-        { opacity: 0, scale: 1, duration: 1.1, ease: RING },
-        "impact",
       );
 
-    // Each spark on its own flight, all from the Emblem's centre, unseen until it leaves.
-    for (const [index, { x, y, delay, duration }] of TIER_UP_SPARKS.entries()) {
-      timeline.fromTo(
-        `${part("spark")}:nth-child(${index + 1})`,
-        { x: 0, y: 0, scale: 1, opacity: 1 },
-        { x, y, scale: 0, opacity: 0, duration, ease: SPARK, immediateRender: false },
-        `impact+=${delay}`,
-      );
-    }
-
-    timeline
-      .fromTo(part("kicker"), RISE, RISEN, 2.6)
-      .fromTo(
-        part("letter"),
-        { opacity: 0, y: 46, scale: 1.25, filter: "blur(10px)" },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          filter: "blur(0px)",
-          duration: 0.5,
-          ease: POP,
-          stagger: 0.05,
-        },
-        "name",
-      )
-      .fromTo(part("route"), RISE, RISEN, 3.2)
-      .fromTo(part("continue"), RISE, RISEN, 3.5);
+    ringOut(timeline, "ring", { at: "impact", duration: 1.1, ease: RING });
+    sparksOut(timeline, TIER_UP_SPARKS);
+    captionIn(timeline, { kicker: 2.6, route: 3.2, proceed: 3.5 });
   },
   idle: (timeline) => {
-    timeline.to(
-      part("breath"),
-      {
-        keyframes: [
-          { scale: 1.08, opacity: 0.75, duration: 1.5, ease: EASE_IN_OUT },
-          { scale: 1, opacity: 1, duration: 1.5, ease: EASE_IN_OUT },
-        ],
-        repeat: -1,
-      },
-      3.1,
-    );
+    breathe(timeline, 3.1);
   },
 };

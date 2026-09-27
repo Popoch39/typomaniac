@@ -6,6 +6,9 @@ export const TIER_UP_SOUNDS = [
   "tier-up-bronze-dissolve",
   "tier-up-bronze-impact",
   "tier-up-bronze-name",
+  "tier-up-argent-crack",
+  "tier-up-argent-impact",
+  "tier-up-argent-name",
 ] as const;
 
 export type TierUpSound = (typeof TIER_UP_SOUNDS)[number];

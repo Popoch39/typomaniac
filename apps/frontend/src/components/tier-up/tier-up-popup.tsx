@@ -3,12 +3,8 @@ import type { Standing } from "ranked";
 import { type KeyboardEvent, type MouseEvent, useRef, useState } from "react";
 
 import { reducedMotion, useForcedReducedMotion } from "@/components/motion/reduced-motion-context";
-import { TierUpEmblem } from "@/components/tier-up/tier-up-emblem";
 import { TierUpCaption } from "@/components/tier-up/tier-up-caption";
-import { TierUpGround } from "@/components/tier-up/tier-up-ground";
-import { TierUpHalo } from "@/components/tier-up/tier-up-halo";
-import { TierUpOldEmblem } from "@/components/tier-up/tier-up-old-emblem";
-import { TierUpSparks } from "@/components/tier-up/tier-up-sparks";
+import { choreographyOf } from "@/components/tier-up/tier-up-choreography";
 import { TierUpStage } from "@/components/tier-up/tier-up-stage";
 import { useTierUpTimeline } from "@/components/tier-up/use-tier-up-timeline";
 
@@ -58,11 +54,7 @@ export const TierUpPopup = ({ from, to, onClose }: TierUpPopupProps) => {
       onKeyDown={pressed}
     >
       <TierUpStage ref={stage}>
-        <TierUpGround tier={to.tier} />
-        <TierUpHalo tier={to.tier} />
-        <TierUpSparks tier={to.tier} />
-        <TierUpOldEmblem tier={from.tier} />
-        <TierUpEmblem tier={to.tier} />
+        {choreographyOf(to.tier).scene({ from: from.tier, to: to.tier })}
         <TierUpCaption from={from} to={to} proceed={proceed} onProceed={proceeded} />
       </TierUpStage>
     </Dialog.Popup>

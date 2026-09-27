@@ -23,3 +23,15 @@ export const POP = CustomEase.create("tier-up-pop", "0.2,0.8,0.2,1");
 export const RING = CustomEase.create("tier-up-ring", "0.1,0.7,0.3,1");
 
 export const SPARK = CustomEase.create("tier-up-spark", "0.12,0.7,0.3,1");
+
+// The old Emblem's halves falling apart.
+export const SPLIT = CustomEase.create("tier-up-split", "0.3,0,0.7,1");
+
+// The shards of the new Emblem flying in, faster and faster, until they meet.
+export const SHARD = CustomEase.create("tier-up-shard", "0.5,0,0.75,0");
+
+// A chevron stamped in the metal, overshooting before it settles.
+export const STAMP = CustomEase.create("tier-up-stamp", "0.5,0,0.6,1.4");
+
+// The light sweeping over the metal.
+export const SWEEP = CustomEase.create("tier-up-sweep", "0.4,0,0.2,1");

@@ -55,12 +55,13 @@ const shield = (tier: Tier, engraving: ReactNode): EmblemLayers => ({
   engraving,
 });
 
-// Chevrons cut in the metal, the light on their lower lip.
-const chevrons = (d: string) => (
-  <>
+// A chevron cut in the metal, the light on its lower lip: a group of its own, that the Tier-up
+// can stamp on its own.
+const chevron = (d: string) => (
+  <g>
     <path d={d} {...ENGRAVED_LINE_LIGHT} transform="translate(0 0.7)" />
     <path d={d} {...ENGRAVED_LINE} />
-  </>
+  </g>
 );
 
 // A star cut in the metal, the light on its lower lip.
@@ -90,8 +91,14 @@ export const EMBLEM_LAYERS: Record<Tier, EmblemLayers> = {
       <circle cx={15.3} cy={14.7} r={0.8} {...BRIGHT} />
     </>,
   ),
-  bronze: shield("bronze", chevrons("M10.5 13 L16 18 L21.5 13")),
-  argent: shield("argent", chevrons("M10.5 10 L16 15 L21.5 10 M10.5 16 L16 21 L21.5 16")),
+  bronze: shield("bronze", chevron("M10.5 13 L16 18 L21.5 13")),
+  argent: shield(
+    "argent",
+    <>
+      {chevron("M10.5 10 L16 15 L21.5 10")}
+      {chevron("M10.5 16 L16 21 L21.5 16")}
+    </>,
+  ),
   or: shield(
     "or",
     <>

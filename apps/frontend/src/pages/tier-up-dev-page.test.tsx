@@ -86,6 +86,7 @@ describe("TierUpDevPage", () => {
 
   test.each([
     ["Fer I → Bronze IV", "Bronze"],
+    ["Bronze I → Argent IV", "Argent"],
     ["Argent I → Or IV", "Or"],
     ["Diamant I → Maniac", "Maniac"],
   ])("choosing %s opens the Tier-up of %s, its sound unlocked", async (name, tier) => {
