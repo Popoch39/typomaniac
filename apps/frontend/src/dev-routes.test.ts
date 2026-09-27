@@ -6,7 +6,7 @@ import { withDevRoutes } from "@/dev-routes";
 import { routeTree } from "@/routeTree.gen";
 
 describe("withDevRoutes", () => {
-  test("adds the Aura gallery beside the file routes, keeping them", () => {
+  test("adds the dev pages beside the file routes, keeping them", () => {
     const router = createRouter({
       routeTree: withDevRoutes(routeTree),
       history: createMemoryHistory(),
@@ -20,6 +20,8 @@ describe("withDevRoutes", () => {
     };
 
     expect(found("/dev/aura")).toBe("/dev/aura");
+    expect(found("/dev/rankup")).toBe("/dev/rankup");
+    expect(found("/dev/duel-hud")).toBe("/dev/duel-hud");
     expect(found("/leaderboard")).toBe("/leaderboard");
   });
 });

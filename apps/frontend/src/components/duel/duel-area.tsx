@@ -39,15 +39,7 @@ export const DuelArea = () => {
     case "countdown":
     case "running":
     case "finishing":
-      return (
-        <DuelTypingArea
-          id={state.duel.id}
-          opponent={state.duel.opponent}
-          pairing={state.duel}
-          startsAt={state.duel.startsAt}
-          seconds={state.duel.config.seconds}
-        />
-      );
+      return <DuelTypingArea duel={state.duel} />;
     case "ended":
       return <DuelEnded ending={state.ending} />;
     case "elsewhere":

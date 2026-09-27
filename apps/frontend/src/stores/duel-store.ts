@@ -157,6 +157,9 @@ export const duelOf = (state: DuelState) =>
     ? state.duel
     : null;
 
+// A Duel without ranks is a Challenge, never ranked, as the Face-off says.
+export const isChallenge = (duel: Pick<DuelPlay, "selfRank">) => duel.selfRank === null;
+
 // The Keystrokes are sent in small batches, at most this often.
 const BATCH_MS = 50;
 

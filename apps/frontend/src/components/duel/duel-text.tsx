@@ -1,36 +1,27 @@
+import type { RunState } from "typing-engine";
+
 import { RunText } from "@/components/run/run-text";
 import { initials } from "@/lib/initials";
-import { duelOf, useDuelStore } from "@/stores/duel-store";
+
+type DuelTextProps = {
+  run: RunState;
+  lastBurst: number | null;
+  opponentRun: RunState;
+  opponentHandle: string;
+};
 
 // The Duel's Text: this User's Run, the word of their last Burst highlighted, and the opponent's
 // caret where their Run stands.
-export const DuelText = () => {
-  const run = useDuelStore((store) => duelOf(store.state)?.run ?? null);
-  const lastBurst = useDuelStore((store) => duelOf(store.state)?.score.lastBurst ?? null);
-  const opponentWordIndex = useDuelStore((store) => duelOf(store.state)?.opponentRun.wordIndex);
-  const opponentLetterIndex = useDuelStore((store) => duelOf(store.state)?.opponentRun.letterIndex);
-  const opponentHandle = useDuelStore((store) => duelOf(store.state)?.opponent.handle);
-
-  if (
-    run === null ||
-    typeof opponentWordIndex === "undefined" ||
-    typeof opponentLetterIndex === "undefined" ||
-    typeof opponentHandle === "undefined"
-  ) {
-    return null;
-  }
-
-  return (
-    <RunText
-      run={run}
-      tone="own"
-      other={{
-        wordIndex: opponentWordIndex,
-        letterIndex: opponentLetterIndex,
-        tone: "opponent",
-        label: initials(opponentHandle),
-      }}
-      lastBurst={lastBurst}
-    />
-  );
-};
+export const DuelText = ({ run, lastBurst, opponentRun, opponentHandle }: DuelTextProps) => (
+  <RunText
+    run={run}
+    tone="own"
+    other={{
+      wordIndex: opponentRun.wordIndex,
+      letterIndex: opponentRun.letterIndex,
+      tone: "opponent",
+      label: initials(opponentHandle),
+    }}
+    lastBurst={lastBurst}
+  />
+);

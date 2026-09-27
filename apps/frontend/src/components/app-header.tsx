@@ -9,13 +9,17 @@ import { NavPills } from "@/components/ui/nav-pills";
 
 const homeActiveOptions = { exact: true };
 
-type AppHeaderProps = { inDuelScene: boolean };
+// The Duel whose scene the header tops: whether it is a Challenge.
+export type DuelFormat = { challenge: boolean };
+
+// `duelFormat` is null outside the Duel's scene.
+type AppHeaderProps = { duelFormat: DuelFormat | null };
 
 // The app's header. In the Duel's scene it fades and goes inert, so a stray click never leaves the
 // Duel: without Thèmes nor the User's menu, the Duel's format in its place.
-export const AppHeader = ({ inDuelScene }: AppHeaderProps) => (
+export const AppHeader = ({ duelFormat }: AppHeaderProps) => (
   <header
-    inert={inDuelScene}
+    inert={duelFormat !== null}
     className="flex items-center gap-6 duel-scene:h-11 duel-scene:gap-5 duel-scene:opacity-38"
   >
     <BrandMark />
@@ -28,10 +32,10 @@ export const AppHeader = ({ inDuelScene }: AppHeaderProps) => (
       <DuelsNavLink />
       <FriendsNavLink />
       <ProfileNavLink />
-      {inDuelScene ? null : <NavPill to="/themes">Thèmes</NavPill>}
+      {duelFormat === null ? <NavPill to="/themes">Thèmes</NavPill> : null}
     </NavPills>
     <div className="ml-auto flex items-center gap-2">
-      {inDuelScene ? <DuelFormatChip /> : <AuthControl />}
+      {duelFormat === null ? <AuthControl /> : <DuelFormatChip challenge={duelFormat.challenge} />}
     </div>
   </header>
 );

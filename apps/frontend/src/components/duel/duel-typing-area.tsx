@@ -1,83 +1,50 @@
-import { cn } from "cn";
+import { useQuery } from "@tanstack/react-query";
 
-import { DuelClock } from "@/components/duel/duel-clock";
-import { DuelConnection } from "@/components/duel/duel-connection";
-import { DuelLiveScore } from "@/components/duel/duel-live-score";
-import { DuelText } from "@/components/duel/duel-text";
-import { OpponentWpm } from "@/components/duel/opponent-wpm";
-import { LeaveDuel } from "@/components/duel/leave-duel";
+import { meQueryOptions } from "@/api/me";
 import { useDuelElapsed } from "@/components/duel/use-duel-elapsed";
+import { DuelHud } from "@/components/duel-hud/duel-hud";
+import { duelHudModel } from "@/components/duel-hud/duel-hud-model";
 import { FaceOff } from "@/components/face-off/face-off";
-import type { FaceOffPairing } from "@/components/face-off/face-off-pairing";
 import { beforeCountdown } from "@/components/face-off/face-off-timeline";
 import { MatchProposalGo } from "@/components/match-proposal/match-proposal-go";
 import { FocusOverlay } from "@/components/run/focus-overlay";
 import { KeystrokeInput } from "@/components/run/keystroke-input";
 import { useTypingFocus } from "@/components/run/use-typing-focus";
-import { atHandle } from "@/lib/at-handle";
 import type { DuelPlay } from "@/stores/duel-store";
 import { useDuelStore } from "@/stores/duel-store";
-
-type DuelTypingAreaProps = Pick<DuelPlay, "id" | "opponent" | "startsAt"> & {
-  pairing: FaceOffPairing;
-  seconds: number;
-};
 
 // The Duel from the Countdown to the end: the same Text for both, typing blocked until the start.
 // It stays mounted from the Countdown on, so the typing input keeps the focus at the start. The
 // Face-off covers it during the Countdown, a new one for each Duel. A Duel of the Queue starts with
-// « C'est parti ! » the second before.
-export const DuelTypingArea = ({
-  id,
-  opponent,
-  pairing,
-  startsAt,
-  seconds,
-}: DuelTypingAreaProps) => {
+// « C'est parti ! » the second before. The HUD is drawn from the Duel as the store holds it, and
+// this User's Handle read without ever holding it up.
+export const DuelTypingArea = ({ duel }: { duel: DuelPlay }) => {
   const { inputRef, focused, setFocused, focus } = useTypingFocus();
+  const { data: me } = useQuery(meQueryOptions);
   const press = useDuelStore((store) => store.press);
-  const elapsed = useDuelElapsed(startsAt);
-  const opponentLabel = atHandle(opponent.handle);
-  // Neither the non-modal « C'est parti ! » nor the Face-off (its panels slide in, then shake)
-  // covers the whole page: the Text stays unpainted until the start, so no one reads it ahead. It
-  // keeps its place, so nothing moves as the panels split away on GO.
-  const beforeStart = elapsed < 0;
+  const leave = useDuelStore((store) => store.leave);
+  const elapsed = useDuelElapsed(duel.startsAt);
 
-  // Laid out on the Duel's scene as its board is: room above the HUD, a little more below it, then
-  // Quitter le Duel.
+  // Neither the non-modal « C'est parti ! » nor the Face-off (its panels slide in, then shake)
+  // covers the whole page: the HUD keeps the Text unpainted until the start.
   return (
     <div className="flex flex-1 flex-col">
-      {beforeCountdown(elapsed) ? <MatchProposalGo opponent={opponent} pairing={pairing} /> : null}
+      {beforeCountdown(elapsed) ? (
+        <MatchProposalGo opponent={duel.opponent} pairing={duel} />
+      ) : null}
       <FaceOff
-        key={id}
-        opponent={opponent}
-        pairing={pairing}
-        startsAt={startsAt}
+        key={duel.id}
+        opponent={duel.opponent}
+        pairing={duel}
+        startsAt={duel.startsAt}
         elapsed={elapsed}
       />
       <KeystrokeInput ref={inputRef} onFocusChange={setFocused} onPress={press} />
-      <div className="grow" />
-      <div className="flex flex-col gap-4">
-        <DuelConnection opponent={opponentLabel} />
-        <div className="flex items-baseline justify-between">
-          <DuelClock elapsed={elapsed} seconds={seconds} />
-          <OpponentWpm name={opponentLabel} elapsed={elapsed} />
-        </div>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <DuelLiveScore name="Toi" />
-          <DuelLiveScore name={opponentLabel} opponent />
-        </div>
-        <div className="relative rounded-card bg-card px-8 py-6">
-          <div className={cn(beforeStart && "invisible")}>
-            <DuelText />
-          </div>
-          {focused ? null : <FocusOverlay onResume={focus} />}
-        </div>
-      </div>
-      <div className="grow-[1.3]" />
-      <div className="flex justify-center">
-        <LeaveDuel />
-      </div>
+      <DuelHud
+        model={duelHudModel(duel, me?.handle ?? null, elapsed)}
+        veil={focused ? null : <FocusOverlay onResume={focus} />}
+        onLeave={leave}
+      />
     </div>
   );
 };
