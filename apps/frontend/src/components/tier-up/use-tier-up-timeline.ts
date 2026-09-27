@@ -68,6 +68,10 @@ export const useTierUpTimeline = (
         built.call(play, [choreography.sounds[beat]], beat);
       }
 
+      for (const { sound, at } of choreography.cues) {
+        built.call(play, [sound], at);
+      }
+
       built.call(settle, [], "wait");
       timeline.current = built;
 

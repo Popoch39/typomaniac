@@ -28,6 +28,9 @@ export type SceneTiers = { from: Tier; to: Tier };
 export type Choreography = {
   beats: Record<TierUpBeat, number>;
   sounds: Record<SoundBeat, TierUpSound>;
+  // The sounds it cues between its highlights, each at its time (s): placed in the timeline too,
+  // so that they are skipped with it, and never heard under reduced motion.
+  cues: readonly { sound: TierUpSound; at: number }[];
   scene: (tiers: SceneTiers) => ReactNode;
   intro: (timeline: gsap.core.Timeline) => void;
   idle: (timeline: gsap.core.Timeline) => void;

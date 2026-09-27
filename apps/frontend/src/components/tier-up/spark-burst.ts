@@ -49,7 +49,7 @@ export const ARGENT_SPARKS = sparkBurst({
 });
 
 // The sparks of the Fer → Bronze artboard: sixteen, flying 150 to 280 px out in about a second.
-export const TIER_UP_SPARKS = sparkBurst({
+export const BRONZE_SPARKS = sparkBurst({
   count: 16,
   seed: 1,
   distance: [150, 280],

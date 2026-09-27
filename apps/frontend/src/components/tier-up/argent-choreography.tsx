@@ -22,7 +22,8 @@ import {
 } from "@/components/tier-up/tier-up-moves";
 import { part } from "@/components/tier-up/tier-up-part";
 import { TIER_UP_SHARDS } from "@/components/tier-up/tier-up-shards";
-import { SHEEN_X } from "@/components/tier-up/tier-up-sheen";
+import { TIER_UP_HALVES } from "@/components/tier-up/tier-up-halves";
+import { SHEEN } from "@/components/tier-up/tier-up-sheen";
 import { TierUpSparks } from "@/components/tier-up/tier-up-sparks";
 import { TierUpSplitEmblem } from "@/components/tier-up/tier-up-split-emblem";
 import { TierUpStruckEmblem } from "@/components/tier-up/tier-up-struck-emblem";
@@ -41,28 +42,27 @@ const SHAKE = [
 
 const SHAKE_S = 0.4;
 
-// Each half of the old Emblem falling away, turned outwards.
-const HALVES = [
-  { name: "half-left", x: -130, rotation: -16 },
-  { name: "half-right", x: 130, rotation: 16 },
-] as const;
-
 // A chevron stamped in, as its artboard times it: from twice its size to a little under at 70 %
 // of 0.3 s, then to its size.
 const STAMP_S = 0.3;
 
 const STAMP_SETTLES_S = STAMP_S * 0.7;
 
-// Seconds between the two chevrons.
+// When the first chevron is stamped in, then seconds between the two.
+const STAMP_AT = 2.3;
+
 const STAMP_STEP_S = 0.25;
+
+// When the light sweeps over the metal.
+const SWEEP_AT = 2.95;
 
 // Bronze → Argent, as its artboard « 2 · Bronze → Argent » plays it, keyframe for keyframe, with
 // its timings and its curves: the bronze shield rises in, cracks down its middle and splits in
 // two halves falling apart; the silver Emblem's quarters fly in and meet, it strikes like a stamp
 // with the screen shaking, a flash along the seams and of its shape, the halo opening, two rings
 // and sparks; each chevron is stamped in with a small ring, a light sweeps over the metal; then
-// the caption. The halo breathes from 2.8 s, the dashed rings turn from when they come in, as in
-// the artboard.
+// the caption. As in the artboard, the dashed rings turn from the start, unseen until they fade
+// in, and the halo breathes from 2.8 s.
 export const argentChoreography: Choreography = {
   beats: { dissolve: 0.9, impact: 1.95, name: 2.6, wait: 3.95 },
   sounds: {
@@ -70,6 +70,11 @@ export const argentChoreography: Choreography = {
     impact: "tier-up-argent-impact",
     name: "tier-up-argent-name",
   },
+  cues: [
+    { sound: "tier-up-argent-stamp", at: STAMP_AT },
+    { sound: "tier-up-argent-stamp", at: STAMP_AT + STAMP_STEP_S },
+    { sound: "tier-up-argent-sweep", at: SWEEP_AT },
+  ],
   scene: ({ from, to }) => (
     <>
       <TierUpGround tier={to} bloom={{ reach: "40% 44%", percent: 28 }} />
@@ -92,14 +97,18 @@ export const argentChoreography: Choreography = {
         { scaleY: 1, opacity: 1, duration: 0.135, ease: EASE_OUT },
         "dissolve",
       )
-      .to(part("crack"), { scaleY: 1.1, opacity: 0, duration: 0.315, ease: EASE_OUT }, 1.035);
+      .to(
+        part("crack"),
+        { scaleY: 1.1, opacity: 0, duration: 0.315, ease: EASE_OUT },
+        "dissolve+=0.135",
+      );
 
-    for (const { name, x, rotation } of HALVES) {
+    for (const { part: half, x, rotation } of TIER_UP_HALVES) {
       timeline.fromTo(
-        part(name),
+        part(half),
         { x: 0, y: 0, rotation: 0, opacity: 1, filter: "blur(0px)" },
         { x, y: 40, rotation, opacity: 0, filter: "blur(3px)", duration: 0.75, ease: SPLIT },
-        1,
+        "dissolve+=0.1",
       );
     }
 
@@ -182,7 +191,7 @@ export const argentChoreography: Choreography = {
           ease: STAMP,
           stagger: STAMP_STEP_S,
         },
-        2.3,
+        STAMP_AT,
       )
       .to(
         chevrons,
@@ -192,14 +201,14 @@ export const argentChoreography: Choreography = {
           ease: STAMP,
           stagger: STAMP_STEP_S,
         },
-        2.3 + STAMP_SETTLES_S,
+        STAMP_AT + STAMP_SETTLES_S,
       )
       // As an attribute, in the grid's units: GSAP never parses an SVG transform.
       .fromTo(
         part("sheen"),
-        { attr: { x: SHEEN_X } },
-        { attr: { x: SHEEN_X + 52 }, duration: 0.9, ease: SWEEP },
-        2.95,
+        { attr: { x: SHEEN.x } },
+        { attr: { x: SHEEN.x + SHEEN.sweep }, duration: 0.9, ease: SWEEP },
+        SWEEP_AT,
       );
 
     captionIn(timeline, { kicker: 2.5, route: 3.15, proceed: 3.45 });
@@ -211,13 +220,13 @@ export const argentChoreography: Choreography = {
         `${part("orbit")} > div`,
         { rotation: 0 },
         { rotation: 360, duration: 22, ease: "none", repeat: -1 },
-        2,
+        0,
       )
       .fromTo(
         `${part("orbit-back")} > div`,
         { rotation: 0 },
         { rotation: -360, duration: 30, ease: "none", repeat: -1 },
-        2.2,
+        0,
       );
   },
 };

@@ -431,31 +431,38 @@ describe("the Tier-up", () => {
     await clock.advance(1);
     expect(played).toEqual(["tier-up-argent-crack", "tier-up-argent-impact"]);
 
+    // Each chevron stamped in, then the name.
     await clock.advance(0.7);
     expect(played).toEqual([
       "tier-up-argent-crack",
       "tier-up-argent-impact",
+      "tier-up-argent-stamp",
+      "tier-up-argent-stamp",
       "tier-up-argent-name",
     ]);
 
-    await clock.advance(1.2);
+    // The light sweeping over the metal.
+    await clock.advance(0.3);
+    expect(played.at(-1)).toBe("tier-up-argent-sweep");
+
+    await clock.advance(0.9);
     expect(continueButton()).not.toHaveFocus();
 
     await clock.advance(0.1);
     expect(continueButton()).toHaveFocus();
-    expect(played).toHaveLength(3);
+    expect(played).toHaveLength(6);
   });
 
-  test("Bronze → Argent skips to its end without the sounds left", async () => {
+  test("Bronze → Argent skipped as it strikes: no chevron, sweep nor name heard after", async () => {
     await renderEnded({ ranked: intoArgent });
     await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
-    await clock.advance(1.2);
+    await clock.advance(2.1);
 
     await userEvent.keyboard("{Enter}");
 
     expect(continueButton()).toHaveFocus();
     await clock.advance(5);
-    expect(played).toEqual(["tier-up-argent-crack"]);
+    expect(played).toEqual(["tier-up-argent-crack", "tier-up-argent-impact"]);
   });
 
   test("gives the focus to « Continuer » once its intro is over", async () => {

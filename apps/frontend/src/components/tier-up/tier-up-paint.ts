@@ -27,8 +27,10 @@ export const tierUpPaint = (tier: Tier) => {
     // The flash of the Emblem's shape as the Blason lands: its light metal, nearly white.
     flash: mix(metal.light, 25, "white"),
     nameShadow: `drop-shadow(0 6px 24px ${mix(metal.sheen, 45)})`,
-    // The glow of a spark or a crack, `blur` px wide.
+    // The glow of a spark, `blur` px wide.
     glow: (blur: number) => `0 0 ${blur}px ${metal.mid}`,
+    // The glow of a crack of light, as bright as its light.
+    crackGlow: `0 0 16px ${metal.light}`,
     // A dashed ring turning around the Blason, at `percent` of its metal.
     orbit: (percent: number) => mix(metal.mid, percent),
   };

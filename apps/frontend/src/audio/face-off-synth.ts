@@ -268,7 +268,7 @@ const SILVER_RING: readonly [OscillatorType, number, Envelope][] = [
 ];
 
 // A chevron stamped in the metal: a short knock with a high clink.
-const stampKnock = (voice: Voice) => {
+const argentStamp = (voice: Voice) => {
   tone(
     voice,
     { type: "sine", from: 260, to: 120, glide: 0.08 },
@@ -277,8 +277,7 @@ const stampKnock = (voice: Voice) => {
   tone(voice, { type: "triangle", from: 2093 }, { peak: 0.08, attack: 0.002, release: 0.25 });
 };
 
-// The Argent striking like a stamp: a deep thump under a crack of noise, the silver ringing,
-// the two chevrons knocked in after it, then the light sweeping over the metal.
+// The Argent striking like a stamp: a deep thump under a crack of noise, the silver ringing.
 const argentImpact = (voice: Voice) => {
   tone(
     voice,
@@ -290,16 +289,15 @@ const argentImpact = (voice: Voice) => {
   for (const [type, from, envelope] of SILVER_RING) {
     tone(voice, { type, from }, envelope);
   }
+};
 
-  stampKnock(later(voice, 0.35));
-  stampKnock(later(voice, 0.6));
-
-  const sweep = later(voice, 1);
-  const shine = filterOf(sweep, "bandpass", 3000);
+// The light sweeping over the silver: airy noise brightening as it crosses the metal.
+const argentSweep = (voice: Voice) => {
+  const shine = filterOf(voice, "bandpass", 3000);
 
   shine.Q.value = 1.2;
-  shine.frequency.exponentialRampToValueAtTime(9000, sweep.at + 0.8);
-  noiseBurst(sweep, shine, { peak: 0.12, attack: 0.4, release: 0.45 });
+  shine.frequency.exponentialRampToValueAtTime(9000, voice.at + 0.8);
+  noiseBurst(voice, shine, { peak: 0.12, attack: 0.4, release: 0.45 });
 };
 
 // The notes under the name of Argent, in Hz: an A major arpeggio over two octaves, one note a
@@ -335,6 +333,8 @@ const SYNTHS: Record<FaceOffSound, (voice: Voice) => void> = {
   "tier-up-bronze-name": bronzeName,
   "tier-up-argent-crack": argentCrack,
   "tier-up-argent-impact": argentImpact,
+  "tier-up-argent-stamp": argentStamp,
+  "tier-up-argent-sweep": argentSweep,
   "tier-up-argent-name": argentName,
 };
 

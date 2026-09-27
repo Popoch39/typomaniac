@@ -5,7 +5,7 @@ import { AuraFrame } from "@/components/aura/aura-frame";
 import { EMBLEM_LAYERS } from "@/components/tier/tier-emblem-layers";
 import { EMBLEM_OUTLINES } from "@/components/tier/tier-emblem-outline";
 import { TIER_UP_SHARDS } from "@/components/tier-up/tier-up-shards";
-import { SHEEN_X } from "@/components/tier-up/tier-up-sheen";
+import { SHEEN } from "@/components/tier-up/tier-up-sheen";
 import { TierUpEmblemBody } from "@/components/tier-up/tier-up-emblem-body";
 import { tierUpPaint } from "@/components/tier-up/tier-up-paint";
 
@@ -82,7 +82,7 @@ export const TierUpStruckEmblem = ({ tier }: { tier: Tier }) => {
           <g transform="rotate(20 16 16)">
             <rect
               data-tier-up="sheen"
-              x={SHEEN_X}
+              x={SHEEN.x}
               y={-6}
               width={8}
               height={44}

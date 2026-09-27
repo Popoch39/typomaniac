@@ -1,13 +1,16 @@
 import { type FaceOffAudioContext, type SynthNode, synthesize } from "@/audio/face-off-synth";
 
 // The sounds of a Tier-up, on the highlights of its timeline: the old Emblem coming apart, the
-// new Blason's impact, then the Tier's name. Each Tier's own, as its Tier-up gets it.
+// new Blason's impact, then the Tier's name; and those some Tiers cue in between (the chevrons
+// stamped into the Argent, the light sweeping it). Each Tier's own, as its Tier-up gets it.
 export const TIER_UP_SOUNDS = [
   "tier-up-bronze-dissolve",
   "tier-up-bronze-impact",
   "tier-up-bronze-name",
   "tier-up-argent-crack",
   "tier-up-argent-impact",
+  "tier-up-argent-stamp",
+  "tier-up-argent-sweep",
   "tier-up-argent-name",
 ] as const;
 

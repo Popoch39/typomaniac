@@ -1,4 +1,4 @@
-import { TIER_UP_SPARKS } from "@/components/tier-up/spark-burst";
+import { BRONZE_SPARKS } from "@/components/tier-up/spark-burst";
 import type { Choreography } from "@/components/tier-up/tier-up-choreography";
 import { DISSOLVE, DRAW, EASE_OUT, POP, RING } from "@/components/tier-up/tier-up-eases";
 import { TierUpEmblem } from "@/components/tier-up/tier-up-emblem";
@@ -36,11 +36,12 @@ export const bronzeChoreography: Choreography = {
     impact: "tier-up-bronze-impact",
     name: "tier-up-bronze-name",
   },
+  cues: [],
   scene: ({ from, to }) => (
     <>
       <TierUpGround tier={to} bloom={{ reach: "38% 42%", percent: 32 }} />
       <TierUpHalo tier={to} />
-      <TierUpSparks tier={to} sparks={TIER_UP_SPARKS} glow={10} />
+      <TierUpSparks tier={to} sparks={BRONZE_SPARKS} glow={10} />
       <TierUpOldEmblem tier={from} />
       <TierUpEmblem tier={to} />
     </>
@@ -102,7 +103,7 @@ export const bronzeChoreography: Choreography = {
       );
 
     ringOut(timeline, "ring", { at: "impact", duration: 1.1, ease: RING });
-    sparksOut(timeline, TIER_UP_SPARKS);
+    sparksOut(timeline, BRONZE_SPARKS);
     captionIn(timeline, { kicker: 2.6, route: 3.2, proceed: 3.5 });
   },
   idle: (timeline) => {
