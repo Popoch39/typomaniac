@@ -128,9 +128,13 @@ describe("the User's place, from the server's messages", () => {
     expect(placeAfter(queue, { type: "opponent-accepted" })).toEqual(queue);
     expect(placeAfter(queue, { type: "proposal-ended", reason: "accepted" })).toEqual(queue);
     expect(placeAfter(queue, duelFound)).toEqual({ at: "duel", here: true });
-    expect(placeAfter(queue, { type: "proposal-ended", reason: "missed" })).toEqual({
-      at: "idle",
-    });
+    expect(
+      placeAfter(queue, { type: "proposal-ended", reason: "missed", queueLockedUntil: null }),
+    ).toEqual({ at: "idle" });
+    // Refused the Queue during a Queue lock: still idle.
+    expect(
+      placeAfter({ at: "idle" }, { type: "queue-locked", until: 50_000, serverTime: 20_000 }),
+    ).toEqual({ at: "idle" });
   });
 
   test("idle again once the Duel is over", () => {

@@ -84,7 +84,7 @@ Deux Users, appariés par la Queue ou par un Challenge, qui tapent le même Text
 _Avoid_ : match, versus, 1v1, partie, race
 
 **Queue** :
-L'attente des Users qui veulent un Duel Ranked. Deux Users distincts y sont appariés quand leurs MMR sont assez proches : l'écart accepté part de ±100 et s'élargit avec l'attente, jusqu'à n'importe quel adversaire au bout de 30 secondes. Un appariement ouvre une Match proposal, il ne lance pas le Duel. Un User peut quitter la Queue à tout moment ; pendant une Match proposal, la quitter revient à la refuser. Il peut y attendre tout en lançant un Challenge : le premier qui aboutit l'emporte. Un Challenge accepté le sort de la Queue ; une Match proposal annule ses Challenges en attente, envoyés comme reçus. Pendant l'attente, il voit depuis quand il attend, combien de Users sont dans la Queue, lui compris, et l'Estimated wait.
+L'attente des Users qui veulent un Duel Ranked. Deux Users distincts y sont appariés quand leurs MMR sont assez proches : l'écart accepté part de ±100 et s'élargit avec l'attente, jusqu'à n'importe quel adversaire au bout de 30 secondes. Un appariement ouvre une Match proposal, il ne lance pas le Duel. Un User peut la rejoindre à tout moment, sauf pendant un Queue lock, et la quitter à tout moment ; pendant une Match proposal, la quitter revient à la refuser. Il peut y attendre tout en lançant un Challenge : le premier qui aboutit l'emporte. Un Challenge accepté le sort de la Queue ; une Match proposal annule ses Challenges en attente, envoyés comme reçus. Pendant l'attente, il voit depuis quand il attend, combien de Users sont dans la Queue, lui compris, et l'Estimated wait.
 _Avoid_ : lobby, file, matchmaking, salle d'attente
 
 **Estimated wait** :
@@ -92,8 +92,16 @@ L'attente probable dans la Queue : la médiane des attentes des 20 derniers appa
 _Avoid_ : ETA, temps estimé
 
 **Match proposal** :
-Les 10 secondes après un appariement de la Queue, pendant lesquelles chacun des deux Users accepte ou refuse le Duel, en voyant son adversaire et son rang. Si les deux acceptent, le Countdown part 1 seconde plus tard. Celui qui refuse ou laisse passer le temps quitte la Queue sans rien perdre ; l'autre y revient avec son attente d'origine. Pendant ce temps, les deux Users restent en ligne. Un Challenge n'en a pas : il est déjà accepté.
+Les 10 secondes après un appariement de la Queue, pendant lesquelles chacun des deux Users accepte ou refuse le Duel, en voyant son adversaire et son rang. Si les deux acceptent, le Countdown part 1 seconde plus tard. Celui qui refuse ou laisse passer le temps quitte la Queue, et c'est un Dodge ; l'autre y revient avec son attente d'origine. Pendant ce temps, les deux Users restent en ligne. Un Challenge n'en a pas : il est déjà accepté.
 _Avoid_ : ready check, match trouvé, confirmation, adversaire trouvé
+
+**Dodge** :
+Une Match proposal que le User refuse ou laisse passer, même déconnecté. Les deux premiers d'affilée sont gratuits ; dès le troisième, chacun impose un Queue lock, plus long à chaque fois. Le compte repart de zéro dès qu'un Duel de la Queue commence, ou après une heure sans Dodge ; un Challenge ne l'efface pas.
+_Avoid_ : esquive, refus, decline
+
+**Queue lock** :
+Le temps pendant lequel un User qui a trop Dodgé ne peut pas rejoindre la Queue (1 minute, puis 5, puis 15). Il peut toujours lancer ou accepter un Challenge, et ni son MMR ni ses TP ne bougent.
+_Avoid_ : cooldown, ban, pénalité, blocage
 
 **Countdown** :
 Les 4,5 secondes avant le départ d'un Duel, identiques pour les deux Users : le Face-off, puis le 3-2-1. La frappe y est bloquée tout du long. Il part 1 seconde après la double acceptation d'une Match proposal, ou dès l'acceptation d'un Challenge.

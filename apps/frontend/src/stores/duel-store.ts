@@ -91,9 +91,13 @@ export type ProposalStage =
   | "ready"
   | Exclude<ProposalEnded["reason"], "accepted">;
 
+// The Queue lock a Dodge imposed: until when, on this tab's clock, and how long it was when told.
+export type QueueLock = { until: number; duration: number };
+
 // A Match proposal as this tab shows it: until when to answer, on this tab's clock, the opponent,
-// this User's Ornament (the opponent's in `opponent`), both ranks (never the MMR) and whether each
-// accepted (kept once the time ran out).
+// this User's Ornament (the opponent's in `opponent`), both ranks (never the MMR), whether each
+// accepted (kept once the time ran out), and the Queue lock the User's Dodge imposed (null
+// without one).
 export type ProposalView = {
   stage: ProposalStage;
   expiresAt: number;
@@ -103,6 +107,7 @@ export type ProposalView = {
   opponentRank: MatchProposed["opponentRank"];
   selfAccepted: boolean;
   opponentAccepted: boolean;
+  queueLock: QueueLock | null;
 };
 
 export type DuelState =
@@ -113,6 +118,9 @@ export type DuelState =
   | { phase: "proposed"; proposal: ProposalView }
   // Refused the Queue: the User has no Handle yet.
   | { phase: "handle-required" }
+  // Refused the Queue: the User dodged too often, it is closed to them until `until`, on this
+  // tab's clock. They may search again once it is over.
+  | { phase: "locked"; until: number }
   // Paired, typing blocked until the start.
   | { phase: "countdown"; duel: DuelPlay }
   | { phase: "running"; duel: DuelPlay }
@@ -167,6 +175,10 @@ const BATCH_MS = 50;
 
 // Outside the store's state: nothing renders from them.
 let clock: Clock = () => performance.now();
+
+// How far the server's clock runs ahead of this tab's, as the last Match proposal told it: the
+// end of the Queue lock its Dodge imposes is shifted by that much.
+let proposalOffset = 0;
 
 // Duel is shown in this tab: only then does it take the User's place.
 let entered = false;
@@ -256,19 +268,37 @@ const withQueueStatus = (state: DuelState, status: QueueStatus): DuelState =>
     : state;
 
 // The Match proposal, its end shifted onto this tab's clock as the Duel's start is.
-const proposedState = (message: MatchProposed): DuelState => ({
-  phase: "proposed",
-  proposal: {
-    stage: message.selfAccepted ? "accepted" : "pending",
-    expiresAt: message.expiresAt - message.serverTime + clock(),
-    opponent: message.opponent,
-    selfOrnament: message.selfOrnament,
-    selfRank: message.selfRank,
-    opponentRank: message.opponentRank,
-    selfAccepted: message.selfAccepted,
-    opponentAccepted: message.opponentAccepted,
-  },
-});
+const proposedState = (message: MatchProposed): DuelState => {
+  proposalOffset = message.serverTime - clock();
+
+  return {
+    phase: "proposed",
+    proposal: {
+      stage: message.selfAccepted ? "accepted" : "pending",
+      expiresAt: message.expiresAt - proposalOffset,
+      opponent: message.opponent,
+      selfOrnament: message.selfOrnament,
+      selfRank: message.selfRank,
+      opponentRank: message.opponentRank,
+      selfAccepted: message.selfAccepted,
+      opponentAccepted: message.opponentAccepted,
+      queueLock: null,
+    },
+  };
+};
+
+// The Queue lock the User's Dodge imposed, its end shifted onto this tab's clock. Told once over
+// (a Match proposal missed while away, told long after), it is no lock anymore.
+const queueLockOnTabClock = (queueLockedUntil: number | null): QueueLock | null => {
+  if (queueLockedUntil === null) {
+    return null;
+  }
+
+  const until = queueLockedUntil - proposalOffset;
+  const duration = until - clock();
+
+  return duration > 0 ? { until, duration } : null;
+};
 
 // Applies a change to the Match proposal, while it is shown.
 const updateProposal = (
@@ -277,13 +307,25 @@ const updateProposal = (
 ): DuelState =>
   state.phase === "proposed" ? { phase: "proposed", proposal: update(state.proposal) } : state;
 
-// Each User's acceptance is kept as it was: the dialog still shows who was ready.
-const proposalEnded = (state: DuelState, { reason }: ProposalEnded) =>
-  updateProposal(state, (proposal) =>
-    reason === "accepted"
-      ? { ...proposal, stage: "ready", selfAccepted: true, opponentAccepted: true }
-      : { ...proposal, stage: reason },
-  );
+// Each User's acceptance is kept as it was: the dialog still shows who was ready. The User's
+// Dodge says the Queue lock it imposed.
+const proposalEnded = (state: DuelState, message: ProposalEnded) =>
+  updateProposal(state, (proposal) => {
+    switch (message.reason) {
+      case "accepted":
+        return { ...proposal, stage: "ready", selfAccepted: true, opponentAccepted: true };
+      case "declined":
+      case "missed":
+        return {
+          ...proposal,
+          stage: message.reason,
+          queueLock: queueLockOnTabClock(message.queueLockedUntil),
+        };
+      case "opponent-declined":
+      case "opponent-missed":
+        return { ...proposal, stage: message.reason };
+    }
+  });
 
 // The User's answer, while the Match proposal waits for it: told to the server, shown at once.
 const answered = (state: DuelState, stage: "accepted" | "declined") =>
@@ -534,6 +576,8 @@ const stateAfter = (
       return withQueueStatus(state, message);
     case "handle-required":
       return { phase: "handle-required" };
+    case "queue-locked":
+      return { phase: "locked", until: message.until - message.serverTime + clock() };
     case "match-proposed":
       return proposedState(message);
     case "opponent-accepted":

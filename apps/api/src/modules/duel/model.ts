@@ -37,7 +37,7 @@ const ClientMessage = t.Union([
   t.Object({ type: t.Literal("resume-duel") }),
   // Accepts the User's Match proposal: they have one at a time.
   t.Object({ type: t.Literal("accept-proposal") }),
-  // Declines it: out of the Queue, without losing anything. `leave-queue` during one does the same.
+  // Declines it: a Dodge, out of the Queue. `leave-queue` during one does the same.
   t.Object({ type: t.Literal("decline-proposal") }),
   // The same socket carries the User's Challenges.
   ChallengeModel.challengeClientMessage,
@@ -173,6 +173,8 @@ const ServerMessage = t.Union([
   QueueStatus,
   // Refused the Queue: a Duel shows each player's Handle, and the User has none yet.
   t.Object({ type: t.Literal("handle-required") }),
+  // Refused the Queue: the User dodged too often, it is closed to them until `until` (server time).
+  t.Object({ type: t.Literal("queue-locked"), until: t.Number(), serverTime: t.Number() }),
   // Paired by the Queue: the User has until `expiresAt` (server time) to accept the Duel. Sent
   // again when they come back to it (`join-queue`, `resume-duel`), with who accepted so far. Each
   // player's rank, never their MMR.
@@ -188,18 +190,23 @@ const ServerMessage = t.Union([
     opponentAccepted: t.Boolean(),
   }),
   t.Object({ type: t.Literal("opponent-accepted") }),
-  // The Match proposal is over: both accepted, `duel-found` follows. Or the User declined it or
-  // let its time run out: out of the Queue. Or their opponent did: back in the Queue a few seconds
-  // later (`queued`), as when they joined, or at once on `join-queue`.
+  // The Match proposal is over: both accepted, `duel-found` follows. Or their opponent declined it
+  // or let its time run out: back in the Queue a few seconds later (`queued`), as when they
+  // joined, or at once on `join-queue`.
   t.Object({
     type: t.Literal("proposal-ended"),
     reason: t.Union([
       t.Literal("accepted"),
-      t.Literal("declined"),
-      t.Literal("missed"),
       t.Literal("opponent-declined"),
       t.Literal("opponent-missed"),
     ]),
+  }),
+  // Or the User declined it or let its time run out: a Dodge, out of the Queue. The end of the
+  // Queue lock it imposed (server time), null for a free Dodge.
+  t.Object({
+    type: t.Literal("proposal-ended"),
+    reason: t.Union([t.Literal("declined"), t.Literal("missed")]),
+    queueLockedUntil: t.Nullable(t.Number()),
   }),
   t.Object({
     type: t.Literal("duel-found"),

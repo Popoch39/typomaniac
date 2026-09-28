@@ -21,6 +21,7 @@ export const MatchProposalGo = ({ opponent, pairing }: MatchProposalGoProps) => 
       opponentRank: pairing.opponentRank,
       selfAccepted: true,
       opponentAccepted: true,
+      queueLock: null,
     }}
     onAccept={noop}
     onDecline={noop}

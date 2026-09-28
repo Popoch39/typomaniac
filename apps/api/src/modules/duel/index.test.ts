@@ -137,6 +137,50 @@ const dropped = async (ada: TestClient, alan: TestClient) => {
   expect(await alan.next()).toEqual({ type: "opponent-disconnected" });
 };
 
+// Both just paired: each reads their Match proposal.
+const proposedTo = async (ada: TestClient, alan: TestClient) => {
+  expect(await Promise.all([ada.next(), alan.next()])).toMatchObject([
+    { type: "match-proposed" },
+    { type: "match-proposed" },
+  ]);
+};
+
+// Ada declines (or leaves the Queue, which is the same) and is told the end of the Queue lock it
+// imposes; Alan gives up the way back to the Queue.
+const adaDeclines = async (
+  ada: TestClient,
+  alan: TestClient,
+  queueLockedUntil: number | null,
+  how: "decline-proposal" | "leave-queue" = "decline-proposal",
+) => {
+  ada.send({ type: how });
+  expect(await ada.next()).toEqual({
+    type: "proposal-ended",
+    reason: "declined",
+    queueLockedUntil,
+  });
+  expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "opponent-declined" });
+  alan.send({ type: "leave-queue" });
+  // Given up before the clock moves on: the way back never runs out.
+  await alan.settle();
+};
+
+// Both join the Queue again: paired again.
+const pairedAgain = async (ada: TestClient, alan: TestClient) => {
+  ada.send({ type: "join-queue" });
+  expect(await ada.next()).toEqual({ type: "queued" });
+  alan.send({ type: "join-queue" });
+  expect(await alan.next()).toEqual({ type: "queued" });
+  await proposedTo(ada, alan);
+};
+
+// A Match proposal the User let run out, as they are told its end.
+const missed = (queueLockedUntil: number | null): ServerMessage => ({
+  type: "proposal-ended",
+  reason: "missed",
+  queueLockedUntil,
+});
+
 describe("duel socket", () => {
   let auth: TestAuth;
   let app: ReturnType<typeof createApp>;
@@ -1719,8 +1763,16 @@ describe("duel socket", () => {
       await ada.settle();
 
       setNow(NOW + 10_000);
-      expect(await ada.next()).toEqual({ type: "proposal-ended", reason: "missed" });
-      expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "missed" });
+      expect(await ada.next()).toEqual({
+        type: "proposal-ended",
+        reason: "missed",
+        queueLockedUntil: null,
+      });
+      expect(await alan.next()).toEqual({
+        type: "proposal-ended",
+        reason: "missed",
+        queueLockedUntil: null,
+      });
       expect(await watching.next()).toEqual({ type: "idle" });
 
       // Accepting now changes nothing, and neither is paired with the next User, even later.
@@ -1742,7 +1794,11 @@ describe("duel socket", () => {
 
       setNow(NOW + 10_000);
       expect(await ada.next()).toEqual({ type: "proposal-ended", reason: "opponent-missed" });
-      expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "missed" });
+      expect(await alan.next()).toEqual({
+        type: "proposal-ended",
+        reason: "missed",
+        queueLockedUntil: null,
+      });
 
       // Back in the Queue 3 s later, as when they joined; Alan is not.
       setNow(NOW + 12_999);
@@ -1766,7 +1822,11 @@ describe("duel socket", () => {
 
       setNow(NOW + 2000);
       ada.send({ type: "decline-proposal" });
-      expect(await ada.next()).toEqual({ type: "proposal-ended", reason: "declined" });
+      expect(await ada.next()).toEqual({
+        type: "proposal-ended",
+        reason: "declined",
+        queueLockedUntil: null,
+      });
       expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "opponent-declined" });
       expect(await watching.next()).toEqual({ type: "idle" });
 
@@ -1782,7 +1842,11 @@ describe("duel socket", () => {
 
       await Promise.all([ada.next(), alan.next()]);
       ada.send({ type: "leave-queue" });
-      expect(await ada.next()).toEqual({ type: "proposal-ended", reason: "declined" });
+      expect(await ada.next()).toEqual({
+        type: "proposal-ended",
+        reason: "declined",
+        queueLockedUntil: null,
+      });
       expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "opponent-declined" });
     });
 
@@ -2029,7 +2093,11 @@ describe("duel socket", () => {
         selfAccepted: false,
         opponentAccepted: true,
       });
-      expect(await back.next()).toEqual({ type: "proposal-ended", reason: "missed" });
+      expect(await back.next()).toEqual({
+        type: "proposal-ended",
+        reason: "missed",
+        queueLockedUntil: null,
+      });
 
       // Out of the Queue: Alan, back in it, is not paired with them. Joining again is a new join.
       setNow(NOW + 13_000);
@@ -2055,7 +2123,11 @@ describe("duel socket", () => {
       await Promise.all([alan.next(), back.next()]);
       back.send({ type: "resume-duel" });
       expect(await back.next()).toMatchObject({ type: "match-proposed", selfAccepted: false });
-      expect(await back.next()).toEqual({ type: "proposal-ended", reason: "missed" });
+      expect(await back.next()).toEqual({
+        type: "proposal-ended",
+        reason: "missed",
+        queueLockedUntil: null,
+      });
       back.send({ type: "resume-duel" });
       await back.settle();
     });
@@ -2098,6 +2170,198 @@ describe("duel socket", () => {
 
       expect(await opened.next()).toEqual({ type: "elsewhere", place: "queue" });
       await opened.settle();
+    });
+  });
+
+  // Ada and Alan, paired at NOW.
+  const proposedPair = async () => {
+    const adaUser = await signedInUser("Ada");
+    const ada = await queued(adaUser.cookie);
+    const alan = await queued(await signedIn("Alan"));
+
+    await proposedTo(ada, alan);
+
+    return { ada, alan, cookie: adaUser.cookie };
+  };
+
+  describe("Dodge", () => {
+    test("the first two Dodges in a row are free, the third locks the Queue for 1 minute", async () => {
+      const { ada, alan } = await proposedPair();
+
+      await adaDeclines(ada, alan, null);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, null, "leave-queue");
+      await pairedAgain(ada, alan);
+      setNow(NOW + 2000);
+      await adaDeclines(ada, alan, NOW + 62_000);
+    });
+
+    test("during the Queue lock, joining is refused; once it is over, accepted", async () => {
+      const { ada, alan } = await proposedPair();
+
+      await adaDeclines(ada, alan, null);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, null);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, NOW + 60_000);
+
+      setNow(NOW + 59_999);
+      ada.send({ type: "join-queue" });
+      expect(await ada.next()).toEqual({
+        type: "queue-locked",
+        until: NOW + 60_000,
+        serverTime: NOW + 59_999,
+      });
+      await ada.settle();
+
+      // Alan, whose opponent dodged three times and who gave up coming back, is not locked.
+      alan.send({ type: "join-queue" });
+      expect(await alan.next()).toEqual({ type: "queued" });
+      await alan.settle();
+
+      setNow(NOW + 60_000);
+      ada.send({ type: "join-queue" });
+      expect(await ada.next()).toEqual({ type: "queued" });
+      await proposedTo(ada, alan);
+    });
+
+    test("the fourth Dodge in a row locks the Queue for 5 minutes, every one after for 15", async () => {
+      const { ada, alan } = await proposedPair();
+
+      await adaDeclines(ada, alan, null);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, null);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, NOW + 60_000);
+
+      setNow(NOW + 60_000);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, NOW + 360_000);
+
+      setNow(NOW + 360_000);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, NOW + 1_260_000);
+
+      setNow(NOW + 1_260_000);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, NOW + 2_160_000);
+    });
+
+    test("an hour after the last Dodge, the count starts over", async () => {
+      const { ada, alan } = await proposedPair();
+
+      await adaDeclines(ada, alan, null);
+      setNow(NOW + 1_800_000);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, null);
+
+      // 80 minutes after the first Dodge, 50 after the last: the third is not forgiven.
+      setNow(NOW + 4_800_000);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, NOW + 4_860_000);
+
+      setNow(NOW + 4_800_000 + 3_600_000);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, null);
+    });
+
+    test("a Duel of the Queue starts the count over, even left at once", async () => {
+      const { ada, alan } = await proposedPair();
+
+      await adaDeclines(ada, alan, null);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, null);
+
+      ada.send({ type: "join-queue" });
+      expect(await ada.next()).toEqual({ type: "queued" });
+      alan.send({ type: "join-queue" });
+      expect(await alan.next()).toEqual({ type: "queued" });
+      await acceptBoth(ada, alan);
+      ada.send({ type: "leave-duel" });
+      expect(await Promise.all([ada.next(), alan.next()])).toMatchObject([
+        { type: "duel-ended", forfeit: true },
+        { type: "duel-ended", forfeit: true },
+      ]);
+
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, null);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, null);
+    });
+
+    test("letting the time run out is a Dodge, for each of the two who did", async () => {
+      const { ada, alan } = await proposedPair();
+
+      setNow(NOW + 10_000);
+      expect(await Promise.all([ada.next(), alan.next()])).toEqual([missed(null), missed(null)]);
+      await pairedAgain(ada, alan);
+      setNow(NOW + 20_000);
+      expect(await Promise.all([ada.next(), alan.next()])).toEqual([missed(null), missed(null)]);
+      await pairedAgain(ada, alan);
+      setNow(NOW + 30_000);
+
+      const locked = missed(NOW + 90_000);
+
+      expect(await Promise.all([ada.next(), alan.next()])).toEqual([locked, locked]);
+    });
+
+    test("away when the time ran out, it is a Dodge all the same, and its Queue lock told on return", async () => {
+      const { ada, alan, cookie } = await proposedPair();
+
+      await adaDeclines(ada, alan, null);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, null);
+      await pairedAgain(ada, alan);
+      alan.send({ type: "accept-proposal" });
+      await ada.next();
+      ada.socket.close();
+      await ada.closed;
+
+      // Reopened, it plays nothing until it takes the place back: too late.
+      const back = await connect(cookie);
+
+      expect(await back.next()).toEqual({ type: "elsewhere", place: "queue" });
+      setNow(NOW + 10_000);
+      expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "opponent-missed" });
+      expect(await back.next()).toEqual({ type: "idle" });
+
+      setNow(NOW + 12_000);
+      back.send({ type: "join-queue" });
+      expect(await back.next()).toMatchObject({ type: "match-proposed" });
+      expect(await back.next()).toEqual({
+        type: "proposal-ended",
+        reason: "missed",
+        queueLockedUntil: NOW + 70_000,
+      });
+      back.send({ type: "join-queue" });
+      expect(await back.next()).toEqual({
+        type: "queue-locked",
+        until: NOW + 70_000,
+        serverTime: NOW + 12_000,
+      });
+    });
+
+    test("the one whose opponent dodged is never counted, even giving up coming back", async () => {
+      const { ada, alan } = await proposedPair();
+
+      // Alan gives up the way back three times: still free to join the Queue, and to dodge.
+      await adaDeclines(ada, alan, null);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, null);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, NOW + 60_000);
+
+      const grace = await queued(await signedIn("Grace"));
+
+      alan.send({ type: "join-queue" });
+      expect(await alan.next()).toEqual({ type: "queued" });
+      await proposedTo(grace, alan);
+      alan.send({ type: "decline-proposal" });
+      expect(await alan.next()).toEqual({
+        type: "proposal-ended",
+        reason: "declined",
+        queueLockedUntil: null,
+      });
     });
   });
 

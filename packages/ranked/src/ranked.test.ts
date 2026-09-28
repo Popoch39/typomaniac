@@ -5,6 +5,7 @@ import {
   byStanding,
   canWear,
   changesTier,
+  dodgesInARow,
   estimatedWait,
   expectedScore,
   matchWindow,
@@ -12,6 +13,7 @@ import {
   nextWidening,
   ornamentOf,
   PLACEMENT_DUELS,
+  queueLockOf,
   rankFromMmr,
   rateDuel,
   seedMmr,
@@ -23,6 +25,8 @@ import {
   type Rating,
   type Standing,
 } from "./index";
+
+const NOW = 1_700_000_000_000;
 
 const standing = (over: Partial<Standing> = {}): Standing => ({
   tier: "or",
@@ -277,6 +281,30 @@ describe("estimatedWait", () => {
 
   test("is null without a recent wait", () => {
     expect(estimatedWait([])).toBeNull();
+  });
+});
+
+describe("queueLockOf", () => {
+  test("the first two Dodges in a row are free", () => {
+    expect([1, 2].map(queueLockOf)).toEqual([null, null]);
+  });
+
+  test("the third locks the Queue for 1 minute, the fourth for 5, the fifth for 15", () => {
+    expect([3, 4, 5].map(queueLockOf)).toEqual([60_000, 300_000, 900_000]);
+  });
+
+  test("every Dodge past the fifth locks it for 15 minutes again", () => {
+    expect([6, 12].map(queueLockOf)).toEqual([900_000, 900_000]);
+  });
+});
+
+describe("dodgesInARow", () => {
+  test("keeps the count within the hour after the last Dodge", () => {
+    expect(dodgesInARow(4, NOW, NOW + 3_599_999)).toBe(4);
+  });
+
+  test("starts over an hour after the last Dodge", () => {
+    expect(dodgesInARow(4, NOW, NOW + 3_600_000)).toBe(0);
   });
 });
 

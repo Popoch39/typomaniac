@@ -34,6 +34,23 @@ describe("the Match proposal's words", () => {
     });
   });
 
+  test("a Dodge that locked the Queue says it, still with no TP at stake", () => {
+    const queueLock = { until: 60_000, duration: 60_000 };
+
+    expect(proposalHeadline("declined", "kaelis", queueLock).subtitle).toBe(
+      "Tu as quitté la file. Aucun TP en jeu. Queue bloquée 1 min.",
+    );
+    expect(proposalHeadline("missed", "kaelis", queueLock).subtitle).toBe(
+      "Tu n'as pas répondu à temps, tu as quitté la file. Aucun TP en jeu. Queue bloquée 1 min.",
+    );
+    expect(proposalAnnouncement("declined", "kaelis", queueLock)).toBe(
+      "Duel refusé, tu as quitté la file. Queue bloquée 1 min.",
+    );
+    expect(proposalAnnouncement("missed", "kaelis", queueLock)).toBe(
+      "Temps écoulé, tu as quitté la file. Queue bloquée 1 min.",
+    );
+  });
+
   test("each player's chip follows their answer", () => {
     expect(selfStatus("pending", false)).toBe("turn");
     expect(selfStatus("accepted", true)).toBe("ready");

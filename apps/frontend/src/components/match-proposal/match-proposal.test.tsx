@@ -33,6 +33,7 @@ const pending: ProposalView = {
   opponentRank: null,
   selfAccepted: false,
   opponentAccepted: false,
+  queueLock: null,
 };
 
 const at = (stage: ProposalStage): ProposalView => ({ ...pending, stage });

@@ -32,6 +32,7 @@ const pending: ProposalView = {
   opponentRank: { placementsLeft: 3 },
   selfAccepted: false,
   opponentAccepted: false,
+  queueLock: null,
 };
 
 const at = (stage: ProposalStage, accepted: Partial<ProposalView> = {}): ProposalView => ({
@@ -186,6 +187,8 @@ describe("MatchProposalDialog", () => {
       expect(screen.getByText("Remis en file")).toBeInTheDocument();
       expect(screen.getByText("–")).not.toHaveClass("text-destructive");
       expect(screen.getByText("annulé")).toBeInTheDocument();
+      // A free Dodge: no Queue lock.
+      expect(screen.queryByText(/Queue bloquée/)).not.toBeInTheDocument();
 
       await user.click(screen.getByRole("button", { name: "Relancer la recherche" }));
       await user.click(screen.getByRole("button", { name: "Retour au Solo" }));
@@ -193,6 +196,48 @@ describe("MatchProposalDialog", () => {
       expect(onSearchAgain).toHaveBeenCalledTimes(1);
       expect(onSolo).toHaveBeenCalledTimes(1);
       expect(onDecline).not.toHaveBeenCalled();
+    },
+  );
+
+  test.each([
+    ["declined", "Duel refusé", "Tu as quitté la file. Aucun TP en jeu. Queue bloquée 5 min."],
+    [
+      "missed",
+      "Temps écoulé",
+      "Tu n'as pas répondu à temps, tu as quitté la file. Aucun TP en jeu. Queue bloquée 5 min.",
+    ],
+  ] as const)(
+    "%s with a Queue lock: it says so, and searching again waits for its end",
+    async (stage, title, description) => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+      const { onSearchAgain, onSolo } = shown(
+        at(stage, { queueLock: { until: 300_000, duration: 300_000 } }),
+      );
+
+      expect(await screen.findByRole("dialog", { name: title })).toHaveAccessibleDescription(
+        description,
+      );
+
+      const searchAgain = screen.getByRole("button", { name: /Relancer la recherche/ });
+
+      expect(searchAgain).toBeDisabled();
+      expect(searchAgain).toHaveTextContent("5:00");
+
+      // Back to Solo meanwhile, for a Run.
+      await user.click(screen.getByRole("button", { name: "Retour au Solo" }));
+      expect(onSolo).toHaveBeenCalledTimes(1);
+
+      now = 299_001;
+      await act(async () => vi.advanceTimersByTime(250));
+      expect(searchAgain).toBeDisabled();
+      expect(searchAgain).toHaveTextContent("0:01");
+
+      now = 300_000;
+      await act(async () => vi.advanceTimersByTime(250));
+      expect(screen.getByRole("button", { name: "Relancer la recherche" })).toBeEnabled();
+      await user.click(screen.getByRole("button", { name: "Relancer la recherche" }));
+      expect(onSearchAgain).toHaveBeenCalledTimes(1);
     },
   );
 

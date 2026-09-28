@@ -234,6 +234,25 @@ export const estimatedWait = (waitsMs: readonly number[]) => {
   return Math.min(median, UNLIMITED_WINDOW_MS);
 };
 
+// How many Dodges in a row cost nothing: a real impediment, a notification missed.
+const FREE_DODGES = 2;
+
+// The Queue locks of the Dodges past the free ones, in order: the last one repeats.
+const QUEUE_LOCKS_MS = [60_000, 5 * 60_000, 15 * 60_000] as const;
+
+// How long after the last Dodge the count starts over.
+const DODGE_FORGIVEN_MS = 60 * 60_000;
+
+// The Queue lock, in ms, that the `dodges`-th Dodge in a row imposes: none for the free ones.
+export const queueLockOf = (dodges: number) =>
+  dodges <= FREE_DODGES
+    ? null
+    : (QUEUE_LOCKS_MS[Math.min(dodges - FREE_DODGES, QUEUE_LOCKS_MS.length) - 1] ?? null);
+
+// The Dodges in a row a User has at `now`, their last one at `lastDodgeAt`: none an hour later.
+export const dodgesInARow = (dodges: number, lastDodgeAt: number, now: number) =>
+  now - lastDodgeAt >= DODGE_FORGIVEN_MS ? 0 : dodges;
+
 // A User's hidden MMR and visible rank, as a ranked Duel moves them.
 export type Rating = { mmr: number; rank: Rank };
 

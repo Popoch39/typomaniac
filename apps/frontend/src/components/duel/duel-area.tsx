@@ -26,6 +26,7 @@ export const DuelArea = () => {
   switch (state.phase) {
     case "connecting":
     case "queued":
+    case "locked":
       return <DuelQueue />;
     case "proposed":
       return (

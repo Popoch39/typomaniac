@@ -1,10 +1,12 @@
 import type { Logger } from "pino";
 import {
+  dodgesInARow,
   ESTIMATED_WAIT_PAIRINGS,
   estimatedWait,
   matchWindow,
   nextWidening,
   PLACEMENT_DUELS,
+  queueLockOf,
   seedMmr,
 } from "ranked";
 import { currentWordListVersion, defaultPace, type Keystroke } from "typing-engine";
@@ -97,6 +99,13 @@ type Proposal = {
   expiresAt: number;
 };
 
+// A Match proposal the User let run out while away, and the end of the Queue lock that Dodge
+// imposed (null when free): both told on their return.
+type MissedProposal = { proposal: Proposal; queueLockedUntil: number | null };
+
+// A User's Dodges in a row, and when the last one was: its Queue lock runs from then.
+type Dodges = { count: number; lastAt: number };
+
 // Two Users can face each other once their MMR gap fits the window of whichever has waited
 // longer. Without a Rating, the Duel is not ranked: any MMR fits.
 const fits = (a: ReadyUser, b: ReadyUser, now: number) =>
@@ -143,7 +152,11 @@ export class DuelQueue implements ChallengeArena {
 
   // The Match proposal each User let run out while no connection played their place, to tell them
   // on their return: out of the Queue, they see it ran out.
-  readonly #missedProposals = new Map<string, Proposal>();
+  readonly #missedProposals = new Map<string, MissedProposal>();
+
+  // The Dodges in a row of each User who dodged, until a Duel of the Queue starts for them. Never
+  // written: lost on a redeploy, as the Queue.
+  readonly #dodges = new Map<string, Dodges>();
 
   // The write of each User's last Duel, until it is done: their Pace waits for it. It gives the id
   // the Duel was written under, null if the write failed.
@@ -650,6 +663,19 @@ export class DuelQueue implements ChallengeArena {
       return;
     }
 
+    // Refused before anything is read: the server holds the Queue lock, whatever the client shows.
+    const lockedUntil = this.#queueLockedUntil(userId);
+
+    if (lockedUntil !== null) {
+      this.#send(userId, {
+        type: "queue-locked",
+        until: lockedUntil,
+        serverTime: this.#clock.now(),
+      });
+
+      return;
+    }
+
     const entry: QueueEntry = { user: null, paced: null, joinedAt: this.#clock.now() };
 
     this.#queue.set(userId, entry);
@@ -850,8 +876,51 @@ export class DuelQueue implements ChallengeArena {
     };
   }
 
-  // The first to accept tells the other. Once both have, the Duel starts ACCEPTED_MS later, and
-  // their waits, from joining the Queue to the pairing, count for the Estimated wait.
+  // The User's Dodges in a row at this time: none an hour after the last one, forgotten then.
+  #dodgesOf(userId: string) {
+    const dodges = this.#dodges.get(userId);
+
+    if (!dodges) {
+      return null;
+    }
+
+    if (dodgesInARow(dodges.count, dodges.lastAt, this.#clock.now()) === 0) {
+      this.#dodges.delete(userId);
+
+      return null;
+    }
+
+    return dodges;
+  }
+
+  // The end of the User's Queue lock, null when the Queue is open to them.
+  #queueLockedUntil(userId: string) {
+    const dodges = this.#dodgesOf(userId);
+    const lock = dodges && queueLockOf(dodges.count);
+
+    if (!dodges || lock === null) {
+      return null;
+    }
+
+    const until = dodges.lastAt + lock;
+
+    return until > this.#clock.now() ? until : null;
+  }
+
+  // One more Dodge in a row: the end of the Queue lock it imposes, null when free.
+  #dodge(userId: string) {
+    const now = this.#clock.now();
+    const count = (this.#dodgesOf(userId)?.count ?? 0) + 1;
+    const lock = queueLockOf(count);
+
+    this.#dodges.set(userId, { count, lastAt: now });
+
+    return lock === null ? null : now + lock;
+  }
+
+  // The first to accept tells the other. Once both have, the Duel starts ACCEPTED_MS later, their
+  // waits, from joining the Queue to the pairing, count for the Estimated wait, and their Dodges
+  // start over: they accepted their opponent.
   #accept(userId: string) {
     const proposal = this.#proposals.get(userId);
 
@@ -875,6 +944,7 @@ export class DuelQueue implements ChallengeArena {
 
     for (const { user, joinedAt } of players) {
       this.#proposals.delete(user.id);
+      this.#dodges.delete(user.id);
       this.#recentWaits.push(pairedAt - joinedAt);
       this.#send(user.id, { type: "proposal-ended", reason: "accepted" });
     }
@@ -899,11 +969,11 @@ export class DuelQueue implements ChallengeArena {
     }
   }
 
-  // The Match proposal ends without a Duel: those at fault are out of the Queue, without losing
-  // anything; the other one is told, and is back in it REQUEUE_MS later, as when they joined (or at
-  // once on `join-queue`). Their acceptance is forgotten. A disconnection meanwhile changes
-  // nothing: back in time, `join-queue` brings them back at once. One at fault while no connection
-  // plays their place is told on their return.
+  // The Match proposal ends without a Duel: each one at fault dodged, and is out of the Queue,
+  // without losing any MMR or TP; the other one is told, and is back in it REQUEUE_MS later, as
+  // when they joined (or at once on `join-queue`). Their acceptance is forgotten. A disconnection
+  // meanwhile changes nothing: back in time, `join-queue` brings them back at once. One at fault
+  // while no connection plays their place dodged all the same, and is told on their return.
   #endProposal(
     proposal: Proposal,
     atFault: (userId: string) => boolean,
@@ -913,11 +983,13 @@ export class DuelQueue implements ChallengeArena {
       this.#proposals.delete(user.id);
 
       if (atFault(user.id)) {
+        const queueLockedUntil = this.#dodge(user.id);
+
         // Only its time runs out without a connection that plays: declining takes one.
         if (reason === "missed" && !this.#playing.has(user.id)) {
-          this.#keepMissedProposal(user.id, proposal);
+          this.#keepMissedProposal(user.id, { proposal, queueLockedUntil });
         } else {
-          this.#send(user.id, { type: "proposal-ended", reason });
+          this.#send(user.id, { type: "proposal-ended", reason, queueLockedUntil });
         }
 
         this.#tellOthers(user.id);
@@ -936,20 +1008,21 @@ export class DuelQueue implements ChallengeArena {
   }
 
   // Kept for the User's return, MISSED_PROPOSAL_MS at most: past that, they are simply idle.
-  #keepMissedProposal(userId: string, proposal: Proposal) {
-    this.#missedProposals.set(userId, proposal);
+  #keepMissedProposal(userId: string, missed: MissedProposal) {
+    this.#missedProposals.set(userId, missed);
     this.#clock.at(this.#clock.now() + MISSED_PROPOSAL_MS, () => {
-      if (this.#missedProposals.get(userId) === proposal) {
+      if (this.#missedProposals.get(userId) === missed) {
         this.#missedProposals.delete(userId);
       }
     });
   }
 
-  // The Match proposal that ran out while they were away, as it stood, then its end: told once.
-  #tellMissedProposal(userId: string, proposal: Proposal) {
+  // The Match proposal that ran out while they were away, as it stood, then its end and the Queue
+  // lock it imposed: told once.
+  #tellMissedProposal(userId: string, { proposal, queueLockedUntil }: MissedProposal) {
     this.#missedProposals.delete(userId);
     this.#send(userId, this.#proposalMessage(userId, proposal));
-    this.#send(userId, { type: "proposal-ended", reason: "missed" });
+    this.#send(userId, { type: "proposal-ended", reason: "missed", queueLockedUntil });
   }
 
   // Back in the Queue at their place of arrival (a Map iterates in insertion order): their window

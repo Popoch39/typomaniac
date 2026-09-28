@@ -56,6 +56,16 @@ const proposed = async (a: TestClient, b: TestClient) => {
   ]);
 };
 
+// `a` declines the Match proposal and is told the end of the Queue lock that Dodge imposes; `b`
+// gives up the way back to the Queue.
+const dodged = async (a: TestClient, b: TestClient, queueLockedUntil: number | null) => {
+  a.send({ type: "decline-proposal" });
+  expect(await a.next()).toEqual({ type: "proposal-ended", reason: "declined", queueLockedUntil });
+  expect(await b.next()).toEqual({ type: "proposal-ended", reason: "opponent-declined" });
+  b.send({ type: "leave-queue" });
+  await b.settle();
+};
+
 // Two Users paired from the Queue who both accepted: their Duel's Countdown is on.
 const paired = async (a: TestClient, b: TestClient) => {
   await queuedTogether(a, b);
@@ -680,5 +690,44 @@ describe("Challenges, on the socket", () => {
       duel: { startsAt: NOW + 4500 },
     });
     expect(await alanTab.next()).toMatchObject({ type: "duel-found" });
+  });
+
+  test("during a Queue lock, Challenges are sent, accepted and played; their Duel forgives no Dodge", async () => {
+    const ada = await newUser("Ada");
+    const alan = await newUser("Alan");
+
+    await befriend(ada, alan);
+
+    const adaTab = await tab(ada);
+    const alanTab = await tab(alan);
+
+    await proposed(adaTab, alanTab);
+    await dodged(adaTab, alanTab, null);
+    await proposed(adaTab, alanTab);
+    await dodged(adaTab, alanTab, null);
+    await proposed(adaTab, alanTab);
+    await dodged(adaTab, alanTab, NOW + 60_000);
+
+    // Received and accepted: the Duel is played.
+    const challengeId = await challenge(alan, [alanTab], ada, [adaTab]);
+
+    adaTab.send({ type: "accept-challenge", challengeId });
+    expect(await adaTab.nextChallenge()).toEqual(ended(challengeId, "accepted"));
+    expect(await alanTab.nextChallenge()).toEqual(ended(challengeId, "accepted"));
+    expect(await adaTab.next()).toMatchObject({ type: "duel-found" });
+    expect(await alanTab.next()).toMatchObject({ type: "duel-found" });
+    adaTab.send({ type: "leave-duel" });
+    expect(await adaTab.next()).toMatchObject({ type: "duel-ended", forfeit: true });
+    expect(await alanTab.next()).toMatchObject({ type: "duel-ended", forfeit: true });
+
+    // Sent, still locked out of the Queue.
+    await challenge(ada, [adaTab], alan, [alanTab]);
+    adaTab.send({ type: "join-queue" });
+    expect(await adaTab.next()).toMatchObject({ type: "queue-locked", until: NOW + 60_000 });
+
+    // Once the lock is over, the next Dodge is the fourth in a row: 5 minutes.
+    clock.set(NOW + 60_000);
+    await proposed(adaTab, alanTab);
+    await dodged(adaTab, alanTab, NOW + 360_000);
   });
 });

@@ -282,6 +282,7 @@ describe("the Duel on the app's connection", () => {
           opponentRank: { placementsLeft: 3 },
           selfAccepted: false,
           opponentAccepted: false,
+          queueLock: null,
         },
       });
     });
@@ -324,9 +325,9 @@ describe("the Duel on the app's connection", () => {
     test("out of time, it says so, and searching again joins the Queue", () => {
       inQueue();
       server().receive(matchProposed);
-      server().receive({ type: "proposal-ended", reason: "missed" });
+      server().receive({ type: "proposal-ended", reason: "missed", queueLockedUntil: null });
 
-      expect(proposal()).toMatchObject({ stage: "missed", selfAccepted: false });
+      expect(proposal()).toMatchObject({ stage: "missed", selfAccepted: false, queueLock: null });
       expect(useConnectionStore.getState().place).toEqual({ at: "idle" });
 
       useDuelStore.getState().joinQueue();
@@ -343,9 +344,46 @@ describe("the Duel on the app's connection", () => {
       expect(server().sent).toEqual([{ type: "join-queue" }, { type: "decline-proposal" }]);
       expect(proposal()?.stage).toBe("declined");
 
-      server().receive({ type: "proposal-ended", reason: "declined" });
+      server().receive({ type: "proposal-ended", reason: "declined", queueLockedUntil: null });
       expect(proposal()?.stage).toBe("declined");
       expect(useConnectionStore.getState().place).toEqual({ at: "idle" });
+    });
+
+    test("a Dodge that locks the Queue says until when, on this tab's clock, and for how long", () => {
+      inQueue();
+      // The server's clock runs 20 s ahead of this tab's.
+      server().receive(matchProposed);
+      useDuelStore.getState().declineProposal();
+      server().receive({ type: "proposal-ended", reason: "declined", queueLockedUntil: 80_000 });
+
+      expect(proposal()).toMatchObject({
+        stage: "declined",
+        queueLock: { until: 60_000, duration: 60_000 },
+      });
+    });
+
+    test("a Queue lock already over when told, back from being away, is no lock", () => {
+      inQueue();
+      server().receive(matchProposed);
+      server().receive({ type: "proposal-ended", reason: "missed", queueLockedUntil: 20_000 });
+
+      expect(proposal()).toMatchObject({ stage: "missed", queueLock: null });
+    });
+
+    test("refused the Queue during a Queue lock, says until when, on this tab's clock", () => {
+      server().receive({ type: "idle" });
+      enter();
+      server().receive({ type: "queue-locked", until: 50_000, serverTime: 20_000 });
+
+      expect(useDuelStore.getState().state).toEqual({ phase: "locked", until: 30_000 });
+
+      // Out of the Queue: leaving tells the server nothing.
+      expect(server().sent).toEqual([{ type: "join-queue" }]);
+
+      // Searching once it is over joins the Queue.
+      useDuelStore.getState().joinQueue();
+      server().receive({ type: "queued" });
+      expect(phase()).toBe("queued");
     });
 
     test("declining is only for a Match proposal still to answer", () => {
@@ -425,6 +463,7 @@ describe("the Duel on the app's connection", () => {
         opponentRank: { placementsLeft: 3 },
         selfAccepted: true,
         opponentAccepted: true,
+        queueLock: null,
       });
     });
 
@@ -438,7 +477,7 @@ describe("the Duel on the app's connection", () => {
       expect(server().sent).toEqual([{ type: "join-queue" }]);
 
       server().receive({ ...matchProposed, serverTime: 27_000 });
-      server().receive({ type: "proposal-ended", reason: "missed" });
+      server().receive({ type: "proposal-ended", reason: "missed", queueLockedUntil: null });
 
       expect(proposal()).toMatchObject({ stage: "missed", selfAccepted: false });
       expect(useConnectionStore.getState().place).toEqual({ at: "idle" });
@@ -449,7 +488,7 @@ describe("the Duel on the app's connection", () => {
       (reason) => {
         inQueue();
         server().receive(matchProposed);
-        server().receive({ type: "proposal-ended", reason });
+        server().receive({ type: "proposal-ended", reason, queueLockedUntil: null });
         server().drop();
         vi.advanceTimersByTime(1_000);
         server().receive({ type: "idle" });

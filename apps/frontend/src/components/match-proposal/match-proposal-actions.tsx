@@ -1,6 +1,7 @@
 import type { Ref } from "react";
 import { CheckIcon } from "lucide-react";
 
+import { QueueLockButton } from "@/components/duel/queue-lock-button";
 import { REQUEUE_SECONDS } from "@/components/match-proposal/match-proposal-copy";
 import { Button } from "@/components/ui/button";
 import type { ProposalStage } from "@/stores/duel-store";
@@ -16,6 +17,8 @@ export type MatchProposalHandlers = {
 type MatchProposalActionsProps = MatchProposalHandlers & {
   stage: ProposalStage;
   opponent: string;
+  // The end of the Queue lock the User's Dodge imposed, on the tab's clock; null without one.
+  queueLockedUntil: number | null;
   acceptRef: Ref<HTMLButtonElement>;
 };
 
@@ -29,11 +32,13 @@ const SECONDARY = `${ACTION} bg-muted text-base font-bold`;
 const KEY = "rounded-md px-1.75 py-0.75 font-mono text-[0.6875rem] font-medium";
 
 // What the User can do at each stage: decline (Échap) or accept (Entrée) while it is theirs to
-// answer, wait for the opponent, go to the Face-off; once out of the Queue, search again or go back
-// to Solo; once the opponent was at fault, search again without waiting for the server to.
+// answer, wait for the opponent, go to the Face-off; once out of the Queue, search again (once the
+// Queue lock is over) or go back to Solo; once the opponent was at fault, search again without
+// waiting for the server to.
 export const MatchProposalActions = ({
   stage,
   opponent,
+  queueLockedUntil,
   acceptRef,
   onAccept,
   onDecline,
@@ -95,9 +100,13 @@ export const MatchProposalActions = ({
           <Button variant="secondary" onClick={onSolo} className={SECONDARY}>
             Retour au Solo
           </Button>
-          <Button onClick={onSearchAgain} className={PRIMARY}>
+          <QueueLockButton
+            lockedUntil={queueLockedUntil}
+            onClick={onSearchAgain}
+            className={PRIMARY}
+          >
             Relancer la recherche
-          </Button>
+          </QueueLockButton>
         </div>
       );
   }
