@@ -144,7 +144,11 @@ const cuesAlong = (keystrokes: readonly Keystroke[], pace: number) => {
       score: computeScore(CONFIG, keystrokes.slice(0, i + 1), pace, keystroke.at),
     };
 
-    cues.push({ at: keystroke.at, cues: cuesOf(before, keystroke, after) });
+    cues.push({
+      at: keystroke.at,
+      cues: cuesOf(before, keystroke, after),
+      score: after.score.score,
+    });
     before = after;
   }
 

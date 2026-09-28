@@ -107,6 +107,7 @@ export const useRunStore = create<RunStore>()((set) => ({
         cues: {
           at: keystroke.at,
           cues: cuesOf({ run: state.run, score: state.score }, keystroke, { run, score }),
+          score: score.score,
         },
       };
     }),

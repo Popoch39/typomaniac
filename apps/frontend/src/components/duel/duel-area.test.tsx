@@ -145,9 +145,27 @@ const opponentSkips = (count: number): Keystroke[] =>
     { kind: "char", char: " ", at: 110 + i * 20 },
   ]).flat();
 
-// The opponent types `text` right, a char every 500 ms from GO: slow enough for no Burst.
-const opponentTypes = (text: string): Keystroke[] =>
-  Array.from(text, (char, i) => ({ kind: "char", char, at: i * 500 }));
+// `text` typed right, a char every `step` ms from `from` ms after GO: at 250 ms or more, too slow
+// for a Burst.
+const typedRight = (text: string, from = 0, step = 500): Keystroke[] =>
+  Array.from(text, (char, i) => ({ kind: "char", char, at: from + i * step }));
+
+// `text` typed right at GO, as fast as can be: each word of 4 letters is a Burst.
+const rushed = (text: string) => typedRight(text, 0, 0);
+
+// The zone under the band that announces the Callouts, one at a time.
+const callouts = () => screen.getByRole("status", { name: "Callouts" });
+
+// The tab's clock moves on to `ms` after GO, and a frame goes by: the HUD reads it on each one.
+const at = async (ms: number) => {
+  now = STARTS_AT + ms;
+  await act(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => resolve());
+      }),
+  );
+};
 
 // The band, named after who leads.
 const band = () => screen.getByRole("region", { name: /mène|Même Score/ });
@@ -161,8 +179,12 @@ const pipsLit = (player: string) =>
 // The red a broken Combo turns a player's gauge, null when it is not.
 const brokenGauge = (player: string) => half(player).querySelector("[data-combo-broken]");
 
-// The server's state of the Duel once the connection is back, the opponent's Keystrokes in it.
-const duelResumed = (opponentKeystrokes: Keystroke[]): ServerMessage => ({
+// The server's state of the Duel once the connection is back, the opponent's Keystrokes in it, and
+// this User's it received.
+const duelResumed = (
+  opponentKeystrokes: Keystroke[],
+  keystrokes: Keystroke[] = [],
+): ServerMessage => ({
   type: "duel-resumed",
   duel: {
     id: "duel-1",
@@ -175,8 +197,8 @@ const duelResumed = (opponentKeystrokes: Keystroke[]): ServerMessage => ({
   opponent: { handle: "kzr_", image: null, ornament: null },
   selfOrnament: null,
   serverTime: now,
-  keystrokes: [],
-  received: 0,
+  keystrokes,
+  received: keystrokes.length,
   opponentKeystrokes,
   opponentConnected: true,
   pace: 50,
@@ -208,7 +230,7 @@ describe("the band and the disc", () => {
 
     expect(band()).toHaveAccessibleName("Tu mènes de 6 points");
 
-    receive({ type: "opponent-keystrokes", keystrokes: opponentTypes("small help ") });
+    receive({ type: "opponent-keystrokes", keystrokes: typedRight("small help ") });
 
     expect(band()).toHaveAccessibleName("@kzr_ mène de 5 points");
   });
@@ -232,7 +254,7 @@ describe("the band and the disc", () => {
 
     await waitFor(() => expect(within(band()).getByText("+6")).toBeInTheDocument());
 
-    receive({ type: "opponent-keystrokes", keystrokes: opponentTypes("small help ") });
+    receive({ type: "opponent-keystrokes", keystrokes: typedRight("small help ") });
     now += 1000;
 
     await waitFor(() => expect(within(band()).getByText("+5")).toBeInTheDocument());
@@ -247,7 +269,7 @@ describe("the band and the disc", () => {
     expect(pipsLit("@kzr_")).toBe("0");
 
     await userEvent.keyboard("small help while late ");
-    receive({ type: "opponent-keystrokes", keystrokes: opponentTypes("small help ") });
+    receive({ type: "opponent-keystrokes", keystrokes: typedRight("small help ") });
 
     expect(half("Toi")).toHaveTextContent("multiplicateur ×2");
     expect(pipsLit("Toi")).toBe("4");
@@ -262,7 +284,7 @@ describe("the effects of each side's words", () => {
 
     now = STARTS_AT + 6000;
     await userEvent.keyboard("small ");
-    receive({ type: "opponent-keystrokes", keystrokes: opponentTypes("small help ") });
+    receive({ type: "opponent-keystrokes", keystrokes: typedRight("small help ") });
     now += 200;
 
     await waitFor(() => expect(within(half("Toi")).getByText("+6")).toBeVisible());
@@ -278,7 +300,7 @@ describe("the effects of each side's words", () => {
     await renderStartedDuel();
 
     now = STARTS_AT + 6000;
-    receive({ type: "opponent-keystrokes", keystrokes: opponentTypes("small x") });
+    receive({ type: "opponent-keystrokes", keystrokes: typedRight("small x") });
     now += 100;
 
     await waitFor(() => expect(brokenGauge("@kzr_")).toBeVisible());
@@ -297,7 +319,7 @@ describe("the effects of each side's words", () => {
       type: "resync",
       keystrokes: [],
       received: 0,
-      opponentKeystrokes: opponentTypes("small x"),
+      opponentKeystrokes: typedRight("small x"),
     });
 
     expect(half("@kzr_")).toHaveTextContent("Score 6");
@@ -306,10 +328,272 @@ describe("the effects of each side's words", () => {
 
     reconnect();
     receive({ type: "elsewhere", place: "duel" });
-    receive(duelResumed(opponentTypes("small help ")));
+    receive(duelResumed(typedRight("small help ")));
 
     expect(half("@kzr_")).toHaveTextContent("Score 11");
     expect(within(half("@kzr_")).queryByText("+5")).toBeNull();
+  });
+});
+
+describe("the Callouts", () => {
+  test("this User's Burst, with its points", async () => {
+    await renderStartedDuel();
+
+    // At GO, as fast as can be: a Burst, paid twice.
+    await userEvent.keyboard("small ");
+    await at(100);
+
+    expect(callouts()).toHaveTextContent("BURST +12");
+  });
+
+  test("this User's Combo going up a step", async () => {
+    await renderStartedDuel();
+
+    // A word every 3 s: too slow for a Burst.
+    await at(3000);
+    await userEvent.keyboard("small ");
+    await at(6000);
+    await userEvent.keyboard("help ");
+    await at(9000);
+    await userEvent.keyboard("while ");
+    await at(12_000);
+
+    expect(callouts()).toBeEmptyDOMElement();
+
+    await userEvent.keyboard("late ");
+    await at(12_100);
+
+    expect(callouts()).toHaveTextContent("COMBO ×2");
+  });
+
+  test("this User's broken Combo, with the words it lost", async () => {
+    await renderStartedDuel();
+
+    await at(3000);
+    await userEvent.keyboard("small ");
+    await at(6000);
+    await userEvent.keyboard("help ");
+    await at(9000);
+    await userEvent.keyboard("while x");
+    await at(9100);
+
+    expect(callouts()).toHaveTextContent("COMBO CASSÉ 3 mots");
+  });
+
+  test("the opponent's Bursts and broken Combos, by their Handle", async () => {
+    await renderStartedDuel();
+
+    await at(1000);
+    receive({ type: "opponent-keystrokes", keystrokes: rushed("small ") });
+    await at(1100);
+
+    expect(callouts()).toHaveTextContent("BURST @kzr_ +12");
+
+    await at(3000);
+    receive({ type: "opponent-keystrokes", keystrokes: typedRight("help x", 3000) });
+    await at(3100);
+
+    expect(callouts()).toHaveTextContent("COMBO CASSÉ @kzr_");
+  });
+
+  test("the opponent's ×4, never their ×2 nor their ×3", async () => {
+    await renderStartedDuel();
+
+    await at(1000);
+    receive({
+      type: "opponent-keystrokes",
+      keystrokes: typedRight("small help while late ", 0, 250),
+    });
+    await at(1100);
+
+    expect(half("@kzr_")).toHaveTextContent("multiplicateur ×2");
+    expect(callouts()).toBeEmptyDOMElement();
+
+    await at(2000);
+    receive({
+      type: "opponent-keystrokes",
+      keystrokes: typedRight("letter sell driver quiet never ", 5500, 250),
+    });
+    await at(2100);
+
+    expect(half("@kzr_")).toHaveTextContent("multiplicateur ×3");
+    expect(callouts()).toBeEmptyDOMElement();
+
+    await at(3000);
+    receive({
+      type: "opponent-keystrokes",
+      keystrokes: typedRight("learn brother again proud run ", 13_250, 250),
+    });
+    await at(3100);
+
+    expect(half("@kzr_")).toHaveTextContent("multiplicateur ×4");
+    expect(callouts()).toHaveTextContent("COMBO @kzr_ ×4");
+  });
+
+  test("a Lead change once the new lead has held 300 ms, never the first lead", async () => {
+    await renderStartedDuel();
+
+    // The opponent leads first: no Lead change.
+    await at(3000);
+    receive({ type: "opponent-keystrokes", keystrokes: typedRight("small ") });
+    await at(3500);
+
+    expect(callouts()).toBeEmptyDOMElement();
+
+    await at(4000);
+    await userEvent.keyboard("small ");
+    await at(7000);
+    await userEvent.keyboard("help ");
+    await at(7200);
+
+    expect(band()).toHaveAccessibleName("Tu mènes de 5 points");
+    expect(callouts()).toBeEmptyDOMElement();
+
+    await at(7300);
+
+    expect(callouts()).toHaveTextContent("TU PASSES DEVANT");
+
+    // It lasts 1.4 s.
+    await at(8600);
+
+    expect(callouts()).toHaveTextContent("TU PASSES DEVANT");
+
+    await at(8700);
+
+    expect(callouts()).toBeEmptyDOMElement();
+
+    await at(9000);
+    receive({ type: "opponent-keystrokes", keystrokes: typedRight("help while ", 3000) });
+    await at(9300);
+
+    expect(callouts()).toHaveTextContent("@kzr_ PASSE DEVANT");
+  });
+
+  test("a lead held 100 ms is no Lead change", async () => {
+    await renderStartedDuel();
+
+    await at(3000);
+    receive({ type: "opponent-keystrokes", keystrokes: typedRight("small ") });
+    await at(4000);
+    await userEvent.keyboard("small ");
+    await at(7000);
+    await userEvent.keyboard("help ");
+    await at(7100);
+    receive({ type: "opponent-keystrokes", keystrokes: typedRight("help while ", 3000) });
+
+    expect(band()).toHaveAccessibleName("@kzr_ mène de 6 points");
+
+    await at(7400);
+
+    expect(callouts()).toBeEmptyDOMElement();
+
+    await at(7500);
+
+    expect(callouts()).toBeEmptyDOMElement();
+  });
+
+  test("after a resume, the lead the Duel is resumed on is no first lead", async () => {
+    await renderStartedDuel();
+
+    // A reload: this User's Keystrokes come back from the server, none heard in this tab.
+    await at(6000);
+    reconnect();
+    receive({ type: "elsewhere", place: "duel" });
+    receive(duelResumed(typedRight("small "), typedRight("small help ")));
+
+    expect(band()).toHaveAccessibleName("Tu mènes de 5 points");
+
+    await at(7000);
+    receive({ type: "opponent-keystrokes", keystrokes: typedRight("help while ", 3000) });
+    await at(7300);
+
+    expect(callouts()).toHaveTextContent("@kzr_ PASSE DEVANT");
+  });
+
+  test("a Callout stays 500 ms before one as important takes its place, a more important one at once", async () => {
+    await renderStartedDuel();
+
+    receive({ type: "opponent-keystrokes", keystrokes: rushed("small ") });
+    await at(0);
+
+    expect(callouts()).toHaveTextContent("BURST @kzr_ +12");
+
+    // This User's Burst goes before the opponent's.
+    await at(100);
+    await userEvent.keyboard("small ");
+    await at(150);
+
+    expect(callouts()).toHaveTextContent("BURST +12");
+    expect(callouts()).not.toHaveTextContent("@kzr_");
+
+    // Another Burst of this User's 200 ms later: the first one stays.
+    await at(300);
+    await userEvent.keyboard("help ");
+    await at(400);
+
+    expect(callouts()).toHaveTextContent("BURST +12");
+
+    // Their lead held 300 ms: a Lead change goes before a Burst.
+    await at(600);
+
+    expect(callouts()).toHaveTextContent("TU PASSES DEVANT");
+  });
+
+  test("once 500 ms went by, a Callout as important takes the place", async () => {
+    await renderStartedDuel();
+
+    await userEvent.keyboard("small ");
+    await at(300);
+    await userEvent.keyboard("help ");
+    await at(400);
+
+    expect(callouts()).toHaveTextContent("BURST +12");
+
+    await at(700);
+    await userEvent.keyboard("x");
+    await at(800);
+
+    expect(callouts()).toHaveTextContent("COMBO CASSÉ 2 mots");
+  });
+
+  test("lasts 1.1 s from its reception, even the opponent's received late", async () => {
+    await renderStartedDuel();
+
+    // Typed at GO, received 6 s later.
+    await at(6000);
+    receive({ type: "opponent-keystrokes", keystrokes: rushed("small ") });
+    await at(7000);
+
+    expect(callouts()).toHaveTextContent("BURST @kzr_ +12");
+
+    await at(7100);
+
+    expect(callouts()).toBeEmptyDOMElement();
+  });
+
+  test("a lost connection goes before any Callout while it lasts", async () => {
+    await renderStartedDuel();
+
+    receive({ type: "opponent-keystrokes", keystrokes: rushed("small ") });
+    await at(100);
+
+    expect(callouts()).toHaveTextContent("BURST @kzr_ +12");
+
+    receive({ type: "opponent-disconnected" });
+
+    expect(callouts()).toHaveTextContent(
+      "Connexion de @kzr_ perdue : Forfeit sans retour sous 10 s.",
+    );
+    expect(callouts()).not.toHaveTextContent("BURST");
+
+    receive({ type: "opponent-reconnected" });
+
+    expect(callouts()).toHaveTextContent("BURST @kzr_ +12");
+
+    act(() => server().drop());
+
+    expect(callouts()).toHaveTextContent("Connexion perdue, reconnexion…");
+    expect(callouts()).not.toHaveTextContent("BURST");
   });
 });
 

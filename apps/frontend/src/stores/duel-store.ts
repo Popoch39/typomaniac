@@ -399,7 +399,7 @@ const withOpponentKeystrokes = (duel: DuelPlay, keystrokes: readonly Keystroke[]
       score: scoreOf(duel.config, typed, duel.opponentPace),
     };
 
-    cues.push({ at, cues: cuesOf(before, keystroke, after) });
+    cues.push({ at, cues: cuesOf(before, keystroke, after), score: after.score.score });
     before = after;
   }
 
@@ -586,6 +586,7 @@ const pressed = (store: DuelStore, key: Key, now: number): Pick<DuelStore, "stat
     cues: {
       at: keystroke.at,
       cues: cuesOf({ run: duel.run, score: duel.score }, keystroke, { run, score }),
+      score: score.score,
     },
   };
 };

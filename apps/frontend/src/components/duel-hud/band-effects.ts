@@ -13,7 +13,7 @@ export const BROKEN_MS = 700;
 
 type CueOf<K extends Cue["kind"]> = Extract<Cue, { kind: K }>;
 
-const isKind =
+export const isKind =
   <K extends Cue["kind"]>(kind: K) =>
   (cue: Cue): cue is CueOf<K> =>
     cue.kind === kind;

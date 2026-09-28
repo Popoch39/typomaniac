@@ -1,10 +1,11 @@
 import type { Cue } from "typing-engine";
 
-// What one Keystroke caused, and when, in ms since the start of the Run or the Duel.
-export type KeystrokeCues = { at: number; cues: readonly Cue[] };
+// What one Keystroke caused, and when, in ms since the start of the Run or the Duel, and the
+// player's Score right after it.
+export type KeystrokeCues = { at: number; cues: readonly Cue[]; score: number };
 
 // No Keystroke yet in a Run or a Duel.
-export const NO_CUES: KeystrokeCues = { at: 0, cues: [] };
+export const NO_CUES: KeystrokeCues = { at: 0, cues: [], score: 0 };
 
 type Listener = (keystroke: KeystrokeCues) => void;
 

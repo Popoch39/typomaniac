@@ -194,6 +194,22 @@ describe("DuelHudDevPage", () => {
     expect(rows()).toEqual(shown);
   });
 
+  // The Callout the board announces at each moment, by its own engine; the end's is not yet drawn.
+  test.each([
+    ["mi-duel", ""],
+    ["burst", "BURST +42"],
+    ["combo cassé", "COMBO CASSÉ 13 mots"],
+    ["mené", "BURST @kzr_ +56"],
+    ["dernières secondes", "BURST +42"],
+    ["renversement", "TU PASSES DEVANT"],
+  ])("frozen on « %s », announces the board's Callout", async (moment, said) => {
+    await renderPage();
+
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Moment" }), moment);
+
+    expect(screen.getByRole("status", { name: "Callouts" }).textContent?.trim()).toBe(said);
+  });
+
   test("plays the Duel in a loop, from GO again once it is over", async () => {
     await renderPage();
 
