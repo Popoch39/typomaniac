@@ -250,3 +250,9 @@ _Avoid_ : défi, invitation, invite, duel privé
 **Activity** :
 Ce qu'un User voit de ses Friends actuels : leurs Duels terminés, contre n'importe qui, et leurs nouvelles amitiés, avec n'importe qui. Elle découle des Duels et des amitiés : quand une amitié prend fin, les Activities de l'ex-Friend disparaissent. L'arrivée en ligne d'un Friend y apparaît sur le moment, sans être conservée.
 _Avoid_ : feed, fil, timeline, fil d'actualité
+
+### Apparence
+
+**Theme** :
+Les couleurs de l'app, choisies sur un navigateur par un User ou un Visitor : le fond, les surfaces, l'accent (la couleur de Toi) et la couleur de l'adversaire. Il ne change jamais la place des choses ni la couleur des Tiers. Le choix reste sur ce navigateur, il ne suit pas le User.
+_Avoid_ : skin, palette, mode
