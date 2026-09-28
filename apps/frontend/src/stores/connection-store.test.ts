@@ -61,6 +61,7 @@ const matchProposed: ServerMessage = {
   opponentRank: null,
   selfAccepted: false,
   opponentAccepted: false,
+  dodgeLock: null,
 };
 
 const duelResumed: ServerMessage = {

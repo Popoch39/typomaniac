@@ -177,7 +177,8 @@ const ServerMessage = t.Union([
   t.Object({ type: t.Literal("queue-locked"), until: t.Number(), serverTime: t.Number() }),
   // Paired by the Queue: the User has until `expiresAt` (server time) to accept the Duel. Sent
   // again when they come back to it (`join-queue`, `resume-duel`), with who accepted so far. Each
-  // player's rank, never their MMR.
+  // player's rank, never their MMR. `dodgeLock`: how long the Queue lock this User's Dodge of it
+  // would impose, in ms, null when that Dodge is free; never their count of Dodges.
   t.Object({
     type: t.Literal("match-proposed"),
     expiresAt: t.Number(),
@@ -188,6 +189,7 @@ const ServerMessage = t.Union([
     opponentRank: t.Nullable(Rank),
     selfAccepted: t.Boolean(),
     opponentAccepted: t.Boolean(),
+    dodgeLock: t.Nullable(t.Number()),
   }),
   t.Object({ type: t.Literal("opponent-accepted") }),
   // The Match proposal is over: both accepted, `duel-found` follows. Or their opponent declined it

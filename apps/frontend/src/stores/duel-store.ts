@@ -96,8 +96,8 @@ export type QueueLock = { until: number; duration: number };
 
 // A Match proposal as this tab shows it: until when to answer, on this tab's clock, the opponent,
 // this User's Ornament (the opponent's in `opponent`), both ranks (never the MMR), whether each
-// accepted (kept once the time ran out), and the Queue lock the User's Dodge imposed (null
-// without one).
+// accepted (kept once the time ran out), how long the Queue lock the User's Dodge of it would
+// impose (null when free: no warning), and the Queue lock that Dodge imposed (null without one).
 export type ProposalView = {
   stage: ProposalStage;
   expiresAt: number;
@@ -107,6 +107,7 @@ export type ProposalView = {
   opponentRank: MatchProposed["opponentRank"];
   selfAccepted: boolean;
   opponentAccepted: boolean;
+  dodgeLock: MatchProposed["dodgeLock"];
   queueLock: QueueLock | null;
 };
 
@@ -282,6 +283,7 @@ const proposedState = (message: MatchProposed): DuelState => {
       opponentRank: message.opponentRank,
       selfAccepted: message.selfAccepted,
       opponentAccepted: message.opponentAccepted,
+      dodgeLock: message.dodgeLock,
       queueLock: null,
     },
   };

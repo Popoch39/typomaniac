@@ -1,4 +1,4 @@
-import { queueLockLabel } from "@/lib/queue-lock";
+import { lockDurationLabel, queueLockLabel } from "@/lib/queue-lock";
 import type { ProposalStage, QueueLock } from "@/stores/duel-store";
 
 // How long both Users have to accept, as the server gives it.
@@ -103,16 +103,29 @@ export const opponentStatus = (stage: ProposalStage, accepted: boolean): PlayerS
   }
 };
 
-// What screen readers are told: the opponent and the time to answer, then the outcome, and the
-// Queue lock the User's Dodge imposed.
+// Said by the buttons while the User has to answer, when declining would lock the Queue for
+// `dodgeLock` ms: « Refuser bloquera la Queue 5 min ».
+export const dodgeWarning = (dodgeLock: number) =>
+  `Refuser bloquera la Queue ${lockDurationLabel(dodgeLock)}`;
+
+// The Queue locks a Match proposal speaks of: the one declining would impose, while the User has
+// to answer, and the one their Dodge imposed.
+type ProposalLocks = { dodgeLock?: number | null; queueLock?: QueueLock | null };
+
+// What screen readers are told: the opponent and the time to answer, with the warning when
+// declining would lock the Queue, then the outcome, and the Queue lock the User's Dodge imposed.
 export const proposalAnnouncement = (
   stage: ProposalStage,
   opponent: string,
-  queueLock: QueueLock | null = null,
+  { dodgeLock = null, queueLock = null }: ProposalLocks = {},
 ) => {
   switch (stage) {
-    case "pending":
-      return `Adversaire trouvé : ${opponent}, ${PROPOSAL_SECONDS} secondes pour accepter`;
+    case "pending": {
+      const toAnswer = `Adversaire trouvé : ${opponent}, ${PROPOSAL_SECONDS} secondes pour accepter`;
+
+      return dodgeLock === null ? toAnswer : `${toAnswer}. ${dodgeWarning(dodgeLock)}`;
+    }
+
     case "accepted":
       return `Accepté, on attend la réponse de ${opponent}`;
     case "ready":

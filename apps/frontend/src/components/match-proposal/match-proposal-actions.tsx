@@ -2,7 +2,7 @@ import type { Ref } from "react";
 import { CheckIcon } from "lucide-react";
 
 import { QueueLockButton } from "@/components/duel/queue-lock-button";
-import { REQUEUE_SECONDS } from "@/components/match-proposal/match-proposal-copy";
+import { dodgeWarning, REQUEUE_SECONDS } from "@/components/match-proposal/match-proposal-copy";
 import { Button } from "@/components/ui/button";
 import type { ProposalStage } from "@/stores/duel-store";
 
@@ -17,6 +17,8 @@ export type MatchProposalHandlers = {
 type MatchProposalActionsProps = MatchProposalHandlers & {
   stage: ProposalStage;
   opponent: string;
+  // How long the Queue lock declining would impose, in ms; null when it would be free.
+  dodgeLock: number | null;
   // The end of the Queue lock the User's Dodge imposed, on the tab's clock; null without one.
   queueLockedUntil: number | null;
   acceptRef: Ref<HTMLButtonElement>;
@@ -32,12 +34,13 @@ const SECONDARY = `${ACTION} bg-muted text-base font-bold`;
 const KEY = "rounded-md px-1.75 py-0.75 font-mono text-[0.6875rem] font-medium";
 
 // What the User can do at each stage: decline (Échap) or accept (Entrée) while it is theirs to
-// answer, wait for the opponent, go to the Face-off; once out of the Queue, search again (once the
-// Queue lock is over) or go back to Solo; once the opponent was at fault, search again without
-// waiting for the server to.
+// answer, warned under them when declining would lock the Queue; wait for the opponent, go to the
+// Face-off; once out of the Queue, search again (once the Queue lock is over) or go back to Solo;
+// once the opponent was at fault, search again without waiting for the server to.
 export const MatchProposalActions = ({
   stage,
   opponent,
+  dodgeLock,
   queueLockedUntil,
   acceptRef,
   onAccept,
@@ -48,19 +51,26 @@ export const MatchProposalActions = ({
   switch (stage) {
     case "pending":
       return (
-        <div className="grid w-full grid-cols-[1fr_1.6fr] gap-3">
-          <Button variant="secondary" onClick={onDecline} className={SECONDARY}>
-            Refuser
-            <kbd className={`${KEY} bg-card text-muted-foreground`}>Échap</kbd>
-          </Button>
-          <Button
-            ref={acceptRef}
-            onClick={onAccept}
-            className={`${PRIMARY} shadow-[0_10px_30px_-8px_var(--brand)]`}
-          >
-            Accepter
-            <kbd className={`${KEY} bg-primary-foreground/18`}>Entrée</kbd>
-          </Button>
+        <div className="flex w-full flex-col gap-2.5">
+          <div className="grid w-full grid-cols-[1fr_1.6fr] gap-3">
+            <Button variant="secondary" onClick={onDecline} className={SECONDARY}>
+              Refuser
+              <kbd className={`${KEY} bg-card text-muted-foreground`}>Échap</kbd>
+            </Button>
+            <Button
+              ref={acceptRef}
+              onClick={onAccept}
+              className={`${PRIMARY} shadow-[0_10px_30px_-8px_var(--brand)]`}
+            >
+              Accepter
+              <kbd className={`${KEY} bg-primary-foreground/18`}>Entrée</kbd>
+            </Button>
+          </div>
+          {dodgeLock === null ? null : (
+            <p className="text-center text-[0.8125rem] font-semibold text-destructive">
+              {dodgeWarning(dodgeLock)}
+            </p>
+          )}
         </div>
       );
     case "accepted":

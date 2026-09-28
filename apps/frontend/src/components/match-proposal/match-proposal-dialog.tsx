@@ -44,7 +44,7 @@ export const MatchProposalDialog = ({
   const { data: me } = useQuery(meQueryOptions);
   const acceptRef = useRef<HTMLButtonElement>(null);
   const left = useSecondsLeft(proposal.expiresAt);
-  const { stage, opponent, queueLock } = proposal;
+  const { stage, opponent, dodgeLock, queueLock } = proposal;
   const headline = proposalHeadline(stage, opponent.handle, queueLock);
 
   useAcceptOnEnter(stage === "pending", onAccept);
@@ -89,6 +89,7 @@ export const MatchProposalDialog = ({
           <MatchProposalActions
             stage={stage}
             opponent={opponent.handle}
+            dodgeLock={dodgeLock}
             queueLockedUntil={queueLock?.until ?? null}
             acceptRef={acceptRef}
             onAccept={onAccept}
@@ -96,7 +97,12 @@ export const MatchProposalDialog = ({
             onSearchAgain={onSearchAgain}
             onSolo={onSolo}
           />
-          <MatchProposalAnnouncer stage={stage} opponent={opponent.handle} queueLock={queueLock} />
+          <MatchProposalAnnouncer
+            stage={stage}
+            opponent={opponent.handle}
+            dodgeLock={dodgeLock}
+            queueLock={queueLock}
+          />
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

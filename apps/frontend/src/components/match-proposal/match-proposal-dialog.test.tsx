@@ -33,6 +33,7 @@ const pending: ProposalView = {
   selfAccepted: false,
   opponentAccepted: false,
   queueLock: null,
+  dodgeLock: null,
 };
 
 const at = (stage: ProposalStage, accepted: Partial<ProposalView> = {}): ProposalView => ({
@@ -87,6 +88,30 @@ describe("MatchProposalDialog", () => {
     expect(screen.getByText("10")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Accepter/ })).toHaveFocus();
     expect(screen.queryByText(/mmr/i)).not.toBeInTheDocument();
+    // Declining would be free: no warning.
+    expect(screen.queryByText(/Refuser bloquera/)).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Adversaire trouvé : kaelis, 10 secondes pour accepter",
+    );
+  });
+
+  test("when declining would lock the Queue, it says so by the buttons, and is announced", async () => {
+    shown({ ...pending, dodgeLock: 300_000 });
+
+    await screen.findByRole("dialog", { name: "Adversaire trouvé !" });
+
+    expect(screen.getByText("Refuser bloquera la Queue 5 min")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Adversaire trouvé : kaelis, 10 secondes pour accepter. Refuser bloquera la Queue 5 min",
+    );
+  });
+
+  test("once accepted, the warning is gone: there is nothing left to decline", async () => {
+    shown(at("accepted", { selfAccepted: true, dodgeLock: 300_000 }));
+
+    await screen.findByRole("dialog", { name: "Accepté" });
+
+    expect(screen.queryByText(/Refuser bloquera/)).not.toBeInTheDocument();
   });
 
   test("each player's avatar wears their Ornament, none for one without", async () => {

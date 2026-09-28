@@ -57,6 +57,7 @@ const matchProposed: ServerMessage = {
   opponentRank: { placementsLeft: 3 },
   selfAccepted: false,
   opponentAccepted: false,
+  dodgeLock: null,
 };
 
 const proposal = () => {
@@ -267,9 +268,9 @@ describe("the Duel on the app's connection", () => {
   });
 
   describe("a Match proposal", () => {
-    test("is shown to answer, its end on this tab's clock, both Ornaments and both ranks", () => {
+    test("is shown to answer, its end on this tab's clock, both Ornaments, both ranks and the warning", () => {
       inQueue();
-      server().receive(matchProposed);
+      server().receive({ ...matchProposed, dodgeLock: 60_000 });
 
       expect(useDuelStore.getState().state).toEqual({
         phase: "proposed",
@@ -283,6 +284,7 @@ describe("the Duel on the app's connection", () => {
           selfAccepted: false,
           opponentAccepted: false,
           queueLock: null,
+          dodgeLock: 60_000,
         },
       });
     });
@@ -464,6 +466,7 @@ describe("the Duel on the app's connection", () => {
         selfAccepted: true,
         opponentAccepted: true,
         queueLock: null,
+        dodgeLock: null,
       });
     });
 

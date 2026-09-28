@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  dodgeWarning,
   opponentStatus,
   proposalAnnouncement,
   proposalHeadline,
@@ -43,11 +44,24 @@ describe("the Match proposal's words", () => {
     expect(proposalHeadline("missed", "kaelis", queueLock).subtitle).toBe(
       "Tu n'as pas répondu à temps, tu as quitté la file. Aucun TP en jeu. Queue bloquée 1 min.",
     );
-    expect(proposalAnnouncement("declined", "kaelis", queueLock)).toBe(
+    expect(proposalAnnouncement("declined", "kaelis", { queueLock })).toBe(
       "Duel refusé, tu as quitté la file. Queue bloquée 1 min.",
     );
-    expect(proposalAnnouncement("missed", "kaelis", queueLock)).toBe(
+    expect(proposalAnnouncement("missed", "kaelis", { queueLock })).toBe(
       "Temps écoulé, tu as quitté la file. Queue bloquée 1 min.",
+    );
+  });
+
+  test("a Dodge that would lock the Queue is warned of, its exact length said", () => {
+    expect(dodgeWarning(60_000)).toBe("Refuser bloquera la Queue 1 min");
+    expect(dodgeWarning(300_000)).toBe("Refuser bloquera la Queue 5 min");
+    expect(dodgeWarning(900_000)).toBe("Refuser bloquera la Queue 15 min");
+    expect(proposalAnnouncement("pending", "kaelis", { dodgeLock: 300_000 })).toBe(
+      "Adversaire trouvé : kaelis, 10 secondes pour accepter. Refuser bloquera la Queue 5 min",
+    );
+    // Once answered, there is nothing left to decline.
+    expect(proposalAnnouncement("accepted", "kaelis", { dodgeLock: 300_000 })).toBe(
+      "Accepté, on attend la réponse de kaelis",
     );
   });
 

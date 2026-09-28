@@ -91,12 +91,14 @@ type QueueEntry = {
 type ReadyUser = PacedUser & { joinedAt: number };
 
 // Two Users paired by the Queue, until both accept or its time runs out: each with their entry of
-// the Queue (when they joined kept), who accepted so far, when they were paired and when it ends.
+// the Queue (when they joined kept), who accepted so far, when they were paired and when it ends,
+// and the Queue lock each one's Dodge would impose, as it stood at the pairing (null when free).
 type Proposal = {
   players: readonly [ReadyUser, ReadyUser];
   accepted: Set<string>;
   pairedAt: number;
   expiresAt: number;
+  dodgeLocks: ReadonlyMap<string, number | null>;
 };
 
 // A Match proposal the User let run out while away, and the end of the Queue lock that Dodge
@@ -837,13 +839,15 @@ export class DuelQueue implements ChallengeArena {
   }
 
   // A pairing opens a Match proposal: both have PROPOSAL_MS to accept the Duel, their Challenges
-  // are over, and they stay online until it starts.
+  // are over, and they stay online until it starts. Each is warned of the Queue lock their Dodge
+  // would impose.
   #propose(players: readonly [ReadyUser, ReadyUser], now: number) {
     const proposal: Proposal = {
       players,
       accepted: new Set(),
       pairedAt: now,
       expiresAt: now + PROPOSAL_MS,
+      dodgeLocks: new Map(players.map(({ user }) => [user.id, this.#nextQueueLock(user.id, now)])),
     };
 
     for (const { user } of players) {
@@ -856,7 +860,10 @@ export class DuelQueue implements ChallengeArena {
   }
 
   // The Match proposal as `userId` sees it.
-  #proposalMessage(userId: string, { players, accepted, expiresAt }: Proposal): ServerMessage {
+  #proposalMessage(
+    userId: string,
+    { players, accepted, expiresAt, dodgeLocks }: Proposal,
+  ): ServerMessage {
     const [self, opponent] = players[0].user.id === userId ? players : [players[1], players[0]];
 
     return {
@@ -873,18 +880,20 @@ export class DuelQueue implements ChallengeArena {
       opponentRank: opponent.rating?.rank ?? null,
       selfAccepted: accepted.has(userId),
       opponentAccepted: accepted.has(opponent.user.id),
+      dodgeLock: dodgeLocks.get(userId) ?? null,
     };
   }
 
-  // The User's Dodges in a row at this time: none an hour after the last one, forgotten then.
-  #dodgesOf(userId: string) {
+  // The User's Dodges in a row at `at` (now by default): none an hour after the last one,
+  // forgotten then.
+  #dodgesOf(userId: string, at = this.#clock.now()) {
     const dodges = this.#dodges.get(userId);
 
     if (!dodges) {
       return null;
     }
 
-    if (dodgesInARow(dodges.count, dodges.lastAt, this.#clock.now()) === 0) {
+    if (dodgesInARow(dodges.count, dodges.lastAt, at) === 0) {
       this.#dodges.delete(userId);
 
       return null;
@@ -907,10 +916,22 @@ export class DuelQueue implements ChallengeArena {
     return until > this.#clock.now() ? until : null;
   }
 
-  // One more Dodge in a row: the end of the Queue lock it imposes, null when free.
-  #dodge(userId: string) {
+  // The User's Dodges in a row should they dodge the Match proposal paired at `pairedAt`: the hour
+  // of pardon is read at the pairing, so the Dodge costs what its warning said.
+  #nextDodgeCount(userId: string, pairedAt: number) {
+    return (this.#dodgesOf(userId, pairedAt)?.count ?? 0) + 1;
+  }
+
+  // How long the Queue lock the User's Dodge of that Match proposal would impose, null when free.
+  #nextQueueLock(userId: string, pairedAt: number) {
+    return queueLockOf(this.#nextDodgeCount(userId, pairedAt));
+  }
+
+  // One more Dodge in a row, of the Match proposal paired at `pairedAt`: the end of the Queue lock
+  // it imposes, null when free.
+  #dodge(userId: string, pairedAt: number) {
     const now = this.#clock.now();
-    const count = (this.#dodgesOf(userId)?.count ?? 0) + 1;
+    const count = this.#nextDodgeCount(userId, pairedAt);
     const lock = queueLockOf(count);
 
     this.#dodges.set(userId, { count, lastAt: now });
@@ -983,7 +1004,7 @@ export class DuelQueue implements ChallengeArena {
       this.#proposals.delete(user.id);
 
       if (atFault(user.id)) {
-        const queueLockedUntil = this.#dodge(user.id);
+        const queueLockedUntil = this.#dodge(user.id, proposal.pairedAt);
 
         // Only its time runs out without a connection that plays: declining takes one.
         if (reason === "missed" && !this.#playing.has(user.id)) {
