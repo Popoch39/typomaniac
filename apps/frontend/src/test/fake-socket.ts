@@ -41,6 +41,13 @@ const fakeSocket = () => {
 
 export type FakeSocket = ReturnType<typeof fakeSocket>;
 
+// The server tells a connection the User has no place: the Queue open to them, unless locked
+// until `queueLockedUntil` (on the server's clock, at `serverTime`).
+export const idle = (
+  queueLockedUntil: number | null = null,
+  serverTime = 0,
+): Extract<ServerMessage, { type: "idle" }> => ({ type: "idle", queueLockedUntil, serverTime });
+
 // Every socket a store opens, the first one at the connection, then one per reconnection: `open`
 // is what the store is given to open them, `server()` the last one opened.
 export const fakeServer = () => {

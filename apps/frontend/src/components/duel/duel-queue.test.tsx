@@ -15,7 +15,7 @@ import { type Me, meQueryOptions } from "@/api/me";
 import { DuelArea } from "@/components/duel/duel-area";
 import { ClockContext } from "@/components/run/clock-context";
 import { useConnectionStore } from "@/stores/connection-store";
-import { fakeServer } from "@/test/fake-socket";
+import { fakeServer, idle } from "@/test/fake-socket";
 
 const me: Me = {
   id: "ada-id",
@@ -49,7 +49,7 @@ beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
   sockets = fakeServer();
   useConnectionStore.getState().open(sockets.open);
-  server().receive({ type: "idle" });
+  server().receive(idle());
 });
 
 afterEach(() => {
@@ -111,5 +111,50 @@ describe("the Queue screen during a Queue lock", () => {
 
     receive({ type: "queued" });
     expect(await screen.findByText("On te trouve un adversaire…")).toBeInTheDocument();
+  });
+
+  test("a tab opened or reloaded during the lock shows it from its place at once", async () => {
+    // A new socket, whose place is not told yet.
+    useConnectionStore.getState().open(sockets.open);
+    await renderDuel();
+
+    // The server's clock runs 20 s ahead of this tab's: the lock ends at 60 s here.
+    receive(idle(80_000, 20_000));
+
+    const search = await screen.findByRole("button", { name: /Chercher un Duel/ });
+
+    expect(search).toBeDisabled();
+    expect(search).toHaveTextContent("1:00");
+
+    // The Queue is asked all the same: it holds the lock.
+    expect(server().sent).toEqual([{ type: "join-queue" }]);
+    receive({ type: "queue-locked", until: 80_000, serverTime: 20_000 });
+
+    await at(60_000);
+    expect(screen.getByRole("button", { name: "Chercher un Duel" })).toBeEnabled();
+    expect(server().sent).toEqual([{ type: "join-queue" }]);
+  });
+
+  test("another tab shows the lock as soon as the Dodge played elsewhere imposes one", async () => {
+    await renderDuel();
+    receive({ type: "elsewhere", place: "queue" });
+    expect(await screen.findByText("Le Duel est ouvert dans un autre onglet.")).toBeInTheDocument();
+
+    // A free Dodge there: nothing to show here.
+    receive(idle());
+    expect(screen.getByText("Le Duel est ouvert dans un autre onglet.")).toBeInTheDocument();
+
+    receive({ type: "elsewhere", place: "queue" });
+    receive(idle(80_000, 20_000));
+
+    const search = await screen.findByRole("button", { name: /Chercher un Duel/ });
+
+    expect(screen.getByRole("heading", { name: "Queue bloquée" })).toBeInTheDocument();
+    expect(search).toBeDisabled();
+    expect(search).toHaveTextContent("1:00");
+
+    await at(60_000);
+    expect(screen.getByRole("button", { name: "Chercher un Duel" })).toBeEnabled();
+    expect(server().sent).toEqual([{ type: "join-queue" }]);
   });
 });

@@ -60,6 +60,24 @@ const paired = async (
   expect(await b.next()).toMatchObject({ type: "duel-found" });
 };
 
+// Two Users paired from the Queue: `a` declines the Match proposal (a Dodge), `b` gives up the
+// way back to the Queue.
+const dodged = async (a: TestClient, b: TestClient) => {
+  a.send({ type: "join-queue" });
+  expect(await a.next()).toEqual({ type: "queued" });
+  b.send({ type: "join-queue" });
+  expect(await b.next()).toEqual({ type: "queued" });
+  expect(await Promise.all([a.next(), b.next()])).toMatchObject([
+    { type: "match-proposed" },
+    { type: "match-proposed" },
+  ]);
+  a.send({ type: "decline-proposal" });
+  expect(await a.next()).toMatchObject({ type: "proposal-ended", reason: "declined" });
+  expect(await b.next()).toEqual({ type: "proposal-ended", reason: "opponent-declined" });
+  b.send({ type: "leave-queue" });
+  await b.settle();
+};
+
 // The body of a Friend request.
 type SendBody = { userId: string };
 
@@ -130,7 +148,7 @@ describe("Presence and Friends, live on the socket", () => {
 
     clients.push(client);
     await client.opened;
-    expect(await client.next()).toEqual({ type: "idle" });
+    expect(await client.next()).toMatchObject({ type: "idle", queueLockedUntil: null });
     expect(await client.nextFriends()).toEqual(friends);
 
     return client;
@@ -197,6 +215,29 @@ describe("Presence and Friends, live on the socket", () => {
     expect(await alanTab.nextFriends()).toEqual(presence(ada.id, "online"));
     await adaTab.settleFriends();
     await alanTab.settleFriends();
+  });
+
+  test("a User's Queue lock never shows to their Friends: still online", async () => {
+    const ada = await newUser("Ada");
+    const alan = await newUser("Alan");
+    const carol = await newUser("Carol");
+
+    await befriend(ada, alan);
+
+    const adaTab = await tab(ada);
+    const carolTab = await tab(carol);
+    const alanTab = await tab(alan, snapshot([presence(ada.id, "online")]));
+
+    // Three Dodges in a row: the third locks the Queue.
+    await dodged(adaTab, carolTab);
+    await dodged(adaTab, carolTab);
+    await dodged(adaTab, carolTab);
+    adaTab.send({ type: "join-queue" });
+    expect(await adaTab.next()).toMatchObject({ type: "queue-locked" });
+    await alanTab.settleFriends();
+
+    // Nor in a snapshot.
+    await tab(alan, snapshot([presence(ada.id, "online")]));
   });
 
   test("with several tabs, a User goes offline only once the last one is closed", async () => {

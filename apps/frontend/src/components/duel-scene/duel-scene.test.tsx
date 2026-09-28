@@ -18,7 +18,7 @@ import { ClockContext } from "@/components/run/clock-context";
 import { HomePage } from "@/pages/home-page";
 import { useConnectionStore } from "@/stores/connection-store";
 import { usePlayStore } from "@/stores/play-store";
-import { fakeServer } from "@/test/fake-socket";
+import { fakeServer, idle } from "@/test/fake-socket";
 import { holdGsapClock } from "@/test/gsap-clock";
 
 const me: Me = {
@@ -94,7 +94,7 @@ beforeEach(() => {
   sockets = fakeServer();
   gsapClock = holdGsapClock();
   useConnectionStore.getState().open(sockets.open);
-  server().receive({ type: "idle" });
+  server().receive(idle());
 });
 
 afterEach(() => {

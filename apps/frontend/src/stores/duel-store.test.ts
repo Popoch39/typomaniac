@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
-import { fakeServer } from "@/test/fake-socket";
+import { fakeServer, idle } from "@/test/fake-socket";
 
 const duel = {
   id: "duel-1",
@@ -68,7 +68,7 @@ const proposal = () => {
 
 // Shown, in the Queue.
 const inQueue = () => {
-  server().receive({ type: "idle" });
+  server().receive(idle());
   enter();
   server().receive({ type: "queued" });
 };
@@ -87,14 +87,14 @@ afterEach(() => {
 
 describe("the Duel on the app's connection", () => {
   test("takes nothing while Duel is not shown", () => {
-    server().receive({ type: "idle" });
+    server().receive(idle());
     server().receive({ type: "elsewhere", place: "duel" });
 
     expect(server().sent).toEqual([]);
   });
 
   test("shown, joins the Queue when the User has no place", () => {
-    server().receive({ type: "idle" });
+    server().receive(idle());
     enter();
 
     expect(server().sent).toEqual([{ type: "join-queue" }]);
@@ -104,7 +104,7 @@ describe("the Duel on the app's connection", () => {
   });
 
   test("waiting in the Queue, knows since when on this tab's clock, how many wait and the Estimated wait", () => {
-    server().receive({ type: "idle" });
+    server().receive(idle());
     enter();
     server().receive({ type: "queued" });
     expect(useDuelStore.getState().state).toEqual({ phase: "queued", queue: null });
@@ -141,7 +141,7 @@ describe("the Duel on the app's connection", () => {
   });
 
   test("another tab taking the place leaves it there, until taken back here", () => {
-    server().receive({ type: "idle" });
+    server().receive(idle());
     enter();
     server().receive({ type: "queued" });
     server().receive({ type: "elsewhere", place: "queue" });
@@ -156,7 +156,7 @@ describe("the Duel on the app's connection", () => {
   });
 
   test("taken by another tab before this one was told it queued: not taken back", () => {
-    server().receive({ type: "idle" });
+    server().receive(idle());
     enter();
     server().receive({ type: "elsewhere", place: "queue" });
 
@@ -165,7 +165,7 @@ describe("the Duel on the app's connection", () => {
   });
 
   test("leaving Duel leaves the Queue, or forfeits a Duel in play", () => {
-    server().receive({ type: "idle" });
+    server().receive(idle());
     enter();
     server().receive({ type: "queued" });
     useDuelStore.getState().exit();
@@ -180,7 +180,7 @@ describe("the Duel on the app's connection", () => {
   });
 
   test("back from a lost connection, joins the Queue again", () => {
-    server().receive({ type: "idle" });
+    server().receive(idle());
     enter();
     server().receive({ type: "queued" });
     server().drop();
@@ -188,13 +188,13 @@ describe("the Duel on the app's connection", () => {
     expect(phase()).toBe("connecting");
 
     vi.advanceTimersByTime(1_000);
-    server().receive({ type: "idle" });
+    server().receive(idle());
 
     expect(server().sent).toEqual([{ type: "join-queue" }]);
   });
 
   test("back from a lost connection, resumes the Duel played here", () => {
-    server().receive({ type: "idle" });
+    server().receive(idle());
     enter();
     server().receive(duelFound);
     server().drop();
@@ -208,7 +208,7 @@ describe("the Duel on the app's connection", () => {
   });
 
   test("paired, shows both Ornaments, both ranks and both Forms in the Countdown", () => {
-    server().receive({ type: "idle" });
+    server().receive(idle());
     enter();
     server().receive({
       ...duelFound,
@@ -373,7 +373,7 @@ describe("the Duel on the app's connection", () => {
     });
 
     test("refused the Queue during a Queue lock, says until when, on this tab's clock", () => {
-      server().receive({ type: "idle" });
+      server().receive(idle());
       enter();
       server().receive({ type: "queue-locked", until: 50_000, serverTime: 20_000 });
 
@@ -475,7 +475,7 @@ describe("the Duel on the app's connection", () => {
       server().receive(matchProposed);
       server().drop();
       vi.advanceTimersByTime(1_000);
-      server().receive({ type: "idle" });
+      server().receive(idle());
 
       expect(server().sent).toEqual([{ type: "join-queue" }]);
 
@@ -486,6 +486,41 @@ describe("the Duel on the app's connection", () => {
       expect(useConnectionStore.getState().place).toEqual({ at: "idle" });
     });
 
+    test("back once its time ran out and its Dodge locked the Queue, the lock shows, then the Match proposal missed", () => {
+      inQueue();
+      server().receive(matchProposed);
+      server().drop();
+      vi.advanceTimersByTime(1_000);
+      // The server's clock runs 27 s ahead of this tab's.
+      server().receive(idle(87_000, 27_000));
+
+      expect(useDuelStore.getState().state).toEqual({ phase: "locked", until: 60_000 });
+      expect(server().sent).toEqual([{ type: "join-queue" }]);
+
+      server().receive({ ...matchProposed, serverTime: 27_000 });
+      server().receive({ type: "proposal-ended", reason: "missed", queueLockedUntil: 87_000 });
+
+      expect(proposal()).toMatchObject({
+        stage: "missed",
+        queueLock: { until: 60_000, duration: 60_000 },
+      });
+    });
+
+    test("a Dodge on another tab that locks the Queue shows the lock here, without asking the Queue", () => {
+      // Another tab took the place since this one asked for it.
+      server().receive(idle());
+      enter();
+      server().receive({ type: "elsewhere", place: "queue" });
+      server().receive(idle());
+
+      expect(phase()).toBe("elsewhere");
+
+      server().receive(idle(80_000, 20_000));
+
+      expect(useDuelStore.getState().state).toEqual({ phase: "locked", until: 60_000 });
+      expect(server().sent).toEqual([{ type: "join-queue" }]);
+    });
+
     test.each(["declined", "missed"] as const)(
       "%s, a lost connection keeps it as it ended, out of the Queue",
       (reason) => {
@@ -494,7 +529,7 @@ describe("the Duel on the app's connection", () => {
         server().receive({ type: "proposal-ended", reason, queueLockedUntil: null });
         server().drop();
         vi.advanceTimersByTime(1_000);
-        server().receive({ type: "idle" });
+        server().receive(idle());
 
         expect(proposal()?.stage).toBe(reason);
         expect(server().sent).toEqual([]);
@@ -503,12 +538,12 @@ describe("the Duel on the app's connection", () => {
   });
 
   test("back from a lost connection with the Duel gone, says it was lost", () => {
-    server().receive({ type: "idle" });
+    server().receive(idle());
     enter();
     server().receive(duelFound);
     server().drop();
     vi.advanceTimersByTime(1_000);
-    server().receive({ type: "idle" });
+    server().receive(idle());
 
     expect(phase()).toBe("disconnected");
     expect(server().sent).toEqual([]);

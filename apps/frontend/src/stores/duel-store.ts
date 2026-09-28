@@ -519,19 +519,37 @@ const ended = (state: DuelState, message: DuelEnded): DuelState => {
   return { phase: "ended", ending };
 };
 
-// The User has no place. Waiting for it here: into the Queue. The Duel played here is gone (it ended
-// while the connection was lost, and another tab was told the end), unless its end was told here
-// already: its HUD holds it, then the end screen shows it.
-const idle = (state: DuelState): DuelState => {
+type Idle = Extract<ServerMessage, { type: "idle" }>;
+
+// The User's Queue lock as their place tells it (the server only tells one still running), as the
+// search waits for its end: on this tab's clock as the Duel's start is. Null without one.
+const lockedOf = ({ queueLockedUntil, serverTime }: Idle): DuelState | null =>
+  queueLockedUntil === null
+    ? null
+    : { phase: "locked", until: queueLockedUntil - serverTime + clock() };
+
+// The User has no place. Waiting for it here: into the Queue, the search waiting at once for the
+// end of their Queue lock if any (the server answers `queue-locked`, or tells the Match proposal
+// missed meanwhile, whose Dodge locked it). Held elsewhere until now, or locked here already: a
+// Dodge on another tab shows its Queue lock here too, without asking the Queue. The Duel played
+// here is gone (it ended while the connection was lost, and another tab was told the end), unless
+// its end was told here already: its HUD holds it, then the end screen shows it.
+const idle = (state: DuelState, message: Idle): DuelState => {
   if (!entered || (state.phase === "finishing" && state.ending !== null)) {
     return state;
   }
+
+  const locked = lockedOf(message);
 
   if (state.phase === "connecting") {
     placeAsked = true;
     send({ type: "join-queue" });
 
-    return state;
+    return locked ?? state;
+  }
+
+  if (locked !== null && (state.phase === "elsewhere" || state.phase === "locked")) {
+    return locked;
   }
 
   return duelOf(state) === null ? state : { phase: "disconnected" };
@@ -569,7 +587,7 @@ const stateAfter = (
 ): DuelState => {
   switch (message.type) {
     case "idle":
-      return idle(state);
+      return idle(state, message);
     case "elsewhere":
       return elsewhere(state);
     case "queued":

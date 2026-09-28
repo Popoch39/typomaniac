@@ -159,7 +159,13 @@ export type QueueStatus = typeof QueueStatus.static;
 // others by `idle` and `elsewhere`, on connection and whenever it changes.
 const ServerMessage = t.Union([
   // The User has no place: neither in the Queue nor in a Duel. `duel-ended` makes them idle too.
-  t.Object({ type: t.Literal("idle") }),
+  // The end of their Queue lock (server time), null when the Queue is open to them: every tab
+  // shows it, never their Friends.
+  t.Object({
+    type: t.Literal("idle"),
+    queueLockedUntil: t.Nullable(t.Number()),
+    serverTime: t.Number(),
+  }),
   // The User has a place that this connection does not play: another one holds it, or none does
   // while they come back to their Duel. `join-queue` or `resume-duel` plays it here.
   t.Object({

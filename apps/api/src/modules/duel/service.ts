@@ -355,7 +355,8 @@ export class DuelQueue implements ChallengeArena {
   // The User's place as a connection that does not play it is told. A Duel whose end they were not
   // told is still their place: only a connection that resumes it is told the end. Still being
   // read, the Queue is no place yet: it becomes one with `queued`. A Match proposal is still the
-  // Queue's, and so is the way back to it.
+  // Queue's, and so is the way back to it. Idle, with their Queue lock: a Dodge that imposes one
+  // changes the place.
   #placeOf(userId: string): ServerMessage {
     if (this.isInDuel(userId) || this.#missed.has(userId)) {
       return { type: "elsewhere", place: "duel" };
@@ -369,7 +370,11 @@ export class DuelQueue implements ChallengeArena {
       return { type: "elsewhere", place: "queue" };
     }
 
-    return { type: "idle" };
+    return {
+      type: "idle",
+      queueLockedUntil: this.#queueLockedUntil(userId),
+      serverTime: this.#clock.now(),
+    };
   }
 
   // The place changed: every connection of the User that does not play it is told. The one that

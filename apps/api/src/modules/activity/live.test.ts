@@ -104,7 +104,7 @@ describe("Activity, live on the socket", () => {
 
     clients.push(client);
     await client.opened;
-    expect(await client.next()).toEqual({ type: "idle" });
+    expect(await client.next()).toMatchObject({ type: "idle", queueLockedUntil: null });
     expect(await client.nextFriends()).toMatchObject({ type: "friends-snapshot" });
 
     return client;

@@ -18,7 +18,7 @@ import { DuelArea } from "@/components/duel/duel-area";
 import { ClockContext } from "@/components/run/clock-context";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
-import { fakeServer } from "@/test/fake-socket";
+import { fakeServer, idle } from "@/test/fake-socket";
 import { holdGsapClock } from "@/test/gsap-clock";
 
 const me: Me = {
@@ -83,7 +83,7 @@ beforeEach(() => {
   sockets = fakeServer();
   gsapClock = holdGsapClock();
   useConnectionStore.getState().open(sockets.open);
-  server().receive({ type: "idle" });
+  server().receive(idle());
 });
 
 afterEach(() => {
@@ -734,7 +734,7 @@ describe("the end of the Duel", () => {
     await at(30_500);
     reconnect();
     // The Duel over, the User has no place anymore.
-    receive({ type: "idle" });
+    receive(idle());
     await at(32_000);
 
     expect(endScreen()).toBeInTheDocument();

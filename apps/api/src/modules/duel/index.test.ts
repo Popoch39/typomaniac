@@ -184,6 +184,14 @@ const pairedAgain = async (
   await proposedTo(ada, alan, adaDodgeLock, alanDodgeLock);
 };
 
+// The User has no place, told on the server's clock (`serverTime` of `idle` at `at`, any when
+// left out), the Queue open to them unless locked until `queueLockedUntil`.
+const idle = (queueLockedUntil: number | null = null, at?: number) => ({
+  type: "idle" as const,
+  queueLockedUntil,
+  serverTime: at ?? expect.any(Number),
+});
+
 // A Match proposal the User let run out, as they are told its end.
 const missed = (queueLockedUntil: number | null): ServerMessage => ({
   type: "proposal-ended",
@@ -265,7 +273,7 @@ describe("duel socket", () => {
   const queued = async (cookie: string) => {
     const client = await connect(cookie);
 
-    expect(await client.next()).toEqual({ type: "idle" });
+    expect(await client.next()).toEqual(idle());
     client.send({ type: "join-queue" });
     expect(await client.next()).toEqual({ type: "queued" });
 
@@ -343,7 +351,7 @@ describe("duel socket", () => {
   test("a User without a Handle cannot join the Queue, and is told why", async () => {
     const nobody = await connect((await signedInUser("Nobody", { withHandle: false })).cookie);
 
-    expect(await nobody.next()).toEqual({ type: "idle" });
+    expect(await nobody.next()).toEqual(idle());
     nobody.send({ type: "join-queue" });
     expect(await nobody.next()).toEqual({ type: "handle-required" });
 
@@ -358,7 +366,7 @@ describe("duel socket", () => {
     const adaUser = await signedInUser("Ada");
     const ada = await connect(adaUser.cookie);
 
-    expect(await ada.next()).toEqual({ type: "idle" });
+    expect(await ada.next()).toEqual(idle());
 
     // Changed after the socket opened, with the Session's cached User still holding the old one.
     const context = await auth.$context;
@@ -511,14 +519,14 @@ describe("duel socket", () => {
     const cookie = await signedIn("Ada");
     const watching = await connect(cookie);
 
-    expect(await watching.next()).toEqual({ type: "idle" });
+    expect(await watching.next()).toEqual(idle());
 
     const playing = await queued(cookie);
 
     expect(await watching.next()).toEqual({ type: "elsewhere", place: "queue" });
 
     playing.send({ type: "leave-queue" });
-    expect(await watching.next()).toEqual({ type: "idle" });
+    expect(await watching.next()).toEqual(idle());
 
     playing.send({ type: "join-queue" });
     expect(await playing.next()).toEqual({ type: "queued" });
@@ -531,27 +539,27 @@ describe("duel socket", () => {
 
     setNow(ENDS_AT);
     expect(await playing.next()).toMatchObject({ type: "duel-ended" });
-    expect(await watching.next()).toEqual({ type: "idle" });
+    expect(await watching.next()).toEqual(idle());
 
     // Closing the tab that played while in the Queue: the others see her leave it.
     playing.send({ type: "join-queue" });
     expect(await playing.next()).toEqual({ type: "queued" });
     expect(await watching.next()).toEqual({ type: "elsewhere", place: "queue" });
     playing.socket.close();
-    expect(await watching.next()).toEqual({ type: "idle" });
+    expect(await watching.next()).toEqual(idle());
   });
 
   test("tells a User with no place that they are idle on connection", async () => {
     const ada = await connect(await signedIn("Ada"));
 
-    expect(await ada.next()).toEqual({ type: "idle" });
+    expect(await ada.next()).toEqual(idle());
     await ada.settle();
   });
 
   test("rejects a malformed message and keeps the connection", async () => {
     const ada = await connect(await signedIn("Ada"));
 
-    expect(await ada.next()).toEqual({ type: "idle" });
+    expect(await ada.next()).toEqual(idle());
 
     ada.socket.send(JSON.stringify({ type: "join-duel-now" }));
     expect(await ada.next()).toEqual({ type: "invalid-message" });
@@ -1047,7 +1055,7 @@ describe("duel socket", () => {
     // Told once: free for a new Duel.
     const other = await connect(cookie);
 
-    expect(await other.next()).toEqual({ type: "idle" });
+    expect(await other.next()).toEqual(idle());
     back.send({ type: "join-queue" });
     expect(await back.next()).toEqual({ type: "queued" });
   });
@@ -1068,7 +1076,7 @@ describe("duel socket", () => {
     const back = await resumedOn(cookie);
 
     expect(await back.next()).toMatchObject({ type: "duel-ended", outcome: "loss" });
-    expect(await elsewhere.next()).toEqual({ type: "idle" });
+    expect(await elsewhere.next()).toEqual(idle());
   });
 
   test("joining the Queue drops a missed end", async () => {
@@ -1214,7 +1222,7 @@ describe("duel socket", () => {
   test("resuming outside a Duel is ignored", async () => {
     const ada = await connect(await signedIn("Ada"));
 
-    expect(await ada.next()).toEqual({ type: "idle" });
+    expect(await ada.next()).toEqual(idle());
     ada.send({ type: "resume-duel" });
     await ada.settle();
   });
@@ -1601,7 +1609,7 @@ describe("duel socket", () => {
     expect(duelId).toBeString();
     expect(forAda).toMatchObject({ type: "duel-ended", duelId });
     expect(forAlan).toMatchObject({ type: "duel-ended", duelId });
-    expect(await other.next()).toEqual({ type: "idle" });
+    expect(await other.next()).toEqual(idle());
   });
 
   // Ada and Alan, with their Ratings given before they join, paired at NOW.
@@ -1785,7 +1793,7 @@ describe("duel socket", () => {
         reason: "missed",
         queueLockedUntil: null,
       });
-      expect(await watching.next()).toEqual({ type: "idle" });
+      expect(await watching.next()).toEqual(idle());
 
       // Accepting now changes nothing, and neither is paired with the next User, even later.
       alan.send({ type: "accept-proposal" });
@@ -1840,7 +1848,7 @@ describe("duel socket", () => {
         queueLockedUntil: null,
       });
       expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "opponent-declined" });
-      expect(await watching.next()).toEqual({ type: "idle" });
+      expect(await watching.next()).toEqual(idle());
 
       // Its time running out later changes nothing: Alan is back in the Queue, Ada is not.
       setNow(NOW + 10_000);
@@ -1952,7 +1960,7 @@ describe("duel socket", () => {
       await ada.closed;
 
       setNow(NOW + 3000);
-      expect(await watching.next()).toEqual({ type: "idle" });
+      expect(await watching.next()).toEqual(idle());
     });
 
     test("leaving before the 3 s are up keeps the other out of the Queue", async () => {
@@ -2093,7 +2101,7 @@ describe("duel socket", () => {
       expect(await back.next()).toEqual({ type: "elsewhere", place: "queue" });
       setNow(NOW + 10_000);
       await alan.next();
-      expect(await back.next()).toEqual({ type: "idle" });
+      expect(await back.next()).toEqual(idle());
 
       setNow(NOW + 12_000);
       back.send({ type: "join-queue" });
@@ -2235,6 +2243,55 @@ describe("duel socket", () => {
       setNow(NOW + 6000);
       back.send({ type: "join-queue" });
       expect(await back.next()).toMatchObject({ type: "match-proposed", dodgeLock: 60_000 });
+    });
+
+    test("the other tabs are told the Queue lock as soon as a Dodge imposes it", async () => {
+      const { ada, alan, cookie } = await proposedPair();
+      const other = await connect(cookie);
+
+      expect(await other.next()).toEqual({ type: "elsewhere", place: "queue" });
+
+      // A free Dodge: idle, the Queue open.
+      await adaDeclines(ada, alan, null);
+      expect(await other.next()).toEqual(idle(null, NOW));
+      await pairedAgain(ada, alan);
+      expect(await other.next()).toEqual({ type: "elsewhere", place: "queue" });
+      await adaDeclines(ada, alan, null);
+      expect(await other.next()).toEqual(idle(null, NOW));
+      await pairedAgain(ada, alan, 60_000);
+      expect(await other.next()).toEqual({ type: "elsewhere", place: "queue" });
+
+      setNow(NOW + 2000);
+      await adaDeclines(ada, alan, NOW + 62_000);
+      expect(await other.next()).toEqual(idle(NOW + 62_000, NOW + 2000));
+
+      // Taking the place from there is refused all the same.
+      other.send({ type: "join-queue" });
+      expect(await other.next()).toEqual({
+        type: "queue-locked",
+        until: NOW + 62_000,
+        serverTime: NOW + 2000,
+      });
+      await Promise.all([other.settle(), ada.settle()]);
+    });
+
+    test("a tab opened or reloaded during the Queue lock is told it on opening", async () => {
+      const { ada, alan, cookie } = await proposedPair();
+
+      await adaDeclines(ada, alan, null);
+      await pairedAgain(ada, alan);
+      await adaDeclines(ada, alan, null);
+      await pairedAgain(ada, alan, 60_000);
+      await adaDeclines(ada, alan, NOW + 60_000);
+
+      setNow(NOW + 30_000);
+      ada.socket.close();
+      await ada.closed;
+      expect(await (await connect(cookie)).next()).toEqual(idle(NOW + 60_000, NOW + 30_000));
+
+      // Over: the Queue is open again.
+      setNow(NOW + 60_000);
+      expect(await (await connect(cookie)).next()).toEqual(idle(null, NOW + 60_000));
     });
 
     test("during the Queue lock, joining is refused; once it is over, accepted", async () => {
@@ -2380,7 +2437,8 @@ describe("duel socket", () => {
       expect(await back.next()).toEqual({ type: "elsewhere", place: "queue" });
       setNow(NOW + 10_000);
       expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "opponent-missed" });
-      expect(await back.next()).toEqual({ type: "idle" });
+      // Its other tabs are told the Queue lock at once.
+      expect(await back.next()).toEqual(idle(NOW + 70_000, NOW + 10_000));
 
       setNow(NOW + 12_000);
       back.send({ type: "join-queue" });

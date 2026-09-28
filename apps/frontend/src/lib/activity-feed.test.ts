@@ -8,6 +8,7 @@ import {
   feedItems,
   withActivity,
 } from "@/lib/activity-feed";
+import { idle } from "@/test/fake-socket";
 
 const ada = { id: "ada-id", handle: "ada", image: null, ornament: null };
 
@@ -76,7 +77,7 @@ describe("arrivalsAfter", () => {
   test("keeps the arrivals on any other message", () => {
     const arrivals = [arrival("a", 1_000)];
 
-    expect(arrivalsAfter(arrivals, { type: "idle" })).toBe(arrivals);
+    expect(arrivalsAfter(arrivals, idle())).toBe(arrivals);
   });
 });
 

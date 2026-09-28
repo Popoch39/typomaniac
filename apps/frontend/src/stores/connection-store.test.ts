@@ -13,7 +13,7 @@ import {
   sendToServer,
   useConnectionStore,
 } from "@/stores/connection-store";
-import { fakeServer } from "@/test/fake-socket";
+import { fakeServer, idle } from "@/test/fake-socket";
 
 const duel = {
   id: "duel-1",
@@ -102,7 +102,7 @@ describe("the User's place, from the server's messages", () => {
   });
 
   test("idle, or held by another connection", () => {
-    expect(placeAfter(null, { type: "idle" })).toEqual({ at: "idle" });
+    expect(placeAfter(null, idle())).toEqual({ at: "idle" });
     expect(placeAfter(null, { type: "elsewhere", place: "queue" })).toEqual({
       at: "queue",
       here: false,
@@ -241,7 +241,7 @@ describe("the Friends, from the server's messages", () => {
       changesFriendLists({ type: "friends-snapshot", presences: [], requestsReceived: 0 }),
     ).toBe(true);
     expect(changesFriendLists({ type: "presence", userId: "bob", presence: "online" })).toBe(false);
-    expect(changesFriendLists({ type: "idle" })).toBe(false);
+    expect(changesFriendLists(idle())).toBe(false);
   });
 });
 
@@ -258,7 +258,7 @@ describe("the Challenges, from the server's messages", () => {
   };
 
   test("are unknown until the snapshot, which sets them on this tab's clock", () => {
-    expect(challengesAfter(null, { type: "idle" }, NOW)).toBeNull();
+    expect(challengesAfter(null, idle(), NOW)).toBeNull();
     expect(
       challengesAfter(
         null,
@@ -351,7 +351,7 @@ describe("the connection store", () => {
 
     expect(useConnectionStore.getState()).toMatchObject({ status: "connecting", place: null });
 
-    fake.server().receive({ type: "idle" });
+    fake.server().receive(idle());
     expect(useConnectionStore.getState()).toMatchObject({
       status: "open",
       place: { at: "idle" },
@@ -366,19 +366,19 @@ describe("the connection store", () => {
     const stop = onServerMessage((message) => received.push(message));
 
     useConnectionStore.getState().open(fake.open);
-    fake.server().receive({ type: "idle" });
+    fake.server().receive(idle());
     sendToServer({ type: "join-queue" });
     stop();
     fake.server().receive({ type: "queued" });
 
-    expect(received).toEqual([{ type: "idle" }]);
+    expect(received).toEqual([idle()]);
     expect(fake.server().sent).toEqual([{ type: "join-queue" }]);
   });
 
   test("drops what is sent while the socket is still opening, or opening again", () => {
     useConnectionStore.getState().open(fake.open);
     sendToServer({ type: "leave-queue" });
-    fake.server().receive({ type: "idle" });
+    fake.server().receive(idle());
     fake.server().drop();
     vi.advanceTimersByTime(reconnectDelay(0));
     sendToServer({ type: "leave-queue" });
@@ -388,7 +388,7 @@ describe("the connection store", () => {
 
   test("opens a lost connection again, sooner once it was back", () => {
     useConnectionStore.getState().open(fake.open);
-    fake.server().receive({ type: "idle" });
+    fake.server().receive(idle());
     fake.server().drop();
 
     expect(useConnectionStore.getState()).toMatchObject({ status: "connecting", place: null });
@@ -406,7 +406,7 @@ describe("the connection store", () => {
     expect(fake.sockets).toHaveLength(3);
 
     // Back: a later loss starts from a second again.
-    fake.server().receive({ type: "idle" });
+    fake.server().receive(idle());
     fake.server().drop();
     vi.advanceTimersByTime(1_000);
     expect(fake.sockets).toHaveLength(4);
@@ -425,7 +425,7 @@ describe("the connection store", () => {
     expect(first?.isClosed()).toBe(true);
     expect(useConnectionStore.getState()).toMatchObject({ status: "closed", place: null });
 
-    first?.receive({ type: "idle" });
+    first?.receive(idle());
     first?.drop();
     vi.advanceTimersByTime(60_000);
     stop();
@@ -436,7 +436,7 @@ describe("the connection store", () => {
 
   test("keeps the Friends the server tells, forgotten once the connection is lost", () => {
     useConnectionStore.getState().open(fake.open);
-    fake.server().receive({ type: "idle" });
+    fake.server().receive(idle());
     fake.server().receive({
       type: "friends-snapshot",
       presences: [{ userId: "ada", presence: "online" }],
@@ -455,7 +455,7 @@ describe("the connection store", () => {
 
   test("keeps the Challenges the server tells, forgotten once the connection is lost", () => {
     useConnectionStore.getState().open(fake.open);
-    fake.server().receive({ type: "idle" });
+    fake.server().receive(idle());
     fake.server().receive({ type: "challenges-snapshot", sent: null, received: [], serverTime: 0 });
 
     expect(useConnectionStore.getState().challenges).toEqual({ sent: null, received: [] });
