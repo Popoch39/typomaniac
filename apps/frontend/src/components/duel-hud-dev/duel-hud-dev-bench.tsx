@@ -7,11 +7,11 @@ import { useScriptedTime } from "@/components/duel-hud-dev/use-scripted-time";
 // The scripted Duel in the real HUD, played in a loop at first, frozen on a moment on demand.
 export const DuelHudDevBench = () => {
   const [frozenAt, setFrozenAt] = useState<number | null>(null);
-  const t = useScriptedTime(frozenAt);
+  const { t, clock } = useScriptedTime(frozenAt);
 
   return (
     <>
-      <DuelHudDevStage t={t} />
+      <DuelHudDevStage t={t} clock={clock} />
       <DuelHudDevControls frozenAt={frozenAt} onFreeze={setFrozenAt} />
     </>
   );

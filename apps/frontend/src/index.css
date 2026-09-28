@@ -20,6 +20,7 @@
   --color-pending: var(--pending);
   --color-opponent: var(--opponent);
   --color-faint: var(--faint);
+  --color-ink: var(--ink);
   --color-caret: var(--caret);
   --color-opponent-caret: var(--opponent-caret);
   --color-tier-bronze: var(--tier-bronze);

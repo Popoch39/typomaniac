@@ -65,16 +65,17 @@ const renderPage = async () => {
   await screen.findByRole("combobox", { name: "Moment" });
 };
 
-// One statistic of a player's Score, as the HUD shows it.
-const stat = (player: string, term: string) =>
-  within(screen.getByRole("region", { name: `Score de ${player}` })).getByText(term)
-    .nextElementSibling?.textContent;
+// A player's half of the band.
+const half = (player: string) => screen.getByRole("region", { name: player });
 
-// Score, multiplier and Combo, as the board shows them.
+// One figure of a player's half, as it reads after what screen readers call it.
+const figure = (player: string, pattern: RegExp) => half(player).textContent?.match(pattern)?.[1];
+
+// Score, multiplier and the pips the Combo lit, as the board shows them.
 const scoreOf = (player: string) => [
-  stat(player, "score"),
-  stat(player, "multiplicateur"),
-  stat(player, "combo"),
+  figure(player, /Score (\d+)/),
+  figure(player, /multiplicateur (×\d)/),
+  within(half(player)).getByRole("meter", { name: "Combo" }).getAttribute("value"),
 ];
 
 // A word is split into one element per letter: match the element that holds them all. The
@@ -113,16 +114,16 @@ describe("DuelHudDevPage", () => {
     expect(screen.getByRole("button", { name: "Quitter le Duel" })).toBeEnabled();
   });
 
-  // The Scores, multipliers and Combos the board's own engine shows at each of its moments, and
-  // the seconds its disc shows.
+  // The Scores, multipliers and pips lit the board's own engine shows at each of its moments (a
+  // Combo of 15 lights all 14), and the seconds its disc shows.
   test.each([
-    ["mi-duel", ["120", "x3", "10"], ["88", "x1", "3"], "20"],
-    ["burst", ["183", "x3", "12"], ["95", "x2", "4"], "18"],
-    ["combo cassé", ["207", "x1", "0"], ["123", "x2", "6"], "16"],
-    ["mené", ["288", "x2", "8"], ["338", "x4", "15"], "8"],
-    ["dernières secondes", ["411", "x3", "13"], ["417", "x1", "2"], "3"],
-    ["renversement", ["435", "x4", "14"], ["432", "x2", "4"], "1"],
-    ["fin", ["463", "x4", "15"], ["442", "x2", "4"], "0"],
+    ["mi-duel", ["120", "×3", "10"], ["88", "×1", "3"], "20"],
+    ["burst", ["183", "×3", "12"], ["95", "×2", "4"], "18"],
+    ["combo cassé", ["207", "×1", "0"], ["123", "×2", "6"], "16"],
+    ["mené", ["288", "×2", "8"], ["338", "×4", "14"], "8"],
+    ["dernières secondes", ["411", "×3", "13"], ["417", "×1", "2"], "3"],
+    ["renversement", ["435", "×4", "14"], ["432", "×2", "4"], "1"],
+    ["fin", ["463", "×4", "14"], ["442", "×2", "4"], "0"],
   ])(
     "frozen on « %s », shows the board's Scores and Combos",
     async (moment, self, opponent, left) => {
@@ -196,13 +197,13 @@ describe("DuelHudDevPage", () => {
   test("plays the Duel in a loop, from GO again once it is over", async () => {
     await renderPage();
 
-    expect(scoreOf("Toi")).toEqual(["0", "x1", "0"]);
+    expect(scoreOf("Toi")).toEqual(["0", "×1", "0"]);
 
     now = 12_250;
-    await waitFor(() => expect(scoreOf("Toi")).toEqual(["183", "x3", "12"]));
+    await waitFor(() => expect(scoreOf("Toi")).toEqual(["183", "×3", "12"]));
 
     now = 34_800 + 12_250;
-    await waitFor(() => expect(scoreOf("@kzr_")).toEqual(["95", "x2", "4"]));
+    await waitFor(() => expect(scoreOf("@kzr_")).toEqual(["95", "×2", "4"]));
   });
 
   test("plays in a loop again once unfrozen", async () => {
@@ -215,6 +216,6 @@ describe("DuelHudDevPage", () => {
     await userEvent.selectOptions(moment, "en boucle");
     now = 10_600 + 12_250;
 
-    await waitFor(() => expect(scoreOf("Toi")).toEqual(["183", "x3", "12"]));
+    await waitFor(() => expect(scoreOf("Toi")).toEqual(["183", "×3", "12"]));
   });
 });

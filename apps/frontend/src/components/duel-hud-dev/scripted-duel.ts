@@ -179,7 +179,7 @@ const simulatedOutcome = (self: ScriptedPlayer, opponent: ScriptedPlayer) => {
   return lead > 0 ? "win" : "loss";
 };
 
-// The scripted Duel `t` ms after GO, a Ranked Duel.
+// The scripted Duel `t` ms after GO, a Ranked Duel. Its GO is 0 on the scripted clock.
 export const scriptedDuel = (
   self: ScriptedPlayer,
   opponent: ScriptedPlayer,
@@ -189,6 +189,7 @@ export const scriptedDuel = (
   opponent,
   challenge: false,
   seconds: SCRIPTED_SECONDS,
+  startsAt: 0,
   elapsed: t,
   outcome: isOver(t) ? simulatedOutcome(self, opponent) : null,
 });

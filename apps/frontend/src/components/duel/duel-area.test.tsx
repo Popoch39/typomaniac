@@ -5,7 +5,7 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import type { ServerMessage } from "api";
 import { StrictMode } from "react";
@@ -144,6 +144,76 @@ const opponentSkips = (count: number): Keystroke[] =>
     { kind: "char", char: "x", at: 100 + i * 20 },
     { kind: "char", char: " ", at: 110 + i * 20 },
   ]).flat();
+
+// The opponent types `text` right, a char every 500 ms from GO: slow enough for no Burst.
+const opponentTypes = (text: string): Keystroke[] =>
+  Array.from(text, (char, i) => ({ kind: "char", char, at: i * 500 }));
+
+// The band, named after who leads.
+const band = () => screen.getByRole("region", { name: /mène|Même Score/ });
+
+// One half of the band: this User's, or the opponent's.
+const half = (player: string) => screen.getByRole("region", { name: player });
+
+const pipsLit = (player: string) =>
+  within(half(player)).getByRole("meter", { name: "Combo" }).getAttribute("value");
+
+describe("the band and the disc", () => {
+  test("names who leads the Duel, and by how much", async () => {
+    await renderStartedDuel();
+
+    expect(band()).toHaveAccessibleName("Même Score");
+
+    // Six seconds in: slow enough for no Burst.
+    now = STARTS_AT + 6000;
+    await userEvent.keyboard("small ");
+
+    expect(band()).toHaveAccessibleName("Tu mènes de 6 points");
+
+    receive({ type: "opponent-keystrokes", keystrokes: opponentTypes("small help ") });
+
+    expect(band()).toHaveAccessibleName("@kzr_ mène de 5 points");
+  });
+
+  test("shows the seconds left, and the Lead under them", async () => {
+    await renderStartedDuel();
+
+    const timer = screen.getByRole("timer", { name: "temps restant" });
+
+    expect(timer).toHaveTextContent("30");
+    expect(within(band()).getByText("=")).toBeInTheDocument();
+
+    now = STARTS_AT + 12_500;
+    act(() => useDuelStore.getState().tick(now));
+
+    await waitFor(() => expect(timer).toHaveTextContent("18"));
+
+    await userEvent.keyboard("small ");
+
+    expect(within(band()).getByText("+6")).toBeInTheDocument();
+
+    receive({ type: "opponent-keystrokes", keystrokes: opponentTypes("small help ") });
+
+    expect(within(band()).getByText("+5")).toBeInTheDocument();
+  });
+
+  test("shows each side's multiplier and the pips its Combo lit", async () => {
+    await renderStartedDuel();
+
+    expect(half("Toi")).toHaveTextContent("multiplicateur ×1");
+    expect(pipsLit("Toi")).toBe("0");
+    expect(half("@kzr_")).toHaveTextContent("multiplicateur ×1");
+    expect(pipsLit("@kzr_")).toBe("0");
+
+    await userEvent.keyboard("small help while late ");
+    receive({ type: "opponent-keystrokes", keystrokes: opponentTypes("small help ") });
+
+    expect(half("Toi")).toHaveTextContent("multiplicateur ×2");
+    expect(pipsLit("Toi")).toBe("4");
+    expect(half("@kzr_")).toHaveTextContent("multiplicateur ×1");
+    expect(pipsLit("@kzr_")).toBe("2");
+  });
+});
 
 describe("the Duel's Text", () => {
   test("shows three rows, the caret's staying the second once past the first", async () => {

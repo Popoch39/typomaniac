@@ -13,13 +13,15 @@ export type DuelHudPlayer = {
 
 // Everything the Duel's HUD draws, whoever feeds it: the Duel played in this tab, or a scripted
 // one. Each player's Handle, this User's null while not read yet. `elapsed` is the Duel's clock,
-// in ms since the start, negative during the Countdown; `outcome` is null until the server ends
-// the Duel.
+// in ms since the start, negative during the Countdown; `startsAt` is the start on the injected
+// clock, which the HUD's timelines are sought to on every tick; `outcome` is null until the
+// server ends the Duel.
 export type DuelHudModel = {
   self: DuelHudPlayer & { handle: string | null };
   opponent: DuelHudPlayer & { handle: string };
   challenge: boolean;
   seconds: number;
+  startsAt: number;
   elapsed: number;
   outcome: DuelEnding["outcome"] | null;
 };
@@ -47,6 +49,7 @@ export const duelHudModel = (
   },
   challenge: isChallenge(duel),
   seconds: duel.config.seconds,
+  startsAt: duel.startsAt,
   elapsed,
   outcome: null,
 });
