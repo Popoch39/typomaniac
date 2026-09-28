@@ -22,6 +22,7 @@ describe("withDevRoutes", () => {
     expect(found("/dev/aura")).toBe("/dev/aura");
     expect(found("/dev/rankup")).toBe("/dev/rankup");
     expect(found("/dev/duel-hud")).toBe("/dev/duel-hud");
+    expect(found("/dev/faceoff")).toBe("/dev/faceoff");
     expect(found("/leaderboard")).toBe("/leaderboard");
   });
 });

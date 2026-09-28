@@ -4,8 +4,8 @@ import { FaceOffLabStage } from "@/components/face-off-lab/face-off-lab-stage";
 import { useFaceOffSounds } from "@/components/face-off/face-off-sounds-context";
 import { Button } from "@/components/ui/button";
 
-// Out of the production build: a button that plays the Face-off on demand, to tune its animation
-// without a Duel. Each opening plays it from the pairing.
+// A button that plays the Face-off on demand, to tune its animation without a Duel. Each opening
+// plays it from the pairing.
 export const FaceOffLab = () => {
   const [open, setOpen] = useState(false);
   const { unlock: unlockSounds } = useFaceOffSounds();
@@ -18,7 +18,7 @@ export const FaceOffLab = () => {
 
   return (
     <>
-      <Button variant="outline" size="sm" className="fixed bottom-4 left-20 z-50" onClick={openLab}>
+      <Button variant="outline" className="self-start" onClick={openLab}>
         Face-off
       </Button>
       {open ? <FaceOffLabStage onClose={() => setOpen(false)} /> : null}

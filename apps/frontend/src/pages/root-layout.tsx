@@ -10,7 +10,6 @@ import { ChallengeNotices } from "@/components/challenge/challenge-notices";
 import { DuelOnChallenge } from "@/components/challenge/duel-on-challenge";
 import { DesktopOnly } from "@/components/desktop-only";
 import { WaitingChallenges } from "@/components/challenge/waiting-challenges";
-import { FaceOffLab } from "@/components/face-off-lab/face-off-lab";
 import { LiveFriendLists } from "@/components/friends/live-friend-lists";
 import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
 import { RealtimeConnection } from "@/components/realtime-connection";
@@ -37,7 +36,6 @@ export const RootLayout = () => (
     <HandleChoiceDialog />
     <OAuthErrorToast />
     <Toaster position="bottom-center" />
-    {import.meta.env.DEV ? <FaceOffLab /> : null}
     <ReactQueryDevtools buttonPosition="bottom-left" />
     <TanStackRouterDevtools position="bottom-right" />
   </>
