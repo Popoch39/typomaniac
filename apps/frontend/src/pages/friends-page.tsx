@@ -2,6 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { meQueryOptions } from "@/api/me";
 import { FriendsHandleRequired } from "@/components/friends/friends-handle-required";
+import { FriendsHeader } from "@/components/friends/friends-header";
 import { FriendsOverview } from "@/components/friends/friends-overview";
 import { cn } from "cn";
 
@@ -16,14 +17,11 @@ export const FriendsPage = () => {
   }
 
   return (
-    <section
-      className={cn(
-        "mx-auto flex w-full flex-col gap-6 py-12",
-        me.handle === null ? "max-w-md" : "max-w-4xl",
-      )}
-    >
-      <h1 className="text-lg font-bold">Friends</h1>
-      {me.handle === null ? <FriendsHandleRequired /> : <FriendsOverview />}
+    <section className="flex flex-col gap-6">
+      <FriendsHeader />
+      <div className={cn("w-full", me.handle === null ? "max-w-md" : "max-w-4xl")}>
+        {me.handle === null ? <FriendsHandleRequired /> : <FriendsOverview />}
+      </div>
     </section>
   );
 };

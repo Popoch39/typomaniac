@@ -150,6 +150,11 @@ const standingAt = (step: number, tp: number, shielded: boolean): Standing => {
   };
 };
 
+// The rank a standing climbs to, at 0 TP: the Division above, the next Tier's lowest past a
+// Division I, Maniac past Diamant I. None above Maniac.
+export const nextStanding = (standing: Standing): Standing | null =>
+  standing.tier === "maniac" ? null : standingAt(stepOf(standing) + 1, 0, false);
+
 const expectedMmr = (standing: Standing) => FER_IV_MMR + stepOf(standing) * MMR_PER_DIVISION;
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));

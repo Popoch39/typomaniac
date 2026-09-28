@@ -1,0 +1,405 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+  RouterProvider,
+} from "@tanstack/react-router";
+import { act, render, screen, within } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
+import type { Rank } from "ranked";
+import { defaultPace, type RunConfig } from "typing-engine";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+
+import { friendsQueryOptions } from "@/api/friends";
+import { type Me, meQueryOptions } from "@/api/me";
+import { paceQueryOptions } from "@/api/pace";
+import { AppFrame } from "@/components/app-frame";
+import { ClockContext } from "@/components/run/clock-context";
+import { Toaster } from "@/components/ui/sonner";
+import { HomePage } from "@/pages/home-page";
+import { useAuthStore } from "@/stores/auth-store";
+import { useConnectionStore } from "@/stores/connection-store";
+import { usePlayStore } from "@/stores/play-store";
+import { useRunStore } from "@/stores/run-store";
+import { useSettingsStore } from "@/stores/settings-store";
+import { fakeServer, idle } from "@/test/fake-socket";
+
+const ada: Me = {
+  id: "ada-id",
+  name: "Ada Lovelace",
+  email: "ada@example.com",
+  image: null,
+  handle: "ada",
+  rank: null,
+  ornament: null,
+  ornamentChoice: null,
+};
+
+// Seed 42 in English, version 1, gives this Text (pinned in the typing-engine tests).
+const text = "small help while late letter sell driver quiet never learn";
+
+const words10: RunConfig = {
+  mode: "words",
+  words: 10,
+  language: "en",
+  wordListVersion: 1,
+  seed: 42,
+};
+
+let sockets = fakeServer();
+
+beforeEach(() => {
+  localStorage.clear();
+  useSettingsStore.setState(useSettingsStore.getInitialState());
+  usePlayStore.setState(usePlayStore.getInitialState());
+  sockets = fakeServer();
+  useConnectionStore.getState().open(sockets.open);
+  sockets.server().receive(idle());
+});
+
+afterEach(() => {
+  useConnectionStore.getState().close();
+  useAuthStore.setState(useAuthStore.getInitialState());
+  vi.unstubAllGlobals();
+});
+
+// The app's pages but the play page: only their heading, the sidebar is what is looked at.
+const PAGES = [
+  ["/leaderboard", "Classement"],
+  ["/duels", "Duels"],
+  ["/friends", "Friends"],
+  ["/profile", "Profil"],
+  ["/themes", "Thèmes"],
+  ["/u/$handle", "Profile"],
+] as const;
+
+// The app's frame around its pages, at `path`, for `me` (a Visitor when null), the cache seeded the
+// way the root route's beforeLoad leaves it.
+const renderApp = async (me: Me | null, path = "/leaderboard") => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
+  });
+
+  queryClient.setQueryData(meQueryOptions.queryKey, me);
+  queryClient.setQueryData(paceQueryOptions(me).queryKey, defaultPace);
+  queryClient.setQueryData(friendsQueryOptions.queryKey, []);
+
+  const rootRoute = createRootRoute({
+    component: () => (
+      <AppFrame>
+        <Outlet />
+      </AppFrame>
+    ),
+  });
+
+  const playRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/",
+    component: HomePage,
+  });
+
+  const pageRoutes = PAGES.map(([pagePath, title]) =>
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: pagePath,
+      component: () => <h1>{title}</h1>,
+    }),
+  );
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([playRoute, ...pageRoutes]),
+    history: createMemoryHistory({ initialEntries: [path] }),
+  });
+
+  await router.load();
+  render(
+    <QueryClientProvider client={queryClient}>
+      <ClockContext value={() => 1_000}>
+        <RouterProvider router={router} />
+        <Toaster />
+      </ClockContext>
+    </QueryClientProvider>,
+  );
+  await screen.findByRole("complementary", { name: "Barre latérale" });
+
+  return { queryClient, user: userEvent.setup() };
+};
+
+const sidebar = () => screen.getByRole("complementary", { name: "Barre latérale" });
+
+const nav = () => within(sidebar()).getByRole("navigation", { name: "Navigation principale" });
+
+const navLinks = () =>
+  within(nav())
+    .getAllByRole("link")
+    .map((link) => link.textContent);
+
+const withRank = (rank: Rank | null): Me => ({ ...ada, rank });
+
+describe("the sidebar's nav", () => {
+  test("a Visitor has Jouer and Classement only", async () => {
+    await renderApp(null);
+
+    expect(navLinks()).toEqual(["Jouer", "Classement"]);
+  });
+
+  test("a User also has Duels, Friends and Profil, and Thèmes is no longer in it", async () => {
+    await renderApp(ada);
+
+    expect(navLinks()).toEqual(["Jouer", "Classement", "Duels", "Friends", "Profil"]);
+    expect(within(nav()).queryByRole("link", { name: /Thème/ })).not.toBeInTheDocument();
+  });
+
+  test("the brand leads to Jouer", async () => {
+    await renderApp(ada);
+
+    expect(within(sidebar()).getByRole("link", { name: "typomaniac" })).toHaveAttribute(
+      "href",
+      "/",
+    );
+  });
+
+  test("the current page's entry is marked, and only it", async () => {
+    await renderApp(ada, "/duels");
+
+    expect(within(nav()).getByRole("link", { name: "Duels" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(within(nav()).getByRole("link", { name: "Jouer" })).not.toHaveAttribute("aria-current");
+  });
+
+  test("the Friend requests received are counted on Friends", async () => {
+    await renderApp(ada);
+    act(() =>
+      sockets.server().receive({ type: "friends-snapshot", presences: [], requestsReceived: 2 }),
+    );
+
+    const friends = within(nav()).getByRole("link", { name: /^Friends/ });
+
+    expect(within(friends).getByLabelText("2 Friend requests")).toHaveTextContent("2");
+  });
+
+  test("a User without a Handle gets no count", async () => {
+    await renderApp({ ...ada, handle: null });
+    act(() =>
+      sockets.server().receive({ type: "friends-snapshot", presences: [], requestsReceived: 2 }),
+    );
+
+    expect(within(nav()).getByRole("link", { name: "Friends" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("2 Friend requests")).not.toBeInTheDocument();
+  });
+});
+
+describe("the Theme button", () => {
+  test("leads to the Themes with the Theme's name, marked on their page", async () => {
+    await renderApp(ada, "/themes");
+
+    expect(within(sidebar()).getByRole("link", { name: "Thème Corail" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  test("is not marked elsewhere", async () => {
+    await renderApp(null);
+
+    expect(within(sidebar()).getByRole("link", { name: "Thème Corail" })).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
+});
+
+describe("the User's card", () => {
+  test("shows their Handle and, in a Division, its rank and TP out of 100", async () => {
+    await renderApp(withRank({ tier: "or", division: 2, tp: 42, shielded: false }));
+
+    expect(within(sidebar()).getByText("ada")).toBeInTheDocument();
+    expect(within(sidebar()).getByText("Or II · 42 TP")).toBeInTheDocument();
+
+    const meter = within(sidebar()).getByRole("meter", { name: "TP de la Division" });
+
+    expect(meter).toHaveAttribute("value", "42");
+    expect(meter).toHaveAttribute("max", "100");
+    expect(meter).toHaveAttribute("aria-valuetext", "42 TP sur 100 · 58 TP avant Or I");
+  });
+
+  test("in Placement, the Duels played out of 5", async () => {
+    await renderApp(withRank({ placementsLeft: 2 }));
+
+    expect(within(sidebar()).getByText("Placement · 2 Duels restants")).toBeInTheDocument();
+    const meter = within(sidebar()).getByRole("meter", { name: "Placement" });
+
+    expect(meter).toHaveAttribute("value", "3");
+    expect(meter).toHaveAttribute("max", "5");
+  });
+
+  test("a Maniac's TP, without a bar", async () => {
+    await renderApp(withRank({ tier: "maniac", tp: 250, shielded: false }));
+
+    expect(within(sidebar()).getByText("Maniac · 250 TP")).toBeInTheDocument();
+    expect(within(sidebar()).queryByRole("meter")).not.toBeInTheDocument();
+  });
+
+  test("without a Rating, neither rank nor bar", async () => {
+    await renderApp(ada);
+
+    expect(within(sidebar()).queryByText(/ TP/)).not.toBeInTheDocument();
+    expect(within(sidebar()).queryByRole("meter")).not.toBeInTheDocument();
+  });
+
+  test("follows the rank when the User is read again after a Duel", async () => {
+    const { queryClient } = await renderApp(
+      withRank({ tier: "or", division: 2, tp: 90, shielded: false }),
+    );
+
+    act(() =>
+      queryClient.setQueryData(
+        meQueryOptions.queryKey,
+        withRank({ tier: "or", division: 1, tp: 5, shielded: true }),
+      ),
+    );
+
+    expect(await within(sidebar()).findByText("Or I · 5 TP")).toBeInTheDocument();
+  });
+
+  test("the avatar wears the User's Ornament", async () => {
+    await renderApp({
+      ...withRank({ tier: "platine", division: 3, tp: 10, shielded: false }),
+      ornament: "platine",
+      ornamentChoice: "follow",
+    });
+
+    expect(sidebar().querySelector("[data-ornament] use")?.getAttribute("href")).toBe(
+      "#tier-ornament-platine",
+    );
+  });
+
+  test("the avatar falls back on the initials of the Handle, then of the name without one", async () => {
+    await renderApp({ ...ada, handle: "alan turing" });
+
+    expect(within(sidebar()).getByText("AT")).toBeInTheDocument();
+  });
+
+  test("without a Handle, the name stands for it", async () => {
+    await renderApp({ ...ada, handle: null });
+
+    expect(within(sidebar()).getByText("AL")).toBeInTheDocument();
+    expect(within(sidebar()).getByText("Ada Lovelace")).toBeInTheDocument();
+  });
+});
+
+describe("the User's menu", () => {
+  test("leads to their public Profile and to the Handle's settings", async () => {
+    const { user } = await renderApp(ada);
+
+    await user.click(screen.getByRole("button", { name: "Menu de Ada Lovelace" }));
+
+    expect(await screen.findByRole("menuitem", { name: "Mon Profile" })).toHaveAttribute(
+      "href",
+      "/u/ada",
+    );
+    expect(screen.getByRole("menuitem", { name: "Réglages du Handle" })).toHaveAttribute(
+      "href",
+      "/profile",
+    );
+  });
+
+  test("has no public Profile to lead to without a Handle", async () => {
+    const { user } = await renderApp({ ...ada, handle: null });
+
+    await user.click(screen.getByRole("button", { name: "Menu de Ada Lovelace" }));
+
+    await screen.findByRole("menuitem", { name: "Réglages du Handle" });
+    expect(screen.queryByRole("menuitem", { name: "Mon Profile" })).not.toBeInTheDocument();
+  });
+
+  test("signing out closes the Session and forgets the User", async () => {
+    const fetch = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      Response.json({ success: true }),
+    );
+
+    vi.stubGlobal("fetch", fetch);
+
+    const { user } = await renderApp(ada);
+
+    await user.click(screen.getByRole("button", { name: "Menu de Ada Lovelace" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Se déconnecter" }));
+
+    expect(await within(sidebar()).findByRole("button", { name: "Se connecter" })).toBeVisible();
+    expect(String(fetch.mock.calls[0]?.at(0))).toMatch(/\/api\/auth\/sign-out$/);
+    expect(navLinks()).toEqual(["Jouer", "Classement"]);
+    expect(await screen.findByText("Déconnecté")).toBeInTheDocument();
+  });
+
+  test("a failed sign-out keeps the User, and says so", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ message: "down" }, { status: 500 })),
+    );
+
+    const { user } = await renderApp(ada);
+
+    await user.click(screen.getByRole("button", { name: "Menu de Ada Lovelace" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Se déconnecter" }));
+
+    expect(await screen.findByText("La déconnexion a échoué. Réessaie.")).toBeInTheDocument();
+    expect(within(sidebar()).getByRole("button", { name: "Menu de Ada Lovelace" })).toBeVisible();
+  });
+});
+
+describe("the Visitor's card", () => {
+  test("invites them to sign in, and opens the sign-in dialog", async () => {
+    const { user } = await renderApp(null);
+
+    expect(
+      within(sidebar()).getByText(
+        "Connecte-toi pour jouer en Duel, entrer au Classement et défier tes Friends.",
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(within(sidebar()).getByRole("button", { name: "Se connecter" }));
+
+    expect(useAuthStore.getState().signInOpen).toBe(true);
+  });
+});
+
+describe("the sidebar during a Solo Run", () => {
+  beforeEach(() => {
+    useRunStore.getState().start(words10);
+  });
+
+  test("is whole before the first Keystroke", async () => {
+    await renderApp(null, "/");
+
+    expect(sidebar()).not.toHaveAttribute("inert");
+    expect(sidebar()).not.toHaveAttribute("data-faded");
+  });
+
+  test("fades and goes inert while the Run is typed, then comes back at its end", async () => {
+    const { user } = await renderApp(null, "/");
+
+    await user.keyboard("s");
+
+    const typed = screen.getByRole("complementary", { name: "Barre latérale", hidden: true });
+
+    expect(typed).toHaveAttribute("inert");
+    expect(typed).toHaveAttribute("data-faded");
+
+    await user.keyboard(text.slice(1));
+
+    expect(await screen.findByRole("button", { name: /Rejouer/ })).toBeInTheDocument();
+    expect(sidebar()).not.toHaveAttribute("inert");
+    expect(sidebar()).not.toHaveAttribute("data-faded");
+  });
+
+  test("stays whole on another page, a Run left there unfinished", async () => {
+    useRunStore.getState().press({ kind: "char", char: "s" }, 1_000, defaultPace);
+    await renderApp(null, "/leaderboard");
+
+    expect(sidebar()).not.toHaveAttribute("inert");
+  });
+});

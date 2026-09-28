@@ -10,6 +10,7 @@ import {
   expectedScore,
   matchWindow,
   nextMmr,
+  nextStanding,
   nextWidening,
   ornamentOf,
   PLACEMENT_DUELS,
@@ -192,6 +193,38 @@ describe("applyTp", () => {
     expect(applyTp({ tier: "maniac", tp: 10, shielded: false }, -20)).toEqual(
       standing({ tier: "diamant", division: 1, tp: 75 }),
     );
+  });
+});
+
+describe("nextStanding", () => {
+  test("the Division above, at 0 TP", () => {
+    expect(nextStanding({ tier: "or", division: 2, tp: 42, shielded: true })).toEqual({
+      tier: "or",
+      division: 1,
+      tp: 0,
+      shielded: false,
+    });
+  });
+
+  test("past a Division I, the next Tier's Division IV", () => {
+    expect(nextStanding({ tier: "bronze", division: 1, tp: 90, shielded: false })).toEqual({
+      tier: "argent",
+      division: 4,
+      tp: 0,
+      shielded: false,
+    });
+  });
+
+  test("past Diamant I, Maniac", () => {
+    expect(nextStanding({ tier: "diamant", division: 1, tp: 0, shielded: false })).toEqual({
+      tier: "maniac",
+      tp: 0,
+      shielded: false,
+    });
+  });
+
+  test("nothing above Maniac", () => {
+    expect(nextStanding({ tier: "maniac", tp: 250, shielded: false })).toBeNull();
   });
 });
 

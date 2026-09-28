@@ -75,9 +75,11 @@ const renderPage = async (user: Me | null, leaderboard: Leaderboard) => {
 };
 
 describe("LeaderboardPage", () => {
-  test("invites a Visitor to sign in", async () => {
+  test("invites a Visitor to sign in, under the page's header", async () => {
     await renderPage(null, { entries: [], me: null });
 
+    expect(screen.getByRole("heading", { level: 1, name: "Classement" })).toBeTruthy();
+    expect(screen.getByText("Connecte-toi pour voir le Classement.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Se connecter" })).toBeTruthy();
   });
 

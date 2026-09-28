@@ -15,6 +15,7 @@ export {
   isPlacement,
   matchWindow,
   nextMmr,
+  nextStanding,
   nextWidening,
   ornamentOf,
   queueLockOf,

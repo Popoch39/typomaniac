@@ -30,7 +30,7 @@ export const DuelHudDevStage = ({ t, clock }: DuelHudDevStageProps) => {
 
   return (
     <div className="fixed inset-0 bg-background">
-      <AppFrameLayout duelFormat={{ challenge: model.challenge }}>
+      <AppFrameLayout duelFormat={{ challenge: model.challenge }} soloTyping={false}>
         <ClockContext value={clock}>
           <DuelHud model={model} veil={null} onLeave={noForfeit} />
         </ClockContext>

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
-// The app's name in the header: the accent square with its "t", then the word. Leads to the play page.
+// The app's name atop the sidebar and the Duel's scene: the accent square with its "t", then the
+// word. Leads to the play page.
 export const BrandMark = () => (
   <Link
     to="/"

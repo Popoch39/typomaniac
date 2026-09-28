@@ -104,11 +104,12 @@ const statusOf = (letter: string) => {
 };
 
 describe("DuelHudDevPage", () => {
-  test("draws the Duel's scene: its header inert, the Duel ranked", async () => {
+  test("draws the Duel's scene: the sidebar hidden, its own header inert, the Duel ranked", async () => {
     await renderPage();
 
     const header = screen.getByRole("banner");
 
+    expect(screen.getByLabelText("Barre latérale")).not.toBeVisible();
     expect(header).toHaveAttribute("inert");
     expect(within(header).getByText("Duel classé · 30 s · anglais")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Quitter le Duel" })).toBeEnabled();

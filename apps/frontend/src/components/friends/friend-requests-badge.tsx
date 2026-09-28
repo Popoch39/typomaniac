@@ -1,17 +1,13 @@
+import { SidebarMenuBadge } from "@/components/ui/sidebar";
 import { useConnectionStore } from "@/stores/connection-store";
 
-// The number of Friend requests waiting for the User's answer, on the way to the Friends, as the
-// real-time connection keeps it. Nothing until it is told, or when none waits: the header never
-// waits for it.
+// The number of Friend requests waiting for the User's answer, on the sidebar's way to the
+// Friends, as the real-time connection keeps it. Nothing until it is told, or when none waits: the
+// sidebar never waits for it.
 export const FriendRequestsBadge = () => {
   const count = useConnectionStore((store) => store.friends?.requestsReceived ?? 0);
 
   return count > 0 ? (
-    <span
-      aria-label={`${count} Friend requests en attente`}
-      className="min-w-5 rounded-full bg-foreground px-1.5 text-center font-mono text-[0.65rem] leading-5 font-bold text-background tabular-nums"
-    >
-      {count}
-    </span>
+    <SidebarMenuBadge aria-label={`${count} Friend requests`}>{count}</SidebarMenuBadge>
   ) : null;
 };

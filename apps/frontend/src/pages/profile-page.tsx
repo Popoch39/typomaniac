@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { meQueryOptions } from "@/api/me";
 import { HandleForm } from "@/components/handle/handle-form";
+import { PageHeader } from "@/components/page-header";
 import { OwnProfileEmpty } from "@/components/profile/own-profile-empty";
 import { ProfileStats } from "@/components/profile/profile-stats";
 import { ProfileStatsSkeleton } from "@/components/profile/profile-stats-skeleton";
@@ -24,15 +25,15 @@ export const ProfilePage = () => {
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 py-12">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold tracking-tight">Profil</h1>
-        <p className="text-muted-foreground">
-          {me.handle === null
+    <section className="flex w-full max-w-2xl flex-col gap-6">
+      <PageHeader
+        title="Profil"
+        subtitle={
+          me.handle === null
             ? "Tu n'as pas encore de Handle : sans lui, pas de Duel."
-            : `Les autres te voient en ${atHandle(me.handle)}.`}
-        </p>
-      </div>
+            : `Les autres te voient en ${atHandle(me.handle)}.`
+        }
+      />
       <HandleForm
         initial={me.handle ?? suggestHandle(me.name)}
         current={me.handle}

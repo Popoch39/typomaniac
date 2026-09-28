@@ -140,29 +140,63 @@ const renderPlayPage = async () => {
 
 const settings = () => screen.queryByRole("group", { name: "Réglages" });
 
+// The sidebar, even out of sight (where it has no accessible name).
+const sidebar = () => screen.getByLabelText("Barre latérale");
+
 describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
-  test("in the Queue, the app keeps its header and its settings", async () => {
+  test("in the Queue, the app keeps its sidebar and its settings, without the scene's header", async () => {
     await renderPlayPage();
 
-    const header = screen.getByRole("banner");
-
-    expect(header).not.toHaveAttribute("inert");
-    expect(within(header).getByRole("link", { name: "Thèmes" })).toBeInTheDocument();
-    expect(within(header).getByRole("button", { name: "Menu de Ada" })).toBeInTheDocument();
+    expect(sidebar()).toBeVisible();
+    expect(sidebar()).not.toHaveAttribute("inert");
+    expect(within(sidebar()).getByRole("button", { name: "Menu de Ada" })).toBeInTheDocument();
+    expect(screen.queryByRole("banner")).not.toBeInTheDocument();
     expect(settings()).toBeInTheDocument();
   });
 
-  test("once paired, the header is inert, without Thèmes nor the User's menu, and the settings are gone", async () => {
+  test("the Match proposal opens over the page, the sidebar still there", async () => {
+    await renderPlayPage();
+    receive({
+      type: "match-proposed",
+      expiresAt: 10_000,
+      serverTime: 0,
+      opponent: { handle: "kzr_", image: null, ornament: null },
+      selfOrnament: null,
+      selfRank: placement,
+      opponentRank: placement,
+      selfAccepted: false,
+      opponentAccepted: false,
+      dodgeLock: null,
+    });
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(sidebar()).not.toHaveAttribute("hidden");
+    expect(screen.queryByRole("banner")).not.toBeInTheDocument();
+  });
+
+  test("once paired, the sidebar is hidden and inert, never unmounted, and the settings are gone", async () => {
+    await renderPlayPage();
+
+    const before = sidebar();
+
+    receive(duelFound(placement));
+
+    expect(sidebar()).toBe(before);
+    expect(sidebar()).not.toBeVisible();
+    expect(sidebar()).toHaveAttribute("hidden");
+    expect(sidebar()).toHaveAttribute("inert");
+    expect(screen.queryByRole("link", { name: "Classement" })).not.toBeInTheDocument();
+    expect(settings()).not.toBeInTheDocument();
+  });
+
+  test("once paired, the scene has its own header, inert: the brand and the Duel's format", async () => {
     await renderPlayPage();
     receive(duelFound(placement));
 
     const header = screen.getByRole("banner");
 
     expect(header).toHaveAttribute("inert");
-    expect(within(header).queryByRole("link", { name: "Thèmes" })).not.toBeInTheDocument();
-    expect(within(header).queryByRole("button", { name: "Menu de Ada" })).not.toBeInTheDocument();
-    expect(within(header).getByRole("link", { name: "Classement" })).toBeInTheDocument();
-    expect(settings()).not.toBeInTheDocument();
+    expect(within(header).getByRole("link", { name: "typomaniac" })).toBeInTheDocument();
   });
 
   test("a Duel of the Queue says it is ranked, at the right of the header", async () => {
@@ -193,17 +227,20 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
     expect(server().sent).toContainEqual({ type: "leave-duel" });
   });
 
-  test("on the end screen, the app gets its header back", async () => {
+  test("on the end screen, the app gets its sidebar back, the scene's header gone", async () => {
     await renderPlayPage();
+
+    const before = sidebar();
+
     receive(duelFound(placement));
     receive(duelEnded);
 
     await screen.findByRole("button", { name: "Nouveau Duel" });
 
-    const header = screen.getByRole("banner");
-
-    expect(header).not.toHaveAttribute("inert");
-    expect(within(header).getByRole("link", { name: "Thèmes" })).toBeInTheDocument();
-    expect(within(header).queryByText(/· 30 s ·/)).not.toBeInTheDocument();
+    expect(sidebar()).toBe(before);
+    expect(sidebar()).toBeVisible();
+    expect(sidebar()).not.toHaveAttribute("inert");
+    expect(screen.queryByRole("banner")).not.toBeInTheDocument();
+    expect(screen.queryByText(/· 30 s ·/)).not.toBeInTheDocument();
   });
 });
