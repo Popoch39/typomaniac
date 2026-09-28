@@ -3,10 +3,9 @@ import type { Form } from "api";
 import type { Rank, Stake, Tier } from "ranked";
 
 import { meQueryOptions } from "@/api/me";
-import { FaceOffForm } from "@/components/face-off/face-off-form";
 import { FaceOffPanel } from "@/components/face-off/face-off-panel";
-import { FaceOffRank } from "@/components/face-off/face-off-rank";
 import { FaceOffStake } from "@/components/face-off/face-off-stake";
+import { FaceOffStanding } from "@/components/face-off/face-off-standing";
 
 type FaceOffSelfProps = {
   ornament: Tier | null;
@@ -16,8 +15,8 @@ type FaceOffSelfProps = {
 };
 
 // This User's side of the Face-off, on the left: their avatar and Handle, read without ever
-// holding up the overlay, their Ornament, then their rank at the pairing (or the Challenge
-// badge), their Form and, in a ranked Duel past Placement, their Stake.
+// holding up the overlay, their Ornament, then their rank at the pairing (or « Challenge ») and
+// their Form, and, in a ranked Duel past Placement, their Stake.
 export const FaceOffSelf = ({ ornament, rank, form, stake }: FaceOffSelfProps) => {
   const { data: me } = useQuery(meQueryOptions);
 
@@ -28,8 +27,7 @@ export const FaceOffSelf = ({ ornament, rank, form, stake }: FaceOffSelfProps) =
       image={me?.image ?? null}
       ornament={ornament}
     >
-      <FaceOffRank rank={rank} />
-      <FaceOffForm form={form} />
+      <FaceOffStanding rank={rank} form={form} reversed={false} />
       <FaceOffStake rank={rank} stake={stake} />
     </FaceOffPanel>
   );

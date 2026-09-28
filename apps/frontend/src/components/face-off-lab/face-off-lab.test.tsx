@@ -19,7 +19,10 @@ const renderLab = () =>
 
 // The lab's clock stands at the pairing, before the reveal: the Stake is there, still hidden, so
 // without an accessible name yet.
-const stakeCard = () => screen.getByLabelText("Enjeu");
+const stakeLine = () => screen.getByLabelText("Enjeu");
+
+// Picks one of the lab's pairings.
+const pick = (pairing: string) => userEvent.click(screen.getByRole("button", { name: pairing }));
 
 describe("FaceOffLab", () => {
   test("plays the Face-off against a ranked opponent on demand", async () => {
@@ -35,14 +38,26 @@ describe("FaceOffLab", () => {
     ).toBeInTheDocument();
   });
 
-  test("shows the Stake of an ordinary ranked Duel, then of one that moves up a Division", async () => {
+  test("shows the Stake of each ranked pairing: the TP a win and a loss would move", async () => {
     renderLab();
 
     await userEvent.click(screen.getByRole("button", { name: "Face-off" }));
-    expect(stakeCard()).toHaveTextContent("En jeu");
+    expect(stakeLine()).toHaveTextContent(/^Victoire \+14 TP Défaite −11 TP$/);
 
-    await userEvent.click(screen.getByRole("button", { name: "Montée de Division" }));
-    expect(stakeCard()).toHaveTextContent("Gagne et passe Or II");
+    await pick("Montée de Division");
+    expect(stakeLine()).toHaveTextContent(/^Victoire \+12 TP Défaite −13 TP$/);
+
+    await pick("Descente");
+    expect(stakeLine()).toHaveTextContent(/^Victoire \+12 TP Défaite −12 TP$/);
+
+    await pick("Protégé");
+    expect(stakeLine()).toHaveTextContent(/^Victoire \+12 TP Défaite −12 TP$/);
+
+    await pick("Fer IV");
+    expect(stakeLine()).toHaveTextContent(/^Victoire \+14 TP Défaite −12 TP$/);
+
+    await pick("Maniac");
+    expect(stakeLine()).toHaveTextContent(/^Victoire \+11 TP Défaite −11 TP$/);
   });
 
   test("stages a Promotion Duel, then a Duel for Maniac", async () => {
@@ -52,30 +67,11 @@ describe("FaceOffLab", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Duel de promotion" }));
     expect(screen.getByText("Or I → Platine IV")).toBeInTheDocument();
-    expect(stakeCard()).toHaveTextContent("Défaite −11 TP, tu restes Or I");
+    expect(stakeLine()).toHaveTextContent(/^Victoire \+14 TP Défaite −11 TP$/);
 
     await userEvent.click(screen.getByRole("button", { name: "Duel pour Maniac" }));
     expect(screen.getByText("Diamant I → Maniac")).toBeInTheDocument();
-    expect(stakeCard()).toHaveTextContent("Gagne et passe Maniac");
-  });
-
-  test("shows the Stake of a loss that moves down, one the shield holds, Fer IV and Maniac", async () => {
-    renderLab();
-
-    await userEvent.click(screen.getByRole("button", { name: "Face-off" }));
-
-    await userEvent.click(screen.getByRole("button", { name: "Descente" }));
-    expect(stakeCard()).toHaveTextContent("Défaite −12 TP → Or III · 75 TP");
-
-    await userEvent.click(screen.getByRole("button", { name: "Protégé" }));
-    expect(stakeCard()).toHaveTextContent("Défaite −12 TP, protégé : tu restes Or II");
-
-    await userEvent.click(screen.getByRole("button", { name: "Fer IV" }));
-    expect(stakeCard()).toHaveTextContent("Défaite −12 TP, tu restes Fer IV · 0 TP");
-
-    await userEvent.click(screen.getByRole("button", { name: "Maniac" }));
-    expect(stakeCard()).toHaveTextContent("Victoire +11 TP → Maniac · 259 TP");
-    expect(stakeCard()).not.toHaveTextContent("/ 100 TP");
+    expect(stakeLine()).toHaveTextContent(/^Victoire \+9 TP Défaite −16 TP$/);
   });
 
   test("switches the opponent to a Challenge", async () => {

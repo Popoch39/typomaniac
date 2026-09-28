@@ -47,7 +47,7 @@ export const FaceOffPanel = ({ side, handle, image, ornament, children }: FaceOf
         <div
           data-face-off="reveal"
           className={cn(
-            "invisible absolute inset-y-0 flex max-w-[38%] flex-col justify-center gap-5.5 text-background opacity-0",
+            "invisible absolute inset-y-0 flex max-w-[38%] flex-col justify-center gap-4 text-background opacity-0",
             style.content,
           )}
         >
@@ -55,11 +55,11 @@ export const FaceOffPanel = ({ side, handle, image, ornament, children }: FaceOf
             handle={handle ?? ""}
             image={image}
             ornament={ornament}
-            className="size-44 after:border-0"
-            fallbackClassName={cn("bg-background text-6xl font-extrabold", style.initials)}
+            className="mb-6 size-24 after:border-0"
+            fallbackClassName={cn("bg-background text-3xl font-extrabold", style.initials)}
           />
           {/* Positioned after the avatar: drawn over the Ornament's overflow, never under it. */}
-          <p className="relative max-w-full truncate text-7xl leading-none font-extrabold tracking-[-0.02em]">
+          <p className="relative max-w-full truncate text-5xl leading-none font-extrabold tracking-[-0.02em]">
             {handle === null ? null : atHandle(handle)}
           </p>
           {children}

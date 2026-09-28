@@ -1,38 +1,26 @@
-import { cn } from "cn";
 import type { Rank } from "ranked";
 
 import { TierEmblem } from "@/components/tier/drawing/tier-emblem";
 import { rankLabel } from "@/components/tier/rank/rank-label";
-import { TIER_COLORS } from "@/components/tier/tier";
 
-// A player's rank in the Face-off, never their MMR, on an ink chip over their colour: the Tier's
-// emblem and the rank in words, the Placement Duels left, or the Challenge badge when the Duel is
-// not ranked.
+// A player's rank in the Face-off, never their MMR, in ink right on their colour: the Tier's
+// emblem and the rank in words, the Placement Duels left, or « Challenge » when the Duel is not
+// ranked.
 type FaceOffRankProps = { rank: Rank | null };
-
-const CHIP = "flex items-center gap-3 rounded-[1.125rem] bg-background py-2.5 pr-5 pl-3";
 
 export const FaceOffRank = ({ rank }: FaceOffRankProps) => {
   if (rank === null) {
-    return (
-      <span className="rounded-full bg-background px-5.5 py-3 text-[0.9375rem] font-extrabold tracking-[0.12em] text-foreground uppercase">
-        Challenge
-      </span>
-    );
+    return <span className="text-lg font-extrabold">Challenge</span>;
   }
 
   if ("placementsLeft" in rank) {
-    return (
-      <span className={cn(CHIP, "pl-5 text-lg font-semibold text-muted-foreground")}>
-        {rankLabel(rank)}
-      </span>
-    );
+    return <span className="text-lg font-semibold">{rankLabel(rank)}</span>;
   }
 
   return (
-    <span className={cn(CHIP, TIER_COLORS[rank.tier])}>
+    <span className="flex items-center gap-2">
       {/* The label says the Tier and Division already: the emblem is only seen. */}
-      <span aria-hidden className="size-11">
+      <span aria-hidden className="size-7">
         <TierEmblem tier={rank.tier} />
       </span>
       <span className="font-mono text-lg font-semibold tabular-nums">{rankLabel(rank)}</span>

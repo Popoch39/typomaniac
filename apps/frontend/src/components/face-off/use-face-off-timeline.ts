@@ -21,9 +21,8 @@ gsap.registerPlugin(useGSAP);
 export const useFaceOffTimeline = (
   scope: RefObject<HTMLDivElement | null>,
   startsAt: number,
-  // What the overlay shows beyond the players: this User's Stake, whose bar fills in, and a
-  // Promotion Duel's banner, which comes and goes.
-  { stake, promotion }: { stake: boolean; promotion: boolean },
+  // What the overlay shows beyond the players: a Promotion Duel's banner, which comes and goes.
+  { promotion }: { promotion: boolean },
 ) => {
   const clock = useClock();
   const sounds = useFaceOffSounds();
@@ -33,7 +32,6 @@ export const useFaceOffTimeline = (
   useGSAP(
     () => {
       const timeline = faceOffTimeline({
-        stake,
         promotion,
         reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
       });
@@ -63,6 +61,6 @@ export const useFaceOffTimeline = (
 
       return () => gsap.ticker.remove(sync);
     },
-    { scope, dependencies: [clock, sounds, startsAt, stake, promotion] },
+    { scope, dependencies: [clock, sounds, startsAt, promotion] },
   );
 };

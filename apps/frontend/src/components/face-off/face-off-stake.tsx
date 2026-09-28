@@ -1,56 +1,30 @@
-import { cn } from "cn";
-import { DIVISION_TP, type Rank, type Stake } from "ranked";
+import type { Rank, Stake } from "ranked";
 
-import { FaceOffStakeBar } from "@/components/face-off/face-off-stake-bar";
-import { FaceOffStakeHeader } from "@/components/face-off/face-off-stake-header";
-import { FaceOffStakeOutcome } from "@/components/face-off/face-off-stake-outcome";
-import { stakeCopy } from "@/components/face-off/stake-copy";
-import { TIER_COLORS } from "@/components/tier/tier";
+import { signedTp } from "@/components/tier/rank/rank-label";
 
 type FaceOffStakeProps = { rank: Rank | null; stake: Stake | null };
 
-// This User's Stake in the Face-off, under their rank and Form: what a win and a loss would do to
-// their TP, exactly what the Duel applies. Bordered in the colour of the rank a win moves up to.
-// Nothing for a Challenge or in Placement: no TP moves.
+// This User's Stake in the Face-off, under their rank and Form: the TP a win and a loss would
+// move, exactly what the Duel applies, in ink on their colour. Only the TP: never the rank they
+// lead to. Nothing for a Challenge or in Placement: no TP moves.
 export const FaceOffStake = ({ rank, stake }: FaceOffStakeProps) => {
   if (stake === null || rank === null || "placementsLeft" in rank) {
     return null;
   }
 
-  const { promotion, win, loss } = stakeCopy(rank, stake);
-
-  // The card's colour, which the hatches and the rank moved up to take: the Tier aimed at, or
-  // this User's. Each text sets its own.
+  // The signs tell the two apart on screen; screen readers get their names.
   return (
     <section
       aria-label="Enjeu"
-      className={cn(
-        "flex w-120 flex-col gap-3 rounded-[1.375rem] bg-background px-5 py-4.5 ring-2",
-        TIER_COLORS[(promotion ?? rank).tier],
-        promotion === null ? "ring-foreground/10" : "ring-current",
-      )}
+      className="flex gap-5 font-mono text-lg font-semibold tabular-nums opacity-80"
     >
-      <FaceOffStakeHeader promotion={promotion} />
-      {rank.tier === "maniac" ? null : (
-        <FaceOffStakeBar
-          standing={rank}
-          reached={promotion === null ? stake.win.standing.tp : DIVISION_TP}
-        />
-      )}
-      <p className="flex items-center justify-between text-sm text-muted-foreground">
-        {rank.tier === "maniac" ? null : (
-          <span className="font-mono text-[0.8125rem] tabular-nums">
-            <span className="text-foreground">{rank.tp}</span> / {DIVISION_TP} TP
-          </span>
-        )}{" "}
-        <FaceOffStakeOutcome label="Victoire" tp={stake.win.tp}>
-          {win}
-        </FaceOffStakeOutcome>
-      </p>
-      <p className="text-sm text-muted-foreground">
-        <FaceOffStakeOutcome label="Défaite" tp={stake.loss.tp}>
-          {loss}
-        </FaceOffStakeOutcome>
+      <p>
+        <span className="sr-only">Victoire </span>
+        {signedTp(stake.win.tp)}
+      </p>{" "}
+      <p>
+        <span className="sr-only">Défaite </span>
+        {signedTp(stake.loss.tp)}
       </p>
     </section>
   );

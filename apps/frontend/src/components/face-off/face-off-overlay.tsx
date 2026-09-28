@@ -29,10 +29,7 @@ export const FaceOffOverlay = ({ opponent, pairing, startsAt, elapsed }: FaceOff
   const scope = useRef<HTMLDivElement>(null);
   const promotion = promotionDuel(pairing.selfRank, pairing.selfStake);
 
-  useFaceOffTimeline(scope, startsAt, {
-    stake: pairing.selfStake !== null,
-    promotion: promotion !== null,
-  });
+  useFaceOffTimeline(scope, startsAt, { promotion: promotion !== null });
 
   return (
     <div

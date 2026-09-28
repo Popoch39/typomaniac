@@ -21,9 +21,6 @@ const CASCADE_S = REVEAL_S + 0.22;
 
 const CASCADE_STAGGER_S = 0.07;
 
-// The Stake comes in with the reveal; what a win would add to its bar fills in a little after.
-const STAKE_FILL_S = 0.9;
-
 // The halves split out on GO, up and down, and are gone this long after.
 const EXIT_S = 0.5;
 
@@ -104,19 +101,16 @@ const BANNER_PULSES = 3;
 const BANNER_HALF_BEAT_S = (COUNTDOWN_S - REVEAL_S) / (2 * BANNER_PULSES);
 
 type FaceOffTimelineOptions = {
-  // This User's Stake is shown: its bar fills in.
-  stake: boolean;
   // A Promotion Duel: its banner comes in with the reveal and goes at GO.
   promotion: boolean;
-  // Under reduced motion, the Stake's bar shows full at once, the banner fades without moving and
-  // its emblem stays still.
+  // Under reduced motion, the banner fades without moving and its emblem stays still.
   reducedMotion: boolean;
 };
 
 // The whole Face-off overlay on a single timeline, paused: its time is the time since the pairing,
 // set from the Duel's clock (never GSAP's own), so a seek lands anywhere. Transforms and opacity
 // only; the diagonal cut is a static clip-path.
-export const faceOffTimeline = ({ stake, promotion, reducedMotion }: FaceOffTimelineOptions) => {
+export const faceOffTimeline = ({ promotion, reducedMotion }: FaceOffTimelineOptions) => {
   const timeline = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
   const marquee = { duration: COUNTDOWN_S + EXIT_S, ease: "power2.out" };
 
@@ -201,17 +195,6 @@ export const faceOffTimeline = ({ stake, promotion, reducedMotion }: FaceOffTime
       },
       "reveal",
     );
-  }
-
-  if (stake && !reducedMotion) {
-    timeline
-      .addLabel("stake", STAKE_FILL_S)
-      .fromTo(
-        part("stake-gain"),
-        { scaleX: 0 },
-        { scaleX: 1, duration: 0.6, ease: "expo.out" },
-        "stake",
-      );
   }
 
   timeline

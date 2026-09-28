@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { gsap } from "gsap";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -137,18 +137,7 @@ const reduceMotion = () =>
     dispatchEvent: () => true,
   }));
 
-const stakeCard = () => screen.getByRole("region", { name: "Enjeu" });
-
-// What a win would add to the Stake's bar: only seen, so found by the part the timeline animates.
-const stakeGain = () => {
-  const gain = stakeCard().querySelector('[data-face-off="stake-gain"]');
-
-  if (gain === null) {
-    throw new Error("The Stake has no bar");
-  }
-
-  return gain;
-};
+const stakeLine = () => screen.getByRole("region", { name: "Enjeu" });
 
 // A sound player for the tests: it writes down what it plays.
 const fakeSounds = () => {
@@ -273,83 +262,63 @@ describe("FaceOff", () => {
     expect(screen.getByText("Aucun Duel classé")).toBeInTheDocument();
   });
 
-  test("shows this User's Stake under their rank: the bar, what a win and a loss would do", () => {
+  test("shows this User's Stake under their rank: the TP a win and a loss would move", () => {
     // Past the reveal, the Stake in with the rest.
     faceOffAt(-3500, ranked);
 
-    const card = stakeCard();
-
-    expect(card).toHaveTextContent("En jeu");
-    expect(card).toHaveTextContent("50 / 100 TP");
-    expect(card).toHaveTextContent("Victoire +20 TP → Or IV · 70 TP");
-    // The last line, with nothing after its TP.
-    expect(card).toHaveTextContent(/Défaite −20 TP$/);
-    expect(within(card).getByText("+20 TP")).toHaveClass("text-win");
-    expect(within(card).getByText("−20 TP")).toHaveClass("text-destructive");
+    expect(stakeLine()).toHaveTextContent(/^Victoire \+20 TP Défaite −20 TP$/);
   });
 
-  test("heads the Stake with the rank a win would reach when it moves up", () => {
-    faceOffAt(-3500, {
-      ...ranked,
-      selfRank: orIv(91),
-      selfStake: {
-        win: { tp: 20, standing: { tier: "or", division: 3, tp: 11, shielded: true } },
-        loss: { tp: -20, standing: orIv(71) },
-      },
-    });
+  test("keeps the Stake to its TP, never the rank it leads to", () => {
+    const moves: [FaceOffPairing, RegExp][] = [
+      // A win up a Division.
+      [division, /^Victoire \+12 TP Défaite −13 TP$/],
+      // A loss down a Division.
+      [
+        {
+          ...ranked,
+          selfRank: { tier: "or", division: 2, tp: 8, shielded: false },
+          selfStake: {
+            win: { tp: 12, standing: { tier: "or", division: 2, tp: 20, shielded: false } },
+            loss: { tp: -14, standing: { tier: "or", division: 3, tp: 75, shielded: false } },
+          },
+        },
+        /^Victoire \+12 TP Défaite −14 TP$/,
+      ],
+      // A loss held by the shield.
+      [
+        {
+          ...ranked,
+          selfRank: { tier: "or", division: 2, tp: 4, shielded: true },
+          selfStake: {
+            win: { tp: 15, standing: { tier: "or", division: 2, tp: 19, shielded: true } },
+            loss: { tp: -12, standing: { tier: "or", division: 2, tp: 0, shielded: false } },
+          },
+        },
+        /^Victoire \+15 TP Défaite −12 TP$/,
+      ],
+      // A loss in Fer IV, at its floor.
+      [
+        {
+          ...ranked,
+          selfRank: ferIv(6),
+          selfStake: {
+            win: { tp: 14, standing: ferIv(20) },
+            loss: { tp: -16, standing: ferIv(0) },
+          },
+        },
+        /^Victoire \+14 TP Défaite −16 TP$/,
+      ],
+    ];
 
-    const card = stakeCard();
-
-    expect(card).toHaveTextContent("Gagne et passe Or III");
-    expect(card).not.toHaveTextContent("En jeu");
-    expect(card).toHaveTextContent("Victoire +20 TP → Or III · 11 TP");
+    for (const [pairing, stake] of moves) {
+      faceOffAt(-3500, pairing);
+      expect(stakeLine()).toHaveTextContent(stake);
+      cleanup();
+    }
   });
 
-  test("says what a loss would do to the rank: down, held by the shield, or kept by a move up", () => {
-    faceOffAt(-3500, {
-      ...ranked,
-      selfRank: { tier: "or", division: 2, tp: 8, shielded: false },
-      selfStake: {
-        win: { tp: 12, standing: { tier: "or", division: 2, tp: 20, shielded: false } },
-        loss: { tp: -12, standing: { tier: "or", division: 3, tp: 75, shielded: false } },
-      },
-    });
-    expect(stakeCard()).toHaveTextContent("Défaite −12 TP → Or III · 75 TP");
-    cleanup();
-
-    faceOffAt(-3500, {
-      ...ranked,
-      selfRank: { tier: "or", division: 2, tp: 4, shielded: true },
-      selfStake: {
-        win: { tp: 12, standing: { tier: "or", division: 2, tp: 16, shielded: true } },
-        loss: { tp: -12, standing: { tier: "or", division: 2, tp: 0, shielded: false } },
-      },
-    });
-    expect(stakeCard()).toHaveTextContent("Défaite −12 TP, protégé : tu restes Or II");
-    cleanup();
-
-    faceOffAt(-3500, {
-      ...ranked,
-      selfRank: { tier: "or", division: 1, tp: 92, shielded: false },
-      selfStake: {
-        win: { tp: 14, standing: { tier: "platine", division: 4, tp: 6, shielded: true } },
-        loss: { tp: -11, standing: { tier: "or", division: 1, tp: 81, shielded: false } },
-      },
-    });
-    expect(stakeCard()).toHaveTextContent("Défaite −11 TP, tu restes Or I");
-  });
-
-  test("in Fer IV, says a loss below 0 TP stays there", () => {
-    faceOffAt(-3500, {
-      ...ranked,
-      selfRank: ferIv(6),
-      selfStake: { win: { tp: 14, standing: ferIv(20) }, loss: { tp: -12, standing: ferIv(0) } },
-    });
-
-    expect(stakeCard()).toHaveTextContent("Défaite −12 TP, tu restes Fer IV · 0 TP");
-  });
-
-  test("in Maniac, the Stake has no bar: TP without a cap", () => {
+  test("in Maniac, the Stake is the same line: TP without a cap", () => {
     faceOffAt(-3500, {
       ...ranked,
       selfRank: maniac(248),
@@ -359,26 +328,7 @@ describe("FaceOff", () => {
       },
     });
 
-    const card = stakeCard();
-
-    expect(card).toHaveTextContent("En jeu");
-    expect(card).toHaveTextContent("Victoire +11 TP → Maniac · 259 TP");
-    expect(card).toHaveTextContent(/Défaite −11 TP$/);
-    expect(card).not.toHaveTextContent("/ 100 TP");
-    expect(card.querySelector('[data-face-off="stake-gain"]')).toBeNull();
-  });
-
-  test("in Maniac, a loss that moves down leads to Diamant I at 75 TP", () => {
-    faceOffAt(-3500, {
-      ...ranked,
-      selfRank: maniac(5),
-      selfStake: {
-        win: { tp: 11, standing: maniac(16) },
-        loss: { tp: -11, standing: { tier: "diamant", division: 1, tp: 75, shielded: false } },
-      },
-    });
-
-    expect(stakeCard()).toHaveTextContent("Défaite −11 TP → Diamant I · 75 TP");
+    expect(stakeLine()).toHaveTextContent(/^Victoire \+11 TP Défaite −11 TP$/);
   });
 
   test("shows no Stake in Placement nor in a Challenge", () => {
@@ -390,28 +340,10 @@ describe("FaceOff", () => {
     expect(screen.queryByRole("region", { name: "Enjeu" })).not.toBeInTheDocument();
   });
 
-  test("fills what a win would add to the bar a little after the Stake comes in", () => {
-    // Just in, with the reveal: the bar is still to fill.
-    faceOffAt(-3800, ranked);
-    expect(gsap.getProperty(stakeGain(), "scaleX")).toBe(0);
-
-    tickAt(-2500);
-    expect(gsap.getProperty(stakeGain(), "scaleX")).toBe(1);
-  });
-
-  test("a Face-off resumed during the 3-2-1 finds the Stake as it stands, its bar filled", () => {
+  test("a Face-off resumed during the 3-2-1 still shows the Stake", () => {
     faceOffAt(-2000, ranked);
 
-    expect(stakeCard()).toHaveTextContent("Victoire +20 TP → Or IV · 70 TP");
-    expect(gsap.getProperty(stakeGain(), "scaleX")).toBe(1);
-  });
-
-  test("under reduced motion, the bar shows what a win would add without filling in", () => {
-    reduceMotion();
-
-    faceOffAt(-3800, ranked);
-
-    expect(gsap.getProperty(stakeGain(), "scaleX")).toBe(1);
+    expect(stakeLine()).toHaveTextContent(/^Victoire \+20 TP Défaite −20 TP$/);
   });
 
   test("stages a Promotion Duel: the banner, the rank reached from the rank held, the ring", () => {

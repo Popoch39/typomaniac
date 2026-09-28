@@ -214,7 +214,7 @@ Les 5 premiers Duels Ranked d'un User, sans Tier visible, où son MMR bouge pres
 _Avoid_ : placement matches, qualifications
 
 **Stake** :
-Ce qu'un Duel Ranked peut faire aux TP d'un User, montré au Face-off : les TP qu'une victoire lui rapporterait et le rang où elle le mènerait, les TP qu'une défaite lui coûterait. Calculée par le serveur à l'appariement, par les mêmes règles que la fin du Duel, elle est exactement ce que le Duel appliquera. Pas de Stake pour un Draw, ni en Placement, ni dans un Challenge.
+Ce qu'un Duel Ranked peut faire aux TP d'un User : les TP qu'une victoire lui rapporterait et le rang où elle le mènerait, les TP qu'une défaite lui coûterait. Le Face-off n'en montre que les TP. Calculée par le serveur à l'appariement, par les mêmes règles que la fin du Duel, elle est exactement ce que le Duel appliquera. Pas de Stake pour un Draw, ni en Placement, ni dans un Challenge.
 _Avoid_ : preview, pari, prévision
 
 **Promotion Duel** :

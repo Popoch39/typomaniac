@@ -12,16 +12,17 @@ const MARKS = {
 
 type FaceOffFormMarkProps = { outcome: DuelOutcome };
 
-// One Ranked Duel of the Form, on an ink square over the player's colour.
+// One Ranked Duel of the Form, on a small ink square: green and red would not read right on the
+// player's colour.
 export const FaceOffFormMark = ({ outcome }: FaceOffFormMarkProps) => {
   const { Icon, color, name } = MARKS[outcome];
 
   return (
     <li
       data-face-off="form-item"
-      className={cn("flex size-11 items-center justify-center rounded-xl bg-background", color)}
+      className={cn("flex size-7 items-center justify-center rounded-lg bg-background", color)}
     >
-      <Icon aria-hidden className="size-6" strokeWidth={3.5} />
+      <Icon aria-hidden className="size-4" strokeWidth={3.5} />
       <span className="sr-only">{name}</span>
     </li>
   );
