@@ -3,7 +3,19 @@ import { useRef } from "react";
 
 import { pipPunchTimeline } from "@/components/duel-hud/band-effect-timelines";
 import { useCueTimeline } from "@/components/duel-hud/use-cue-timeline";
-import { pipTone, usePipTone } from "@/components/duel-hud/use-pip-tone";
+import { useInkFade } from "@/components/duel-hud/use-ink-fade";
+
+// The ink of a pip: full when lit, faint otherwise, none while a broken Combo turns it red.
+const pipTone = ({ lit, broken }: { lit: boolean; broken: boolean }) => {
+  if (broken) {
+    return 0;
+  }
+
+  return lit ? 1 : 0.2;
+};
+
+// How long a pip takes to change colour, in seconds, as on the board.
+const TONE_S = 0.16;
 
 type DuelComboPipProps = {
   lit: boolean;
@@ -24,7 +36,7 @@ export const DuelComboPip = ({ lit, mirrored, punchAt, broken, startsAt }: DuelC
   const inkRef = useRef<HTMLSpanElement>(null);
   const tone = pipTone({ lit, broken });
 
-  usePipTone(inkRef, tone);
+  useInkFade(inkRef, tone, TONE_S);
   useCueTimeline(pipRef, { at: punchAt, startsAt }, (reducedMotion) =>
     reducedMotion || pipRef.current === null ? null : pipPunchTimeline(pipRef.current),
   );

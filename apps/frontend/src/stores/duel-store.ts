@@ -456,14 +456,19 @@ const endingOf = ({
 
 // The server ends the Duel, possibly before this tab's time is up: nothing typed here counts
 // anymore. At the end of its time, the Duel played here keeps its HUD, which tells the outcome
-// until END_HOLD_MS after the time is up (`ticked`). A Forfeit goes to the end screen at once, and
-// so does a Duel that ended while this User was away, told on connection.
+// until END_HOLD_MS after the time is up (`ticked`), a Forfeit told meanwhile included (a last
+// batch too fast, a connection not back in time). A Forfeit before the end goes to the end screen
+// at once, and so does a Duel that ended while this User was away, told on connection.
 const ended = (state: DuelState, message: DuelEnded): DuelState => {
   outbox = [];
 
   const ending = endingOf(message);
 
-  if (!ending.forfeit && (state.phase === "running" || state.phase === "finishing")) {
+  if (
+    state.phase === "finishing" ||
+    (state.phase === "running" &&
+      (!ending.forfeit || isFinished(state.duel.run, clock() - state.duel.startsAt)))
+  ) {
     return { phase: "finishing", duel: state.duel, ending };
   }
 

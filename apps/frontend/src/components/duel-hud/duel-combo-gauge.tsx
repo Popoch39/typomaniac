@@ -3,6 +3,7 @@ import { useRef } from "react";
 
 import { brokenTimeline } from "@/components/duel-hud/band-effect-timelines";
 import type { BandEffects } from "@/components/duel-hud/band-effects";
+import { DuelComboMark } from "@/components/duel-hud/duel-combo-mark";
 import { DuelComboPip } from "@/components/duel-hud/duel-combo-pip";
 import { useCueTimeline } from "@/components/duel-hud/use-cue-timeline";
 
@@ -94,16 +95,7 @@ export const DuelComboGauge = ({
             startsAt={startsAt}
           />
         ) : (
-          <span
-            key={item.key}
-            aria-hidden="true"
-            className={cn(
-              "mx-[3px] font-display text-[10px] leading-none font-extrabold",
-              item.reached ? "text-ink" : "text-ink/40",
-            )}
-          >
-            ×{item.multiplier}
-          </span>
+          <DuelComboMark key={item.key} multiplier={item.multiplier} reached={item.reached} />
         ),
       )}
     </div>

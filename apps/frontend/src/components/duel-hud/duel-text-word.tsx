@@ -12,15 +12,15 @@ type DuelTextWordProps = {
 };
 
 // One word of the Duel's Text, each letter coloured by its status (`data-status`). The word of the
-// last Burst is highlighted in the accent, at `--burst` of its strength (all of it by default):
-// what GSAP moves to bring it in.
+// last Burst is highlighted in the accent, at `--burst` of its strength (all of it for that word,
+// none for the others): what GSAP moves to bring it in, and to take it off the word before.
 export const DuelTextWord = ({ word, validated, burst }: DuelTextWordProps) => (
   <span
     data-word={word.index}
     data-burst={burst ? "" : undefined}
     className={cn(
-      "-mx-[0.22ch] inline-flex rounded-[6px] px-[0.22ch]",
-      burst && "bg-[color-mix(in_srgb,var(--color-brand)_calc(var(--burst,1)*22%),transparent)]",
+      "-mx-[0.22ch] inline-flex rounded-[6px] bg-[color-mix(in_srgb,var(--color-brand)_calc(var(--burst)*22%),transparent)] px-[0.22ch]",
+      burst ? "[--burst:1]" : "[--burst:0]",
     )}
   >
     {word.letters.map((letter) => (

@@ -325,13 +325,16 @@ describe("the effects of each side's words", () => {
     expect(half("@kzr_")).toHaveTextContent("Score 6");
     expect(within(half("@kzr_")).queryByText("+6")).toBeNull();
     expect(brokenGauge("@kzr_")).toBeNull();
+    expect(callouts()).toBeEmptyDOMElement();
 
     reconnect();
     receive({ type: "elsewhere", place: "duel" });
-    receive(duelResumed(typedRight("small help ")));
+    receive(duelResumed(rushed("small ")));
+    await at(6100);
 
-    expect(half("@kzr_")).toHaveTextContent("Score 11");
-    expect(within(half("@kzr_")).queryByText("+5")).toBeNull();
+    expect(half("@kzr_")).toHaveTextContent("Score 12");
+    expect(within(half("@kzr_")).queryByText("+12")).toBeNull();
+    expect(callouts()).toBeEmptyDOMElement();
   });
 });
 
@@ -344,6 +347,41 @@ describe("the Callouts", () => {
     await at(100);
 
     expect(callouts()).toHaveTextContent("BURST +12");
+  });
+
+  test("comes in on the frame of its Keystroke, not on the HUD's next tenth of a second", async () => {
+    await renderStartedDuel();
+
+    // Fast enough for a Burst, between two tenths of a second.
+    now = STARTS_AT + 1034;
+    await userEvent.keyboard("small ");
+    await at(1050);
+
+    expect(callouts()).toHaveTextContent("BURST +12");
+
+    await at(5000);
+    receive({ type: "opponent-keystrokes", keystrokes: rushed("small ") });
+    await at(5016);
+
+    expect(callouts()).toHaveTextContent("BURST @kzr_ +12");
+  });
+
+  test("a Lead change comes in on the frame its lead has held 300 ms", async () => {
+    await renderStartedDuel();
+
+    await at(3000);
+    receive({ type: "opponent-keystrokes", keystrokes: typedRight("small ") });
+    await at(4000);
+    await userEvent.keyboard("small ");
+    now = STARTS_AT + 7050;
+    await userEvent.keyboard("help ");
+    await at(7340);
+
+    expect(callouts()).toBeEmptyDOMElement();
+
+    await at(7360);
+
+    expect(callouts()).toHaveTextContent("TU PASSES DEVANT");
   });
 
   test("this User's Combo going up a step", async () => {
@@ -707,6 +745,22 @@ describe("the end of the Duel", () => {
 
     await at(10_000);
     receive(duelEnded({ outcome: "win", score: 0, opponentScore: 0, forfeit: true }));
+
+    expect(endScreen()).toBeInTheDocument();
+  });
+
+  test("a Forfeit once the time is up still holds the HUD 2 s", async () => {
+    await renderStartedDuel();
+
+    // The opponent's time to come back runs out after the end.
+    await at(30_000);
+    receive(duelEnded({ outcome: "win", score: 6, opponentScore: 0, forfeit: true }));
+    await at(31_900);
+
+    expect(endScreen()).toBeNull();
+    expect(callouts()).toHaveTextContent("VICTOIRE +6");
+
+    await at(32_000);
 
     expect(endScreen()).toBeInTheDocument();
   });
