@@ -1,6 +1,6 @@
 # apps/frontend
 
-Front React 19 + Vite 8 (React Compiler via `@rolldown/plugin-babel`). Point d'entrée : `src/main.tsx`.
+Front React 19 + Vite 8 (React Compiler Rust d'Oxc via `react({ compiler })` de `@vitejs/plugin-react`, pas de Babel). Point d'entrée : `src/main.tsx`.
 
 ## Skill obligatoire
 

@@ -9,10 +9,9 @@ Currently, two official plugins are available:
 
 ## React Compiler
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+The [React Compiler](https://react.dev/learn/react-compiler) runs through [the experimental native support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler): `react({ compiler: { logDiagnostics: true } })` in `vite.config.ts`, backed by Oxc's Rust port (`oxc-transform-react`). No Babel in the pipeline. `logDiagnostics` prints, in the Vite console, every component the compiler skips.
 
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
+`oxc-transform-react` is pinned to the exact version matched by `@vitejs/plugin-react`'s peer range: bump them together.
 
 ## Expanding the Oxlint configuration
 

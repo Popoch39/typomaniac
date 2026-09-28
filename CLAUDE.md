@@ -40,7 +40,9 @@ Pas d'ESLint, pas de Prettier. N'en réinstalle pas et n'ajoute pas de config `e
 - **oxfmt** : config dans `.oxfmtrc.json`. Il formate aussi le JSON et le Markdown, et trie les clés des `package.json`.
 - **anti-slop** : règles oxlint de [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop), vendorisées dans `tools/oxlint/anti-slop/` et chargées via `jsPlugins`. Ce code appartient au repo : on peut l'adapter, mais toute modification se note dans `tools/oxlint/anti-slop/UPSTREAM.md`.
 
-`oxlint` et `@oxlint/plugins` sont épinglés à la même version exacte : les monter ensemble.
+`oxlint` et `@oxlint/plugins` sont épinglés à la même version exacte : les monter ensemble. De même, `oxc-transform-react` (React Compiler Rust, dans `apps/frontend`) est épinglé exact sur la plage peer de `@vitejs/plugin-react` : les monter ensemble.
+
+Les règles oxlint du React Compiler (`react/purity`, `react/refs`, `react/immutability`…) tournent via les catégories `correctness` / `suspicious`. S'y ajoutent `react/rule-suppression`, `react/syntax` et `react/unsupported-syntax`.
 
 ### Écrire du code qui passe anti-slop
 
