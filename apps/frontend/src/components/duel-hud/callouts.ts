@@ -2,7 +2,11 @@ import { type Cue, maxMultiplier } from "typing-engine";
 
 import { isKind } from "@/components/duel-hud/band-effects";
 import { type Leader, leaderOf } from "@/components/duel-hud/band-lead";
-import type { DuelHudModel, DuelHudPlayer } from "@/components/duel-hud/duel-hud-model";
+import {
+  type DuelHudModel,
+  type DuelHudPlayer,
+  isTimeUp,
+} from "@/components/duel-hud/duel-hud-model";
 import type { KeystrokeCues } from "@/lib/cue-bus";
 import { atHandle } from "@/lib/at-handle";
 
@@ -185,10 +189,12 @@ const byTimeThenImportance = (a: Callout, b: Callout) => a.at - b.at || b.import
 // whole length, unless another takes its place, at once when more important, once it has been up
 // CALLOUT_MIN_MS otherwise. One that came too soon to take the place is never shown. None once the
 // time is up.
-export const calloutAt = ({ self, opponent, elapsed, seconds }: DuelHudModel): Callout | null => {
-  if (elapsed >= seconds * 1000) {
+export const calloutAt = (model: DuelHudModel): Callout | null => {
+  if (isTimeUp(model)) {
     return null;
   }
+
+  const { self, opponent, elapsed } = model;
 
   const handle = atHandle(opponent.handle);
 

@@ -9,7 +9,11 @@ import {
   type RunConfig,
 } from "typing-engine";
 
-import type { DuelHudModel, DuelHudPlayer } from "@/components/duel-hud/duel-hud-model";
+import type {
+  DuelHudModel,
+  DuelHudPlayer,
+  DuelVerdict,
+} from "@/components/duel-hud/duel-hud-model";
 import type { KeystrokeCues } from "@/lib/cue-bus";
 
 // The scripted Duel of the board B2 · Affiche (canvas « HUD du Duel Ranked »), @popoch against
@@ -207,15 +211,15 @@ export const scriptedPlayer = (
 // Both players of the scripted Duel have their Handle.
 type ScriptedPlayer = DuelHudPlayer & { handle: string };
 
-// The outcome the server would give once the time is up, simulated on the Scores alone.
-const simulatedOutcome = (self: ScriptedPlayer, opponent: ScriptedPlayer) => {
+// The verdict the server would give once the time is up, simulated on the Scores alone.
+const simulatedVerdict = (self: ScriptedPlayer, opponent: ScriptedPlayer): DuelVerdict => {
   const lead = self.score.score - opponent.score.score;
 
   if (lead === 0) {
-    return "draw";
+    return { outcome: "draw", lead };
   }
 
-  return lead > 0 ? "win" : "loss";
+  return { outcome: lead > 0 ? "win" : "loss", lead };
 };
 
 // The scripted Duel `t` ms after GO, a Ranked Duel. Its GO is 0 on the scripted clock.
@@ -230,5 +234,5 @@ export const scriptedDuel = (
   seconds: SCRIPTED_SECONDS,
   startsAt: 0,
   elapsed: t,
-  outcome: isOver(t) ? simulatedOutcome(self, opponent) : null,
+  verdict: isOver(t) ? simulatedVerdict(self, opponent) : null,
 });

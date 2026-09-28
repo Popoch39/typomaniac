@@ -123,7 +123,7 @@ describe("DuelHudDevPage", () => {
     ["mené", ["288", "×2", "8"], ["338", "×4", "14"], "8"],
     ["dernières secondes", ["411", "×3", "13"], ["417", "×1", "2"], "3"],
     ["renversement", ["435", "×4", "14"], ["432", "×2", "4"], "1"],
-    ["fin", ["463", "×4", "14"], ["442", "×2", "4"], "0"],
+    ["fin", ["463", "×4", "14"], ["442", "×2", "4"], "FIN"],
   ])(
     "frozen on « %s », shows the board's Scores and Combos",
     async (moment, self, opponent, left) => {
@@ -194,7 +194,7 @@ describe("DuelHudDevPage", () => {
     expect(rows()).toEqual(shown);
   });
 
-  // The Callout the board announces at each moment, by its own engine; the end's is not yet drawn.
+  // The Callout the board announces at each moment, by its own engine, then the verdict at the end.
   test.each([
     ["mi-duel", ""],
     ["burst", "BURST +42"],
@@ -202,6 +202,7 @@ describe("DuelHudDevPage", () => {
     ["mené", "BURST @kzr_ +56"],
     ["dernières secondes", "BURST +42"],
     ["renversement", "TU PASSES DEVANT"],
+    ["fin", "VICTOIRE +21"],
   ])("frozen on « %s », announces the board's Callout", async (moment, said) => {
     await renderPage();
 

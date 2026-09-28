@@ -38,8 +38,9 @@ export const DuelArea = () => {
       return <DuelHandleRequired />;
     case "countdown":
     case "running":
+      return <DuelTypingArea duel={state.duel} ending={null} />;
     case "finishing":
-      return <DuelTypingArea duel={state.duel} />;
+      return <DuelTypingArea duel={state.duel} ending={state.ending} />;
     case "ended":
       return <DuelEnded ending={state.ending} />;
     case "elsewhere":

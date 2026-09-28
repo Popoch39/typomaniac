@@ -17,16 +17,19 @@ type DuelDiscProps = {
   seconds: number;
   // Ms since GO, negative during the Countdown.
   elapsed: number;
+  // The time is up.
+  over: boolean;
   lead: number;
 };
 
 // The ink disc in the middle of the band: the seconds left inside a ring that empties over the
-// time, the Lead under them in the leader's colour. Red in the last seconds, when it beats.
-export const DuelDisc = ({ startsAt, seconds, elapsed, lead }: DuelDiscProps) => {
+// time, the Lead under them in the leader's colour. Red in the last seconds, when it beats. Once
+// the time is up, FIN in place of the seconds, back in white, and only the ring stays red.
+export const DuelDisc = ({ startsAt, seconds, elapsed, over, lead }: DuelDiscProps) => {
   const discRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<SVGCircleElement>(null);
   const left = Math.max(0, Math.ceil(seconds - Math.max(0, elapsed) / 1000));
-  const urgent = elapsed >= (seconds - URGENT_S) * 1000;
+  const urgent = !over && elapsed >= (seconds - URGENT_S) * 1000;
 
   useDiscTimeline({ disc: discRef, ring: ringRef }, { startsAt, seconds });
 
@@ -59,18 +62,19 @@ export const DuelDisc = ({ startsAt, seconds, elapsed, lead }: DuelDiscProps) =>
           strokeWidth="3"
           strokeLinecap="round"
           strokeDasharray={`${RING_LENGTH} ${RING_LENGTH}`}
-          className={urgent ? "stroke-destructive" : "stroke-foreground"}
+          className={urgent || over ? "stroke-destructive" : "stroke-foreground"}
         />
       </svg>
       <span
         role="timer"
         aria-label="temps restant"
         className={cn(
-          "relative font-display text-[26px] leading-none font-bold tracking-[-0.02em]",
+          "relative font-display leading-none",
+          over ? "text-[15px] font-extrabold" : "text-[26px] font-bold tracking-[-0.02em]",
           urgent ? "text-destructive" : "text-foreground",
         )}
       >
-        {left}
+        {over ? "FIN" : left}
       </span>
       <span
         aria-hidden="true"
