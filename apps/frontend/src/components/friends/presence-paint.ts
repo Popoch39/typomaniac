@@ -9,7 +9,7 @@ export const PRESENCE_LABELS: Record<Presence, string> = {
 
 // The colour of a Presence's dot.
 export const PRESENCE_DOTS: Record<Presence, string> = {
-  online: "bg-emerald-400",
+  online: "bg-online",
   "in-duel": "bg-caret",
   offline: "bg-faint",
 };

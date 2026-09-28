@@ -31,6 +31,7 @@
   --color-tier-iron: var(--tier-iron);
   --color-tier-maniac: var(--tier-maniac);
   --color-win: var(--win);
+  --color-online: var(--online);
   --animate-tp-fill: tp-fill 900ms ease-out both;
   --animate-tp-pop: tp-pop 500ms ease-out both;
   --animate-caret-blink: caret-blink 1.1s steps(1) infinite;
@@ -114,8 +115,14 @@
   }
 }
 
-/* Social style, dark only. A theme changes --brand (and maybe the ink), never the structure. */
-:root {
+/* Social style. A Theme (src/components/theme/themes.ts) is chosen by `data-theme` on <html>: it
+   changes the ground, the surfaces, the texts, the accent (Toi) and the opponent, never the place of
+   things nor the Tiers. Corail is the base, set here on :root; each other Theme overrides it in its
+   own rule below, from the "Layouts et thèmes" canvas. Everything derived from those colours is
+   declared on each `[data-theme]` too, not only on :root: a Theme's preview card, under its own
+   `data-theme`, is painted in its colours, shadcn's included. */
+:root,
+[data-theme] {
   --ink: #15141c;
   --surface: #1f1e29;
   --surface-2: #2b2a38;
@@ -133,9 +140,12 @@
   --tier-gold: #f2c14e;
   --tier-platinum: #6fd1c0;
   --tier-diamond: #9db4ff;
-  --tier-maniac: var(--brand);
+  /* The Maniac's metal, as in the Tiers' sprite: it never follows the accent. */
+  --tier-maniac: #ff8a65;
   /* A won Duel's mark; a lost one is --destructive. */
   --win: #7ee2a8;
+  /* A Friend's Presence dot, online. */
+  --online: #34d399;
 
   --background: var(--ink);
   --foreground: var(--text);
@@ -171,6 +181,82 @@
   --sidebar-accent-foreground: var(--text);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--brand);
+}
+
+[data-theme="lagon"] {
+  --ink: #0d1720;
+  --surface: #14212c;
+  --surface-2: #1d2e3c;
+  --text: #e3eef5;
+  --text-secondary: #8ea5b5;
+  --faint: #435868;
+  --pending: #66808f;
+  --brand: #5cc8ff;
+  --opponent: #ff9a70;
+}
+
+[data-theme="matcha"] {
+  --ink: #121611;
+  --surface: #1b2119;
+  --surface-2: #262e23;
+  --text: #e9f0e3;
+  --text-secondary: #9aa894;
+  --faint: #4b5746;
+  --pending: #6c7966;
+  --brand: #b8f36b;
+  --opponent: #c9a7ff;
+}
+
+[data-theme="lilas"] {
+  --ink: #15121d;
+  --surface: #1f1a2b;
+  --surface-2: #2b2439;
+  --text: #eee9f7;
+  --text-secondary: #a59cb8;
+  --faint: #564d6a;
+  --pending: #776e8e;
+  --brand: #c9a7ff;
+  --opponent: #ffc46b;
+}
+
+/* Its loss leans orange: the base red would sit too close to its pink accent. */
+[data-theme="sakura"] {
+  --ink: #1a1318;
+  --surface: #251b22;
+  --surface-2: #33252f;
+  --text: #f6e9ef;
+  --text-secondary: #b8a0ac;
+  --faint: #634d59;
+  --pending: #86707c;
+  --brand: #f7a1d0;
+  --opponent: #8fe3d0;
+  --destructive: #ff8266;
+}
+
+/* Its loss is orange: the base red would sit too close to its magenta accent. */
+[data-theme="arcade"] {
+  --ink: #0a0a12;
+  --surface: #13131f;
+  --surface-2: #1d1d2e;
+  --text: #f1f1ff;
+  --text-secondary: #9d9dc0;
+  --faint: #47476a;
+  --pending: #6b6b92;
+  --brand: #ff4fa0;
+  --opponent: #3fe0ff;
+  --destructive: #ff9142;
+}
+
+[data-theme="craie"] {
+  --ink: #111111;
+  --surface: #1b1b1b;
+  --surface-2: #272727;
+  --text: #f0f0f0;
+  --text-secondary: #a0a0a0;
+  --faint: #4d4d4d;
+  --pending: #707070;
+  --brand: #f0f0f0;
+  --opponent: #ffcb57;
 }
 
 @layer base {

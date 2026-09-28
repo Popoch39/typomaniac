@@ -13,6 +13,7 @@ import { WaitingChallenges } from "@/components/challenge/waiting-challenges";
 import { LiveFriendLists } from "@/components/friends/live-friend-lists";
 import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
 import { RealtimeConnection } from "@/components/realtime-connection";
+import { DocumentTheme } from "@/components/theme/document-theme";
 import { LiveRank } from "@/components/tier/rank/live-rank";
 import { TierSprite } from "@/components/tier/sprite/tier-sprite";
 import { Toaster } from "@/components/ui/sonner";
@@ -20,6 +21,7 @@ import { Toaster } from "@/components/ui/sonner";
 // Toasts, Challenge cards and dialogs stay out of the Duel's scene (AppFrame), as they are fixed.
 export const RootLayout = () => (
   <>
+    <DocumentTheme />
     <DesktopOnly />
     <TierSprite />
     <AppFrame>

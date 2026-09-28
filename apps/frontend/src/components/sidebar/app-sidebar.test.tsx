@@ -26,6 +26,7 @@ import { useConnectionStore } from "@/stores/connection-store";
 import { usePlayStore } from "@/stores/play-store";
 import { useRunStore } from "@/stores/run-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useThemeStore } from "@/stores/theme-store";
 import { fakeServer, idle } from "@/test/fake-socket";
 
 const ada: Me = {
@@ -56,6 +57,7 @@ beforeEach(() => {
   localStorage.clear();
   useSettingsStore.setState(useSettingsStore.getInitialState());
   usePlayStore.setState(usePlayStore.getInitialState());
+  useThemeStore.setState(useThemeStore.getInitialState());
   sockets = fakeServer();
   useConnectionStore.getState().open(sockets.open);
   sockets.server().receive(idle());
@@ -371,6 +373,13 @@ describe("the Theme button", () => {
       "aria-current",
       "page",
     );
+  });
+
+  test("names the Theme chosen", async () => {
+    useThemeStore.getState().setTheme("lagon");
+    await renderApp(null);
+
+    expect(within(sidebar()).getByRole("link", { name: "Thème Lagon" })).toBeInTheDocument();
   });
 
   test("is not marked elsewhere", async () => {
