@@ -19,7 +19,13 @@ export const withDevRoutes = (tree: typeof routeTree) => {
     component: lazyRouteComponent(() => import("@/pages/tier-up-dev-page"), "TierUpDevPage"),
   });
 
-  tree.addChildren([...Object.values(tree.children ?? {}), auraGallery, tierUp]);
+  const duelHud = createRoute({
+    getParentRoute: () => tree,
+    path: "/dev/duel-hud",
+    component: lazyRouteComponent(() => import("@/pages/duel-hud-dev-page"), "DuelHudDevPage"),
+  });
+
+  tree.addChildren([...Object.values(tree.children ?? {}), auraGallery, tierUp, duelHud]);
 
   return tree;
 };

@@ -3,7 +3,6 @@ import {
   computeResult,
   computeScore,
   createRun,
-  type Cue,
   cuesOf,
   currentWordListVersion,
   defaultPace,
@@ -17,7 +16,7 @@ import {
 } from "typing-engine";
 import { create } from "zustand";
 
-import { emitCues } from "@/lib/cue-bus";
+import { emitCues, type KeystrokeCues, NO_CUES } from "@/lib/cue-bus";
 import { type Settings, useSettingsStore } from "@/stores/settings-store";
 
 type RunStore = {
@@ -30,8 +29,8 @@ type RunStore = {
   score: ScoreState;
   // In wpm, judges the Bursts: frozen at the first Keystroke.
   pace: number;
-  // What the last Keystroke caused, none at the start of a Run (ADR 0006).
-  cues: readonly Cue[];
+  // What the last Keystroke caused, and when, none at the start of a Run (ADR 0006).
+  cues: KeystrokeCues;
   // Counts the Runs started: a new one remounts the typing area, fresh state and focus included.
   runNumber: number;
   start: (config: RunConfig) => void;
@@ -66,7 +65,7 @@ const freshRun = (config: RunConfig) => ({
   result: null,
   score: computeScore(config, [], defaultPace, 0),
   pace: defaultPace,
-  cues: [],
+  cues: NO_CUES,
 });
 
 const newRun = (state: RunStore, config: RunConfig) => ({
@@ -105,7 +104,11 @@ export const useRunStore = create<RunStore>()((set) => ({
         pace: runPace,
         result: resultAt(run, keystrokes, keystroke.at),
         score,
-        cues: cuesOf({ run: state.run, score: state.score }, keystroke, { run, score }),
+        cues: {
+          at: keystroke.at,
+          cues: cuesOf({ run: state.run, score: state.score }, keystroke, { run, score }),
+          score: score.score,
+        },
       };
     }),
   tick: (now) =>

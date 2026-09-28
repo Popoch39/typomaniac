@@ -1,8 +1,9 @@
-import { type Cue, defaultPace, type Key, type RunConfig } from "typing-engine";
+import { defaultPace, type Key, type RunConfig } from "typing-engine";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { createAudioEngine } from "@/audio/audio-engine";
 import { startSoundReactor } from "@/audio/sound-reactor";
+import type { KeystrokeCues } from "@/lib/cue-bus";
 import { useRunStore } from "@/stores/run-store";
 import { useSoundStore } from "@/stores/sound-store";
 import {
@@ -37,7 +38,7 @@ const press = (...keys: Key[]) => pressAt(defaultPace, keys);
 
 const type = (input: string, pace = defaultPace) => pressAt(pace, [...input].map(char));
 
-const kindsOf = (cues: readonly Cue[]) => cues.map((cue) => cue.kind);
+const kindsOf = ({ cues }: KeystrokeCues) => cues.map((cue) => cue.kind);
 
 let stop = () => {};
 

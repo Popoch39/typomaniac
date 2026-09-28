@@ -58,7 +58,7 @@ Une frappe horodatée pendant un Run ou un Duel : un caractère, un retour arri�
 _Avoid_ : input, touche
 
 **Cue** :
-Ce qu'un Keystroke vient de provoquer dans un Run ou un Duel : une frappe juste (Hit), une faute (Miss), un effacement (Erase), un mot validé, un Combo qui monte de palier ou qui casse, un Burst. Un Keystroke peut en provoquer plusieurs, ou aucun. Les sons et les effets visuels réagissent aux Cues, jamais aux touches.
+Ce qu'un Keystroke vient de provoquer dans un Run ou un Duel : une frappe juste (Hit), une faute (Miss), un effacement (Erase), un mot validé, un Combo qui monte de palier ou qui casse, un Burst. Un Keystroke peut en provoquer plusieurs, ou aucun. Les sons et les effets visuels réagissent aux Cues, jamais aux touches. Dans un Duel, les Keystrokes de l'adversaire provoquent aussi des Cues chez le User, mais ils ne servent qu'aux effets visuels, jamais aux sons.
 _Avoid_ : event, feedback, trigger
 
 **Result** :
@@ -130,6 +130,18 @@ _Avoid_ : perfect, crit, rush
 **Pace** :
 La cadence de référence d'un User pour le Burst, figée au départ : le wpm médian de ses 10 derniers Duels, ou de ceux qu'il a s'il en a moins ; 50 wpm sans aucun Duel, et pour un Visitor. Elle vient de l'historique, pas du Duel en cours, pour qu'alterner mots lents et rapides ne rapporte rien.
 _Avoid_ : moyenne, niveau, cadence
+
+**Lead** :
+L'écart de Score entre les deux Users d'un Duel à un instant donné, vu par le User : positif quand il mène, nul quand leurs Scores sont égaux.
+_Avoid_ : avance, écart, marge
+
+**Lead change** :
+Le passage en tête de l'autre User pendant un Duel, compté seulement quand sa tête tient 0,3 seconde : une tête qui ne dure pas n'en est pas un. La première tête du Duel n'en est pas un non plus.
+_Avoid_ : renversement, comeback, retournement
+
+**Callout** :
+Ce que le HUD d'un Duel annonce au centre, un seul à la fois, tiré des Cues des deux Users et des Lead changes. Par ordre d'importance : un Lead change, puis les Bursts, les paliers de Combo et les Combos cassés du User, puis les Bursts, les Combos cassés et le x4 de son adversaire. Chacun reste au moins 0,5 seconde, sauf si un plus important arrive. À la fin du temps, le Callout donne l'issue du Duel.
+_Avoid_ : annonce, toast, notification, popup
 
 **Duel history** :
 Les Duels terminés d'un User, du plus récent au plus ancien.

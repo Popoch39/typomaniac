@@ -11,5 +11,5 @@ Les sons (et plus tard les effets visuels) réagissent aux Cues : ce qu'un Keyst
 ## Consequences
 
 - Un nouvel effet (son de Combo, animation de Burst) n'ajoute qu'un abonné au bus, et au besoin une nouvelle sorte de Cue dans le moteur.
-- Les Keystrokes de l'adversaire ne produisent aucun Cue chez le User.
+- Les Keystrokes de l'adversaire ne produisent aucun Cue chez le User. Amendé par l'ADR 0010 : ils en produisent, mais pour les effets visuels seulement.
 - Les Cues ne sont ni envoyés au serveur ni enregistrés : ils se recalculent à partir des Keystrokes.

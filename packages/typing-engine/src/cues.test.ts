@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
   computeScore,
+  type Cue,
   cuesOf,
   generateText,
   type Key,
@@ -51,6 +52,9 @@ const comboUpAfter = (words: number) =>
     (cue) => cue.kind === "comboUp",
   );
 
+// The points of the word validated among `cues`, undefined without one.
+const pointsOf = (cues: Cue[]) => cues.find((cue) => cue.kind === "word")?.points;
+
 describe("cuesOf", () => {
   test("a right letter is a Hit", () => {
     expect(cuesAfter("sm", char("a"))).toEqual([{ kind: "hit", char: "a" }]);
@@ -67,21 +71,21 @@ describe("cuesOf", () => {
   test("a space closing a right word is a Hit, then the word is validated right", () => {
     expect(cuesAfter("small", char(" "))).toEqual([
       { kind: "hit", char: " " },
-      { kind: "word", index: 0, correct: true },
+      { kind: "word", index: 0, correct: true, points: 6 },
     ]);
   });
 
   test("a space closing a wrong word is a Miss, then the word is validated wrong", () => {
     expect(cuesAfter("smal", char(" "))).toEqual([
       { kind: "miss", char: " " },
-      { kind: "word", index: 0, correct: false },
+      { kind: "word", index: 0, correct: false, points: 0 },
     ]);
   });
 
   test("the last letter of a `words` Run validates its last word without a space", () => {
     expect(cuesAfter("small help whil", char("e"))).toEqual([
       { kind: "hit", char: "e" },
-      { kind: "word", index: 2, correct: true },
+      { kind: "word", index: 2, correct: true, points: 5 },
     ]);
   });
 
@@ -134,7 +138,7 @@ describe("cuesOf", () => {
   test("a space closing a wrong word after right ones breaks the Combo", () => {
     expect(cuesAfter("small hel", char(" "), timeRun)).toEqual([
       { kind: "miss", char: " " },
-      { kind: "word", index: 1, correct: false },
+      { kind: "word", index: 1, correct: false, points: 0 },
       { kind: "comboBroken", length: 1 },
     ]);
   });
@@ -143,7 +147,7 @@ describe("cuesOf", () => {
   test("a word typed well above the Pace is a Burst", () => {
     expect(cuesAfter("small", char(" "), timeRun, 10)).toEqual([
       { kind: "hit", char: " " },
-      { kind: "word", index: 0, correct: true },
+      { kind: "word", index: 0, correct: true, points: 12 },
       { kind: "burst", wordIndex: 0 },
     ]);
   });
@@ -152,10 +156,46 @@ describe("cuesOf", () => {
   test("one Keystroke's Cues come as stroke, word, Combo, then Burst", () => {
     expect(cuesAfter(typedWords(4).slice(0, -1), char(" "), timeRun, 10)).toEqual([
       { kind: "hit", char: " " },
-      { kind: "word", index: 3, correct: true },
+      { kind: "word", index: 3, correct: true, points: 10 },
       { kind: "comboUp", multiplier: 2 },
       { kind: "burst", wordIndex: 3 },
     ]);
+  });
+
+  describe("the points of a validated word", () => {
+    test("a right word brings its letters and its space", () => {
+      expect(pointsOf(cuesAfter("small", char(" ")))).toBe(6);
+    });
+
+    test("a Burst brings twice as much", () => {
+      expect(pointsOf(cuesAfter("small", char(" "), timeRun, 10))).toBe(12);
+    });
+
+    // "floor", the 15th word, is the first paid x4.
+    test("the 15th right word in a row is paid x4", () => {
+      expect(pointsOf(cuesAfter(typedWords(15).slice(0, -1), char(" "), timeRun))).toBe(24);
+    });
+
+    test("a word validated wrong brings nothing", () => {
+      expect(pointsOf(cuesAfter("smal", char(" ")))).toBe(0);
+    });
+
+    // The end of the time pays the right letters of "hel": the Score goes up, but no word is
+    // validated.
+    test("the right letters paid at the end of the time are no validated word", () => {
+      const log = keystrokes("small hel");
+      const late: Keystroke = { kind: "char", char: " ", at: 60_000 };
+      const before = computeScore(timeRun, log, noBurst, 800);
+      const after = computeScore(timeRun, [...log, late], noBurst, late.at);
+
+      expect(after.score).toBeGreaterThan(before.score);
+      expect(
+        cuesOf({ run: replayRun(timeRun, log), score: before }, late, {
+          run: replayRun(timeRun, [...log, late]),
+          score: after,
+        }),
+      ).toEqual([]);
+    });
   });
 
   test("an ignored Keystroke causes nothing", () => {

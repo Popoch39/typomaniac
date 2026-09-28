@@ -1,11 +1,7 @@
-import type { Letter, RunWord as Word } from "typing-engine";
+import type { RunWord as Word } from "typing-engine";
 
+import { displayedStatus } from "@/components/run/displayed-status";
 import type { RunTone } from "@/components/run/run-tone";
-
-// A letter still pending once its word is validated was skipped: it shows as missed. The engine
-// has no such status, `missed` only exists on screen.
-const displayedStatus = (letter: Letter, validated: boolean) =>
-  validated && letter.status === "pending" ? "missed" : letter.status;
 
 type RunWordProps = {
   word: Word;

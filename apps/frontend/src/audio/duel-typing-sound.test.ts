@@ -267,6 +267,9 @@ describe("typing sound in a Duel", () => {
       opponent,
     });
     type("sm", endsAt + 1_000);
+    // The HUD holds the end 2 s, then the end screen shows it.
+    tick(endsAt + 2_000);
+    type("sm", endsAt + 2_100);
 
     expect(useDuelStore.getState().state.phase).toBe("ended");
     expect(played).toEqual([]);
