@@ -1,13 +1,17 @@
 import type { Keystroke, RunState, ScoreState } from "typing-engine";
 
+import type { KeystrokeCues } from "@/lib/cue-bus";
 import { type DuelEnding, type DuelPlay, isChallenge } from "@/stores/duel-store";
 
 // One player of a Duel as its HUD draws them: their Run and Score so far, the Keystrokes they come
-// from, each stamped in ms since the start, and whether their connection holds.
+// from, each stamped in ms since the start, the Cues of those that came in live, stamped in ms
+// since the start too (when typed for this User, when received for the opponent), and whether
+// their connection holds.
 export type DuelHudPlayer = {
   run: RunState;
   score: ScoreState;
   keystrokes: readonly Keystroke[];
+  cues: readonly KeystrokeCues[];
   connected: boolean;
 };
 
@@ -26,18 +30,24 @@ export type DuelHudModel = {
   outcome: DuelEnding["outcome"] | null;
 };
 
+// The Cues of each side's Keystrokes, as the bus handed them out.
+export type DuelCues = {
+  self: readonly KeystrokeCues[];
+  opponent: readonly KeystrokeCues[];
+};
+
 // The HUD of the Duel played in this tab, `elapsed` ms into it: still in play, so without an
 // outcome.
 export const duelHudModel = (
   duel: DuelPlay,
-  selfHandle: string | null,
-  elapsed: number,
+  { selfHandle, cues, elapsed }: { selfHandle: string | null; cues: DuelCues; elapsed: number },
 ): DuelHudModel => ({
   self: {
     handle: selfHandle,
     run: duel.run,
     score: duel.score,
     keystrokes: duel.keystrokes,
+    cues: cues.self,
     connected: duel.connected,
   },
   opponent: {
@@ -45,6 +55,7 @@ export const duelHudModel = (
     run: duel.opponentRun,
     score: duel.opponentScore,
     keystrokes: duel.opponentKeystrokes,
+    cues: cues.opponent,
     connected: duel.opponentConnected,
   },
   challenge: isChallenge(duel),

@@ -1,5 +1,6 @@
 import { useRef } from "react";
 
+import { bandEffects } from "@/components/duel-hud/band-effects";
 import { bandLabel, bandSplit } from "@/components/duel-hud/band-lead";
 import { DuelBandFill } from "@/components/duel-hud/duel-band-fill";
 import { DuelBandHalf } from "@/components/duel-hud/duel-band-half";
@@ -10,11 +11,13 @@ import { atHandle } from "@/lib/at-handle";
 
 // The top of the HUD, as the board B2 · Affiche draws it: a poster in two colours, this User's
 // accent and the opponent's blue, split on a slant that slides with the Lead. Each player's half
-// in ink over it, mirrored for the opponent, the disc of the time in the middle.
+// in ink over it, mirrored for the opponent, with the effects of their words, the disc of the
+// time in the middle.
 export const DuelBand = ({ model }: { model: DuelHudModel }) => {
   const bandRef = useRef<HTMLElement>(null);
-  const { self, opponent } = model;
+  const { self, opponent, elapsed, startsAt } = model;
   const lead = self.score.score - opponent.score.score;
+  const ended = elapsed >= model.seconds * 1000;
 
   useBandSplit(bandRef, bandSplit(lead));
 
@@ -26,17 +29,21 @@ export const DuelBand = ({ model }: { model: DuelHudModel }) => {
     >
       <DuelBandFill handle={opponent.handle} mirrored />
       <DuelBandFill handle={self.handle} mirrored={false} />
-      <DuelBandHalf name="Toi" handle={self.handle} score={self.score} mirrored={false} />
-      <DuelDisc
-        startsAt={model.startsAt}
-        seconds={model.seconds}
-        elapsed={model.elapsed}
-        lead={lead}
+      <DuelBandHalf
+        name="Toi"
+        handle={self.handle}
+        score={self.score}
+        effects={bandEffects(self.cues, elapsed, ended)}
+        startsAt={startsAt}
+        mirrored={false}
       />
+      <DuelDisc startsAt={startsAt} seconds={model.seconds} elapsed={elapsed} lead={lead} />
       <DuelBandHalf
         name={atHandle(opponent.handle)}
         handle={opponent.handle}
         score={opponent.score}
+        effects={bandEffects(opponent.cues, elapsed, ended)}
+        startsAt={startsAt}
         mirrored
       />
     </section>

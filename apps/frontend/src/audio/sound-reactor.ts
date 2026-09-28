@@ -79,7 +79,8 @@ export const startSoundReactor = (
     }
   });
 
-  const stopCues = onCues((cues) => {
+  // The User's only: the opponent's Cues are on a channel of their own, never heard (ADR 0010).
+  const stopCues = onCues(({ cues }) => {
     const current = packOfChoice(useSoundStore.getState().pack);
 
     if (current === null) {

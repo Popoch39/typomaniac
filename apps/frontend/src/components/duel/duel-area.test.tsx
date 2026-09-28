@@ -10,7 +10,7 @@ import { userEvent } from "@testing-library/user-event";
 import type { ServerMessage } from "api";
 import { StrictMode } from "react";
 import type { Keystroke } from "typing-engine";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { friendsQueryOptions } from "@/api/friends";
 import { type Me, meQueryOptions } from "@/api/me";
@@ -158,6 +158,44 @@ const half = (player: string) => screen.getByRole("region", { name: player });
 const pipsLit = (player: string) =>
   within(half(player)).getByRole("meter", { name: "Combo" }).getAttribute("value");
 
+// The red a broken Combo turns a player's gauge, null when it is not.
+const brokenGauge = (player: string) => half(player).querySelector("[data-combo-broken]");
+
+// The server's state of the Duel once the connection is back, the opponent's Keystrokes in it.
+const duelResumed = (opponentKeystrokes: Keystroke[]): ServerMessage => ({
+  type: "duel-resumed",
+  duel: {
+    id: "duel-1",
+    seed: 42,
+    language: "en",
+    wordListVersion: 1,
+    seconds: 30,
+    startsAt: STARTS_AT,
+  },
+  opponent: { handle: "kzr_", image: null, ornament: null },
+  selfOrnament: null,
+  serverTime: now,
+  keystrokes: [],
+  received: 0,
+  opponentKeystrokes,
+  opponentConnected: true,
+  pace: 50,
+  opponentPace: 50,
+  selfRank: { placementsLeft: 5 },
+  opponentRank: { placementsLeft: 5 },
+  selfForm: null,
+  opponentForm: null,
+  selfStake: null,
+});
+
+// The connection drops, then opens again a second later.
+const reconnect = () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  act(() => server().drop());
+  act(() => vi.advanceTimersByTime(1000));
+  vi.useRealTimers();
+};
+
 describe("the band and the disc", () => {
   test("names who leads the Duel, and by how much", async () => {
     await renderStartedDuel();
@@ -189,12 +227,15 @@ describe("the band and the disc", () => {
     await waitFor(() => expect(timer).toHaveTextContent("18"));
 
     await userEvent.keyboard("small ");
+    // Once the word's « +6 » is gone, the only one left is the Lead's.
+    now += 1000;
 
-    expect(within(band()).getByText("+6")).toBeInTheDocument();
+    await waitFor(() => expect(within(band()).getByText("+6")).toBeInTheDocument());
 
     receive({ type: "opponent-keystrokes", keystrokes: opponentTypes("small help ") });
+    now += 1000;
 
-    expect(within(band()).getByText("+5")).toBeInTheDocument();
+    await waitFor(() => expect(within(band()).getByText("+5")).toBeInTheDocument());
   });
 
   test("shows each side's multiplier and the pips its Combo lit", async () => {
@@ -212,6 +253,63 @@ describe("the band and the disc", () => {
     expect(pipsLit("Toi")).toBe("4");
     expect(half("@kzr_")).toHaveTextContent("multiplicateur ×1");
     expect(pipsLit("@kzr_")).toBe("2");
+  });
+});
+
+describe("the effects of each side's words", () => {
+  test("each right word's points rise by its player's Score, then go", async () => {
+    await renderStartedDuel();
+
+    now = STARTS_AT + 6000;
+    await userEvent.keyboard("small ");
+    receive({ type: "opponent-keystrokes", keystrokes: opponentTypes("small help ") });
+    now += 200;
+
+    await waitFor(() => expect(within(half("Toi")).getByText("+6")).toBeVisible());
+    expect(within(half("@kzr_")).getByText("+5")).toBeVisible();
+
+    now += 1000;
+
+    await waitFor(() => expect(within(half("Toi")).queryByText("+6")).toBeNull());
+    expect(within(half("@kzr_")).queryByText("+5")).toBeNull();
+  });
+
+  test("the opponent's broken Combo turns their gauge red, which fades", async () => {
+    await renderStartedDuel();
+
+    now = STARTS_AT + 6000;
+    receive({ type: "opponent-keystrokes", keystrokes: opponentTypes("small x") });
+    now += 100;
+
+    await waitFor(() => expect(brokenGauge("@kzr_")).toBeVisible());
+    expect(brokenGauge("Toi")).toBeNull();
+
+    now += 800;
+
+    await waitFor(() => expect(brokenGauge("@kzr_")).toBeNull());
+  });
+
+  test("the Keystrokes a resync or a resume replays show no effect", async () => {
+    await renderStartedDuel();
+
+    now = STARTS_AT + 6000;
+    receive({
+      type: "resync",
+      keystrokes: [],
+      received: 0,
+      opponentKeystrokes: opponentTypes("small x"),
+    });
+
+    expect(half("@kzr_")).toHaveTextContent("Score 6");
+    expect(within(half("@kzr_")).queryByText("+6")).toBeNull();
+    expect(brokenGauge("@kzr_")).toBeNull();
+
+    reconnect();
+    receive({ type: "elsewhere", place: "duel" });
+    receive(duelResumed(opponentTypes("small help ")));
+
+    expect(half("@kzr_")).toHaveTextContent("Score 11");
+    expect(within(half("@kzr_")).queryByText("+5")).toBeNull();
   });
 });
 

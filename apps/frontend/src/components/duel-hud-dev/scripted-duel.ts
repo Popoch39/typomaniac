@@ -1,5 +1,8 @@
 import {
+  applyKeystroke,
   computeScore,
+  createRun,
+  cuesOf,
   type Keystroke,
   keystrokesUpTo,
   replayRun,
@@ -7,6 +10,7 @@ import {
 } from "typing-engine";
 
 import type { DuelHudModel, DuelHudPlayer } from "@/components/duel-hud/duel-hud-model";
+import type { KeystrokeCues } from "@/lib/cue-bus";
 
 // The scripted Duel of the board B2 · Affiche (canvas « HUD du Duel Ranked »), @popoch against
 // @kzr_, as real logs of Keystrokes the engine replays: the board's own engine applies the same
@@ -128,14 +132,44 @@ const keystrokesOf = (plan: TypingPlan) => {
   return keystrokes.filter((keystroke) => keystroke.at < DUEL_MS);
 };
 
-// One side of the scripted Duel: its player's Handle, Pace and whole log.
-type ScriptedSide = { handle: string; pace: number; keystrokes: readonly Keystroke[] };
+// What each Keystroke of the log causes, typed at `pace`, as the Duel's store derives it: stamped
+// at the Keystroke, which the scripted opponent's are received at too.
+const cuesAlong = (keystrokes: readonly Keystroke[], pace: number) => {
+  const cues: KeystrokeCues[] = [];
+  let before = { run: createRun(CONFIG), score: computeScore(CONFIG, [], pace, 0) };
 
-const sideOf = (plan: TypingPlan): ScriptedSide => ({
-  handle: plan.handle,
-  pace: plan.pace,
-  keystrokes: keystrokesOf(plan),
-});
+  for (const [i, keystroke] of keystrokes.entries()) {
+    const after = {
+      run: applyKeystroke(before.run, keystroke),
+      score: computeScore(CONFIG, keystrokes.slice(0, i + 1), pace, keystroke.at),
+    };
+
+    cues.push({ at: keystroke.at, cues: cuesOf(before, keystroke, after) });
+    before = after;
+  }
+
+  return cues;
+};
+
+// One side of the scripted Duel: its player's Handle, Pace, whole log and the Cues of each of its
+// Keystrokes.
+type ScriptedSide = {
+  handle: string;
+  pace: number;
+  keystrokes: readonly Keystroke[];
+  cues: readonly KeystrokeCues[];
+};
+
+const sideOf = (plan: TypingPlan): ScriptedSide => {
+  const keystrokes = keystrokesOf(plan);
+
+  return {
+    handle: plan.handle,
+    pace: plan.pace,
+    keystrokes,
+    cues: cuesAlong(keystrokes, plan.pace),
+  };
+};
 
 export const SCRIPTED_SELF = sideOf(SELF_PLAN);
 
@@ -161,6 +195,7 @@ export const scriptedPlayer = (
     run: replayRun(CONFIG, keystrokes),
     score: computeScore(CONFIG, keystrokes, side.pace, now),
     keystrokes,
+    cues: side.cues.slice(0, typed),
     connected: true,
   };
 };

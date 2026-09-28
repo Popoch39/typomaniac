@@ -10,7 +10,7 @@ export type Cue =
   | { kind: "hit"; char: string }
   | { kind: "miss"; char: string }
   | { kind: "erase"; scope: "char" | "word" }
-  | { kind: "word"; index: number; correct: boolean }
+  | { kind: "word"; index: number; correct: boolean; points: number }
   | { kind: "comboUp"; multiplier: number }
   | { kind: "comboBroken"; length: number }
   | { kind: "burst"; wordIndex: number };
@@ -40,7 +40,8 @@ const strokeCue = (before: Moment, keystroke: Keystroke, after: Moment): Cue | n
 };
 
 // The word a Keystroke validated, by a space or by the last letter of a `words` Run: the one the
-// caret was on. Null when no word was validated.
+// caret was on, and the points it just brought, what the Score went up by (none for a wrong
+// word). Null when no word was validated: the right letters the end of the time pays are none.
 const wordCue = (before: Moment, after: Moment): Cue | null => {
   if (after.run.validatedWords <= before.run.validatedWords) {
     return null;
@@ -49,7 +50,12 @@ const wordCue = (before: Moment, after: Moment): Cue | null => {
   // SAFETY: the validated word was the current one before the Keystroke, so it is in `words`.
   const word = after.run.words[before.run.wordIndex] as RunWord;
 
-  return { kind: "word", index: word.index, correct: word.typed === word.target };
+  return {
+    kind: "word",
+    index: word.index,
+    correct: word.typed === word.target,
+    points: after.score.score - before.score.score,
+  };
 };
 
 // The multiplier of the word in progress going up a step, or a Combo falling back to zero.

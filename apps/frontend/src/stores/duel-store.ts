@@ -2,7 +2,6 @@ import type { ClientMessage, ServerMessage } from "api";
 import {
   applyKeystroke,
   computeScore,
-  type Cue,
   cuesOf,
   isFinished,
   type Key,
@@ -15,7 +14,7 @@ import {
 import { create } from "zustand";
 
 import type { Clock } from "@/components/run/clock-context";
-import { emitCues } from "@/lib/cue-bus";
+import { emitCues, emitOpponentCues, type KeystrokeCues, NO_CUES } from "@/lib/cue-bus";
 import { markDuelInProgress } from "@/lib/duel-in-progress";
 import { onServerMessage, sendToServer, useConnectionStore } from "@/stores/connection-store";
 
@@ -129,8 +128,11 @@ export type DuelState =
 
 type DuelStore = {
   state: DuelState;
-  // What the User's last Keystroke caused, never the opponent's (ADR 0006).
-  cues: readonly Cue[];
+  // What the User's last Keystroke caused, stamped at it (ADR 0006).
+  cues: KeystrokeCues;
+  // What each of the opponent's last relayed Keystrokes caused, stamped at their reception, for
+  // the visual reactors only (ADR 0010). A resync or a resume leaves them as they are.
+  opponentCues: readonly KeystrokeCues[];
   // Duel is shown in this tab: it takes the User's place, resuming their Duel or joining the
   // Queue. `clock` stamps the Keystrokes and the Countdown.
   enter: (clock: Clock) => void;
@@ -382,15 +384,45 @@ const resumed = (state: DuelState, message: DuelResumed): DuelState => {
   return playing(message, message);
 };
 
-const withOpponentKeystrokes = (duel: DuelPlay, keystrokes: readonly Keystroke[]) => {
+// The opponent's Keystrokes relayed live, applied one by one as the User's are: each one's Cues,
+// at the opponent's Pace, stamped `at` their reception.
+const withOpponentKeystrokes = (duel: DuelPlay, keystrokes: readonly Keystroke[], at: number) => {
   const opponentKeystrokes = [...duel.opponentKeystrokes, ...keystrokes];
+  const cues: KeystrokeCues[] = [];
+  let before = { run: duel.opponentRun, score: duel.opponentScore };
+
+  for (const [i, keystroke] of keystrokes.entries()) {
+    const typed = opponentKeystrokes.slice(0, duel.opponentKeystrokes.length + i + 1);
+
+    const after = {
+      run: applyKeystroke(before.run, keystroke),
+      score: scoreOf(duel.config, typed, duel.opponentPace),
+    };
+
+    cues.push({ at, cues: cuesOf(before, keystroke, after) });
+    before = after;
+  }
 
   return {
-    ...duel,
-    opponentRun: keystrokes.reduce(applyKeystroke, duel.opponentRun),
-    opponentKeystrokes,
-    opponentScore: scoreOf(duel.config, opponentKeystrokes, duel.opponentPace),
+    duel: { ...duel, opponentRun: before.run, opponentKeystrokes, opponentScore: before.score },
+    cues,
   };
+};
+
+// The opponent typed, while the Duel is played here.
+const opponentTyped = (
+  store: DuelStore,
+  keystrokes: readonly Keystroke[],
+): Pick<DuelStore, "state" | "opponentCues"> => {
+  const duel = duelOf(store.state);
+
+  if (duel === null) {
+    return store;
+  }
+
+  const received = withOpponentKeystrokes(duel, keystrokes, clock() - duel.startsAt);
+
+  return { state: updateDuel(store.state, () => received.duel), opponentCues: received.cues };
 };
 
 // Applies a change to the Duel while it is played, up to the server's end.
@@ -470,7 +502,13 @@ const elsewhere = (state: DuelState): DuelState => {
   return { phase: "elsewhere" };
 };
 
-const stateAfter = (state: DuelState, message: ServerMessage): DuelState => {
+type OpponentKeystrokes = Extract<ServerMessage, { type: "opponent-keystrokes" }>;
+
+// The opponent's Keystrokes also leave Cues: `storeAfter` takes them.
+const stateAfter = (
+  state: DuelState,
+  message: Exclude<ServerMessage, OpponentKeystrokes>,
+): DuelState => {
   switch (message.type) {
     case "idle":
       return idle(state);
@@ -492,8 +530,6 @@ const stateAfter = (state: DuelState, message: ServerMessage): DuelState => {
       return startDuel(message);
     case "duel-resumed":
       return resumed(state, message);
-    case "opponent-keystrokes":
-      return updateDuel(state, (duel) => withOpponentKeystrokes(duel, message.keystrokes));
     case "resync":
       return updateDuel(state, (duel) => resynced(duel, message));
     case "opponent-disconnected":
@@ -547,7 +583,10 @@ const pressed = (store: DuelStore, key: Key, now: number): Pick<DuelStore, "stat
 
   return {
     state: { phase: "running", duel: { ...duel, run, keystrokes, score } },
-    cues: cuesOf({ run: duel.run, score: duel.score }, keystroke, { run, score }),
+    cues: {
+      at: keystroke.at,
+      cues: cuesOf({ run: duel.run, score: duel.score }, keystroke, { run, score }),
+    },
   };
 };
 
@@ -612,13 +651,14 @@ const clearOutbox = () => {
 // messages and sends its own there, and only takes the User's place while Duel is shown.
 export const useDuelStore = create<DuelStore>()((set, get) => ({
   state: { phase: "connecting" },
-  cues: [],
+  cues: NO_CUES,
+  opponentCues: [],
   enter: (tabClock) => {
     clock = tabClock;
     entered = true;
     placeAsked = false;
     clearOutbox();
-    set({ state: { phase: "connecting" }, cues: [] });
+    set({ state: { phase: "connecting" }, cues: NO_CUES, opponentCues: [] });
     claimPlace();
   },
   exit: () => {
@@ -634,7 +674,7 @@ export const useDuelStore = create<DuelStore>()((set, get) => ({
     entered = false;
     clearOutbox();
     markDuelInProgress(false);
-    set({ state: { phase: "connecting" }, cues: [] });
+    set({ state: { phase: "connecting" }, cues: NO_CUES, opponentCues: [] });
   },
   claim: () => {
     placeAsked = false;
@@ -669,7 +709,11 @@ export const useDuelStore = create<DuelStore>()((set, get) => ({
 }));
 
 onServerMessage((message) => {
-  useDuelStore.setState((store) => ({ state: stateAfter(store.state, message) }));
+  useDuelStore.setState((store) =>
+    message.type === "opponent-keystrokes"
+      ? opponentTyped(store, message.keystrokes)
+      : { state: stateAfter(store.state, message) },
+  );
 });
 
 useConnectionStore.subscribe(({ status }, previous) => {
@@ -678,11 +722,17 @@ useConnectionStore.subscribe(({ status }, previous) => {
   }
 });
 
-// Only the User's Keystrokes leave new Cues: they go to the bus, outside of React. The opponent's,
-// a resync or a reconnection leave them as they are.
+// The Keystrokes typed here and those relayed live leave new Cues: they go to the bus, outside of
+// React, each on its own channel. A resync or a reconnection leaves them as they are.
 useDuelStore.subscribe((store, previous) => {
   if (store.cues !== previous.cues) {
     emitCues(store.cues);
+  }
+
+  if (store.opponentCues !== previous.opponentCues) {
+    for (const keystroke of store.opponentCues) {
+      emitOpponentCues(keystroke);
+    }
   }
 });
 

@@ -1,8 +1,11 @@
 import { cn } from "cn";
 import type { ScoreState } from "typing-engine";
 
+import type { BandEffects } from "@/components/duel-hud/band-effects";
 import { DuelBandAvatar } from "@/components/duel-hud/duel-band-avatar";
 import { DuelComboGauge } from "@/components/duel-hud/duel-combo-gauge";
+import { DuelMultiplier } from "@/components/duel-hud/duel-multiplier";
+import { DuelScorePop } from "@/components/duel-hud/duel-score-pop";
 import { atHandle } from "@/lib/at-handle";
 
 type DuelBandHalfProps = {
@@ -11,13 +14,23 @@ type DuelBandHalfProps = {
   // Null while this User's is not read yet.
   handle: string | null;
   score: ScoreState;
+  // What their last Keystrokes still play, on the Duel's clock from `startsAt`, GO.
+  effects: BandEffects;
+  startsAt: number;
   // The opponent's, on the right, as the mirror of this User's.
   mirrored: boolean;
 };
 
 // One player's half of the band, in ink over whatever colour lies under it: their initials, their
-// Handle, their multiplier and Combo gauge, and their Score.
-export const DuelBandHalf = ({ name, handle, score, mirrored }: DuelBandHalfProps) => (
+// Handle, their multiplier and Combo gauge, and their Score with the « +N » of their last word.
+export const DuelBandHalf = ({
+  name,
+  handle,
+  score,
+  effects,
+  startsAt,
+  mirrored,
+}: DuelBandHalfProps) => (
   <section
     aria-label={name}
     className={cn(
@@ -31,10 +44,18 @@ export const DuelBandHalf = ({ name, handle, score, mirrored }: DuelBandHalfProp
         {handle === null ? null : atHandle(handle)}
       </span>
       <div className={cn("flex items-center gap-2.5", mirrored && "flex-row-reverse")}>
-        <span className="inline-block font-display text-[20px] leading-none font-extrabold">
-          <span className="sr-only">multiplicateur </span>×{score.multiplier}
-        </span>
-        <DuelComboGauge combo={score.combo} multiplier={score.multiplier} mirrored={mirrored} />
+        <DuelMultiplier
+          multiplier={score.multiplier}
+          punchAt={effects.multiplierPunch}
+          startsAt={startsAt}
+        />
+        <DuelComboGauge
+          combo={score.combo}
+          multiplier={score.multiplier}
+          mirrored={mirrored}
+          effects={effects}
+          startsAt={startsAt}
+        />
       </div>
     </div>
     <div className={cn("relative", mirrored ? "mr-2.5" : "ml-2.5")}>
@@ -42,6 +63,9 @@ export const DuelBandHalf = ({ name, handle, score, mirrored }: DuelBandHalfProp
         <span className="sr-only">Score </span>
         {score.score}
       </span>
+      {effects.pop === null ? null : (
+        <DuelScorePop pop={effects.pop} startsAt={startsAt} mirrored={mirrored} />
+      )}
     </div>
   </section>
 );
