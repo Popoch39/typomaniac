@@ -25,7 +25,23 @@ export const withDevRoutes = (tree: typeof routeTree) => {
     component: lazyRouteComponent(() => import("@/pages/duel-hud-dev-page"), "DuelHudDevPage"),
   });
 
-  tree.addChildren([...Object.values(tree.children ?? {}), auraGallery, tierUp, duelHud]);
+  // PROTOTYPE, throwaway: the Maniac's keystroke waves, tuned live.
+  const auraManiacPrototype = createRoute({
+    getParentRoute: () => tree,
+    path: "/dev/aura-maniac-prototype",
+    component: lazyRouteComponent(
+      () => import("@/pages/aura-maniac-prototype-page"),
+      "AuraManiacPrototypePage",
+    ),
+  });
+
+  tree.addChildren([
+    ...Object.values(tree.children ?? {}),
+    auraGallery,
+    tierUp,
+    duelHud,
+    auraManiacPrototype,
+  ]);
 
   return tree;
 };
