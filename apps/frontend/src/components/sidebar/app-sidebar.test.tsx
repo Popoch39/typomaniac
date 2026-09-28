@@ -9,11 +9,12 @@ import {
 } from "@tanstack/react-router";
 import { act, render, screen, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import type { Presence } from "api";
 import type { Rank } from "ranked";
 import { defaultPace, type RunConfig } from "typing-engine";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { friendsQueryOptions } from "@/api/friends";
+import { type Friend, friendsQueryOptions } from "@/api/friends";
 import { type Me, meQueryOptions } from "@/api/me";
 import { paceQueryOptions } from "@/api/pace";
 import { AppFrame } from "@/components/app-frame";
@@ -77,15 +78,15 @@ const PAGES = [
 ] as const;
 
 // The app's frame around its pages, at `path`, for `me` (a Visitor when null), the cache seeded the
-// way the root route's beforeLoad leaves it.
-const renderApp = async (me: Me | null, path = "/leaderboard") => {
+// way the root route's beforeLoad leaves it, with `friends` as the User's Friends.
+const renderApp = async (me: Me | null, path = "/leaderboard", friends: Friend[] = []) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
   });
 
   queryClient.setQueryData(meQueryOptions.queryKey, me);
   queryClient.setQueryData(paceQueryOptions(me).queryKey, defaultPace);
-  queryClient.setQueryData(friendsQueryOptions.queryKey, []);
+  queryClient.setQueryData(friendsQueryOptions.queryKey, friends);
 
   const rootRoute = createRootRoute({
     component: () => (
@@ -191,6 +192,174 @@ describe("the sidebar's nav", () => {
 
     expect(within(nav()).getByRole("link", { name: "Friends" })).toBeInTheDocument();
     expect(screen.queryByLabelText("2 Friend requests")).not.toBeInTheDocument();
+  });
+});
+
+const friend = (handle: string): Friend => ({
+  id: `${handle}-id`,
+  handle,
+  image: null,
+  ornament: null,
+});
+
+// The server tells each Friend's Presence, then that nothing waits for Ada: she can challenge.
+const tellPresences = (presences: [string, Presence][]) =>
+  act(() => {
+    sockets.server().receive({
+      type: "friends-snapshot",
+      presences: presences.map(([handle, presence]) => ({ userId: `${handle}-id`, presence })),
+      requestsReceived: 0,
+    });
+    sockets
+      .server()
+      .receive({ type: "challenges-snapshot", sent: null, received: [], serverTime: 1_000 });
+  });
+
+const onlineSection = () => within(sidebar()).getByRole("region", { name: /^En ligne/ });
+
+// Each row as its Handle and its Presence in words.
+const onlineRows = () =>
+  within(onlineSection())
+    .getAllByRole("listitem")
+    .map(
+      (row) =>
+        `${within(row).getByRole("link").textContent} ${within(row).getByText(/^en /).textContent}`,
+    );
+
+describe("the sidebar's Friends online", () => {
+  test("those online first, each to challenge, then those in a Duel, without Défier", async () => {
+    await renderApp(ada, "/leaderboard", ["alan", "grace", "linus", "mary"].map(friend));
+    tellPresences([
+      ["alan", "in-duel"],
+      ["grace", "online"],
+      ["linus", "offline"],
+      ["mary", "online"],
+    ]);
+
+    expect(onlineSection()).toHaveAccessibleName("En ligne · 3");
+    expect(onlineRows()).toEqual(["@grace en ligne", "@mary en ligne", "@alan en Duel"]);
+    expect(within(onlineSection()).getByRole("button", { name: "Défier @grace" })).toBeEnabled();
+    expect(
+      within(onlineSection()).queryByRole("button", { name: /Défier @alan/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("a Friend's Handle leads to their Profile", async () => {
+    await renderApp(ada, "/leaderboard", [friend("grace")]);
+    tellPresences([["grace", "online"]]);
+
+    expect(within(onlineSection()).getByRole("link", { name: "@grace" })).toHaveAttribute(
+      "href",
+      "/u/grace",
+    );
+  });
+
+  test("Défier sends the Challenge", async () => {
+    const { user } = await renderApp(ada, "/leaderboard", [friend("grace")]);
+
+    tellPresences([["grace", "online"]]);
+    await user.click(within(onlineSection()).getByRole("button", { name: "Défier @grace" }));
+
+    expect(sockets.server().sent).toContainEqual({ type: "send-challenge", userId: "grace-id" });
+  });
+
+  test("Défier is disabled, with its reason, while a Challenge waits", async () => {
+    await renderApp(ada, "/leaderboard", [friend("grace"), friend("mary")]);
+    tellPresences([
+      ["grace", "online"],
+      ["mary", "online"],
+    ]);
+    act(() =>
+      sockets.server().receive({
+        type: "challenge-sent",
+        challenge: { id: "c1", to: { id: "mary-id", handle: "mary", image: null }, expiresAt: 0 },
+        serverTime: 1_000,
+      }),
+    );
+
+    expect(
+      within(onlineSection()).getByRole("button", {
+        name: "Défier @grace : Un Challenge attend déjà sa réponse",
+      }),
+    ).toBeDisabled();
+  });
+
+  test("5 rows at most, then the way to all the Friends", async () => {
+    const handles = ["a1", "a2", "a3", "a4", "a5", "a6", "a7"];
+
+    await renderApp(ada, "/leaderboard", [...handles, "off"].map(friend));
+    tellPresences(handles.map((handle) => [handle, "online"]));
+
+    expect(onlineSection()).toHaveAccessibleName("En ligne · 7");
+    expect(onlineRows()).toHaveLength(5);
+    expect(
+      within(onlineSection()).getByRole("link", { name: "Tous tes Friends · 8" }),
+    ).toHaveAttribute("href", "/friends");
+  });
+
+  test("follows the Presences as they change", async () => {
+    await renderApp(ada, "/leaderboard", [friend("grace"), friend("mary")]);
+    tellPresences([["grace", "online"]]);
+
+    act(() =>
+      sockets.server().receive({ type: "presence", userId: "mary-id", presence: "online" }),
+    );
+    act(() =>
+      sockets.server().receive({ type: "presence", userId: "grace-id", presence: "in-duel" }),
+    );
+
+    expect(onlineRows()).toEqual(["@mary en ligne", "@grace en Duel"]);
+  });
+
+  test("says so when no Friend is there, with the way to them", async () => {
+    await renderApp(ada, "/leaderboard", [friend("grace")]);
+    tellPresences([["grace", "offline"]]);
+
+    expect(onlineSection()).toHaveAccessibleName("En ligne · 0");
+    expect(within(onlineSection()).getByText("Aucun Friend en ligne")).toBeInTheDocument();
+    expect(
+      within(onlineSection()).getByRole("link", { name: "Tous tes Friends · 1" }),
+    ).toHaveAttribute("href", "/friends");
+  });
+
+  test("shows rows in their place, and no text, until the Presences are told", async () => {
+    await renderApp(ada, "/leaderboard", [friend("grace")]);
+
+    expect(
+      within(sidebar()).getByRole("status", { name: "Chargement des Friends en ligne" }),
+    ).toBeInTheDocument();
+    expect(within(sidebar()).queryByRole("region", { name: /^En ligne/ })).not.toBeInTheDocument();
+    expect(within(sidebar()).queryByText("Aucun Friend en ligne")).not.toBeInTheDocument();
+  });
+
+  test("in the Queue, says the Friends can be challenged without leaving it", async () => {
+    usePlayStore.setState({ play: "duel" });
+    await renderApp(ada, "/", [friend("grace")]);
+    tellPresences([["grace", "online"]]);
+
+    expect(
+      within(onlineSection()).queryByText("Défie-les sans quitter la Queue."),
+    ).not.toBeInTheDocument();
+
+    act(() => sockets.server().receive({ type: "queued" }));
+
+    expect(
+      within(onlineSection()).getByText("Défie-les sans quitter la Queue."),
+    ).toBeInTheDocument();
+  });
+
+  test("a Visitor has none", async () => {
+    await renderApp(null);
+    tellPresences([]);
+
+    expect(within(sidebar()).queryByRole("region", { name: /^En ligne/ })).not.toBeInTheDocument();
+  });
+
+  test("a User without a Handle has none", async () => {
+    await renderApp({ ...ada, handle: null }, "/leaderboard", [friend("grace")]);
+    tellPresences([["grace", "online"]]);
+
+    expect(within(sidebar()).queryByRole("region", { name: /^En ligne/ })).not.toBeInTheDocument();
   });
 });
 

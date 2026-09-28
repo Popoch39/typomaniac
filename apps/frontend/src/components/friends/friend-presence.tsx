@@ -1,19 +1,7 @@
-import type { Presence } from "api";
 import { cn } from "cn";
 
+import { PRESENCE_DOTS, PRESENCE_LABELS } from "@/components/friends/presence-paint";
 import { useConnectionStore } from "@/stores/connection-store";
-
-const LABELS: Record<Presence, string> = {
-  online: "en ligne",
-  "in-duel": "en Duel",
-  offline: "hors ligne",
-};
-
-const DOTS: Record<Presence, string> = {
-  online: "bg-emerald-400",
-  "in-duel": "bg-caret",
-  offline: "bg-faint",
-};
 
 type FriendPresenceProps = {
   userId: string;
@@ -27,8 +15,8 @@ export const FriendPresence = ({ userId }: FriendPresenceProps) => {
 
   return presence === null ? null : (
     <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-secondary px-2.5 py-1 text-[0.7rem] text-muted-foreground">
-      <span aria-hidden className={cn("size-2 rounded-full", DOTS[presence])} />
-      {LABELS[presence]}
+      <span aria-hidden className={cn("size-2 rounded-full", PRESENCE_DOTS[presence])} />
+      {PRESENCE_LABELS[presence]}
     </span>
   );
 };

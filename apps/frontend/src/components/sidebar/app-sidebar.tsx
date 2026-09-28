@@ -1,6 +1,7 @@
 import { BrandMark } from "@/components/brand-mark";
 import { SidebarAccount } from "@/components/sidebar/sidebar-account";
 import { SidebarNav } from "@/components/sidebar/sidebar-nav";
+import { SidebarOnlineFriends } from "@/components/sidebar/sidebar-online-friends";
 import { ThemeButton } from "@/components/sidebar/theme-button";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader } from "@/components/ui/sidebar";
 
@@ -11,8 +12,8 @@ type AppSidebarProps = {
   faded: boolean;
 };
 
-// The floating sidebar, left of every page, the window's height: the brand, the nav, then the
-// Theme button and the User's card (or the Visitor's).
+// The floating sidebar, left of every page, the window's height: the brand, the nav, the Friends
+// online, then the Theme button and the User's card (or the Visitor's).
 export const AppSidebar = ({ hidden, faded }: AppSidebarProps) => (
   <Sidebar
     aria-label="Barre latérale"
@@ -26,6 +27,7 @@ export const AppSidebar = ({ hidden, faded }: AppSidebarProps) => (
     </SidebarHeader>
     <SidebarContent>
       <SidebarNav />
+      <SidebarOnlineFriends />
     </SidebarContent>
     <SidebarFooter>
       <ThemeButton />

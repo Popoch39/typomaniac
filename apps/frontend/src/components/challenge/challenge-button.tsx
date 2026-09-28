@@ -8,10 +8,12 @@ import { sendToServer, useConnectionStore } from "@/stores/connection-store";
 
 type ChallengeButtonProps = {
   friend: { id: string; handle: string };
+  // The swords alone, where a row is too narrow for the word: the sidebar's.
+  iconOnly?: boolean;
 };
 
 // Défier: sends a Challenge to a Friend online. Disabled, with the reason, while it cannot.
-export const ChallengeButton = ({ friend }: ChallengeButtonProps) => {
+export const ChallengeButton = ({ friend, iconOnly = false }: ChallengeButtonProps) => {
   const blocker = useConnectionStore((store) => challengeBlocker(store, friend.id));
   const { unlock: unlockSounds } = useFaceOffSounds();
   const label = `Défier ${atHandle(friend.handle)}`;
@@ -26,14 +28,15 @@ export const ChallengeButton = ({ friend }: ChallengeButtonProps) => {
     // A disabled button gets no pointer events: the reason's tooltip is on its wrapper.
     <span title={blocker ?? undefined}>
       <Button
-        size="sm"
-        variant="outline"
+        size={iconOnly ? "icon" : "sm"}
+        variant={iconOnly ? "ghost" : "outline"}
         aria-label={blocker === null ? label : `${label} : ${blocker}`}
         disabled={blocker !== null}
         onClick={challenge}
+        className={iconOnly ? "rounded-[14px] text-muted-foreground [&_svg]:size-4.5" : undefined}
       >
         <SwordsIcon aria-hidden />
-        Défier
+        {iconOnly ? null : "Défier"}
       </Button>
     </span>
   );
