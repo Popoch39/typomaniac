@@ -8,8 +8,8 @@ import { UserProfilePage } from "@/pages/user-profile-page";
 import { UserProfilePendingPage } from "@/pages/user-profile-pending-page";
 
 // A User's Profile, by their Handle. A Visitor stays, invited to sign in: nothing to load for them
-// (the API answers 401). An unknown Handle, or one given up, answers 404: the not-found page. Any
-// other failure is the router's error page, never a false « introuvable ».
+// (the API answers UNAUTHORIZED). An unknown Handle, or one given up, answers NOT_FOUND: the
+// not-found page. Any other failure is the router's error page, never a false « introuvable ».
 export const Route = createFileRoute("/u/$handle")({
   beforeLoad: async ({ context }) => ({
     signedIn: (await context.queryClient.ensureQueryData(meQueryOptions)) !== null,
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/u/$handle")({
     try {
       await context.queryClient.ensureQueryData(profileQueryOptions(params.handle));
     } catch (error) {
-      if (error instanceof ApiError && error.status === 404) {
+      if (error instanceof ApiError && error.code === "NOT_FOUND") {
         throw notFound();
       }
 

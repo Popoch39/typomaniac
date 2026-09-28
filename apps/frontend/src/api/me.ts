@@ -1,14 +1,20 @@
 import { queryOptions } from "@tanstack/react-query";
 
-import { api, unwrap, type TreatyResult } from "@/api/client";
+import { api, ApiError, type TreatyResult } from "@/api/client";
 
-// A 401 is the normal answer for a Visitor: no Session is not a failure.
+// UNAUTHORIZED is the normal answer for a Visitor: no Session is not a failure.
 export const toMe = <TData, TError>(result: TreatyResult<TData, TError>): TData | null => {
-  if (result.error && result.status === 401) {
+  if (!result.error) {
+    return result.data;
+  }
+
+  const error = new ApiError(result.status, result.error.value);
+
+  if (error.code === "UNAUTHORIZED") {
     return null;
   }
 
-  return unwrap(result);
+  throw error;
 };
 
 const fetchMe = async () => toMe(await api.me.get());

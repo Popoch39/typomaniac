@@ -1,5 +1,8 @@
 import { treaty } from "@elysia/eden";
+import { Type } from "@sinclair/typebox";
+import { Value } from "@sinclair/typebox/value";
 import type { App } from "api";
+import { ERRORS, type ErrorCode, type ErrorDetail } from "api/errors";
 
 import { env } from "@/env";
 
@@ -7,16 +10,42 @@ import { env } from "@/env";
 // The API is on another origin in dev: without credentials the Session cookie is never sent.
 export const api = treaty<App>(env.VITE_API_URL, { fetch: { credentials: "include" } }).api;
 
-export class ApiError<TValue> extends Error {
+// The API's error format, `ApiErrorBody` of apps/api/src/lib/errors.ts, checked at the boundary.
+const ErrorBody = Type.Object({
+  error: Type.Object({
+    code: Type.String(),
+    message: Type.String(),
+    requestId: Type.String(),
+    details: Type.Optional(
+      Type.Array(Type.Object({ path: Type.String(), message: Type.String() })),
+    ),
+  }),
+});
+
+const isErrorCode = (code: string): code is ErrorCode => Object.hasOwn(ERRORS, code);
+
+// A failed API call, read from its body. A body not in the API's format (a proxy's error page, say)
+// leaves `code` and `requestId` null, a code unknown to ERRORS leaves `code` null: branch on `code`,
+// never on the HTTP status.
+export class ApiError extends Error {
   readonly status: number;
 
-  readonly value: TValue;
+  readonly code: ErrorCode | null;
 
-  constructor(status: number, value: TValue) {
-    super(`API request failed with status ${status}`);
+  readonly requestId: string | null;
+
+  readonly details: ErrorDetail[];
+
+  constructor(status: number, body: Parameters<typeof Value.Check>[1]) {
+    const error = Value.Check(ErrorBody, body) ? body.error : null;
+    const code = error !== null && isErrorCode(error.code) ? error.code : null;
+
+    super(error?.message ?? `API request failed with status ${status}`);
     this.name = "ApiError";
     this.status = status;
-    this.value = value;
+    this.code = code;
+    this.requestId = error?.requestId ?? null;
+    this.details = error?.details ?? [];
   }
 }
 
@@ -32,3 +61,8 @@ export const unwrap = <TData, TError>(result: TreatyResult<TData, TError>): TDat
 
   return result.data;
 };
+
+// The rule a refused action broke, as the API names it in the detail on `path` (`/handle`,
+// `/userId`…); null for any other error.
+export const refusalAt = (error: ApiError, path: string) =>
+  error.details.find((detail) => detail.path === path)?.message ?? null;

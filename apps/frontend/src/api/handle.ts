@@ -1,9 +1,7 @@
-import { Type } from "@sinclair/typebox";
-import { Value } from "@sinclair/typebox/value";
 import { queryOptions } from "@tanstack/react-query";
 import { HANDLE_REFUSALS, type HandleRefusal } from "handle";
 
-import { api, unwrap } from "@/api/client";
+import { api, ApiError, refusalAt, unwrap } from "@/api/client";
 import type { Me } from "@/api/me";
 
 // Why a Handle is refused: the shared rules, or held by another User (only the API knows).
@@ -23,33 +21,17 @@ export const handleAvailabilityQueryOptions = (handle: string) =>
     staleTime: 5_000,
   });
 
-// A refused Handle: the API puts the reason in the error's details (422 invalid, 409 taken). Read
-// here rather than through `unwrap`, whose ApiError keeps the body opaque.
-const HandleRefused = Type.Object({
-  error: Type.Object({
-    details: Type.Tuple([
-      Type.Object({
-        path: Type.Literal("/handle"),
-        message: Type.String(),
-      }),
-    ]),
-  }),
-});
-
 const UNAVAILABLE = new Set<string>([...HANDLE_REFUSALS, "taken"]);
 
 const isHandleUnavailable = (reason: string): reason is HandleUnavailable =>
   UNAVAILABLE.has(reason);
 
-// The reason of a refused Handle, null for any other error.
-const reasonOf = (error: Parameters<typeof Value.Check>[1]) => {
-  if (!Value.Check(HandleRefused, error)) {
-    return null;
-  }
+// The reason of a refused Handle, in the error's details (422 invalid, 409 taken); null for any
+// other error.
+const reasonOf = (error: ApiError) => {
+  const reason = refusalAt(error, "/handle");
 
-  const reason = error.error.details[0].message;
-
-  return isHandleUnavailable(reason) ? reason : null;
+  return reason !== null && isHandleUnavailable(reason) ? reason : null;
 };
 
 export type SavedHandle = { ok: true; me: Me } | { ok: false; reason: HandleUnavailable | null };
@@ -63,5 +45,5 @@ export const saveHandle = async (handle: string): Promise<SavedHandle> => {
     return { ok: true, me: result.data };
   }
 
-  return { ok: false, reason: reasonOf(result.error.value) };
+  return { ok: false, reason: reasonOf(new ApiError(result.status, result.error.value)) };
 };

@@ -28,11 +28,11 @@ export const friendErrorMessage = (error: Error) => {
     return FAILED;
   }
 
-  if (error.status === 429) {
+  if (error.code === "TOO_MANY_REQUESTS") {
     return "Trop de Friend requests d'affilée : patiente un instant.";
   }
 
-  const reason = friendRefusalOf(error.value);
+  const reason = friendRefusalOf(error);
 
   return reason !== null && isFriendRefusal(reason) ? refusals[reason] : FAILED;
 };

@@ -1,9 +1,7 @@
-import { Type } from "@sinclair/typebox";
-import { Value } from "@sinclair/typebox/value";
 import { queryOptions } from "@tanstack/react-query";
 
 import { activityQueryOptions } from "@/api/activity";
-import { api, unwrap } from "@/api/client";
+import { api, type ApiError, refusalAt, unwrap } from "@/api/client";
 import { USER_SEARCH_KEY } from "@/api/user-search";
 
 const fetchFriends = async () => unwrap(await api.friends.get());
@@ -53,13 +51,6 @@ export const friendActions = { send, cancel, accept, decline, remove };
 
 export type FriendAction = keyof typeof friendActions;
 
-// A refused action: the API puts the rule broken in the error's details, like a refused Handle.
-const FriendRefused = Type.Object({
-  error: Type.Object({
-    details: Type.Tuple([Type.Object({ path: Type.Literal("/userId"), message: Type.String() })]),
-  }),
-});
-
-// The rule an action broke, as the API names it; null for any other error.
-export const friendRefusalOf = (body: Parameters<typeof Value.Check>[1]) =>
-  Value.Check(FriendRefused, body) ? body.error.details[0].message : null;
+// The rule an action broke, as the API names it in the error's details, like a refused Handle;
+// null for any other error.
+export const friendRefusalOf = (error: ApiError) => refusalAt(error, "/userId");

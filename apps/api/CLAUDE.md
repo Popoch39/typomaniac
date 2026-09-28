@@ -125,7 +125,9 @@ Better Auth, OAuth uniquement en production (ADR `docs/adr/0001-…`, vocabulair
 
 ## Erreurs
 
-Toute erreur sort au même format, défini dans `src/lib/errors.ts` et réexporté par `app.ts` pour le front (`import type { ApiErrorBody } from "api"`) :
+**TOUJOURS suivre `src/lib/errors.ts`** pour toute erreur HTTP (seule exception : `/api/auth/*`, voir plus bas) : codes pris dans `ERRORS`, levée par `ApiError`, corps au format `ApiErrorBody`. Jamais de format, de code ou de classe d'erreur inventés à côté : les erreurs restent cohérentes pour le front.
+
+Toute erreur sort au même format, défini dans `src/lib/errors.ts`, exporté tel quel pour le front par `api/errors` (`exports` du `package.json` : `ERRORS` au runtime, sans aucune dépendance, à garder ainsi) et dont les types sont réexportés par `app.ts` :
 
 ```json
 {

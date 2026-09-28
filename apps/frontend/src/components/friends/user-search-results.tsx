@@ -14,7 +14,7 @@ type UserSearchResultsProps = {
 };
 
 const errorMessage = (error: Error) =>
-  error instanceof ApiError && error.status === 429
+  error instanceof ApiError && error.code === "TOO_MANY_REQUESTS"
     ? "Trop de recherches d'affilée : patiente un instant."
     : "La recherche a échoué. Réessaie.";
 
