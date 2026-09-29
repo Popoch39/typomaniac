@@ -5,12 +5,15 @@ import { ProfileHeroRank } from "@/components/profile/profile-hero-rank";
 import { ProfilePublicLink } from "@/components/profile/profile-public-link";
 import { UserAvatar } from "@/components/user-avatar/user-avatar";
 import { atHandle } from "@/lib/at-handle";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 // The top of `/profile`, the Profil page, on a card named by its title: their avatar in large, shown
 // with the full Aura of their Ornament; their Handle and how the others see them; their rank and
 // its progress; the way to their public Profile. Until a Handle is chosen, their name, and why they
 // need one.
 export const ProfileHero = ({ me }: { me: Me }) => {
+  const locale = useLocale();
   const titleId = useId();
 
   return (
@@ -36,8 +39,8 @@ export const ProfileHero = ({ me }: { me: Me }) => {
         </h1>
         <p className="text-[15px] text-muted-foreground">
           {me.handle === null
-            ? "Tu n'as pas encore de Handle : sans lui, pas de Duel."
-            : `Les autres te voient en ${atHandle(me.handle)}.`}
+            ? m.profile_no_handle({}, { locale })
+            : m.profile_others_see_you({ handle: atHandle(me.handle) }, { locale })}
         </p>
       </div>
       <ProfileHeroRank rank={me.rank} />

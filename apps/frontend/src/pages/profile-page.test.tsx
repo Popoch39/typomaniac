@@ -9,7 +9,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Rank } from "ranked";
 import { Suspense } from "react";
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 
 import { type Me, meQueryOptions } from "@/api/me";
 import {
@@ -21,6 +21,7 @@ import {
 import { AuraRuntimeContext } from "@/components/aura/aura-runtime-context";
 import type { AuraRuntime } from "@/lib/aura-runtime";
 import { ProfilePage } from "@/pages/profile-page";
+import { useLocaleStore } from "@/stores/locale-store";
 import { fakeAuraRuntime } from "@/test/fake-aura-runtime";
 
 const me: Me = {
@@ -353,6 +354,117 @@ describe("ProfilePage", () => {
       for (const radio of within(picker).getAllByRole("radio")) {
         expect(radio).toBeDisabled();
       }
+    });
+  });
+
+  describe("in English", () => {
+    beforeEach(() => {
+      useLocaleStore.setState({ locale: "en" });
+    });
+
+    test("the hero: how the others see the User, and their public Profile", async () => {
+      await renderPage(me, profile({}));
+
+      expect(within(hero()).getByText("Others see you as @ada.")).toBeInTheDocument();
+      expect(within(hero()).getByRole("button", { name: "Public Profile" })).toHaveAttribute(
+        "href",
+        "/u/ada",
+      );
+    });
+
+    test("the hero's rank: its TP and how far the next", async () => {
+      await renderPage({ ...me, rank: goldII }, profile({}));
+
+      expect(within(hero()).getByText("42 TP · 58 to Gold I")).toBeInTheDocument();
+    });
+
+    test("a Maniac's TP, grouped the English way", async () => {
+      await renderPage({ ...me, rank: { tier: "maniac", tp: 1284, shielded: false } }, profile({}));
+
+      expect(within(hero()).getByText("1,284 TP")).toBeInTheDocument();
+    });
+
+    test("in Placement, the Placement Duels played", async () => {
+      await renderPage({ ...me, rank: { placementsLeft: 3 } }, profile({}));
+
+      expect(within(hero()).getByText("Placement")).toBeInTheDocument();
+      expect(within(hero()).getByText("2 / 5 Duels")).toBeInTheDocument();
+    });
+
+    test("the tiles, their figures grouped and their shares the English way", async () => {
+      await renderPage(
+        me,
+        profile({
+          duels: 4,
+          record: { wins: 2, losses: 1, draws: 1 },
+          averages: { wpm: 62.4, accuracy: 96.6 },
+          records: { wpm: 90, score: 1234, combo: null },
+        }),
+      );
+
+      expect(screen.getByRole("heading", { level: 2, name: "Stats" })).toBeInTheDocument();
+      expect(tileTerms()).toEqual([
+        "wins",
+        "losses",
+        "Draws",
+        "win rate",
+        "Duels",
+        "average wpm",
+        "best wpm",
+        "average accuracy",
+        "best Score",
+        "best Combo",
+      ]);
+      expect(tile("win rate")).toHaveTextContent("50%");
+      expect(tile("average accuracy")).toHaveTextContent("97%");
+      expect(tile("best Score")).toHaveTextContent("1,234");
+      expect(tile("best Combo")).toHaveTextContent("–");
+    });
+
+    test("the Progression, its curves, its Duels and its windows", async () => {
+      await renderPage(me, profile({ duels: 1, progression: points(1) }), {
+        windows: { "200": profile({ duels: 1, progression: points(2) }) },
+      });
+
+      const progression = screen.getByRole("region", { name: "Progression" });
+
+      for (const metric of ["wpm", "raw", "accuracy", "consistency"]) {
+        expect(
+          within(progression).getByRole("figure", { name: `${metric} Progression` }),
+        ).toBeInTheDocument();
+      }
+
+      expect(within(progression).getByText("1 Duel, excluding Forfeits")).toBeInTheDocument();
+      expect(
+        within(progression).getByRole("group", { name: "Progression window" }),
+      ).toBeInTheDocument();
+      expect(within(progression).getByRole("button", { name: "last 50" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      expect(within(progression).getByRole("button", { name: "all" })).toBeInTheDocument();
+
+      await userEvent.click(within(progression).getByRole("button", { name: "last 200" }));
+
+      expect(await screen.findByText("2 Duels, excluding Forfeits")).toBeInTheDocument();
+    });
+
+    test("invites a User without a Duel to play", async () => {
+      await renderPage(me, profile({}));
+
+      expect(screen.getByText("No Duels yet")).toBeInTheDocument();
+      expect(
+        screen.getByText("Your Stats will show up after your first finished Duel."),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Start a Duel" })).toHaveAttribute("href", "/");
+    });
+
+    test("a User without a Handle is told why they need one", async () => {
+      await renderPage({ ...me, handle: null }, null);
+
+      expect(
+        screen.getByText("You don't have a Handle yet, and you need one to play Duels."),
+      ).toBeInTheDocument();
     });
   });
 

@@ -10,7 +10,7 @@ import {
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ORNAMENT_CHOICES, type OrnamentChoice, type Rank } from "ranked";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { type Me, meQueryOptions } from "@/api/me";
 import { type Profile, profileQueryOptions } from "@/api/profile";
@@ -19,6 +19,8 @@ import type { AuraRuntime } from "@/lib/aura-runtime";
 import { fakeAuraRuntime } from "@/test/fake-aura-runtime";
 import { UserProfileNotFoundPage } from "@/pages/user-profile-not-found-page";
 import { UserProfilePage } from "@/pages/user-profile-page";
+import { UserProfilePendingPage } from "@/pages/user-profile-pending-page";
+import { useLocaleStore } from "@/stores/locale-store";
 
 const me: Me = {
   id: "ada-id",
@@ -351,6 +353,61 @@ describe("UserProfilePage", () => {
         expect(screen.getByRole("radio", { name: "Silver" })).toBeChecked();
       });
       expect(fetch).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe("in English", () => {
+    beforeEach(() => {
+      useLocaleStore.setState({ locale: "en" });
+    });
+
+    test("another User's Stats", async () => {
+      await renderAt(me, "grace", [grace]);
+
+      await screen.findByRole("heading", { name: "@grace" });
+
+      expect(
+        within(screen.getByLabelText("Stats")).getByText("wins").closest("div"),
+      ).toHaveTextContent("2");
+    });
+
+    test("a User without a Duel yet has no Stats", async () => {
+      await renderAt(me, "grace", [{ ...grace, stats: { ...grace.stats, duels: 0 } }]);
+
+      expect(await screen.findByText("No Duels yet")).toBeInTheDocument();
+      expect(
+        screen.getByText("Their Stats will show up after their first finished Duel."),
+      ).toBeInTheDocument();
+    });
+
+    test("an unknown Handle: what happened, what it costs, and a way out", async () => {
+      await renderAt(me, "nobody", [grace]);
+
+      expect(await screen.findByRole("heading", { name: "User not found" })).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "No User has this Handle: it was never taken, or its owner has since changed it.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Find a User" })).toHaveAttribute(
+        "href",
+        "/friends",
+      );
+    });
+
+    test("while the Profile loads, each part says what it loads", () => {
+      render(<UserProfilePendingPage />);
+
+      for (const name of ["Loading Profile", "Loading Stats", "Loading Progression"]) {
+        expect(screen.getByRole("status", { name })).toBeInTheDocument();
+      }
+    });
+
+    test("a Visitor is invited to sign in", async () => {
+      await renderAt(null, "grace", [grace]);
+
+      expect(await screen.findByRole("button", { name: "Sign in" })).toBeInTheDocument();
+      expect(screen.getByText("Sign in to see this User's Profile.")).toBeInTheDocument();
     });
   });
 

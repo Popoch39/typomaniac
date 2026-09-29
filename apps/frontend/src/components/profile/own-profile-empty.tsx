@@ -2,16 +2,22 @@ import { Link } from "@tanstack/react-router";
 
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 // No finished Duel yet on one's own Profile: the Stats come with the first one.
-export const OwnProfileEmpty = () => (
-  <EmptyState
-    title="Pas encore de Duel"
-    reason="Tes Stats apparaîtront après ton premier Duel terminé."
-    action={
-      <Button nativeButton={false} render={<Link to="/" />}>
-        Lancer un Duel
-      </Button>
-    }
-  />
-);
+export const OwnProfileEmpty = () => {
+  const locale = useLocale();
+
+  return (
+    <EmptyState
+      title={m.profile_empty_title({}, { locale })}
+      reason={m.profile_empty_own_reason({}, { locale })}
+      action={
+        <Button nativeButton={false} render={<Link to="/" />}>
+          {m.profile_empty_own_action({}, { locale })}
+        </Button>
+      }
+    />
+  );
+};

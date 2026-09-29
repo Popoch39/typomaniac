@@ -54,10 +54,18 @@ type ChartTooltipContentProps = {
   payload?: readonly RechartsPrimitive.TooltipPayloadEntry[];
   label?: React.ReactNode;
   labelFormatter?: (label: React.ReactNode) => React.ReactNode;
+  // How a series' value is written (in the Locale); as it comes otherwise.
+  valueFormatter?: (value: RechartsPrimitive.TooltipPayloadEntry["value"]) => React.ReactNode;
 };
 
 // The values of every series at the hovered point, each with its color and label.
-function ChartTooltipContent({ active, payload, label, labelFormatter }: ChartTooltipContentProps) {
+function ChartTooltipContent({
+  active,
+  payload,
+  label,
+  labelFormatter,
+  valueFormatter,
+}: ChartTooltipContentProps) {
   const config = useChart();
 
   if (!active || !payload?.length) {
@@ -80,7 +88,7 @@ function ChartTooltipContent({ active, payload, label, labelFormatter }: ChartTo
               <div className="flex flex-1 items-center justify-between gap-4 leading-none">
                 <span className="text-muted-foreground">{config[key]?.label ?? key}</span>
                 <span className="font-medium text-foreground font-mono tabular-nums">
-                  {String(item.value)}
+                  {valueFormatter ? valueFormatter(item.value) : String(item.value)}
                 </span>
               </div>
             </div>
