@@ -22,17 +22,21 @@ export const useWrongWordWave = (
   textRef: RefObject<HTMLElement | null>,
   { config, validatedWords }: Pick<RunState, "config" | "validatedWords">,
 ) => {
-  const seen = useRef({ config, validatedWords });
+  // The Text by what draws it, not by its config: the Replay builds a new one on each frame.
+  const { language, wordListVersion, seed, text } = config;
+  const textKey = `${language}:${wordListVersion}:${seed}`;
+  const seen = useRef({ textKey, text, validatedWords });
 
   useGSAP(
     () => {
       const before = seen.current;
 
-      seen.current = { config, validatedWords };
+      seen.current = { textKey, text, validatedWords };
 
       const step = validatedWords - before.validatedWords;
+      const sameText = before.textKey === textKey && before.text === text;
 
-      if (before.config !== config || Math.abs(step) !== 1) {
+      if (!sameText || Math.abs(step) !== 1) {
         return;
       }
 
@@ -55,6 +59,6 @@ export const useWrongWordWave = (
         );
       });
     },
-    { scope: textRef, dependencies: [config, validatedWords], revertOnUpdate: true },
+    { scope: textRef, dependencies: [textKey, text, validatedWords], revertOnUpdate: true },
   );
 };
