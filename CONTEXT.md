@@ -264,3 +264,7 @@ _Avoid_ : langue de l'app, lang, i18n, Language
 **Logo** :
 La marque de typomaniac : le symbole, un t souligné d'une vague comme une faute de frappe, puis le mot typomaniac. Le t prend la couleur du texte du Theme, la vague son accent : il change avec le Theme, jusque dans l'onglet du navigateur.
 _Avoid_ : marque, icône de l'app, BrandMark
+
+**Intro** :
+L'arrivée sur l'accueil au chargement de la page : le Logo de démarrage tape typomaniac, corrige sa faute et plonge dans la barre latérale.
+_Avoid_ : splash, animation de démarrage, loader

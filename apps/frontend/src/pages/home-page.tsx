@@ -1,6 +1,7 @@
 import { DuelArea } from "@/components/duel/duel-area";
 import { useInDuel } from "@/components/duel/use-in-duel";
 import { useInDuelScene } from "@/components/duel-scene/use-in-duel-scene";
+import { useShellReady } from "@/components/intro/use-shell-ready";
 import { RunSettings } from "@/components/run/run-settings";
 import { SoloArea } from "@/components/run/solo-area";
 import { useLocale } from "@/locale/use-locale";
@@ -12,6 +13,8 @@ export const HomePage = () => {
   const locale = useLocale();
   const inDuel = useInDuel();
   const inDuelScene = useInDuelScene();
+
+  useShellReady();
 
   return (
     <section className="flex flex-1 flex-col gap-4 duel-scene:gap-0">

@@ -12,6 +12,8 @@ type AppFrameLayoutProps = {
   duelFormat: DuelFormat | null;
   // A Solo Run is being typed: the sidebar fades.
   soloTyping: boolean;
+  // While the Intro plays over it: out of reach, nothing takes the focus.
+  inert: boolean;
   children: ReactNode;
 };
 
@@ -19,11 +21,17 @@ type AppFrameLayoutProps = {
 // page fixed at the size of its board under the scene's own header, centred and scaled to the
 // window. The same elements either way, so the page is never mounted again as the Duel starts or
 // ends.
-export const AppFrameLayout = ({ duelFormat, soloTyping, children }: AppFrameLayoutProps) => {
+export const AppFrameLayout = ({
+  duelFormat,
+  soloTyping,
+  inert,
+  children,
+}: AppFrameLayoutProps) => {
   const inDuelScene = duelFormat !== null;
 
   return (
     <div
+      inert={inert}
       data-duel-scene={inDuelScene ? "" : undefined}
       className="flex min-h-svh w-full items-start gap-3 p-3"
     >

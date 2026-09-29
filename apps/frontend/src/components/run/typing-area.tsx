@@ -9,7 +9,7 @@ import { useTypingFocus } from "@/components/run/use-typing-focus";
 import { useRunStore } from "@/stores/run-store";
 
 export const TypingArea = () => {
-  const { inputRef, focused, setFocused, focus } = useTypingFocus();
+  const { inputRef, veiled, setFocused, focus } = useTypingFocus();
   const press = useRunStore((state) => state.press);
   const pace = usePace();
 
@@ -26,7 +26,7 @@ export const TypingArea = () => {
       </div>
       <div className="relative rounded-card bg-card px-10 py-7.5">
         <SoloText />
-        {focused ? null : <FocusOverlay onResume={focus} />}
+        {veiled ? <FocusOverlay onResume={focus} /> : null}
       </div>
       {/* Right after the input in the tab order: Tab then Enter starts the next Run. */}
       <div className="self-center">

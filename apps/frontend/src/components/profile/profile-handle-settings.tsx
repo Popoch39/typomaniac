@@ -1,9 +1,9 @@
 import { suggestHandle } from "handle";
-import { toast } from "sonner";
 
 import type { Me } from "@/api/me";
 import { HandleForm } from "@/components/handle/handle-form";
 import { PROFILE_SETTINGS_CARD_PAINT } from "@/components/profile/profile-paint";
+import { toast } from "@/lib/toast";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 

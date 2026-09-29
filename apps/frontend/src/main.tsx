@@ -9,6 +9,9 @@ import { previewSound, startSoundReactor } from "@/audio/sound-reactor";
 import { openWebAudio } from "@/audio/web-audio-output";
 import { AuraRuntimeContext } from "@/components/aura/aura-runtime-context";
 import { FaceOffSoundsContext } from "@/components/face-off/face-off-sounds-context";
+import { introAtStartup } from "@/components/intro/intro-at-startup";
+import { IntroGate } from "@/components/intro/intro-gate";
+import { readyOnFailedStart } from "@/components/intro/ready-on-failed-start";
 import { TabAttentionContext } from "@/components/tab-attention/tab-attention-context";
 import { type SoundPreview, SoundPreviewContext } from "@/components/sound/sound-preview-context";
 import "@/index.css";
@@ -16,6 +19,7 @@ import { browserAuraRuntime } from "@/lib/aura-runtime";
 import { browserTabAttention } from "@/lib/tab-attention";
 import { queryClient } from "@/query-client";
 import { router } from "@/router";
+import { useIntroStore } from "@/stores/intro-store";
 
 const rootElement = document.getElementById("root");
 
@@ -36,6 +40,12 @@ const faceOffSounds = openFaceOffSounds();
 // Once per app load: one IntersectionObserver for every Ornament on the page.
 const auraRuntime = browserAuraRuntime();
 
+// Once per app load, before the first render: whether the Intro plays over it.
+if (introAtStartup()) {
+  useIntroStore.getState().play();
+  readyOnFailedStart(router);
+}
+
 createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
@@ -43,6 +53,7 @@ createRoot(rootElement).render(
         <FaceOffSoundsContext value={faceOffSounds}>
           <TabAttentionContext value={browserTabAttention}>
             <AuraRuntimeContext value={auraRuntime}>
+              <IntroGate />
               <RouterProvider router={router} />
             </AuraRuntimeContext>
           </TabAttentionContext>

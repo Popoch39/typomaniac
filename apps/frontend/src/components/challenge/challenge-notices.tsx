@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import { toast } from "sonner";
 
 import {
   challengeRefusalMessage,
   sentChallengeEndingMessage,
 } from "@/components/challenge/challenge-messages";
+import { toast } from "@/lib/toast";
 import { onServerMessage } from "@/stores/connection-store";
 import { useLocaleStore } from "@/stores/locale-store";
 

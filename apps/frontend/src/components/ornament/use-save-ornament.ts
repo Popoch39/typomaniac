@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
 import { meQueryOptions } from "@/api/me";
 import { saveOrnament } from "@/api/ornament";
 import { type Profile, profileQueryKey } from "@/api/profile";
+import { toast } from "@/lib/toast";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 

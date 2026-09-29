@@ -1,8 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
 import { meQueryOptions } from "@/api/me";
 import { authClient } from "@/lib/auth-client";
+import { toast } from "@/lib/toast";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 

@@ -34,6 +34,7 @@ export const DuelHudDevStage = ({ t, clock }: DuelHudDevStageProps) => {
       <AppFrameLayout
         duelFormat={{ challenge: model.challenge, seconds: model.seconds, language: DUEL_LANGUAGE }}
         soloTyping={false}
+        inert={false}
       >
         <ClockContext value={clock}>
           <DuelHud model={model} veil={null} onLeave={noForfeit} />

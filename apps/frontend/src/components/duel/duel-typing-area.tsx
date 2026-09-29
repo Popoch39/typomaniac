@@ -21,7 +21,7 @@ import { useDuelStore } from "@/stores/duel-store";
 // Cues the bus hands out for both sides, and this User's Handle read without ever holding it up.
 // Once the time is up, it tells the server's `ending` as soon as it comes, null until then.
 export const DuelTypingArea = ({ duel, ending }: { duel: DuelPlay; ending: DuelEnding | null }) => {
-  const { inputRef, focused, setFocused, focus } = useTypingFocus();
+  const { inputRef, veiled, setFocused, focus } = useTypingFocus();
   const { data: me } = useQuery(meQueryOptions);
   const press = useDuelStore((store) => store.press);
   const leave = useDuelStore((store) => store.leave);
@@ -45,7 +45,7 @@ export const DuelTypingArea = ({ duel, ending }: { duel: DuelPlay; ending: DuelE
       <KeystrokeInput ref={inputRef} onFocusChange={setFocused} onPress={press} />
       <DuelHud
         model={duelHudModel(duel, { selfHandle: me?.handle ?? null, cues, elapsed, ending })}
-        veil={focused ? null : <FocusOverlay onResume={focus} />}
+        veil={veiled ? <FocusOverlay onResume={focus} /> : null}
         onLeave={leave}
       />
     </div>

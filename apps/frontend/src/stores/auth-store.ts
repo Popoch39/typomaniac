@@ -1,7 +1,8 @@
-import { toast } from "sonner";
 import { create } from "zustand";
 
 import { authClient, type Provider } from "@/lib/auth-client";
+import { markOAuthRoundTrip } from "@/lib/oauth-round-trip";
+import { toast } from "@/lib/toast";
 import { m } from "@/paraglide/messages";
 import { useLocaleStore } from "@/stores/locale-store";
 
@@ -26,6 +27,9 @@ export const useAuthStore = create<AuthState>()((set) => ({
   setHandleChoiceDeferred: (deferred) => set({ handleChoiceDeferred: deferred }),
   startSignIn: async (provider) => {
     set({ pendingProvider: provider });
+    // Set before the call, which redirects on its own: the page the provider sends back to plays
+    // no Intro.
+    markOAuthRoundTrip(true);
 
     // The provider sends the User back to this very page, with `?error=` on failure, and in the
     // current Locale: the URL carries it ("/en/…"), as the router writes every URL.
@@ -36,6 +40,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
     });
 
     if (error) {
+      markOAuthRoundTrip(false);
       set({ pendingProvider: null });
       toast.error(m.auth_start_failed({}, { locale: useLocaleStore.getState().locale }));
     }

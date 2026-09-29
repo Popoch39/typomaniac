@@ -14,14 +14,16 @@ import {
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 import { useAuthStore } from "@/stores/auth-store";
+import { useIntroStore } from "@/stores/intro-store";
 
 // Right after signing in, and at every visit until chosen: a User without a Handle is asked for
-// one. Neither a click outside nor Escape closes it; Plus tard puts it off for this visit, with
-// Runs solo only.
+// one, once the Intro is over. Neither a click outside nor Escape closes it; Plus tard puts it off
+// for this visit, with Runs solo only.
 export const HandleChoiceDialog = () => {
   const { data: me } = useSuspenseQuery(meQueryOptions);
   const deferred = useAuthStore((state) => state.handleChoiceDeferred);
   const setDeferred = useAuthStore((state) => state.setHandleChoiceDeferred);
+  const introPlaying = useIntroStore((store) => store.playing);
   const locale = useLocale();
 
   if (me === null || me.handle !== null) {
@@ -29,7 +31,7 @@ export const HandleChoiceDialog = () => {
   }
 
   return (
-    <Dialog open={!deferred} disablePointerDismissal>
+    <Dialog open={!deferred && !introPlaying} disablePointerDismissal>
       <DialogContent showCloseButton={false} className="gap-6 p-6">
         <DialogHeader className="gap-2">
           <DialogTitle className="text-lg font-bold">

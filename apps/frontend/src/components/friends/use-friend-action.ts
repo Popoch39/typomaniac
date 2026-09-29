@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
 import { FRIEND_QUERY_KEYS, type FriendAction, friendActions } from "@/api/friends";
 import { friendErrorMessage } from "@/components/friends/friend-refusals";
+import { toast } from "@/lib/toast";
 import { useLocaleStore } from "@/stores/locale-store";
 
 // One action on another User. Done or refused, the lists and the search are read again: a refusal
