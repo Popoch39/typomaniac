@@ -61,6 +61,10 @@ _Avoid_ : input, touche
 Ce qu'un Keystroke vient de provoquer dans un Run ou un Duel : une frappe juste (Hit), une faute (Miss), un effacement (Erase), un mot validé, un Combo qui monte de palier ou qui casse, un Burst. Un Keystroke peut en provoquer plusieurs, ou aucun. Les sons et les effets visuels réagissent aux Cues, jamais aux touches. Dans un Duel, les Keystrokes de l'adversaire provoquent aussi des Cues chez le User, mais ils ne servent qu'aux effets visuels, jamais aux sons.
 _Avoid_ : event, feedback, trigger
 
+**Wrong word** :
+Un mot validé avec au moins une faute restée : une lettre fausse, en trop ou sautée. Il ne rapporte rien et se souligne d'une vague, comme la faute du Logo. Une faute corrigée avant l'espace n'en fait pas un, et le mot en cours à la fin du temps non plus. Revenir dans le mot le rouvre : il n'est plus validé. Seul un Wrong word se rouvre, un mot juste jamais.
+_Avoid_ : mot faux, mot raté, erreur, typo
+
 **Result** :
 Les statistiques d'un Run terminé, calculées à partir de ses Keystrokes : wpm, raw, accuracy, consistency et le décompte des caractères.
 _Avoid_ : stats, score (le Score est autre chose)
@@ -124,11 +128,11 @@ L'issue d'un Duel où les deux Users ont le même Score et la même accuracy : a
 _Avoid_ : égalité, nul, tie
 
 **Score** :
-Les points d'un User dans un Duel ou un Run : chaque mot juste rapporte ses caractères (espace compris), multipliés par son Combo, et doublés par un Burst. Un mot validé faux ne rapporte rien ; le mot en cours à la fin du temps rapporte ses lettres justes. Il désigne le vainqueur d'un Duel, départagé par l'accuracy ; dans un Run, il ne sert qu'à s'entraîner.
+Les points d'un User dans un Duel ou un Run : chaque mot juste rapporte ses caractères (espace compris), multipliés par son Combo, et doublés par un Burst. Un Wrong word ne rapporte rien ; le mot en cours à la fin du temps rapporte ses lettres justes. Il désigne le vainqueur d'un Duel, départagé par l'accuracy ; dans un Run, il ne sert qu'à s'entraîner.
 _Avoid_ : points, Result
 
 **Combo** :
-Le nombre de mots justes d'affilée tapés sans aucune faute, même corrigée. Il multiplie les points : x1, x2 dès 5 mots, x3 dès 10, x4 au plus dès 15. Une faute le casse dès qu'elle est tapée ; le mot, corrigé, repart à x1. Revenir corriger un mot validé faux ne le rétablit pas.
+Le nombre de mots justes d'affilée tapés sans aucune faute, même corrigée. Il multiplie les points : x1, x2 dès 5 mots, x3 dès 10, x4 au plus dès 15. Une faute le casse dès qu'elle est tapée ; le mot, corrigé, repart à x1. Revenir corriger un Wrong word ne le rétablit pas.
 _Avoid_ : streak, série, chaîne
 
 **Burst** :
