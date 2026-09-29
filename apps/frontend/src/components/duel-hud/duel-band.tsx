@@ -8,6 +8,8 @@ import { type DuelHudModel, isTimeUp } from "@/components/duel-hud/duel-hud-mode
 import { DuelDisc } from "@/components/duel-hud/duel-disc";
 import { useBandSplit } from "@/components/duel-hud/use-band-split";
 import { atHandle } from "@/lib/at-handle";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 // The top of the HUD, as the board B2 · Affiche draws it: a poster in two colours, this User's
 // accent and the opponent's blue, split on a slant that slides with the Lead. Each player's half
@@ -15,6 +17,7 @@ import { atHandle } from "@/lib/at-handle";
 // time in the middle. Once the server ends the Duel, the loser's half is greyed.
 export const DuelBand = ({ model }: { model: DuelHudModel }) => {
   const bandRef = useRef<HTMLElement>(null);
+  const locale = useLocale();
   const { self, opponent, elapsed, startsAt, verdict } = model;
   const lead = self.score.score - opponent.score.score;
   const ended = isTimeUp(model);
@@ -24,13 +27,13 @@ export const DuelBand = ({ model }: { model: DuelHudModel }) => {
   return (
     <section
       ref={bandRef}
-      aria-label={bandLabel(lead, opponent.handle)}
+      aria-label={bandLabel(lead, opponent.handle, locale)}
       className="relative h-28 overflow-hidden rounded-card bg-opponent"
     >
       <DuelBandFill handle={opponent.handle} mirrored />
       <DuelBandFill handle={self.handle} mirrored={false} />
       <DuelBandHalf
-        name="Toi"
+        name={m.duel_self({}, { locale })}
         handle={self.handle}
         score={self.score}
         effects={bandEffects(self.cues, elapsed, ended)}

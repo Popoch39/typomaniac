@@ -1,4 +1,7 @@
 import { atHandle } from "@/lib/at-handle";
+import { numberFormat } from "@/locale/formats";
+import type { Locale } from "@/locale/locales";
+import { m } from "@/paraglide/messages";
 
 // Who leads the Duel, seen by this User: themself, their opponent, or no one at equal Scores.
 export type Leader = "self" | "opponent" | "none";
@@ -15,23 +18,22 @@ export const leaderOf = (lead: number): Leader => {
 // the middle at equal Scores, towards the led one's edge as the Lead grows, never reaching it.
 export const bandSplit = (lead: number) => 50 + 44 * Math.tanh(lead / 60);
 
-const points = (lead: number) => {
+// What screen readers read of the band, in the Locale: who leads, and by how much.
+export const bandLabel = (lead: number, opponentHandle: string, locale: Locale) => {
   const count = Math.abs(lead);
+  const points = { count, shown: numberFormat(locale).format(count) };
 
-  return `${count} ${count === 1 ? "point" : "points"}`;
-};
-
-// What screen readers read of the band: who leads, and by how much.
-export const bandLabel = (lead: number, opponentHandle: string) => {
   switch (leaderOf(lead)) {
     case "self":
-      return `Tu mènes de ${points(lead)}`;
+      return m.hud_lead_self(points, { locale });
     case "opponent":
-      return `${atHandle(opponentHandle)} mène de ${points(lead)}`;
+      return m.hud_lead_opponent({ ...points, opponent: atHandle(opponentHandle) }, { locale });
     case "none":
-      return "Même Score";
+      return m.hud_lead_none({}, { locale });
   }
 };
 
-// The Lead under the seconds of the disc: « +N » whoever leads, « = » at equal Scores.
-export const discLead = (lead: number) => (lead === 0 ? "=" : `+${Math.abs(lead)}`);
+// The Lead under the seconds of the disc, in the Locale: « +N » whoever leads, « = » at equal
+// Scores.
+export const discLead = (lead: number, locale: Locale) =>
+  lead === 0 ? "=" : `+${numberFormat(locale).format(Math.abs(lead))}`;

@@ -4,6 +4,8 @@ import { useRef } from "react";
 import { discLead, leaderOf } from "@/components/duel-hud/band-lead";
 import { RING_LENGTH, URGENT_S } from "@/components/duel-hud/disc-timeline";
 import { useDiscTimeline } from "@/components/duel-hud/use-disc-timeline";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 const LEAD_TONES = {
   self: "text-brand",
@@ -28,6 +30,7 @@ type DuelDiscProps = {
 export const DuelDisc = ({ startsAt, seconds, elapsed, over, lead }: DuelDiscProps) => {
   const discRef = useRef<HTMLDivElement>(null);
   const ringRef = useRef<SVGCircleElement>(null);
+  const locale = useLocale();
   const left = Math.max(0, Math.ceil(seconds - Math.max(0, elapsed) / 1000));
   const urgent = !over && elapsed >= (seconds - URGENT_S) * 1000;
 
@@ -67,14 +70,14 @@ export const DuelDisc = ({ startsAt, seconds, elapsed, over, lead }: DuelDiscPro
       </svg>
       <span
         role="timer"
-        aria-label="temps restant"
+        aria-label={m.hud_time_left({}, { locale })}
         className={cn(
           "relative font-display leading-none",
           over ? "text-[15px] font-extrabold" : "text-[26px] font-bold tracking-[-0.02em]",
           urgent ? "text-destructive" : "text-foreground",
         )}
       >
-        {over ? "FIN" : left}
+        {over ? m.hud_time_up({}, { locale }) : left}
       </span>
       <span
         aria-hidden="true"
@@ -83,7 +86,7 @@ export const DuelDisc = ({ startsAt, seconds, elapsed, over, lead }: DuelDiscPro
           LEAD_TONES[leaderOf(lead)],
         )}
       >
-        {discLead(lead)}
+        {discLead(lead, locale)}
       </span>
     </div>
   );

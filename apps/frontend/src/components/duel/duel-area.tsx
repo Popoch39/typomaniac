@@ -7,12 +7,15 @@ import { DuelQueue } from "@/components/duel/duel-queue";
 import { DuelTypingArea } from "@/components/duel/duel-typing-area";
 import { MatchProposal } from "@/components/match-proposal/match-proposal";
 import { useClock } from "@/components/run/clock-context";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 import { useDuelStore } from "@/stores/duel-store";
 
 // In Duel, in place of the typing area: takes the User's place while shown, so leaving Duel
 // (Annuler, Solo) takes the User out of the Queue. The connection stays open (RealtimeConnection).
 export const DuelArea = () => {
   const clock = useClock();
+  const locale = useLocale();
   const state = useDuelStore((store) => store.state);
   const enter = useDuelStore((store) => store.enter);
   const exit = useDuelStore((store) => store.exit);
@@ -46,13 +49,16 @@ export const DuelArea = () => {
       return <DuelEnded ending={state.ending} />;
     case "elsewhere":
       return (
-        <DuelInterrupted message="Le Duel est ouvert dans un autre onglet." action="Jouer ici" />
+        <DuelInterrupted
+          message={m.duel_elsewhere({}, { locale })}
+          action={m.duel_play_here({}, { locale })}
+        />
       );
     case "disconnected":
       return (
         <DuelInterrupted
-          message="La connexion au serveur a été perdue."
-          action="Chercher un Duel"
+          message={m.duel_disconnected({}, { locale })}
+          action={m.queue_search_duel({}, { locale })}
         />
       );
   }

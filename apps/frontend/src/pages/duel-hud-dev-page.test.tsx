@@ -14,6 +14,7 @@ import { friendsQueryOptions } from "@/api/friends";
 import { type Me, meQueryOptions } from "@/api/me";
 import { ClockContext } from "@/components/run/clock-context";
 import { DuelHudDevPage } from "@/pages/duel-hud-dev-page";
+import { useLocaleStore } from "@/stores/locale-store";
 
 const me: Me = {
   id: "ada-id",
@@ -101,6 +102,12 @@ const statusOf = (letter: string) => {
   }
 
   return letter === "i" ? "incorrect" : "pending";
+};
+
+// The page, frozen on one of the board's moments.
+const freezeOn = async (moment: string) => {
+  await renderPage();
+  await userEvent.selectOptions(screen.getByRole("combobox", { name: "Moment" }), moment);
 };
 
 describe("DuelHudDevPage", () => {
@@ -235,5 +242,44 @@ describe("DuelHudDevPage", () => {
     now = 10_600 + 12_250;
 
     await waitFor(() => expect(scoreOf("Toi")).toEqual(["183", "×3", "12"]));
+  });
+});
+
+describe("DuelHudDevPage in English", () => {
+  beforeEach(() => {
+    useLocaleStore.setState({ locale: "en" });
+  });
+
+  test.each([
+    ["burst", "BURST +42"],
+    ["combo cassé", "COMBO BROKEN 13 words"],
+    ["mené", "BURST @kzr_ +56"],
+    ["renversement", "YOU TAKE THE LEAD"],
+    ["fin", "VICTORY +21"],
+  ])("frozen on « %s », announces the board's Callout in English", async (moment, said) => {
+    await freezeOn(moment);
+
+    expect(screen.getByRole("status", { name: "Callouts" }).textContent?.trim()).toBe(said);
+  });
+
+  test("names both halves, their figures, the band's Lead and the way out", async () => {
+    await freezeOn("mené");
+
+    expect(half("You").textContent).toMatch(/Score 288/);
+    expect(half("You").textContent).toMatch(/multiplier ×2/);
+    expect(within(half("@kzr_")).getByRole("meter", { name: "Combo" })).toHaveAttribute(
+      "value",
+      "14",
+    );
+    expect(screen.getByRole("region", { name: "@kzr_ leads by 50 points" })).toBeInTheDocument();
+    expect(screen.getByRole("timer", { name: "time left" })).toHaveTextContent("8");
+    expect(screen.getByRole("button", { name: "Leave the Duel" })).toBeEnabled();
+  });
+
+  test("says END once the time is up", async () => {
+    await freezeOn("fin");
+
+    expect(screen.getByRole("timer", { name: "time left" })).toHaveTextContent("END");
+    expect(screen.getByRole("region", { name: "You lead by 21 points" })).toBeInTheDocument();
   });
 });

@@ -6,20 +6,26 @@ import { TpBar } from "@/components/duel/tp-bar";
 import { TpDelta } from "@/components/duel/tp-delta";
 import { TierBadge } from "@/components/tier/rank/tier-badge";
 import { standingName } from "@/components/tier/tier";
+import type { Locale } from "@/locale/locales";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 type TpChangeProps = Extract<RankChange, { kind: "moved" | "promoted" | "demoted" }>;
 
 const headlines = {
   moved: () => null,
-  promoted: (standing: Standing) => `Promotion : ${standingName(standing)}`,
-  demoted: (standing: Standing) => `Descente en ${standingName(standing)}`,
+  promoted: (standing: Standing, locale: Locale) =>
+    m.duel_rank_promoted({ standing: standingName(standing) }, { locale }),
+  demoted: (standing: Standing, locale: Locale) =>
+    m.duel_rank_demoted({ standing: standingName(standing) }, { locale }),
 };
 
 // The TP of a ranked Duel: the delta, the rank after it and its TP, and a promotion or a
 // demotion when the Division changed, into a new Tier too. A Division just left starts the bar
 // from the other end.
 export const TpChange = ({ kind, tp, from, standing }: TpChangeProps) => {
-  const headline = headlines[kind](standing);
+  const locale = useLocale();
+  const headline = headlines[kind](standing, locale);
   const before = { moved: from.tp, promoted: 0, demoted: DIVISION_TP }[kind];
 
   return (

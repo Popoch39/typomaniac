@@ -9,6 +9,9 @@ import {
 } from "@/components/duel-hud/duel-hud-model";
 import type { KeystrokeCues } from "@/lib/cue-bus";
 import { atHandle } from "@/lib/at-handle";
+import { numberFormat } from "@/locale/formats";
+import type { Locale } from "@/locale/locales";
+import { m } from "@/paraglide/messages";
 
 // A new lead only counts as a Lead change once it has held this long, in ms: a lead that flickers
 // for a few ms is none.
@@ -43,29 +46,48 @@ export type Callout = {
 // The points of the word a Keystroke validated, none if it validated none.
 const pointsOf = ({ cues }: KeystrokeCues) => cues.find(isKind("word"))?.points ?? 0;
 
-const words = (count: number) => `${count} ${count === 1 ? "mot" : "mots"}`;
+// What one of this User's Keystrokes calls out with one of its Cues, in the Locale, null for
+// nothing.
+const ownCallout =
+  (locale: Locale) =>
+  (keystroke: KeystrokeCues, cue: Cue): Callout | null => {
+    const own = { at: keystroke.at, lasts: CUE_CALLOUT_MS, important: 2, small: false } as const;
 
-// What one of this User's Keystrokes calls out with one of its Cues, null for nothing.
-const ownCallout = (keystroke: KeystrokeCues, cue: Cue): Callout | null => {
-  const own = { at: keystroke.at, lasts: CUE_CALLOUT_MS, important: 2, small: false } as const;
+    switch (cue.kind) {
+      case "burst":
+        return {
+          ...own,
+          tone: "self",
+          text: m.hud_burst({}, { locale }),
+          value: `+${numberFormat(locale).format(pointsOf(keystroke))}`,
+        };
+      case "comboUp":
+        return {
+          ...own,
+          tone: "self",
+          text: m.hud_combo({}, { locale }),
+          value: `×${cue.multiplier}`,
+        };
+      case "comboBroken":
+        return {
+          ...own,
+          tone: "broken",
+          text: m.hud_combo_broken({}, { locale }),
+          value: m.hud_words(
+            { count: cue.length, shown: numberFormat(locale).format(cue.length) },
+            { locale },
+          ),
+        };
+      default:
+        return null;
+    }
+  };
 
-  switch (cue.kind) {
-    case "burst":
-      return { ...own, tone: "self", text: "BURST", value: `+${pointsOf(keystroke)}` };
-    case "comboUp":
-      return { ...own, tone: "self", text: "COMBO", value: `×${cue.multiplier}` };
-    case "comboBroken":
-      return { ...own, tone: "broken", text: "COMBO CASSÉ", value: words(cue.length) };
-    default:
-      return null;
-  }
-};
-
-// What one of the opponent's Keystrokes calls out with one of its Cues, by their Handle, null for
-// nothing: their Bursts, their broken Combos, and of their steps up only the last one, never the
-// ×2 nor the ×3.
+// What one of the opponent's Keystrokes calls out with one of its Cues, by their Handle, in the
+// Locale, null for nothing: their Bursts, their broken Combos, and of their steps up only the last
+// one, never the ×2 nor the ×3.
 const opponentCallout =
-  (handle: string) =>
+  (handle: string, locale: Locale) =>
   (keystroke: KeystrokeCues, cue: Cue): Callout | null => {
     const theirs = {
       at: keystroke.at,
@@ -77,13 +99,21 @@ const opponentCallout =
 
     switch (cue.kind) {
       case "burst":
-        return { ...theirs, text: "BURST", value: `${handle} +${pointsOf(keystroke)}` };
+        return {
+          ...theirs,
+          text: m.hud_burst({}, { locale }),
+          value: `${handle} +${numberFormat(locale).format(pointsOf(keystroke))}`,
+        };
       case "comboUp":
         return cue.multiplier === maxMultiplier
-          ? { ...theirs, text: "COMBO", value: `${handle} ×${cue.multiplier}` }
+          ? {
+              ...theirs,
+              text: m.hud_combo({}, { locale }),
+              value: `${handle} ×${cue.multiplier}`,
+            }
           : null;
       case "comboBroken":
-        return { ...theirs, text: "COMBO CASSÉ", value: handle };
+        return { ...theirs, text: m.hud_combo_broken({}, { locale }), value: handle };
       default:
         return null;
     }
@@ -146,13 +176,12 @@ const takingsOf = (self: DuelHudPlayer, opponent: DuelHudPlayer): Takings => {
 };
 
 // The Lead changes up to `elapsed` ms after GO, each called out once its lead has held
-// LEAD_HOLD_MS: a lead taken back before that changed nothing, and the first lead of the Duel is
-// none.
+// LEAD_HOLD_MS, in the Locale: a lead taken back before that changed nothing, and the first lead
+// of the Duel is none.
 const leadChanges = (
-  self: DuelHudPlayer,
-  opponent: DuelHudPlayer,
-  elapsed: number,
+  { self, opponent, elapsed }: Pick<DuelHudModel, "self" | "opponent" | "elapsed">,
   handle: string,
+  locale: Locale,
 ): Callout[] => {
   const { from, takings } = takingsOf(self, opponent);
   const changes: Callout[] = [];
@@ -171,7 +200,9 @@ const leadChanges = (
           important: 3,
           small: false,
           tone: ahead ? "self" : "opponent",
-          text: ahead ? "TU PASSES DEVANT" : `${handle} PASSE DEVANT`,
+          text: ahead
+            ? m.hud_lead_change_self({}, { locale })
+            : m.hud_lead_change_opponent({ opponent: handle }, { locale }),
           value: "",
         });
       }
@@ -188,8 +219,8 @@ const byTimeThenImportance = (a: Callout, b: Callout) => a.at - b.at || b.import
 // The Callout the HUD shows `elapsed` ms into the Duel, null when none: one at a time, each for its
 // whole length, unless another takes its place, at once when more important, once it has been up
 // CALLOUT_MIN_MS otherwise. One that came too soon to take the place is never shown. None once the
-// time is up.
-export const calloutAt = (model: DuelHudModel): Callout | null => {
+// time is up. Its words are in the Locale.
+export const calloutAt = (model: DuelHudModel, locale: Locale): Callout | null => {
   if (isTimeUp(model)) {
     return null;
   }
@@ -199,9 +230,9 @@ export const calloutAt = (model: DuelHudModel): Callout | null => {
   const handle = atHandle(opponent.handle);
 
   const candidates = [
-    ...leadChanges(self, opponent, elapsed, handle),
-    ...calloutsOf(self.cues, ownCallout),
-    ...calloutsOf(opponent.cues, opponentCallout(handle)),
+    ...leadChanges(model, handle, locale),
+    ...calloutsOf(self.cues, ownCallout(locale)),
+    ...calloutsOf(opponent.cues, opponentCallout(handle, locale)),
   ].toSorted(byTimeThenImportance);
 
   let shown: Callout | null = null;

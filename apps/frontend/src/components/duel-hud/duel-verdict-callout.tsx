@@ -1,19 +1,23 @@
 import { cn } from "cn";
 
 import type { DuelVerdict } from "@/components/duel-hud/duel-hud-model";
+import { numberFormat } from "@/locale/formats";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 // What the pill says of each outcome, the sign of the gap, and its colour under the ink the Theme
 // lays on it (a draw's in the text's colour, under the ground's).
 const VERDICT_LOOKS = {
-  win: { text: "VICTOIRE", sign: "+", tone: "bg-brand text-on-brand" },
-  loss: { text: "DÉFAITE", sign: "−", tone: "bg-opponent text-on-opponent" },
-  draw: { text: "DRAW", sign: "", tone: "bg-foreground text-ink" },
+  win: { text: m.hud_verdict_win, sign: "+", tone: "bg-brand text-on-brand" },
+  loss: { text: m.hud_verdict_loss, sign: "−", tone: "bg-opponent text-on-opponent" },
+  draw: { text: m.hud_verdict_draw, sign: "", tone: "bg-foreground text-ink" },
 } as const;
 
 // The server's verdict where the Callouts go, as the board draws it once the time is up: a big
 // tilted pill in the winner's colour, white for a draw, then the gap between the server's Scores,
 // none when they are equal. Still: it stays until the end screen.
 export const DuelVerdictCallout = ({ verdict }: { verdict: DuelVerdict }) => {
+  const locale = useLocale();
   const { text, sign, tone } = VERDICT_LOOKS[verdict.outcome];
 
   return (
@@ -23,11 +27,11 @@ export const DuelVerdictCallout = ({ verdict }: { verdict: DuelVerdict }) => {
         tone,
       )}
     >
-      <span>{text}</span>{" "}
+      <span>{text({}, { locale })}</span>{" "}
       {verdict.lead === 0 ? null : (
         <span className="text-[13px] font-bold tracking-[-0.02em]">
           {sign}
-          {Math.abs(verdict.lead)}
+          {numberFormat(locale).format(Math.abs(verdict.lead))}
         </span>
       )}
     </span>

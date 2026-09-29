@@ -1,6 +1,9 @@
 import type { Form } from "api";
 
 import { FaceOffFormMark } from "@/components/face-off/face-off-form-mark";
+import { numberFormat } from "@/locale/formats";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 type FaceOffFormProps = { form: Form | null };
 
@@ -20,10 +23,12 @@ const marksOf = (outcomes: Form["outcomes"]) => {
 // recent first, then their average wpm over those. Each comes in after the other (`form-item`,
 // the timeline's cascade). Without a Ranked Duel, said absent rather than shown as zero.
 export const FaceOffForm = ({ form }: FaceOffFormProps) => {
+  const locale = useLocale();
+
   if (form === null) {
     return (
       <p data-face-off="form-item" className="text-lg font-semibold opacity-70">
-        Aucun Duel classé
+        {m.face_off_form_none({}, { locale })}
       </p>
     );
   }
@@ -36,7 +41,7 @@ export const FaceOffForm = ({ form }: FaceOffFormProps) => {
         ))}
       </ol>
       <p data-face-off="form-item" className="font-mono text-lg font-semibold tabular-nums">
-        {Math.round(form.avgWpm)} wpm
+        {numberFormat(locale).format(Math.round(form.avgWpm))} wpm
       </p>
     </div>
   );

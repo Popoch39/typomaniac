@@ -1,17 +1,19 @@
-import { outcomeHeadlines } from "@/components/duel/outcome-headlines";
+import { outcomeHeadline } from "@/components/duel/outcome-headlines";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 import type { DuelEnding } from "@/stores/duel-store";
 import { cn } from "cn";
 
 const details = {
-  win: (opponent: string) => `Tu bats ${opponent}.`,
-  loss: (opponent: string) => `${opponent} l'emporte.`,
-  draw: (opponent: string) => `Ni toi ni ${opponent} ne l'emportez.`,
+  win: m.duel_ended_win,
+  loss: m.duel_ended_loss,
+  draw: m.duel_ended_draw,
 };
 
 // A Forfeit is never a Draw: one side forfeited, the other won.
 const forfeitDetails = {
-  win: (opponent: string) => `Forfeit de ${opponent}.`,
-  loss: (opponent: string) => `Forfeit : ${opponent} l'emporte.`,
+  win: m.duel_ended_forfeit_win,
+  loss: m.duel_ended_forfeit_loss,
   draw: details.draw,
 };
 
@@ -28,11 +30,15 @@ const sober = { card: "bg-card", detail: "text-muted-foreground" };
 const tones = { win: victory, loss: sober, draw: sober };
 
 // Who won the Duel, from this User's side, and whether by Forfeit.
-export const DuelOutcome = ({ outcome, forfeit, opponent }: DuelOutcomeProps) => (
-  <div className={cn("flex flex-col gap-1 rounded-card p-8", tones[outcome].card)}>
-    <h2 className="text-5xl font-extrabold tracking-tight">{outcomeHeadlines[outcome]}</h2>
-    <p className={cn("text-lg font-medium", tones[outcome].detail)}>
-      {(forfeit ? forfeitDetails : details)[outcome](opponent)}
-    </p>
-  </div>
-);
+export const DuelOutcome = ({ outcome, forfeit, opponent }: DuelOutcomeProps) => {
+  const locale = useLocale();
+
+  return (
+    <div className={cn("flex flex-col gap-1 rounded-card p-8", tones[outcome].card)}>
+      <h2 className="text-5xl font-extrabold tracking-tight">{outcomeHeadline(outcome, locale)}</h2>
+      <p className={cn("text-lg font-medium", tones[outcome].detail)}>
+        {(forfeit ? forfeitDetails : details)[outcome]({ opponent }, { locale })}
+      </p>
+    </div>
+  );
+};

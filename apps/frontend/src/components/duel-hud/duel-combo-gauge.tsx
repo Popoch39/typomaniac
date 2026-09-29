@@ -6,6 +6,8 @@ import type { BandEffects } from "@/components/duel-hud/band-effects";
 import { DuelComboMark } from "@/components/duel-hud/duel-combo-mark";
 import { DuelComboPip } from "@/components/duel-hud/duel-combo-pip";
 import { useCueTimeline } from "@/components/duel-hud/use-cue-timeline";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 // The pips of the Combo gauge: 4 words to ×2, then 5 to ×3, then 5 to ×4.
 const GROUPS = [4, 5, 5] as const;
@@ -63,6 +65,7 @@ export const DuelComboGauge = ({
   startsAt,
 }: DuelComboGaugeProps) => {
   const gaugeRef = useRef<HTMLDivElement>(null);
+  const locale = useLocale();
   const items = itemsOf(combo, multiplier);
   const broken = effects.broken !== null;
 
@@ -78,7 +81,7 @@ export const DuelComboGauge = ({
       className={cn("flex items-center gap-[3px]", mirrored && "flex-row-reverse")}
     >
       <meter
-        aria-label="Combo"
+        aria-label={m.hud_combo_gauge({}, { locale })}
         min={0}
         max={PIPS}
         value={Math.min(combo, PIPS)}

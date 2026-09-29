@@ -18,6 +18,7 @@ import { DuelArea } from "@/components/duel/duel-area";
 import { ClockContext } from "@/components/run/clock-context";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
+import { useLocaleStore } from "@/stores/locale-store";
 import { fakeServer, idle } from "@/test/fake-socket";
 import { holdGsapClock } from "@/test/gsap-clock";
 
@@ -668,6 +669,51 @@ const duelEnded = ({
 });
 
 const endScreen = () => screen.queryByRole("button", { name: "Nouveau Duel" });
+
+describe("the Callouts in English", () => {
+  beforeEach(() => {
+    useLocaleStore.setState({ locale: "en" });
+  });
+
+  test.each([
+    ["small ", "COMBO BROKEN 1 word"],
+    ["small help ", "COMBO BROKEN 2 words"],
+  ])("a broken Combo after « %s » counts its words: « %s »", async (typed, said) => {
+    await renderStartedDuel();
+
+    await userEvent.keyboard(typed);
+    await at(700);
+    await userEvent.keyboard("x");
+    await at(800);
+
+    expect(callouts()).toHaveTextContent(said);
+  });
+
+  test("a Lead change, the band's Lead and a lost connection", async () => {
+    await renderStartedDuel();
+
+    receive({ type: "opponent-keystrokes", keystrokes: rushed("small ") });
+    await at(100);
+    await userEvent.keyboard("small ");
+    await at(300);
+    await userEvent.keyboard("help ");
+    await at(600);
+
+    expect(callouts()).toHaveTextContent("YOU TAKE THE LEAD");
+    expect(screen.getByRole("region", { name: "You lead by 10 points" })).toBeInTheDocument();
+
+    receive({ type: "opponent-disconnected" });
+
+    expect(callouts()).toHaveTextContent(
+      "@kzr_ lost their connection: Forfeit if they're not back within 10 seconds.",
+    );
+
+    receive({ type: "opponent-reconnected" });
+    act(() => server().drop());
+
+    expect(callouts()).toHaveTextContent("Connection lost, reconnecting…");
+  });
+});
 
 describe("the end of the Duel", () => {
   test("the disc says FIN once the time is up", async () => {

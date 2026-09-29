@@ -2,6 +2,8 @@ import { useRef } from "react";
 
 import { multiplierPunchTimeline } from "@/components/duel-hud/band-effect-timelines";
 import { useCueTimeline } from "@/components/duel-hud/use-cue-timeline";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 type DuelMultiplierProps = {
   multiplier: number;
@@ -14,6 +16,7 @@ type DuelMultiplierProps = {
 // clock; still under reduced motion.
 export const DuelMultiplier = ({ multiplier, punchAt, startsAt }: DuelMultiplierProps) => {
   const multiplierRef = useRef<HTMLSpanElement>(null);
+  const locale = useLocale();
 
   useCueTimeline(multiplierRef, { at: punchAt, startsAt }, (reducedMotion) =>
     reducedMotion || multiplierRef.current === null
@@ -26,7 +29,7 @@ export const DuelMultiplier = ({ multiplier, punchAt, startsAt }: DuelMultiplier
       ref={multiplierRef}
       className="inline-block font-display text-[20px] leading-none font-extrabold"
     >
-      <span className="sr-only">multiplicateur </span>×{multiplier}
+      <span className="sr-only">{m.hud_multiplier({}, { locale })} </span>×{multiplier}
     </span>
   );
 };

@@ -9,9 +9,12 @@ import { DuelMultiplier } from "@/components/duel-hud/duel-multiplier";
 import { DuelScorePop } from "@/components/duel-hud/duel-score-pop";
 import { useBeatenFade } from "@/components/duel-hud/use-beaten-fade";
 import { atHandle } from "@/lib/at-handle";
+import { numberFormat } from "@/locale/formats";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 type DuelBandHalfProps = {
-  // What screen readers call the player: « Toi », or the opponent's Handle.
+  // What screen readers call the player: « Toi » (« You »), or the opponent's Handle.
   name: string;
   // Null while this User's is not read yet.
   handle: string | null;
@@ -39,6 +42,7 @@ export const DuelBandHalf = ({
   beaten,
 }: DuelBandHalfProps) => {
   const halfRef = useRef<HTMLElement>(null);
+  const locale = useLocale();
 
   useBeatenFade(halfRef, beaten);
 
@@ -73,8 +77,8 @@ export const DuelBandHalf = ({
       </div>
       <div className={cn("relative", mirrored ? "mr-2.5" : "ml-2.5")}>
         <span className="font-display text-[50px] leading-none font-bold tracking-[-0.02em]">
-          <span className="sr-only">Score </span>
-          {score.score}
+          <span className="sr-only">{m.hud_score({}, { locale })} </span>
+          {numberFormat(locale).format(score.score)}
         </span>
         {effects.pop === null ? null : (
           <DuelScorePop pop={effects.pop} startsAt={startsAt} mirrored={mirrored} />

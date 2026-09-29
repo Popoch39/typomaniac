@@ -21,6 +21,7 @@ import { stageScale } from "@/components/tier-up/stage/stage-scale";
 import type { AuraRuntime } from "@/lib/aura-runtime";
 import type { DuelEnding } from "@/stores/duel-store";
 import { useFaceOffSoundStore } from "@/stores/face-off-sound-store";
+import { useLocaleStore } from "@/stores/locale-store";
 import { fakeAuraRuntime } from "@/test/fake-aura-runtime";
 import { holdGsapClock } from "@/test/gsap-clock";
 
@@ -34,11 +35,19 @@ const noResult = {
 
 const noScore = { score: 0, bestCombo: 0, bursts: 0 };
 
-const ending = (duelId: string | null, ranked: DuelEnding["ranked"] = null): DuelEnding => ({
+// How the Duel ended for this User: a Draw unless a test says otherwise.
+type Issue = Pick<DuelEnding, "outcome" | "forfeit">;
+
+const DRAW: Issue = { outcome: "draw", forfeit: false };
+
+const ending = (
+  duelId: string | null,
+  ranked: DuelEnding["ranked"] = null,
+  issue: Issue = DRAW,
+): DuelEnding => ({
   ranked,
   duelId,
-  outcome: "draw",
-  forfeit: false,
+  ...issue,
   result: noResult,
   opponentResult: noResult,
   score: noScore,
@@ -102,6 +111,9 @@ type RenderOptions = {
   cached?: ReplayedDuel | null;
   ranked?: DuelEnding["ranked"];
   aura?: AuraRuntime;
+  issue?: Issue;
+  // The button the end screen is found by, in the Locale shown.
+  newDuel?: string;
 };
 
 // The end screen on a router of its own (Revoir is a link), the written Duel in the cache if given.
@@ -110,6 +122,8 @@ const renderEnded = async ({
   cached = null,
   ranked = null,
   aura = fakeAuraRuntime().runtime,
+  issue = DRAW,
+  newDuel = "Nouveau Duel",
 }: RenderOptions = {}) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -118,7 +132,9 @@ const renderEnded = async ({
   }
 
   const router = createRouter({
-    routeTree: createRootRoute({ component: () => <DuelEnded ending={ending(duelId, ranked)} /> }),
+    routeTree: createRootRoute({
+      component: () => <DuelEnded ending={ending(duelId, ranked, issue)} />,
+    }),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
 
@@ -136,7 +152,7 @@ const renderEnded = async ({
     </StrictMode>,
   );
   // Found by its text: behind a Tier-up, the end screen is out of reach.
-  await screen.findByText("Nouveau Duel");
+  await screen.findByText(newDuel);
 };
 
 const standing = <T extends DuelRanked["rank"]>(rank: T) => rank;
@@ -352,6 +368,100 @@ describe("DuelEnded", () => {
     expect(screen.queryByRole("button", { name: "Revoir" })).toBeNull();
     expect(screen.queryByRole("figure", { name: "Duel chart" })).toBeNull();
     expect(screen.queryByRole("status")).toBeNull();
+  });
+});
+
+// The end screen in English, found by its English button.
+const renderInEnglish = (options: RenderOptions = {}) =>
+  renderEnded({ newDuel: "New Duel", ...options });
+
+describe("DuelEnded in English", () => {
+  beforeEach(() => {
+    useLocaleStore.setState({ locale: "en" });
+  });
+
+  test.each<[Issue, string, string]>([
+    [{ outcome: "win", forfeit: false }, "Victory", "You beat @alan."],
+    [{ outcome: "loss", forfeit: false }, "Defeat", "@alan wins."],
+    [{ outcome: "draw", forfeit: false }, "Draw", "You and @alan tie."],
+    [{ outcome: "win", forfeit: true }, "Victory", "@alan forfeited."],
+    [{ outcome: "loss", forfeit: true }, "Defeat", "Forfeit: @alan wins."],
+  ])("tells the outcome %o: « %s », « %s »", async (issue, headline, detail) => {
+    await renderInEnglish({ issue });
+
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(headline);
+    expect(screen.getByText(detail)).toBeInTheDocument();
+  });
+
+  test("names both players' Results, then a new Duel and the Replay", async () => {
+    await renderInEnglish({ duelId: "duel-1", cached: written });
+
+    expect(screen.getByRole("region", { name: "You" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "@alan" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New Duel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Watch the Replay" })).toHaveAttribute(
+      "href",
+      "/duels/duel-1",
+    );
+  });
+
+  test("names the Duel chart's loading state", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Promise<Response>(() => {})),
+    );
+
+    await renderInEnglish({ duelId: "duel-1" });
+
+    expect(screen.getByRole("status", { name: "Loading the Duel chart" })).toBeInTheDocument();
+  });
+
+  test("a promotion and a demotion", async () => {
+    await renderInEnglish({
+      ranked: {
+        tp: 20,
+        previousRank: { tier: "gold", division: 3, tp: 90, shielded: false },
+        rank: { tier: "gold", division: 2, tp: 10, shielded: true },
+      },
+    });
+
+    expect(screen.getByRole("region", { name: "Rank" })).toHaveTextContent("Promoted: Gold II");
+
+    cleanup();
+    await renderInEnglish({
+      ranked: {
+        tp: -18,
+        previousRank: { tier: "gold", division: 4, tp: 5, shielded: false },
+        rank: { tier: "silver", division: 1, tp: 75, shielded: false },
+      },
+    });
+
+    expect(screen.getByRole("region", { name: "Rank" })).toHaveTextContent("Demoted to Silver I");
+  });
+
+  test.each([
+    [2, "Placement: 2 more Duels until your rank"],
+    [1, "Placement: 1 more Duel until your rank"],
+  ])("%i Placement Duels left: « %s »", async (placementsLeft, said) => {
+    await renderInEnglish({
+      ranked: { tp: null, previousRank: { placementsLeft: 3 }, rank: { placementsLeft } },
+    });
+
+    expect(screen.getByRole("region", { name: "Rank" })).toHaveTextContent(said);
+  });
+
+  test("the last Placement reveals the rank", async () => {
+    await renderInEnglish({
+      ranked: {
+        tp: null,
+        previousRank: { placementsLeft: 1 },
+        rank: { tier: "bronze", division: 4, tp: 0, shielded: false },
+      },
+    });
+
+    expect(screen.getByRole("region", { name: "Rank" })).toHaveTextContent(
+      "Placement complete. Your rank:Bronze IV",
+    );
   });
 });
 

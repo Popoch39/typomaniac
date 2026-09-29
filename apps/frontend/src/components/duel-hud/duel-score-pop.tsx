@@ -4,6 +4,8 @@ import { useRef } from "react";
 import { popTimeline } from "@/components/duel-hud/band-effect-timelines";
 import type { ScorePop } from "@/components/duel-hud/band-effects";
 import { useCueTimeline } from "@/components/duel-hud/use-cue-timeline";
+import { numberFormat } from "@/locale/formats";
+import { useLocale } from "@/locale/use-locale";
 
 type DuelScorePopProps = {
   pop: ScorePop;
@@ -16,6 +18,7 @@ type DuelScorePopProps = {
 // bigger for a Burst. Only fades in and out under reduced motion.
 export const DuelScorePop = ({ pop, startsAt, mirrored }: DuelScorePopProps) => {
   const popRef = useRef<HTMLSpanElement>(null);
+  const locale = useLocale();
 
   useCueTimeline(popRef, { at: pop.at, startsAt }, (reducedMotion) =>
     popRef.current === null ? null : popTimeline(popRef.current, { rise: !reducedMotion }),
@@ -31,7 +34,7 @@ export const DuelScorePop = ({ pop, startsAt, mirrored }: DuelScorePopProps) => 
         pop.burst ? "text-[15px]" : "text-[12px]",
       )}
     >
-      +{pop.points}
+      +{numberFormat(locale).format(pop.points)}
     </span>
   );
 };

@@ -1,5 +1,6 @@
 import type { Rank } from "ranked";
 
+import { duelKind } from "@/components/duel-history/duel-kind";
 import { TierEmblem } from "@/components/tier/drawing/tier-emblem";
 import { rankLabel } from "@/components/tier/rank/rank-label";
 import { useLocale } from "@/locale/use-locale";
@@ -13,7 +14,7 @@ export const FaceOffRank = ({ rank }: FaceOffRankProps) => {
   const locale = useLocale();
 
   if (rank === null) {
-    return <span className="text-lg font-extrabold">Challenge</span>;
+    return <span className="text-lg font-extrabold">{duelKind(false, locale)}</span>;
   }
 
   if ("placementsLeft" in rank) {

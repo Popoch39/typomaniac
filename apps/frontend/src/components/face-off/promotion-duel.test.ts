@@ -15,11 +15,15 @@ const stakeTo = (win: Standing, from: Standing): Stake => ({
   loss: { tp: -11, standing: { ...from, tp: Math.max(0, from.tp - 11) } },
 });
 
+const platinumIv: Standing = { tier: "platinum", division: 4, tp: 5, shielded: true };
+
+const diamondI: Standing = { tier: "diamond", division: 1, tp: 95, shielded: false };
+
+const maniac: Standing = { tier: "maniac", tp: 4, shielded: true };
+
 describe("promotionDuel", () => {
   test("is a Duel de promotion when a win moves up a Tier", () => {
-    const platinumIv: Standing = { tier: "platinum", division: 4, tp: 5, shielded: true };
-
-    expect(promotionDuel(gold(1, 91), stakeTo(platinumIv, gold(1, 91)))).toEqual({
+    expect(promotionDuel(gold(1, 91), stakeTo(platinumIv, gold(1, 91)), "fr")).toEqual({
       title: "Duel de promotion",
       from: gold(1, 91),
       to: platinumIv,
@@ -27,25 +31,31 @@ describe("promotionDuel", () => {
   });
 
   test("is a Duel pour Maniac when a win reaches Maniac", () => {
-    const diamondI: Standing = { tier: "diamond", division: 1, tp: 95, shielded: false };
-    const maniac: Standing = { tier: "maniac", tp: 4, shielded: true };
-
-    expect(promotionDuel(diamondI, stakeTo(maniac, diamondI))).toEqual({
+    expect(promotionDuel(diamondI, stakeTo(maniac, diamondI), "fr")).toEqual({
       title: "Duel pour Maniac",
       from: diamondI,
       to: maniac,
     });
   });
 
+  test("is titled in English in English", () => {
+    expect(promotionDuel(gold(1, 91), stakeTo(platinumIv, gold(1, 91)), "en")?.title).toBe(
+      "Promotion Duel",
+    );
+    expect(promotionDuel(diamondI, stakeTo(maniac, diamondI), "en")?.title).toBe(
+      "Maniac Promotion Duel",
+    );
+  });
+
   test("is none when a win only moves up a Division, or keeps it", () => {
     expect(
-      promotionDuel(gold(3, 94), stakeTo({ ...gold(2, 6), shielded: true }, gold(3, 94))),
+      promotionDuel(gold(3, 94), stakeTo({ ...gold(2, 6), shielded: true }, gold(3, 94)), "fr"),
     ).toBeNull();
-    expect(promotionDuel(gold(3, 50), stakeTo(gold(3, 64), gold(3, 50)))).toBeNull();
+    expect(promotionDuel(gold(3, 50), stakeTo(gold(3, 64), gold(3, 50)), "fr")).toBeNull();
   });
 
   test("is none without a Stake: a Challenge or Placement", () => {
-    expect(promotionDuel(null, null)).toBeNull();
-    expect(promotionDuel({ placementsLeft: 3 }, null)).toBeNull();
+    expect(promotionDuel(null, null, "fr")).toBeNull();
+    expect(promotionDuel({ placementsLeft: 3 }, null, "fr")).toBeNull();
   });
 });

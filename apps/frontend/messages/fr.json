@@ -247,5 +247,115 @@
         "countPlural=*": "secondes"
       }
     }
-  ]
+  ],
+  "duel_self": "Toi",
+  "duel_elsewhere": "Le Duel est ouvert dans un autre onglet.",
+  "duel_play_here": "Jouer ici",
+  "duel_disconnected": "La connexion au serveur a été perdue.",
+  "face_off_vs": "VS",
+  "face_off_go": "GO",
+  "face_off_mute": "Couper le son",
+  "face_off_duel": "Duel",
+  "face_off_promotion": "Duel de promotion",
+  "face_off_promotion_maniac": "Duel pour Maniac",
+  "face_off_announce": "{title} contre {opponent}",
+  "face_off_announce_go": "Partez !",
+  "face_off_form_none": "Aucun Duel classé",
+  "face_off_win": "Victoire",
+  "face_off_loss": "Défaite",
+  "face_off_draw": "Draw",
+  "face_off_stake": "Enjeu",
+  "hud_callouts": "Callouts",
+  "hud_lead_change_self": "TU PASSES DEVANT",
+  "hud_lead_change_opponent": "{opponent} PASSE DEVANT",
+  "hud_burst": "BURST",
+  "hud_combo": "COMBO",
+  "hud_combo_broken": "COMBO CASSÉ",
+  "hud_words": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{shown} mot",
+        "countPlural=*": "{shown} mots"
+      }
+    }
+  ],
+  "hud_lead_self": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Tu mènes de {shown} point",
+        "countPlural=*": "Tu mènes de {shown} points"
+      }
+    }
+  ],
+  "hud_lead_opponent": [
+    {
+      "declarations": [
+        "input opponent",
+        "input count",
+        "input shown",
+        "local countPlural = count: plural"
+      ],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{opponent} mène de {shown} point",
+        "countPlural=*": "{opponent} mène de {shown} points"
+      }
+    }
+  ],
+  "hud_lead_none": "Même Score",
+  "hud_score": "Score",
+  "hud_multiplier": "multiplicateur",
+  "hud_combo_gauge": "Combo",
+  "hud_time_left": "temps restant",
+  "hud_time_up": "FIN",
+  "hud_verdict_win": "VICTOIRE",
+  "hud_verdict_loss": "DÉFAITE",
+  "hud_verdict_draw": "DRAW",
+  "hud_connection_lost": "Connexion perdue, reconnexion…",
+  "hud_opponent_connection_lost": [
+    {
+      "declarations": [
+        "input opponent",
+        "input count",
+        "input shown",
+        "local countPlural = count: plural"
+      ],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Connexion de {opponent} perdue : Forfeit sans retour sous {shown} s.",
+        "countPlural=*": "Connexion de {opponent} perdue : Forfeit sans retour sous {shown} s."
+      }
+    }
+  ],
+  "hud_leave": "Quitter le Duel",
+  "outcome_win": "Victoire",
+  "outcome_loss": "Défaite",
+  "outcome_draw": "Draw",
+  "outcome_by_forfeit": "{outcome} par Forfeit",
+  "duel_ended_win": "Tu bats {opponent}.",
+  "duel_ended_loss": "{opponent} l'emporte.",
+  "duel_ended_draw": "Ni toi ni {opponent} ne l'emportez.",
+  "duel_ended_forfeit_win": "Forfeit de {opponent}.",
+  "duel_ended_forfeit_loss": "Forfeit : {opponent} l'emporte.",
+  "duel_ended_chart_loading": "Chargement du Duel chart",
+  "duel_ended_new_duel": "Nouveau Duel",
+  "duel_ended_replay": "Revoir",
+  "duel_rank": "Rang",
+  "duel_rank_placement": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Placement : encore {shown} Duel avant ton rang",
+        "countPlural=*": "Placement : encore {shown} Duels avant ton rang"
+      }
+    }
+  ],
+  "duel_rank_revealed": "Placement terminé, ton rang :",
+  "duel_rank_promoted": "Promotion : {standing}",
+  "duel_rank_demoted": "Descente en {standing}"
 }

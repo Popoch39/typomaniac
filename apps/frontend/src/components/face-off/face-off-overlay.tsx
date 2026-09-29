@@ -9,6 +9,7 @@ import { FaceOffPromotionBanner } from "@/components/face-off/face-off-promotion
 import { FaceOffSelf } from "@/components/face-off/face-off-self";
 import { promotionDuel } from "@/components/face-off/promotion-duel";
 import { useFaceOffTimeline } from "@/components/face-off/use-face-off-timeline";
+import { useLocale } from "@/locale/use-locale";
 import type { DuelOpponent } from "@/stores/duel-store";
 
 type FaceOffOverlayProps = {
@@ -27,7 +28,8 @@ const keepFocus = (event: MouseEvent) => event.preventDefault();
 // a ring of light around the disc.
 export const FaceOffOverlay = ({ opponent, pairing, startsAt, elapsed }: FaceOffOverlayProps) => {
   const scope = useRef<HTMLDivElement>(null);
-  const promotion = promotionDuel(pairing.selfRank, pairing.selfStake);
+  const locale = useLocale();
+  const promotion = promotionDuel(pairing.selfRank, pairing.selfStake, locale);
 
   useFaceOffTimeline(scope, startsAt, { promotion: promotion !== null });
 

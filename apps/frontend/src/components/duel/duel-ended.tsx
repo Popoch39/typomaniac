@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { DuelChartSkeleton } from "@/components/duel-chart/duel-chart-skeleton";
 import { atHandle } from "@/lib/at-handle";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 import type { DuelEnding } from "@/stores/duel-store";
 
 // recharts stays out of the home page's bundle until a Duel ends.
@@ -26,6 +28,7 @@ const WrittenDuelChart = lazy(async () => {
 // once it is closed.
 export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
   const searchDuel = useSearchDuel();
+  const locale = useLocale();
   const opponent = atHandle(ending.opponent.handle);
   const screen = useRef<HTMLDivElement | null>(null);
 
@@ -46,7 +49,11 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
         </>
       )}
       <div className="grid gap-8 md:grid-cols-2">
-        <PlayerResult name="Toi" result={ending.result} score={ending.score} />
+        <PlayerResult
+          name={m.duel_self({}, { locale })}
+          result={ending.result}
+          score={ending.score}
+        />
         <PlayerResult
           name={opponent}
           result={ending.opponentResult}
@@ -58,7 +65,7 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
         <NothingOnError>
           <Suspense
             fallback={
-              <LoadingRegion label="Chargement du Duel chart">
+              <LoadingRegion label={m.duel_ended_chart_loading({}, { locale })}>
                 <DuelChartSkeleton />
               </LoadingRegion>
             }
@@ -69,7 +76,7 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
       )}
       <div className="flex gap-2">
         <Button variant="outline" onClick={searchDuel}>
-          Nouveau Duel
+          {m.duel_ended_new_duel({}, { locale })}
         </Button>
         {ending.duelId === null ? null : <ReplayDuelLink duelId={ending.duelId} />}
       </div>

@@ -11,6 +11,7 @@ import type { FaceOffPairing } from "@/components/face-off/face-off-pairing";
 import { FaceOffSoundsContext } from "@/components/face-off/face-off-sounds-context";
 import { ClockContext } from "@/components/run/clock-context";
 import { useFaceOffSoundStore } from "@/stores/face-off-sound-store";
+import { useLocaleStore } from "@/stores/locale-store";
 
 const STARTS_AT = 10_000;
 
@@ -566,5 +567,56 @@ describe("FaceOff mute", () => {
     tickAt(-4100);
 
     expect(played).toEqual(["whoosh"]);
+  });
+});
+
+describe("FaceOff in English", () => {
+  beforeEach(() => {
+    useLocaleStore.setState({ locale: "en" });
+  });
+
+  test("a Challenge's badge, the Form and its absence, and the mute", () => {
+    faceOffAt(-4500);
+
+    expect(screen.getAllByText("Challenge")).toHaveLength(2);
+    expect(screen.getByText("Win")).toBeInTheDocument();
+    expect(screen.getByText("Loss")).toBeInTheDocument();
+    expect(screen.getByText("80 wpm")).toBeInTheDocument();
+    expect(screen.getByText("No Ranked Duels")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mute sound" })).toBeInTheDocument();
+  });
+
+  test("the rank, the Placement Duels left and the Stake", () => {
+    faceOffAt(-3500, { ...ranked, opponentRank: { placementsLeft: 1 } });
+
+    expect(screen.getByText("Gold IV · 50 TP")).toBeInTheDocument();
+    expect(screen.getByText("Placement · 1 Duel left")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Stake" })).toHaveTextContent(
+      /^Win \+20 TP Loss −20 TP$/,
+    );
+  });
+
+  test("stages and announces a Promotion Duel, then one for Maniac", () => {
+    faceOffAt(-4500, promotion);
+
+    expect(screen.getByText("Promotion Duel")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Promotion Duel against @alan");
+
+    cleanup();
+    faceOffAt(-4500, forManiac);
+
+    expect(screen.getByText("Maniac Promotion Duel")).toBeInTheDocument();
+  });
+
+  test("announces the Countdown, then the start", () => {
+    const faceOff = faceOffAt(-4500);
+
+    expect(screen.getByRole("status")).toHaveTextContent("Duel against @alan");
+
+    faceOff.at(-1500);
+    expect(screen.getByRole("status")).toHaveTextContent(/^2$/);
+
+    faceOff.at(0);
+    expect(screen.getByRole("status")).toHaveTextContent("Go!");
   });
 });

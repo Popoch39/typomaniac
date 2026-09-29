@@ -187,6 +187,14 @@ describe("the Queue screen in English", () => {
     expect(within(card).getByRole("button", { name: "Back to Solo" })).toBeInTheDocument();
     expect(within(card).getByRole("button", { name: /Find a Duel/ })).toHaveTextContent("1:00");
   });
+
+  test("another tab playing the place: said, with the way to play here", async () => {
+    await renderDuel();
+    receive({ type: "elsewhere", place: "queue" });
+
+    expect(await screen.findByText("This Duel is open in another tab.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Play here" })).toBeInTheDocument();
+  });
 });
 
 describe("the Queue screen during a Queue lock", () => {
