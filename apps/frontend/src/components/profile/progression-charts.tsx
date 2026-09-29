@@ -19,7 +19,7 @@ export const ProgressionCharts = ({
       <p className="text-sm text-muted-foreground">
         {points.length} {points.length === 1 ? "Duel" : "Duels"}, hors Forfeits
       </p>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5">
         <ProgressionChart points={points} metric="wpm" />
         <ProgressionChart points={points} metric="raw" />
         <ProgressionChart points={points} metric="accuracy" />

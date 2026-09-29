@@ -20,7 +20,7 @@ export const UserProfilePage = () => {
   }
 
   return (
-    <section className="mx-auto flex w-full max-w-2xl flex-col gap-6 py-12">
+    <section className="flex flex-col gap-6">
       <ProfileHeader handle={handle} />
       <ProfileStats handle={handle} empty={<UserProfileEmpty />} />
     </section>

@@ -1,21 +1,16 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
-import { suggestHandle } from "handle";
 import { Suspense } from "react";
-import { toast } from "sonner";
 
 import { meQueryOptions } from "@/api/me";
-import { HandleForm } from "@/components/handle/handle-form";
-import { PageHeader } from "@/components/page-header";
 import { OwnProfileEmpty } from "@/components/profile/own-profile-empty";
+import { ProfileColumns } from "@/components/profile/profile-columns";
+import { ProfileHero } from "@/components/profile/profile-hero";
+import { ProfileSettings } from "@/components/profile/profile-settings";
 import { ProfileStats } from "@/components/profile/profile-stats";
 import { ProfileStatsSkeleton } from "@/components/profile/profile-stats-skeleton";
-import { atHandle } from "@/lib/at-handle";
 
-const onSaved = () => toast.success("Handle enregistré");
-
-// The signed-in User's profile: their Handle, changed at will, then their Stats. The previous
-// Handle is freed at once; their Duels stay theirs.
+// The Profil page, the signed-in User's own (`/profile`): their hero, then their Stats, and at the
+// right their settings (their Handle, changed at will, and their Ornament).
 export const ProfilePage = () => {
   const { data: me } = useSuspenseQuery(meQueryOptions);
 
@@ -25,35 +20,20 @@ export const ProfilePage = () => {
   }
 
   return (
-    <section className="flex w-full max-w-2xl flex-col gap-6">
-      <PageHeader
-        title="Profil"
-        subtitle={
-          me.handle === null
-            ? "Tu n'as pas encore de Handle : sans lui, pas de Duel."
-            : `Les autres te voient en ${atHandle(me.handle)}.`
+    <div className="flex flex-col gap-6">
+      <ProfileHero me={me} />
+      <ProfileColumns
+        stats={
+          // No Duel without a Handle, so no Stats. A new Handle reads the Stats again: the
+          // settings stay while they load.
+          me.handle === null ? null : (
+            <Suspense fallback={<ProfileStatsSkeleton />}>
+              <ProfileStats handle={me.handle} empty={<OwnProfileEmpty />} />
+            </Suspense>
+          )
         }
+        settings={<ProfileSettings me={me} />}
       />
-      <HandleForm
-        initial={me.handle ?? suggestHandle(me.name)}
-        current={me.handle}
-        submitLabel="Enregistrer"
-        onSaved={onSaved}
-      />
-      <p className="text-[0.7rem] text-muted-foreground">
-        Changer de Handle libère l'ancien aussitôt. Ton historique de Duels te suit.
-      </p>
-      {me.handle === null ? null : (
-        <>
-          <Link to="/u/$handle" params={{ handle: me.handle }} className="text-sm underline">
-            Voir mon Profile public
-          </Link>
-          {/* A new Handle reads the Stats again: the form above stays while they load. */}
-          <Suspense fallback={<ProfileStatsSkeleton />}>
-            <ProfileStats handle={me.handle} empty={<OwnProfileEmpty />} />
-          </Suspense>
-        </>
-      )}
-    </section>
+    </div>
   );
 };

@@ -18,8 +18,8 @@ const dateFormat = new Intl.DateTimeFormat("fr-FR", { dateStyle: "short", timeSt
 
 const round = (value: number) => Math.round(value * 10) / 10;
 
-// One metric of the Progression, on a card, all in the accent (only the User is on it): a faint point
-// per Duel, and the rolling average over 10 Duels as a line.
+// One metric of the Progression, on the Progression's card, all in the accent (only the User is on
+// it): a faint point per Duel, and the rolling average over 10 Duels as a line.
 // The tooltip gives the date of the hovered Duel, its value and the average.
 export const ProgressionChart = ({
   points,
@@ -54,10 +54,7 @@ export const ProgressionChart = ({
   };
 
   return (
-    <figure
-      aria-label={`Progression ${metric}`}
-      className="flex flex-col gap-2 rounded-card bg-card p-5"
-    >
+    <figure aria-label={`Progression ${metric}`} className="flex flex-col gap-2">
       <figcaption className="text-sm font-semibold">{metric}</figcaption>
       <ChartContainer config={config} className="aspect-auto h-48 w-full">
         <ComposedChart data={rows} margin={{ left: 0, right: 0 }}>

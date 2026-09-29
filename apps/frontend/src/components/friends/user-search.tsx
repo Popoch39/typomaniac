@@ -1,8 +1,8 @@
 import { SearchIcon } from "lucide-react";
 import { useState } from "react";
 
-import { FRIENDS_TITLE_PAINT } from "@/components/friends/friends-paint";
 import { UserSearchResults } from "@/components/friends/user-search-results";
+import { SMALL_TITLE_PAINT } from "@/components/small-title-paint";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 
 // Waits this long after the last key before searching.
@@ -21,7 +21,7 @@ export const UserSearch = ({ inputId }: UserSearchProps) => {
 
   return (
     <section className="flex flex-col gap-2.5">
-      <label htmlFor={inputId} className={FRIENDS_TITLE_PAINT}>
+      <label htmlFor={inputId} className={SMALL_TITLE_PAINT}>
         Chercher un User
       </label>
       <div className="flex h-12 items-center gap-2.5 rounded-full bg-card px-4.5 focus-within:ring-2 focus-within:ring-ring">

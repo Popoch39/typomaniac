@@ -2,7 +2,7 @@ import { Suspense, useId } from "react";
 
 import { ActivityList } from "@/components/activity/activity-list";
 import { ActivitySkeleton } from "@/components/activity/activity-skeleton";
-import { FRIENDS_TITLE_PAINT } from "@/components/friends/friends-paint";
+import { SMALL_TITLE_PAINT } from "@/components/small-title-paint";
 
 type ActivityColumnProps = {
   // Where the empty Activity sends the User to find Friends.
@@ -16,7 +16,7 @@ export const ActivityColumn = ({ searchInputId }: ActivityColumnProps) => {
 
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-2.5">
-      <h2 id={titleId} className={FRIENDS_TITLE_PAINT}>
+      <h2 id={titleId} className={SMALL_TITLE_PAINT}>
         Activity
       </h2>
       <Suspense fallback={<ActivitySkeleton />}>

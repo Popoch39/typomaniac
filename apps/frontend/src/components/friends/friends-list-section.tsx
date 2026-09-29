@@ -1,7 +1,8 @@
 import { cn } from "cn";
 import { type ReactNode, useId } from "react";
 
-import { FRIENDS_CARD_PAINT, FRIENDS_TITLE_PAINT } from "@/components/friends/friends-paint";
+import { FRIENDS_CARD_PAINT } from "@/components/friends/friends-paint";
+import { SMALL_TITLE_PAINT } from "@/components/small-title-paint";
 
 type FriendsListSectionProps = {
   // Its name and its count.
@@ -23,7 +24,7 @@ export const FriendsListSection = ({
 
   return (
     <section aria-labelledby={titleId} className="flex flex-col gap-2.5">
-      <h2 id={titleId} className={cn("flex items-center gap-2 tabular-nums", FRIENDS_TITLE_PAINT)}>
+      <h2 id={titleId} className={cn("flex items-center gap-2 tabular-nums", SMALL_TITLE_PAINT)}>
         {title}
       </h2>
       {isEmpty ? empty : <ul className={FRIENDS_CARD_PAINT}>{children}</ul>}

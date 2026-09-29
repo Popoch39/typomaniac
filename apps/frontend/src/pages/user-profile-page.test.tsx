@@ -105,7 +105,7 @@ describe("UserProfilePage", () => {
       within(screen.getByLabelText("Stats")).getByText("Duels").closest("div"),
     ).toHaveTextContent("3");
     expect(
-      within(screen.getByLabelText("Bilan")).getByText("victoires").closest("div"),
+      within(screen.getByLabelText("Stats")).getByText("victoires").closest("div"),
     ).toHaveTextContent("2");
     expect(screen.queryByRole("link", { name: /Revoir/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/Duel history/)).not.toBeInTheDocument();
@@ -121,6 +121,8 @@ describe("UserProfilePage", () => {
     expect(
       document.querySelector('[data-tier-blason] use[href="#tier-ornament-or"]'),
     ).not.toBeNull();
+    // Under it, its progress: the Division's TP out of 100.
+    expect(screen.getByRole("meter", { name: "TP de la Division" })).toHaveAttribute("value", "42");
   });
 
   test("the User's avatar wears their Ornament", async () => {
@@ -187,6 +189,7 @@ describe("UserProfilePage", () => {
 
     expect(await screen.findByText("Placement · 4 Duels restants")).toBeInTheDocument();
     expect(document.querySelector("[data-tier-blason]")).toBeNull();
+    expect(screen.getByRole("meter", { name: "Placement" })).toHaveAttribute("value", "1");
   });
 
   test("a Handle has no case: /u/Grace shows @grace", async () => {

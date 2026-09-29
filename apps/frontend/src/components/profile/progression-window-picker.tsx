@@ -9,7 +9,7 @@ const LABELS: Record<ProgressionWindow, string> = {
 
 const OPTIONS = PROGRESSION_WINDOWS.map((value) => ({ value, label: LABELS[value] }));
 
-// Which of their last Duels the Progression shows, as segmented pills.
+// Which of their last Duels the Progression shows, as segmented pills on the card's raised surface.
 export const ProgressionWindowPicker = ({
   span,
   onChange,
@@ -22,5 +22,6 @@ export const ProgressionWindowPicker = ({
     options={OPTIONS}
     value={span}
     onChange={onChange}
+    className="bg-surface-2"
   />
 );

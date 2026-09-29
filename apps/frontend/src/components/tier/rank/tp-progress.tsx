@@ -7,8 +7,9 @@ import { TIER_COLORS } from "@/components/tier/tier";
 // One notch per Placement Duel, numbered from 1.
 const PLACEMENT_NOTCHES = Array.from({ length: PLACEMENT_DUELS }, (_, index) => index + 1);
 
-// The drawing's thickness: thin under a rank in a line, thicker where the rank stands alone.
-const THICKNESS = { sm: "h-1", lg: "h-2" };
+// The drawing's thickness: thin under a rank in a line, thicker where the rank stands out (the hero
+// of `/profile`, the header of a Profile) or stands alone.
+const THICKNESS = { sm: "h-1", md: "h-1.5", lg: "h-2" };
 
 type TpProgressProps = { rank: Rank | null; size?: keyof typeof THICKNESS };
 

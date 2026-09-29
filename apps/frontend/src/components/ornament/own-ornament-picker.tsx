@@ -11,9 +11,10 @@ export const OwnOrnamentPicker = ({ handle }: { handle: string }) => {
     return null;
   }
 
-  // Positioned: drawn over the avatar's Ornament where it overflows, never under it.
+  // Positioned: drawn over the avatar's Ornament where it overflows, never under it. As wide as the
+  // settings column of `/profile`, where the same grid lies.
   return (
-    <div className="relative">
+    <div className="relative max-w-80">
       <OrnamentPicker me={me} handle={handle} />
     </div>
   );

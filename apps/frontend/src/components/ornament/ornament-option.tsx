@@ -1,23 +1,26 @@
-import { LockIcon } from "lucide-react";
+import type { Tier } from "ranked";
 
 import type { OrnamentOption as Option } from "@/components/ornament/ornament-options";
-import { TierOrnament } from "@/components/tier/drawing/tier-ornament";
+import { OrnamentPreview } from "@/components/ornament/ornament-preview";
 import { cn } from "cn";
 
 type OrnamentOptionProps = {
   name: string;
   option: Option;
+  // The Tier « Suivre mon Tier » wears, for its preview.
+  followedTier: Tier | null;
   checked: boolean;
   locked: boolean;
   onChoose: () => void;
 };
 
 // One option of the picker, a native radio (arrow keys, focus and locking for free) under its
-// tile: a Tier's Ornament in preview, named by its Tier, or a choice in words. Locked, it is
-// greyed out with a padlock and cannot be chosen.
+// tile: its preview, then its name. Chosen, the tile is tinted and ringed in the accent; locked,
+// it is hollow, a padlock in place of its preview, and cannot be chosen.
 export const OrnamentOption = ({
   name,
   option,
+  followedTier,
   checked,
   locked,
   onChoose,
@@ -32,25 +35,9 @@ export const OrnamentOption = ({
       onChange={onChoose}
       className="peer sr-only"
     />
-    <span
-      className={cn(
-        "flex h-14 items-center justify-center rounded-xl border-2 border-transparent bg-surface-2 text-xs font-semibold text-muted-foreground transition-colors peer-checked:border-primary peer-checked:text-foreground peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 peer-disabled:opacity-40 peer-enabled:hover:text-foreground",
-        option.tier === null ? "px-3" : "w-14",
-      )}
-    >
-      {option.tier === null ? (
-        option.label
-      ) : (
-        <>
-          <span className="size-9">
-            <TierOrnament tier={option.tier} />
-          </span>
-          <span className="sr-only">{option.label}</span>
-        </>
-      )}
+    <span className="flex flex-col items-center gap-2 rounded-[18px] bg-surface-2 px-1 pt-3 pb-2.5 text-center text-[11.5px] font-semibold text-muted-foreground transition-colors peer-checked:bg-primary/16 peer-checked:text-foreground peer-checked:inset-ring-[1.5px] peer-checked:inset-ring-primary peer-focus-visible:ring-3 peer-focus-visible:ring-ring/50 peer-enabled:hover:text-foreground peer-disabled:bg-transparent peer-disabled:text-faint peer-disabled:inset-ring peer-disabled:inset-ring-border">
+      <OrnamentPreview option={option} followedTier={followedTier} locked={locked} />
+      {option.label}
     </span>
-    {locked && option.tier !== null ? (
-      <LockIcon aria-hidden className="absolute right-1 bottom-1 size-3.5 text-foreground" />
-    ) : null}
   </label>
 );

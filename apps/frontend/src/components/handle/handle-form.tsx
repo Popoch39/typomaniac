@@ -6,6 +6,7 @@ import { meQueryOptions } from "@/api/me";
 import { HandleCheckMessage } from "@/components/handle/handle-check-message";
 import { refusals } from "@/components/handle/handle-refusals";
 import { useHandleCheck } from "@/components/handle/use-handle-check";
+import { SMALL_TITLE_PAINT } from "@/components/small-title-paint";
 import { Button } from "@/components/ui/button";
 
 type HandleFormProps = {
@@ -44,29 +45,31 @@ export const HandleForm = ({ initial, current, submitLabel, onSaved }: HandleFor
   const savable = status.kind === "available" || status.kind === "unknown";
 
   return (
-    <form action={submit} className="flex flex-col gap-2">
-      <label
-        htmlFor={inputId}
-        className="text-[0.7rem] font-medium text-muted-foreground uppercase"
-      >
+    <form action={submit} className="flex flex-col gap-3">
+      <label htmlFor={inputId} className={SMALL_TITLE_PAINT}>
         Handle
       </label>
-      <div className="flex h-9 items-center border border-foreground/15 bg-background focus-within:border-caret focus-within:ring-2 focus-within:ring-caret/30">
-        <span aria-hidden="true" className="pl-3 text-muted-foreground">
-          @
-        </span>
-        <input
-          id={inputId}
-          name="handle"
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          aria-describedby={messageId}
-          aria-invalid={status.kind === "refused"}
-          className="h-full min-w-0 flex-1 bg-transparent pr-3 pl-0.5 text-xs outline-none"
-        />
+      <div className="flex gap-2">
+        <div className="flex h-11 min-w-0 flex-1 items-center gap-0.5 rounded-[14px] bg-surface-2 px-3.5 text-[15px] focus-within:ring-3 focus-within:ring-ring/50">
+          <span aria-hidden="true" className="text-muted-foreground">
+            @
+          </span>
+          <input
+            id={inputId}
+            name="handle"
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            aria-describedby={messageId}
+            aria-invalid={status.kind === "refused"}
+            className="h-full min-w-0 flex-1 bg-transparent font-semibold outline-none"
+          />
+        </div>
+        <Button type="submit" disabled={!savable || pending} className="rounded-[14px] font-bold">
+          {submitLabel}
+        </Button>
       </div>
       <HandleCheckMessage id={messageId} status={status} />
       {error ? (
@@ -74,9 +77,6 @@ export const HandleForm = ({ initial, current, submitLabel, onSaved }: HandleFor
           {error}
         </p>
       ) : null}
-      <Button type="submit" disabled={!savable || pending}>
-        {submitLabel}
-      </Button>
     </form>
   );
 };

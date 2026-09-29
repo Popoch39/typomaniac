@@ -1,3 +1,5 @@
+import { cn } from "cn";
+
 import { Button } from "@/components/ui/button";
 
 export type SettingOption<T> = { value: T; label: string };
@@ -7,6 +9,8 @@ type SettingGroupProps<T> = {
   options: readonly SettingOption<T>[];
   value: T;
   onChange: (value: T) => void;
+  // The surface's own look, where the pills lie on a card rather than on the page.
+  className?: string;
 };
 
 // One setting, as segmented pills on one surface: the chosen option is pressed, filled with the accent.
@@ -15,8 +19,9 @@ export const SettingGroup = <T extends string | number>({
   options,
   value,
   onChange,
+  className,
 }: SettingGroupProps<T>) => (
-  <fieldset className="flex min-w-0 gap-1 rounded-full bg-card p-1">
+  <fieldset className={cn("flex min-w-0 gap-1 rounded-full bg-card p-1", className)}>
     <legend className="sr-only">{label}</legend>
     {options.map((option) => (
       <Button
