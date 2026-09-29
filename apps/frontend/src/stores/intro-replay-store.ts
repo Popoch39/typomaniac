@@ -11,8 +11,9 @@ export const INTRO_SPEEDS = [0.25, 0.5, 1, 1.5, 2] as const;
 export const SHELL_DELAYS = [0, 2, 5] as const;
 
 // The page the replayed Intro lands on: the home page and its parts, or a page coming in as one
-// block, with a loader (the Leaderboard, the Duels) or without (the Themes).
-export const INTRO_PAGES = ["/", "/leaderboard", "/duels", "/themes"] as const;
+// block, with a loader (the Leaderboard) or without (the Themes). Pages open to a Visitor: one
+// that asks for a User would send them home.
+export const INTRO_PAGES = ["/", "/leaderboard", "/themes"] as const;
 
 export type IntroSpeed = (typeof INTRO_SPEEDS)[number];
 

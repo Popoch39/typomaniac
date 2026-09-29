@@ -453,6 +453,21 @@ describe("the Intro, as another page starts", () => {
     expect(leftInline()).toEqual(nothingInline());
   });
 
+  test("on an address no route answers, the lockup lands on the page not found, in the shell", async () => {
+    renderApp({ at: "/nulle-part" });
+    await fontsLoaded();
+    await screen.findByLabelText("Barre latérale");
+    gsapClock.advance(2.62 + 0.5);
+
+    expect(intro()).toBeInTheDocument();
+    expect(shellParts("page")).toHaveLength(1);
+
+    gsapClock.advance(LANDING_S);
+
+    expect(intro()).not.toBeInTheDocument();
+    expect(leftInline()).toEqual(nothingInline());
+  });
+
   test("its data not there at the end of the typing, the caret blinks until the page is", async () => {
     const { shell: data, mount: resolve } = heldShell();
 

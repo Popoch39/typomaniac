@@ -18,6 +18,22 @@ export const BOOT_SCALE = 84 / LOGO_PX;
 // The typing stops here, the caret hidden: the landing can start, or the caret waits.
 export const WAIT_S = 2.62;
 
+// The Logo slides aside, then the first letter is typed as it gets there.
+const SLIDE_AT = 0.25;
+
+const SLIDE_S = 0.7;
+
+// A letter comes in, rising a little, or fades out before it is erased.
+const LETTER_IN_S = 0.08;
+
+const LETTER_RISE_PX = 6;
+
+const LETTER_OUT_S = 0.05;
+
+// The caret glides to its new place: no longer than the quickest keystroke (0.06 s apart), so a
+// glide is over as the next starts.
+const CARET_GLIDE_S = 0.06;
+
 // Each letter of typomaniac, typed at its time: « typoman », then « iac » once the typo is gone.
 const TYPED_AT = [0.95, 1.02, 1.08, 1.17, 1.23, 1.31, 1.37, 2.08, 2.15, 2.22];
 
@@ -87,22 +103,6 @@ export type ShellTargets = {
   parts: HTMLElement[];
 };
 
-// The Logo slides aside, then the first letter is typed as it gets there.
-const SLIDE_AT = 0.25;
-
-const SLIDE_S = 0.7;
-
-// A letter comes in, rising a little, or fades out before it is erased.
-const LETTER_IN_S = 0.08;
-
-const LETTER_RISE_PX = 6;
-
-const LETTER_OUT_S = 0.05;
-
-// The caret glides to its new place: shorter than the quickest keystroke (0.06 s), so a glide is
-// over before the next starts.
-const CARET_GLIDE_S = 0.06;
-
 type TypingOptions = {
   // How far the Logo sits right of its place in the lockup at the start, for it to be at the
   // centre of the screen: half the lockup's width, less half the Logo's.
@@ -113,52 +113,46 @@ type TypingOptions = {
   typoWidths: number[];
 };
 
-// A letter typed at `at`: it is laid out (the caret jumps right of it), then rises in as the caret
-// glides from where it was to its new place.
-const typeLetter = (
-  timeline: gsap.core.Timeline,
-  {
-    letter,
-    caret,
-    width,
-    at,
-  }: { letter: HTMLElement; caret: HTMLElement; width: number; at: number },
-) =>
-  timeline
-    .set(letter, { display: "inline-block" }, at)
-    .fromTo(
-      letter,
-      { opacity: 0, y: LETTER_RISE_PX },
-      { opacity: 1, y: 0, duration: LETTER_IN_S, ease: "power2.out", immediateRender: false },
-      at,
-    )
-    .fromTo(
-      caret,
-      { x: -width },
-      { x: 0, duration: CARET_GLIDE_S, ease: "power2.out", immediateRender: false },
-      at,
-    );
+// One keystroke: a letter, the caret right of it, the letter's width, its time.
+type Keystroke = { letter: HTMLElement; caret: HTMLElement; width: number; at: number };
 
-// A letter erased at `at`: it fades out, then leaves the layout (the caret jumps back) and the
-// caret glides back from where it was.
-const eraseLetter = (
-  timeline: gsap.core.Timeline,
-  {
-    letter,
+// The caret, just laid out at its new place (FLIP), glides there from `from` px away.
+const glideCaret = (timeline: gsap.core.Timeline, caret: HTMLElement, from: number, at: number) =>
+  timeline.fromTo(
+    caret,
+    { x: from },
+    { x: 0, duration: CARET_GLIDE_S, ease: "power2.out", immediateRender: false },
+    at,
+  );
+
+// A letter typed: it is laid out (the caret jumps right of it), then rises in as the caret glides
+// from where it was to its new place.
+const typeLetter = (timeline: gsap.core.Timeline, { letter, caret, width, at }: Keystroke) =>
+  glideCaret(
+    timeline
+      .set(letter, { display: "inline-block" }, at)
+      .fromTo(
+        letter,
+        { opacity: 0, y: LETTER_RISE_PX },
+        { opacity: 1, y: 0, duration: LETTER_IN_S, ease: "power2.out", immediateRender: false },
+        at,
+      ),
+    caret,
+    -width,
+    at,
+  );
+
+// A letter erased: it fades out, then leaves the layout (the caret jumps back) and the caret
+// glides back from where it was.
+const eraseLetter = (timeline: gsap.core.Timeline, { letter, caret, width, at }: Keystroke) =>
+  glideCaret(
+    timeline
+      .to(letter, { opacity: 0, duration: LETTER_OUT_S, ease: "power1.in" }, at - LETTER_OUT_S)
+      .set(letter, { display: "none" }, at),
     caret,
     width,
     at,
-  }: { letter: HTMLElement; caret: HTMLElement; width: number; at: number },
-) =>
-  timeline
-    .to(letter, { opacity: 0, duration: LETTER_OUT_S, ease: "power1.in" }, at - LETTER_OUT_S)
-    .set(letter, { display: "none" }, at)
-    .fromTo(
-      caret,
-      { x: width },
-      { x: 0, duration: CARET_GLIDE_S, ease: "power2.out", immediateRender: false },
-      at,
-    );
+  );
 
 // From the boot Logo to the waiting point: the Logo slides aside to its place in the lockup and
 // takes its own size again, then the name is typed beside it with a typo that the wave flags and

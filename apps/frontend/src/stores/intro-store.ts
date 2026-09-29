@@ -3,7 +3,8 @@ import { create } from "zustand";
 type IntroStore = {
   // The Intro plays: decided once as the page starts (`introAtStartup`), never by a navigation.
   playing: boolean;
-  // The home page is mounted: the sidebar and the page are there to land in.
+  // The router has rendered the page the app opened on: the sidebar and the page are there to land
+  // in (or the error of a start that fails).
   shellReady: boolean;
   play: () => void;
   markShellReady: () => void;

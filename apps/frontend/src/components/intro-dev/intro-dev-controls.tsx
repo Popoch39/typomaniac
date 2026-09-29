@@ -22,11 +22,10 @@ const SPEED_OPTIONS = INTRO_SPEEDS.map((speed) => ({
 
 const SHELL_DELAY_OPTIONS = SHELL_DELAYS.map((delay) => ({ value: delay, label: `${delay} s` }));
 
-// A dev page, in French only.
+// A dev page, in French only: the names of its options below.
 const PAGE_NAMES: Record<IntroPage, string> = {
   "/": "Accueil",
   "/leaderboard": "Classement",
-  "/duels": "Duels",
   "/themes": "Themes",
 };
 
