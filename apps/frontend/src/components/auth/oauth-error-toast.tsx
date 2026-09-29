@@ -3,11 +3,13 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 
 import { oauthErrorMessage } from "@/lib/oauth-error";
+import { useLocale } from "@/locale/use-locale";
 
 // Better Auth sends a failed OAuth round trip back with `?error=<code>`: say it once, then drop it from the URL.
 export const OAuthErrorToast = () => {
   const error = useSearch({ from: "__root__", select: (search) => search.error });
   const navigate = useNavigate();
+  const locale = useLocale();
 
   useEffect(() => {
     if (!error) {
@@ -15,13 +17,13 @@ export const OAuthErrorToast = () => {
     }
 
     // A fixed id keeps StrictMode's double effect from stacking two toasts.
-    toast.error(oauthErrorMessage(error), { id: "oauth-error" });
+    toast.error(oauthErrorMessage(error, locale), { id: "oauth-error" });
     void navigate({
       to: ".",
       search: (previous) => ({ ...previous, error: undefined }),
       replace: true,
     });
-  }, [error, navigate]);
+  }, [error, locale, navigate]);
 
   return null;
 };

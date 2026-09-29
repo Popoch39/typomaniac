@@ -1,13 +1,15 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useActionState, useId, useState } from "react";
 
-import { saveHandle } from "@/api/handle";
+import { type HandleUnavailable, saveHandle } from "@/api/handle";
 import { meQueryOptions } from "@/api/me";
 import { HandleCheckMessage } from "@/components/handle/handle-check-message";
-import { refusals } from "@/components/handle/handle-refusals";
+import { refusalMessage } from "@/components/handle/handle-refusals";
 import { useHandleCheck } from "@/components/handle/use-handle-check";
 import { SMALL_TITLE_PAINT } from "@/components/small-title-paint";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 type HandleFormProps = {
   // What the field starts with: the current Handle, or a suggestion drawn from the name.
@@ -17,6 +19,9 @@ type HandleFormProps = {
   onSaved?: () => void;
 };
 
+// Why a save failed: a refusal of the Handle, or "failed" when the API gave no reason.
+type SaveFailure = HandleUnavailable | "failed";
+
 // Chooses or changes the User's Handle, checked live as it is typed. Once saved, the signed-in User
 // in the cache has it: every page sees it at once.
 export const HandleForm = ({ initial, current, submitLabel, onSaved }: HandleFormProps) => {
@@ -25,13 +30,15 @@ export const HandleForm = ({ initial, current, submitLabel, onSaved }: HandleFor
   const status = useHandleCheck(input, current);
   const inputId = useId();
   const messageId = useId();
+  const locale = useLocale();
 
-  const [error, submit, pending] = useActionState(
-    async (_previous: string | null, form: FormData) => {
+  // Kept as a reason, not a text: it is said in the Locale of the moment.
+  const [failure, submit, pending] = useActionState(
+    async (_previous: SaveFailure | null, form: FormData): Promise<SaveFailure | null> => {
       const saved = await saveHandle(String(form.get("handle")));
 
       if (!saved.ok) {
-        return saved.reason ? refusals[saved.reason] : "L'enregistrement a échoué. Réessaie.";
+        return saved.reason ?? "failed";
       }
 
       queryClient.setQueryData(meQueryOptions.queryKey, saved.me);
@@ -47,7 +54,7 @@ export const HandleForm = ({ initial, current, submitLabel, onSaved }: HandleFor
   return (
     <form action={submit} className="flex flex-col gap-3">
       <label htmlFor={inputId} className={SMALL_TITLE_PAINT}>
-        Handle
+        {m.handle_label({}, { locale })}
       </label>
       <div className="flex gap-2">
         <div className="flex h-11 min-w-0 flex-1 items-center gap-0.5 rounded-[14px] bg-surface-2 px-3.5 text-[15px] focus-within:ring-3 focus-within:ring-ring/50">
@@ -72,11 +79,13 @@ export const HandleForm = ({ initial, current, submitLabel, onSaved }: HandleFor
         </Button>
       </div>
       <HandleCheckMessage id={messageId} status={status} />
-      {error ? (
+      {failure === null ? null : (
         <p role="alert" className="text-[0.7rem] text-destructive">
-          {error}
+          {failure === "failed"
+            ? m.handle_save_failed({}, { locale })
+            : refusalMessage(failure, locale)}
         </p>
-      ) : null}
+      )}
     </form>
   );
 };

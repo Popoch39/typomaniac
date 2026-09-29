@@ -3,6 +3,8 @@ import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import { cn } from "cn";
 
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 import { XIcon } from "lucide-react";
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
@@ -42,6 +44,8 @@ function DialogContent({
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean;
 }) {
+  const locale = useLocale();
+
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -60,7 +64,7 @@ function DialogContent({
             render={<Button variant="ghost" className="absolute top-3 right-3" size="icon-sm" />}
           >
             <XIcon />
-            <span className="sr-only">Fermer</span>
+            <span className="sr-only">{m.dialog_close({}, { locale })}</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Popup>
@@ -86,6 +90,8 @@ function DialogFooter({
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean;
 }) {
+  const locale = useLocale();
+
   return (
     <div
       data-slot="dialog-footer"
@@ -94,7 +100,9 @@ function DialogFooter({
     >
       {children}
       {showCloseButton && (
-        <DialogPrimitive.Close render={<Button variant="outline" />}>Fermer</DialogPrimitive.Close>
+        <DialogPrimitive.Close render={<Button variant="outline" />}>
+          {m.dialog_close({}, { locale })}
+        </DialogPrimitive.Close>
       )}
     </div>
   );

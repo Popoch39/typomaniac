@@ -4,6 +4,8 @@ import { meQueryOptions } from "@/api/me";
 import { useSearchDuel } from "@/components/duel/use-search-duel";
 import { Button } from "@/components/ui/button";
 import { atHandle } from "@/lib/at-handle";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 import { useAuthStore } from "@/stores/auth-store";
 
 // The server refused the Queue: a Duel shows each player's Handle, and this User has none. Choosing
@@ -13,19 +15,23 @@ export const DuelHandleRequired = () => {
   const setHandleChoiceDeferred = useAuthStore((state) => state.setHandleChoiceDeferred);
   const searchDuel = useSearchDuel();
 
+  const locale = useLocale();
+
   const handle = me?.handle ?? null;
 
   return (
     <div className="flex flex-col items-center gap-6 rounded-card bg-card px-8 py-12 text-center">
       <output className="text-muted-foreground">
         {handle === null
-          ? "En Duel, ton adversaire te voit par ton Handle : choisis-en un pour jouer. Les Runs solo restent ouverts sans."
-          : `Ton adversaire te verra en ${atHandle(handle)}.`}
+          ? m.handle_duel_required({}, { locale })
+          : m.handle_duel_ready({ handle: atHandle(handle) }, { locale })}
       </output>
       {handle === null ? (
-        <Button onClick={() => setHandleChoiceDeferred(false)}>Choisir mon Handle</Button>
+        <Button onClick={() => setHandleChoiceDeferred(false)}>
+          {m.handle_duel_choose({}, { locale })}
+        </Button>
       ) : (
-        <Button onClick={searchDuel}>Chercher un Duel</Button>
+        <Button onClick={searchDuel}>{m.handle_duel_search({}, { locale })}</Button>
       )}
     </div>
   );

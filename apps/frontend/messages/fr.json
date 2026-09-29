@@ -33,5 +33,59 @@
   "sidebar_visitor_sign_in": "Se connecter",
   "friends_presence_online": "en ligne",
   "friends_presence_in_duel": "en Duel",
-  "friends_presence_offline": "hors ligne"
+  "friends_presence_offline": "hors ligne",
+  "dialog_close": "Fermer",
+  "auth_sign_in_title": "Se connecter",
+  "auth_sign_in_pitch": "Tes scores et ta progression te suivent d'un appareil à l'autre.",
+  "auth_continue_with": "Continuer avec {provider}",
+  "auth_data_kept": "typomaniac ne récupère que ton nom, ton email et ton avatar.",
+  "auth_start_failed": "La connexion n'a pas pu démarrer. Réessaie.",
+  "auth_signed_out": "Déconnecté",
+  "auth_sign_out_failed": "La déconnexion a échoué. Réessaie.",
+  "auth_oauth_access_denied": "Connexion annulée : l'autorisation a été refusée chez le fournisseur.",
+  "auth_oauth_account_not_linked": "Cet email est déjà utilisé avec un autre fournisseur : connecte-toi avec celui-ci.",
+  "auth_oauth_email_not_verified": "Impossible de rattacher ce fournisseur : ton email n'y est pas vérifié.",
+  "auth_oauth_email_not_found": "Le fournisseur n'a pas transmis d'email : il en faut un pour se connecter.",
+  "auth_oauth_account_already_linked": "Ce fournisseur est déjà rattaché à un autre utilisateur.",
+  "auth_oauth_failed": "La connexion a échoué. Réessaie.",
+  "handle_label": "Handle",
+  "handle_too_short": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{shown} caractère minimum.",
+        "countPlural=*": "{shown} caractères minimum."
+      }
+    }
+  ],
+  "handle_too_long": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{shown} caractère maximum.",
+        "countPlural=*": "{shown} caractères maximum."
+      }
+    }
+  ],
+  "handle_invalid_chars": "Seulement des lettres a-z, des chiffres et _.",
+  "handle_reserved": "Ce Handle est réservé.",
+  "handle_taken": "Ce Handle est déjà pris.",
+  "handle_check_current": "C'est ton Handle actuel.",
+  "handle_check_checking": "Vérification…",
+  "handle_check_available": "Disponible.",
+  "handle_check_unknown": "Impossible de vérifier pour l'instant.",
+  "handle_save_failed": "L'enregistrement a échoué. Réessaie.",
+  "handle_choice_title": "Choisis ton Handle",
+  "handle_choice_pitch": "Ton nom public : c'est lui que voient tes adversaires en Duel, jamais ton nom ni ton email. Tu pourras le changer depuis ton profil.",
+  "handle_choice_submit": "C'est parti",
+  "handle_choice_later": "Plus tard",
+  "handle_settings_save": "Enregistrer",
+  "handle_settings_saved": "Handle enregistré",
+  "handle_settings_note": "Changer de Handle libère l'ancien aussitôt. Ton historique de Duels te suit.",
+  "handle_duel_required": "En Duel, ton adversaire te voit par ton Handle : choisis-en un pour jouer. Les Runs solo restent ouverts sans.",
+  "handle_duel_ready": "Ton adversaire te verra en {handle}.",
+  "handle_duel_choose": "Choisir mon Handle",
+  "handle_duel_search": "Chercher un Duel"
 }

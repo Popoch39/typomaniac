@@ -7,6 +7,7 @@ import { type HandleAvailability, handleAvailabilityQueryOptions } from "@/api/h
 import { type Me, meQueryOptions } from "@/api/me";
 import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
 import { useAuthStore } from "@/stores/auth-store";
+import { useLocaleStore } from "@/stores/locale-store";
 
 const ada: Me = {
   id: "u1",
@@ -96,5 +97,37 @@ describe("HandleChoiceDialog", () => {
     renderDialog(null);
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("HandleChoiceDialog in English", () => {
+  beforeEach(() => {
+    useLocaleStore.setState({ locale: "en" });
+  });
+
+  test("asks for a Handle, says it is free, and offers to put it off", async () => {
+    renderDialog(ada);
+
+    expect(screen.getByRole("dialog", { name: "Choose your Handle" })).toHaveAccessibleDescription(
+      "Your public name: it's what your opponents see in a Duel, never your name or email. You can change it later from your Profile.",
+    );
+    expect(await screen.findByText("Available.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Let's go" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Not now" })).toBeInTheDocument();
+  });
+
+  test("tells why a Handle is refused, live", async () => {
+    const user = renderDialog(ada, ["grace"]);
+
+    await user.clear(field());
+    await user.type(field(), "ad");
+
+    expect(screen.getByText("At least 3 characters.")).toBeInTheDocument();
+
+    await user.clear(field());
+    await user.type(field(), "Grace");
+
+    expect(screen.getByText("Checking…")).toBeInTheDocument();
+    expect(await screen.findByText("This Handle is already taken.")).toBeInTheDocument();
   });
 });

@@ -2,6 +2,8 @@ import { toast } from "sonner";
 import { create } from "zustand";
 
 import { authClient, type Provider } from "@/lib/auth-client";
+import { m } from "@/paraglide/messages";
+import { useLocaleStore } from "@/stores/locale-store";
 
 type AuthState = {
   signInOpen: boolean;
@@ -35,7 +37,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
 
     if (error) {
       set({ pendingProvider: null });
-      toast.error("La connexion n'a pas pu démarrer. Réessaie.");
+      toast.error(m.auth_start_failed({}, { locale: useLocaleStore.getState().locale }));
     }
   },
 }));

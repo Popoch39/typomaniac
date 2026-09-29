@@ -11,6 +11,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Provider } from "@/lib/auth-client";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 import { useAuthStore } from "@/stores/auth-store";
 
 type ProviderOption = {
@@ -35,21 +37,20 @@ export const SignInDialog = () => {
   const setSignInOpen = useAuthStore((state) => state.setSignInOpen);
   const pendingProvider = useAuthStore((state) => state.pendingProvider);
   const startSignIn = useAuthStore((state) => state.startSignIn);
+  const locale = useLocale();
 
   return (
     <Dialog open={signInOpen} onOpenChange={setSignInOpen}>
       <DialogContent className="gap-6 p-6">
         <DialogHeader className="gap-2">
           <DialogTitle className="flex items-center text-lg font-bold">
-            Se connecter
+            {m.auth_sign_in_title({}, { locale })}
             <span
               aria-hidden="true"
               className="ml-1 inline-block h-[1.1em] w-[0.55em] bg-caret motion-safe:animate-caret-blink"
             />
           </DialogTitle>
-          <DialogDescription>
-            Tes scores et ta progression te suivent d'un appareil à l'autre.
-          </DialogDescription>
+          <DialogDescription>{m.auth_sign_in_pitch({}, { locale })}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-2">
           {providers.map(({ id, label, Icon }) => (
@@ -65,13 +66,11 @@ export const SignInDialog = () => {
               ) : (
                 <Icon className="size-4" />
               )}
-              Continuer avec {label}
+              {m.auth_continue_with({ provider: label }, { locale })}
             </button>
           ))}
         </div>
-        <p className="text-[0.7rem] text-muted-foreground">
-          typomaniac ne récupère que ton nom, ton email et ton avatar.
-        </p>
+        <p className="text-[0.7rem] text-muted-foreground">{m.auth_data_kept({}, { locale })}</p>
         {import.meta.env.DEV ? <DevEmailSignIn /> : null}
       </DialogContent>
     </Dialog>

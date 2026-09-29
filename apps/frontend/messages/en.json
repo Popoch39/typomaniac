@@ -33,5 +33,59 @@
   "sidebar_visitor_sign_in": "Sign in",
   "friends_presence_online": "online",
   "friends_presence_in_duel": "in a Duel",
-  "friends_presence_offline": "offline"
+  "friends_presence_offline": "offline",
+  "dialog_close": "Close",
+  "auth_sign_in_title": "Sign in",
+  "auth_sign_in_pitch": "Your scores and progress follow you from one device to the next.",
+  "auth_continue_with": "Continue with {provider}",
+  "auth_data_kept": "typomaniac only gets your name, email and avatar.",
+  "auth_start_failed": "Sign-in couldn't start. Try again.",
+  "auth_signed_out": "Signed out",
+  "auth_sign_out_failed": "Sign-out failed. Try again.",
+  "auth_oauth_access_denied": "Sign-in canceled: access was denied on the provider's end.",
+  "auth_oauth_account_not_linked": "This email is already used with another provider. Sign in with that one.",
+  "auth_oauth_email_not_verified": "Can't link this provider: your email isn't verified there.",
+  "auth_oauth_email_not_found": "The provider didn't share an email, and you need one to sign in.",
+  "auth_oauth_account_already_linked": "This provider is already linked to another account.",
+  "auth_oauth_failed": "Sign-in failed. Try again.",
+  "handle_label": "Handle",
+  "handle_too_short": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "At least {shown} character.",
+        "countPlural=*": "At least {shown} characters."
+      }
+    }
+  ],
+  "handle_too_long": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "At most {shown} character.",
+        "countPlural=*": "At most {shown} characters."
+      }
+    }
+  ],
+  "handle_invalid_chars": "Only letters a-z, digits and _.",
+  "handle_reserved": "This Handle is reserved.",
+  "handle_taken": "This Handle is already taken.",
+  "handle_check_current": "That's your current Handle.",
+  "handle_check_checking": "Checking…",
+  "handle_check_available": "Available.",
+  "handle_check_unknown": "Can't check right now.",
+  "handle_save_failed": "Couldn't save. Try again.",
+  "handle_choice_title": "Choose your Handle",
+  "handle_choice_pitch": "Your public name: it's what your opponents see in a Duel, never your name or email. You can change it later from your Profile.",
+  "handle_choice_submit": "Let's go",
+  "handle_choice_later": "Not now",
+  "handle_settings_save": "Save",
+  "handle_settings_saved": "Handle saved",
+  "handle_settings_note": "Changing your Handle frees the old one right away. Your Duel history stays with you.",
+  "handle_duel_required": "In a Duel, your opponent sees your Handle: choose one to play. You can still play solo Runs without one.",
+  "handle_duel_ready": "Your opponent will see you as {handle}.",
+  "handle_duel_choose": "Choose my Handle",
+  "handle_duel_search": "Find a Duel"
 }

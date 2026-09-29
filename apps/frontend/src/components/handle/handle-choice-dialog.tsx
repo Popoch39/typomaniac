@@ -11,6 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 import { useAuthStore } from "@/stores/auth-store";
 
 // Right after signing in, and at every visit until chosen: a User without a Handle is asked for
@@ -20,6 +22,7 @@ export const HandleChoiceDialog = () => {
   const { data: me } = useSuspenseQuery(meQueryOptions);
   const deferred = useAuthStore((state) => state.handleChoiceDeferred);
   const setDeferred = useAuthStore((state) => state.setHandleChoiceDeferred);
+  const locale = useLocale();
 
   if (me === null || me.handle !== null) {
     return null;
@@ -29,15 +32,18 @@ export const HandleChoiceDialog = () => {
     <Dialog open={!deferred} disablePointerDismissal>
       <DialogContent showCloseButton={false} className="gap-6 p-6">
         <DialogHeader className="gap-2">
-          <DialogTitle className="text-lg font-bold">Choisis ton Handle</DialogTitle>
-          <DialogDescription>
-            Ton nom public : c'est lui que voient tes adversaires en Duel, jamais ton nom ni ton
-            email. Tu pourras le changer depuis ton profil.
-          </DialogDescription>
+          <DialogTitle className="text-lg font-bold">
+            {m.handle_choice_title({}, { locale })}
+          </DialogTitle>
+          <DialogDescription>{m.handle_choice_pitch({}, { locale })}</DialogDescription>
         </DialogHeader>
-        <HandleForm initial={suggestHandle(me.name)} current={null} submitLabel="C'est parti" />
+        <HandleForm
+          initial={suggestHandle(me.name)}
+          current={null}
+          submitLabel={m.handle_choice_submit({}, { locale })}
+        />
         <Button variant="ghost" onClick={() => setDeferred(true)}>
-          Plus tard
+          {m.handle_choice_later({}, { locale })}
         </Button>
       </DialogContent>
     </Dialog>

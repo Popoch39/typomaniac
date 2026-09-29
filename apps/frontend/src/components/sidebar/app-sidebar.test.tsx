@@ -579,6 +579,34 @@ describe("the sidebar in English", () => {
     expect(within(englishSidebar).getByRole("link", { name: /^Theme / })).toBeInTheDocument();
   });
 
+  test("says the User is signed out", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ success: true })),
+    );
+
+    const { user } = await renderApp(ada);
+
+    await user.click(screen.getByRole("button", { name: "Menu for Ada Lovelace" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Sign out" }));
+
+    expect(await screen.findByText("Signed out")).toBeInTheDocument();
+  });
+
+  test("says when signing out fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => Response.json({ message: "down" }, { status: 500 })),
+    );
+
+    const { user } = await renderApp(ada);
+
+    await user.click(screen.getByRole("button", { name: "Menu for Ada Lovelace" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Sign out" }));
+
+    expect(await screen.findByText("Sign-out failed. Try again.")).toBeInTheDocument();
+  });
+
   test("a User's pages, their Friend requests counted in the singular and the plural", async () => {
     await renderApp(ada);
 
