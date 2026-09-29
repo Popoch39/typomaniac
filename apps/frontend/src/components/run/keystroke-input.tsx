@@ -3,6 +3,8 @@ import type { Key } from "typing-engine";
 
 import { useClock } from "@/components/run/clock-context";
 import { toKey } from "@/components/run/typed-key";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 type KeystrokeInputProps = {
   ref: Ref<HTMLInputElement>;
@@ -13,6 +15,7 @@ type KeystrokeInputProps = {
 
 // Hidden input that captures the keyboard and stamps each Keystroke with the injected clock.
 export const KeystrokeInput = ({ ref, onFocusChange, onPress }: KeystrokeInputProps) => {
+  const locale = useLocale();
   const clock = useClock();
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -29,7 +32,7 @@ export const KeystrokeInput = ({ ref, onFocusChange, onPress }: KeystrokeInputPr
   return (
     <input
       ref={ref}
-      aria-label="Zone de frappe"
+      aria-label={m.run_input_label({}, { locale })}
       className="sr-only"
       autoComplete="off"
       autoCapitalize="off"

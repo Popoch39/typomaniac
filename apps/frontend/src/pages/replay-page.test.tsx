@@ -272,7 +272,7 @@ describe("DuelReplay", () => {
     const own = screen.getByRole("region", { name: "Toi" });
     const opponent = screen.getByRole("region", { name: "@alan" });
 
-    expect(within(own).getByText("score").nextElementSibling).toHaveTextContent("1234");
+    expect(within(own).getByText("score").nextElementSibling).toHaveTextContent("1 234");
     expect(within(opponent).getByText("score").nextElementSibling).toHaveTextContent("567");
     expect(screen.queryByRole("region", { name: "Score de Toi" })).not.toBeInTheDocument();
     expect(timer()).toHaveTextContent("30 s");

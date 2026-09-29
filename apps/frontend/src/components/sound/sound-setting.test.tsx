@@ -6,6 +6,7 @@ import { createAudioEngine } from "@/audio/audio-engine";
 import { previewSound, startSoundReactor } from "@/audio/sound-reactor";
 import { SoundPreviewContext } from "@/components/sound/sound-preview-context";
 import { SoundSetting } from "@/components/sound/sound-setting";
+import { useLocaleStore } from "@/stores/locale-store";
 import { useSoundStore } from "@/stores/sound-store";
 import { decoded, fakeOutput, key07, middle } from "@/test/fake-audio-output";
 
@@ -186,5 +187,20 @@ describe("sound picker", () => {
     expect(screen.getByRole("radio", { name: "Tactile" })).toBeChecked();
     expect(volumeSlider()).toHaveAttribute("aria-valuenow", "0.5");
     expect(reloaded.state.volume).toBe(0.5);
+  });
+
+  test("speaks English, the packs keeping their names", async () => {
+    useLocaleStore.setState({ locale: "en" });
+    const { user } = await renderSetting();
+
+    await user.click(screen.getByRole("button", { name: "Sound" }));
+
+    expect(screen.getByRole("radiogroup", { name: "Sound pack" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "Tactile" })).toBeChecked();
+    expect(screen.getByLabelText("Volume", { selector: "input[type=range]" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("radio", { name: "off" }));
+
+    expect(screen.getByRole("button", { name: "Sound off" })).toBeInTheDocument();
   });
 });

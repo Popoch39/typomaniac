@@ -1,14 +1,24 @@
 import { type SettingOption, SettingGroup } from "@/components/settings/setting-group";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 import { type Settings, useSettingsStore } from "@/stores/settings-store";
 
-const modes: readonly SettingOption<Settings["mode"]>[] = [
-  { value: "time", label: "time" },
-  { value: "words", label: "words" },
-];
-
 export const ModeSetting = () => {
+  const locale = useLocale();
   const mode = useSettingsStore((state) => state.mode);
   const setMode = useSettingsStore((state) => state.setMode);
 
-  return <SettingGroup label="Mode" options={modes} value={mode} onChange={setMode} />;
+  const modes: readonly SettingOption<Settings["mode"]>[] = [
+    { value: "time", label: m.settings_mode_time({}, { locale }) },
+    { value: "words", label: m.settings_mode_words({}, { locale }) },
+  ];
+
+  return (
+    <SettingGroup
+      label={m.settings_mode({}, { locale })}
+      options={modes}
+      value={mode}
+      onChange={setMode}
+    />
+  );
 };

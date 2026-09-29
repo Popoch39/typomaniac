@@ -15,6 +15,7 @@ import { paceQueryOptions } from "@/api/pace";
 import { ClockContext } from "@/components/run/clock-context";
 import { HomePage } from "@/pages/home-page";
 import { useAuthStore } from "@/stores/auth-store";
+import { useLocaleStore } from "@/stores/locale-store";
 import { useRunStore } from "@/stores/run-store";
 import { useSettingsStore } from "@/stores/settings-store";
 
@@ -526,6 +527,10 @@ const storeSettings = (state: StoredSettings) =>
 const reload = async () => {
   cleanup();
   vi.resetModules();
+  const { useLocaleStore: reloadedLocaleStore } = await import("@/stores/locale-store");
+
+  // The page reloads in the Locale shown before, as its URL keeps it.
+  reloadedLocaleStore.setState({ locale: useLocaleStore.getState().locale });
   const { HomePage: ReloadedPage } = await import("@/pages/home-page");
   const query = await import("@tanstack/react-query");
   const queryClient = new query.QueryClient();
@@ -547,14 +552,41 @@ const unavailable = () => {
 };
 
 describe("HomePage settings", () => {
-  test("a first visit is set to time 30 in English", () => {
+  test("a first visit is set to time 30 in the Language of the Locale", () => {
     useRunStore.setState(useRunStore.getInitialState());
     renderPage();
 
     expect(setting("time")).toHaveAttribute("aria-pressed", "true");
     expect(setting("30")).toHaveAttribute("aria-pressed", "true");
-    expect(setting("anglais")).toHaveAttribute("aria-pressed", "true");
+    expect(setting("français")).toHaveAttribute("aria-pressed", "true");
     expect(setting("words")).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test("the Language, never chosen, follows the Locale", () => {
+    renderPage();
+
+    act(() => useLocaleStore.setState({ locale: "en" }));
+
+    expect(setting("English")).toHaveAttribute("aria-pressed", "true");
+    expect(shownWords().every((word) => currentWords("en").includes(word))).toBe(true);
+  });
+
+  test("a Language chosen stays whatever the Locale", async () => {
+    const { user } = renderPage();
+
+    await user.click(setting("français"));
+    act(() => useLocaleStore.setState({ locale: "en" }));
+
+    expect(setting("French")).toHaveAttribute("aria-pressed", "true");
+    expect(shownWords().every((word) => currentWords("fr").includes(word))).toBe(true);
+  });
+
+  test("English, kept before as the default, follows the Locale", async () => {
+    storeSettings({ mode: "time", seconds: 30, words: 10, language: "en" });
+    await reload();
+
+    expect(setting("français")).toHaveAttribute("aria-pressed", "true");
+    expect(shownWords().every((word) => currentWords("fr").includes(word))).toBe(true);
   });
 
   test.each(["15", "30", "60", "120"])("time %s s can be chosen", async (seconds) => {
@@ -683,5 +715,85 @@ describe("HomePage settings", () => {
     await user.click(setting("anglais"));
 
     expect(shownWords().every((word) => currentWords("en").includes(word))).toBe(true);
+  });
+});
+
+describe("HomePage in English", () => {
+  // Shown before the Run is drawn: the Language, never chosen, is English too.
+  beforeEach(() => {
+    useLocaleStore.setState({ locale: "en" });
+  });
+
+  test("names the page, its settings and the Language in English", async () => {
+    const { user } = renderRun();
+
+    expect(screen.getByRole("heading", { level: 1, name: "Play" })).toBeInTheDocument();
+    expect(settingsBar()).not.toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Settings" })).toBeInTheDocument();
+
+    for (const group of ["Game", "Mode", "Duration", "Language"]) {
+      expect(screen.getByRole("group", { name: group })).toBeInTheDocument();
+    }
+
+    expect(setting("English")).toHaveAttribute("aria-pressed", "true");
+    expect(setting("French")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByRole("button", { name: "Sound" })).toBeInTheDocument();
+
+    await user.click(setting("words"));
+
+    expect(screen.getByRole("group", { name: "Word count" })).toBeInTheDocument();
+  });
+
+  test("tells the keys to the next Run in English", () => {
+    renderRun();
+
+    expect(
+      screen.getByText(
+        (_, element) => element?.tagName === "P" && element.textContent === "tab then enter: Next",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
+  });
+
+  test("names the typing input, the prompt to resume and the time left in English", async () => {
+    const { user } = renderRun(time30);
+
+    expect(screen.getByLabelText("Typing area")).toHaveFocus();
+    expect(screen.getByRole("timer", { name: "time left" })).toHaveTextContent("30");
+
+    await user.click(document.body);
+
+    expect(screen.getByRole("button", { name: "click or type to resume" })).toBeInTheDocument();
+  });
+
+  test("shows the Score while typing in English", async () => {
+    const { user } = renderRun();
+
+    await user.keyboard("small help while late letter ");
+
+    expect(stat("score")).toBe("72");
+    expect(stat("multiplier")).toBe("x2");
+    expect(stat("combo")).toBe("5");
+    expect(stat("bursts")).toBe("5");
+  });
+
+  test("shows the Result in English, the percent sign stuck to its figure", async () => {
+    const { user, advance } = renderRun();
+
+    await user.keyboard(text.slice(0, -1));
+    advance(60_000);
+    await user.keyboard(text.slice(-1));
+
+    expect(stat("wpm")).toBe("12");
+    expect(stat("raw")).toBe("12");
+    expect(stat("accuracy")).toBe("100%");
+    expect(stat("consistency")).toMatch(/^\d+%$/);
+    expect(stat("characters")).toBe("49/0/0/0");
+    expect(screen.getByText("characters").nextElementSibling).toHaveAttribute(
+      "title",
+      "correct / incorrect / extra / missed",
+    );
+    expect(stat("best combo")).toBe("10");
+    expect(screen.getByRole("button", { name: "Play again" })).toBeInTheDocument();
   });
 });

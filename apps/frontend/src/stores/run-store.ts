@@ -17,7 +17,9 @@ import {
 import { create } from "zustand";
 
 import { emitCues, type KeystrokeCues, NO_CUES } from "@/lib/cue-bus";
-import { type Settings, useSettingsStore } from "@/stores/settings-store";
+import type { Locale } from "@/locale/locales";
+import { useLocaleStore } from "@/stores/locale-store";
+import { runLanguage, type Settings, useSettingsStore } from "@/stores/settings-store";
 
 type RunStore = {
   run: RunState;
@@ -46,8 +48,18 @@ type RunStore = {
 
 const randomSeed = () => Math.floor(Math.random() * 2 ** 32);
 
+// The settings a Run is drawn on: the stored ones, their Language resolved against the Locale shown.
+const runSettingsOf = ({ mode, seconds, words, language }: Settings, locale: Locale) => ({
+  mode,
+  seconds,
+  words,
+  language: runLanguage(language, locale),
+});
+
+type RunSettings = ReturnType<typeof runSettingsOf>;
+
 // A Run on the settings, with a new Seed and the current Word list version of its Language.
-const configFrom = ({ mode, seconds, words, language }: Settings): RunConfig => {
+const configFrom = ({ mode, seconds, words, language }: RunSettings): RunConfig => {
   const textSource = {
     language,
     wordListVersion: currentWordListVersion[language],
@@ -79,7 +91,9 @@ const resultAt = (run: RunState, keystrokes: readonly Keystroke[], at: number) =
 
 // Holds the Run in progress and hands every rule to typing-engine (ADR 0002).
 export const useRunStore = create<RunStore>()((set) => ({
-  ...freshRun(configFrom(useSettingsStore.getState())),
+  ...freshRun(
+    configFrom(runSettingsOf(useSettingsStore.getState(), useLocaleStore.getState().locale)),
+  ),
   runNumber: 0,
   start: (config) => set((state) => newRun(state, config)),
   next: () => set((state) => newRun(state, { ...state.run.config, seed: randomSeed() })),
@@ -135,13 +149,25 @@ useRunStore.subscribe((state, previous) => {
   }
 });
 
-const sameSettings = (a: Settings, b: Settings) =>
+const sameRunSettings = (a: RunSettings, b: RunSettings) =>
   a.mode === b.mode && a.seconds === b.seconds && a.words === b.words && a.language === b.language;
 
-// Changing a setting, or restoring the stored ones, starts a new Run: the Text always matches the
-// settings shown.
-useSettingsStore.subscribe((settings, previous) => {
-  if (!sameSettings(settings, previous)) {
-    useRunStore.getState().start(configFrom(settings));
+const restartIfChanged = (now: RunSettings, before: RunSettings) => {
+  if (!sameRunSettings(now, before)) {
+    useRunStore.getState().start(configFrom(now));
   }
+};
+
+// Changing a setting, restoring the stored ones, or switching the Locale while no Language is
+// chosen, starts a new Run: the Text always matches the settings shown.
+useSettingsStore.subscribe((settings, previous) => {
+  const { locale } = useLocaleStore.getState();
+
+  restartIfChanged(runSettingsOf(settings, locale), runSettingsOf(previous, locale));
+});
+
+useLocaleStore.subscribe((store, previous) => {
+  const settings = useSettingsStore.getState();
+
+  restartIfChanged(runSettingsOf(settings, store.locale), runSettingsOf(settings, previous.locale));
 });
