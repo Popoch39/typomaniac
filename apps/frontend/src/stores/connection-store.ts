@@ -48,6 +48,8 @@ type ConnectionStore = {
   status: ConnectionStatus;
   // Unknown until the server tells it on each new socket.
   place: Place | null;
+  // Kept through a lost connection: the server tells it again with the place.
+  queueLock: KnownQueueLock;
   // Unknown until the snapshot of each new socket.
   friends: LiveFriends | null;
   // Unknown until the snapshot of each new socket.
@@ -106,6 +108,51 @@ export const placeAfter = (
       return place;
   }
 };
+
+// The User's Queue lock as this connection learns it: its end on this tab's clock (`Date.now()`),
+// null without one; and how far the server's clock is behind this tab's, as the last Match
+// proposal told it, for the lock its Dodge imposes.
+export type KnownQueueLock = { until: number | null; serverOffset: number };
+
+// The Queue lock after a message, `now` read when it arrived: told with the place (`idle`) and as
+// the Queue is refused (`queue-locked`), imposed by a Dodge here (`proposal-ended`, which tells no
+// time of its own: the Match proposal's shift). Over once the User is in the Queue again.
+export const queueLockAfter = (
+  lock: KnownQueueLock,
+  message: ServerMessage,
+  now: number,
+): KnownQueueLock => {
+  switch (message.type) {
+    case "idle":
+      return {
+        ...lock,
+        until:
+          message.queueLockedUntil === null
+            ? null
+            : message.queueLockedUntil - message.serverTime + now,
+      };
+    case "queue-locked":
+      return { ...lock, until: message.until - message.serverTime + now };
+    case "match-proposed":
+      return { until: null, serverOffset: now - message.serverTime };
+    case "queued":
+      return { ...lock, until: null };
+    case "proposal-ended":
+      return message.reason === "declined" || message.reason === "missed"
+        ? {
+            ...lock,
+            until:
+              message.queueLockedUntil === null
+                ? null
+                : message.queueLockedUntil + lock.serverOffset,
+          }
+        : lock;
+    default:
+      return lock;
+  }
+};
+
+const NO_QUEUE_LOCK: KnownQueueLock = { until: null, serverOffset: 0 };
 
 const withPresence = (friends: LiveFriends, userId: string, presence: Presence | null) => {
   const presences = new Map(friends.presences);
@@ -279,6 +326,7 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
       set({
         status: "open",
         place: placeAfter(get().place, data, now),
+        queueLock: queueLockAfter(get().queueLock, data, now),
         friends: friendsAfter(get().friends, data),
         challenges: challengesAfter(get().challenges, data, now),
         arrivals: arrivalsAfter(get().arrivals, data),
@@ -303,6 +351,7 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
   return {
     status: "closed",
     place: null,
+    queueLock: NO_QUEUE_LOCK,
     friends: null,
     challenges: null,
     arrivals: [],
@@ -317,7 +366,14 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
 
       socket = null;
       stopReconnecting();
-      set({ status: "closed", place: null, friends: null, challenges: null, arrivals: [] });
+      set({
+        status: "closed",
+        place: null,
+        queueLock: NO_QUEUE_LOCK,
+        friends: null,
+        challenges: null,
+        arrivals: [],
+      });
       current?.close();
     },
   };

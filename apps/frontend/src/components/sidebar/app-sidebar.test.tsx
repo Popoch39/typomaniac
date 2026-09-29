@@ -21,6 +21,7 @@ import { AppFrame } from "@/components/app-frame";
 import { ClockContext } from "@/components/run/clock-context";
 import { Toaster } from "@/components/ui/sonner";
 import { HomePage } from "@/pages/home-page";
+import { RunPage } from "@/pages/run-page";
 import { useAuthStore } from "@/stores/auth-store";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
@@ -107,6 +108,12 @@ const renderApp = async (me: Me | null, path = "/leaderboard", friends: Friend[]
     component: HomePage,
   });
 
+  const runRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/run",
+    component: RunPage,
+  });
+
   const pageRoutes = PAGES.map(([pagePath, title]) =>
     createRoute({
       getParentRoute: () => rootRoute,
@@ -116,7 +123,7 @@ const renderApp = async (me: Me | null, path = "/leaderboard", friends: Friend[]
   );
 
   const router = createRouter({
-    routeTree: rootRoute.addChildren([playRoute, ...pageRoutes]),
+    routeTree: rootRoute.addChildren([playRoute, runRoute, ...pageRoutes]),
     history: createMemoryHistory({ initialEntries: [path] }),
   });
 
@@ -776,14 +783,14 @@ describe("the sidebar during a Solo Run", () => {
   });
 
   test("is whole before the first Keystroke", async () => {
-    await renderApp(null, "/");
+    await renderApp(null, "/run");
 
     expect(sidebar()).not.toHaveAttribute("inert");
     expect(sidebar()).not.toHaveAttribute("data-faded");
   });
 
   test("fades and goes inert while the Run is typed, then comes back at its end", async () => {
-    const { user } = await renderApp(null, "/");
+    const { user } = await renderApp(null, "/run");
 
     await user.keyboard("s");
 

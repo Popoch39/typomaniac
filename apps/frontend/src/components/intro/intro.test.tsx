@@ -24,6 +24,7 @@ import { readyOnFirstRender } from "@/components/intro/ready-on-first-render";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "@/lib/toast";
 import { HomePage } from "@/pages/home-page";
+import { RunPage } from "@/pages/run-page";
 import { useIntroStore } from "@/stores/intro-store";
 import { holdGsapClock } from "@/test/gsap-clock";
 
@@ -42,7 +43,8 @@ const free: HandleAvailability = { available: true, handle: "ada" };
 
 let gsapClock = holdGsapClock();
 
-// The page starts on the home page and plays the Intro, as `introAtStartup` decides.
+// The page starts on the Run (unless told another) and plays the Intro, as `introAtStartup`
+// decides.
 beforeEach(() => {
   gsapClock = holdGsapClock();
   useIntroStore.getState().play();
@@ -66,7 +68,7 @@ type AppOptions = {
 // frame, the home page or the Leaderboard (a page with a loader and no parts of its own), the
 // Handle choice and the toasts. The shell mounts once `shell` resolves, as it waits for `/me` in
 // the app; at once without it.
-const renderApp = ({ me = ada, shell, at = "/", leaderboardData }: AppOptions = {}) => {
+const renderApp = ({ me = ada, shell, at = "/run", leaderboardData }: AppOptions = {}) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
   });
@@ -92,6 +94,8 @@ const renderApp = ({ me = ada, shell, at = "/", leaderboardData }: AppOptions = 
 
   const home = createRoute({ getParentRoute: () => root, path: "/", component: HomePage });
 
+  const run = createRoute({ getParentRoute: () => root, path: "/run", component: RunPage });
+
   const leaderboard = createRoute({
     getParentRoute: () => root,
     path: "/leaderboard",
@@ -100,7 +104,7 @@ const renderApp = ({ me = ada, shell, at = "/", leaderboardData }: AppOptions = 
   });
 
   const router = createRouter({
-    routeTree: root.addChildren([home, leaderboard]),
+    routeTree: root.addChildren([home, run, leaderboard]),
     history: createMemoryHistory({ initialEntries: [at] }),
   });
 
@@ -189,7 +193,7 @@ const caretShown = () => {
   return caret !== null && shown(caret);
 };
 
-describe("the Intro, as the home page starts", () => {
+describe("the Intro, as the Run's page starts", () => {
   test("at the first render, the Logo alone waits over the Theme's ink, silent", () => {
     renderApp({ shell: new Promise(() => {}) });
 
@@ -349,7 +353,7 @@ describe("the Intro, as the home page starts", () => {
     expect(screen.getByRole("timer", { name: "temps restant" })).toHaveTextContent("30");
   });
 
-  test("back on the home page from another page, no Intro plays again", async () => {
+  test("back on the Run from another page, no Intro plays again", async () => {
     const { router } = renderApp();
 
     await fontsLoaded();
@@ -357,7 +361,7 @@ describe("the Intro, as the home page starts", () => {
     gsapClock.advance(OVER_S);
 
     await act(() => router.navigate({ to: "/leaderboard" }));
-    await act(() => router.navigate({ to: "/" }));
+    await act(() => router.navigate({ to: "/run" }));
 
     expect(await screen.findByLabelText("Zone de frappe")).toHaveFocus();
     expect(intro()).not.toBeInTheDocument();
@@ -383,6 +387,20 @@ describe("the Intro's landing into the sidebar", () => {
     gsapClock.advance(LANDING_S);
 
     expect(intro()).not.toBeInTheDocument();
+  });
+
+  test("on Jouer, its title and its three cards land one after the other", async () => {
+    renderApp({ at: "/" });
+    await fontsLoaded();
+    await screen.findByRole("heading", { level: 1, name: "Choisis ton mode" });
+    gsapClock.advance(2.62 + 0.5);
+
+    expect(shellParts("part")).toHaveLength(4);
+
+    gsapClock.advance(LANDING_S);
+
+    expect(intro()).not.toBeInTheDocument();
+    expect(leftInline()).toEqual(nothingInline());
   });
 
   test("for a Visitor, the three items of nav land, and no Friends online", async () => {

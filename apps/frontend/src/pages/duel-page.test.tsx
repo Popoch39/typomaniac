@@ -109,12 +109,15 @@ const sent = () => server().sent;
 const renderApp = (path: string, reader: Me | null = ada) =>
   renderAppFor(path, { reader, openSocket: sockets.open });
 
-// The play page, Duel chosen: in the Queue.
+// Jouer's cards, back from the Duel: out of the Queue.
+const playCards = () => screen.findByRole("heading", { level: 1, name: "Choisis ton mode" });
+
+// The play page, the search launched: in the Queue.
 const renderQueue = async () => {
   const app = await renderApp("/fr");
 
   receive(idle());
-  await app.user.click(screen.getByRole("button", { name: "duel" }));
+  await app.user.click(screen.getByRole("button", { name: "Lancer la recherche" }));
   receive({ type: "queued" });
 
   return app;
@@ -207,7 +210,7 @@ describe("the Duel has its own URL", () => {
 
     await waitFor(() => expect(sent()).toContainEqual({ type: "leave-duel" }));
     expect(url()).toBe("/fr");
-    expect(screen.getByRole("button", { name: "solo" })).toHaveAttribute("aria-pressed", "true");
+    expect(await playCards()).toBeInTheDocument();
     expect(sent().filter((message) => message.type === "join-queue")).toHaveLength(1);
   });
 });
@@ -218,7 +221,7 @@ describe("/duel without a Duel", () => {
 
     receive(idle());
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Jouer" })).toBeInTheDocument();
+    expect(await playCards()).toBeInTheDocument();
     expect(url()).toBe("/fr");
     expect(sent()).toEqual([]);
   });
@@ -226,7 +229,7 @@ describe("/duel without a Duel", () => {
   test("a Visitor, who plays no Duel, is sent there at once", async () => {
     const { url } = await renderApp("/fr/duel", null);
 
-    expect(screen.getByRole("heading", { level: 1, name: "Jouer" })).toBeInTheDocument();
+    expect(await playCards()).toBeInTheDocument();
     expect(url()).toBe("/fr");
     expect(sockets.sockets).toHaveLength(0);
   });
@@ -236,7 +239,7 @@ describe("/duel without a Duel", () => {
 
     receive(queueElsewhere());
 
-    expect(await screen.findByRole("heading", { level: 1, name: "Jouer" })).toBeInTheDocument();
+    expect(await playCards()).toBeInTheDocument();
     expect(url()).toBe("/fr");
     expect(sent()).toEqual([]);
   });
@@ -250,10 +253,7 @@ describe("the end of the Duel", () => {
     await user.click(await screen.findByRole("button", { name: "Retour au Solo" }));
 
     expect(url()).toBe("/fr");
-    expect(await screen.findByRole("button", { name: "solo" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(await playCards()).toBeInTheDocument();
     expect(sent()).not.toContainEqual({ type: "leave-duel" });
   });
 
@@ -268,10 +268,7 @@ describe("the end of the Duel", () => {
     await user.click(within(sidebar).getByRole("link", { name: "Jouer" }));
 
     expect(url()).toBe("/fr");
-    expect(await screen.findByRole("button", { name: "solo" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
+    expect(await playCards()).toBeInTheDocument();
     expect(sent().filter((message) => message.type === "join-queue")).toHaveLength(1);
   });
 

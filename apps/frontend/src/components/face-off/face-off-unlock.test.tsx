@@ -15,7 +15,7 @@ import type { FaceOffSounds } from "@/audio/face-off-sounds";
 import { ReceivedChallengeCard } from "@/components/challenge/received-challenge-card";
 import { DuelEnded } from "@/components/duel/duel-ended";
 import { FaceOffSoundsContext } from "@/components/face-off/face-off-sounds-context";
-import { PlaySetting } from "@/components/settings/play-setting";
+import { RankedSearchAction } from "@/components/play/ranked-search-action";
 import { usePlayStore } from "@/stores/play-store";
 
 const me: Me = {
@@ -77,10 +77,10 @@ const renderWithSounds = async (ui: ReactNode) => {
 };
 
 describe("the Face-off's sound, unlocked by the click that leads to it", () => {
-  test("choosing Duel, which searches for an opponent", async () => {
-    const unlocks = await renderWithSounds(<PlaySetting />);
+  test("Lancer la recherche, which searches for an opponent", async () => {
+    const unlocks = await renderWithSounds(<RankedSearchAction />);
 
-    await userEvent.click(screen.getByRole("button", { name: "duel" }));
+    await userEvent.click(screen.getByRole("button", { name: "Lancer la recherche" }));
 
     expect(unlocks.count).toBe(1);
   });

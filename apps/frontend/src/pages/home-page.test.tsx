@@ -1,844 +1,404 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, cleanup, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import {
-  currentWordListVersion,
-  defaultPace,
-  type Language,
-  type RunConfig,
-  wordList,
-} from "typing-engine";
+import { act, screen, waitFor, within } from "@testing-library/react";
+import type { ServerMessage } from "api";
+import type { Rank } from "ranked";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { type Me, meQueryOptions } from "@/api/me";
-import { paceQueryOptions } from "@/api/pace";
-import { ClockContext } from "@/components/run/clock-context";
-import { HomePage } from "@/pages/home-page";
+import type { Me } from "@/api/me";
+import { PLAY_FADE_SECONDS } from "@/components/play/use-play-fade";
 import { useAuthStore } from "@/stores/auth-store";
-import { useLocaleStore } from "@/stores/locale-store";
-import { useRunStore } from "@/stores/run-store";
+import { useConnectionStore } from "@/stores/connection-store";
+import { useDuelStore } from "@/stores/duel-store";
+import { usePlayStore } from "@/stores/play-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { fakeServer, idle, queueElsewhere } from "@/test/fake-socket";
+import { holdGsapClock } from "@/test/gsap-clock";
+import { ada, friend, renderAppFor } from "@/test/render-app";
 
-// Seed 42 in English, version 1, gives this Text (pinned in the typing-engine tests).
-const text = "small help while late letter sell driver quiet never learn";
+// Jouer's three cards (board « A · Affiche »), the Run on /run, and the fade between the two.
 
-const words10: RunConfig = {
-  mode: "words",
-  words: 10,
-  language: "en",
-  wordListVersion: 1,
-  seed: 42,
-};
+let sockets = fakeServer();
 
-const time30: RunConfig = {
-  mode: "time",
-  seconds: 30,
-  language: "en",
-  wordListVersion: 1,
-  seed: 42,
-};
+let gsapClock = holdGsapClock();
 
-// The solo draws every Text from the current Word list version of its Language.
-const currentWords = (language: Language) => wordList(language, currentWordListVersion[language]);
+const server = () => sockets.server();
 
-// Simulated timers drive the animation frames; the time itself comes from the injected clock.
-// Other timers stay real: Testing Library waits on a real setTimeout after each user event.
-// Every test starts on a first visit: nothing stored, default settings.
+// The server's messages reach the stores outside of React.
+const receive = (message: ServerMessage) => act(() => server().receive(message));
+
+const sent = () => server().sent;
+
+const card = (name: string) => screen.getByRole("region", { name });
+
+const rankedCard = () => card("Ranked");
+
+const adaRanked = (rank: Rank | null): Me => ({ ...ada, rank });
+
+// The page Jouer and the Run are shown in: the one the fade moves.
+const page = () => screen.getByRole("main").querySelector("section");
+
 beforeEach(() => {
-  vi.useFakeTimers({ toFake: ["requestAnimationFrame", "cancelAnimationFrame"] });
   localStorage.clear();
+  sockets = fakeServer();
+  gsapClock = holdGsapClock();
   useSettingsStore.setState(useSettingsStore.getInitialState());
+  useAuthStore.setState(useAuthStore.getInitialState());
 });
 
 afterEach(() => {
+  gsapClock.release();
   vi.useRealTimers();
   vi.restoreAllMocks();
+  useConnectionStore.getState().close();
+  useDuelStore.setState(useDuelStore.getInitialState());
+  usePlayStore.setState(usePlayStore.getInitialState());
 });
 
-// Renders the page with a clock the test moves by hand, frames included. The Session and Pace cache
-// is seeded the way the root route's beforeLoad leaves it, for a Visitor unless `me` is given.
-const renderPage = ({ me = null, pace = defaultPace }: { me?: Me | null; pace?: number } = {}) => {
-  let now = 1_000;
-  const queryClient = new QueryClient();
+describe("Jouer's cards", () => {
+  test.each([
+    ["a Visitor", null],
+    ["a User", ada],
+  ])("are the same three for %s", async (_, reader) => {
+    await renderAppFor("/fr", { reader, openSocket: sockets.open });
 
-  queryClient.setQueryData(meQueryOptions.queryKey, me);
-  queryClient.setQueryData(paceQueryOptions(me).queryKey, pace);
+    expect(screen.getByRole("heading", { level: 1, name: "Choisis ton mode" })).toBeVisible();
 
-  render(
-    <QueryClientProvider client={queryClient}>
-      <ClockContext value={() => now}>
-        {/* Stands for the header: its buttons come before the Run in the tab order. */}
-        <button type="button">en-tête</button>
-        <HomePage />
-      </ClockContext>
-    </QueryClientProvider>,
-  );
-
-  return {
-    user: userEvent.setup(),
-    advance: (ms: number) => {
-      now += ms;
-      act(() => vi.advanceTimersByTime(ms));
-    },
-  };
-};
-
-// Starts a fresh Run on Seed 42 (`words` 10 unless told otherwise), then renders the page.
-const renderRun = (config: RunConfig = words10, session: Parameters<typeof renderPage>[0] = {}) => {
-  useRunStore.getState().start(config);
-
-  return renderPage(session);
-};
-
-// A word is split into one element per letter: match the element that holds them all.
-const isWord = (word: string) => (_: string, element: Element | null) =>
-  element !== null && element.children.length > 0 && element.textContent === word;
-
-// Its letters only: a Wrong word holds its wave too.
-const letterStatuses = (word: string) =>
-  Array.from(screen.getByText(isWord(word)).querySelectorAll("[data-status]"), (letter) =>
-    letter.getAttribute("data-status"),
-  );
-
-// Whether the word is highlighted as the last Burst.
-const isBurst = (word: string) => screen.getByText(isWord(word)).dataset.burst === "true";
-
-// Whether the word is a Wrong word, underlined with its wave.
-const isWrong = (word: string) => screen.getByText(isWord(word)).dataset.wrong !== undefined;
-
-const stat = (term: string) => screen.getByText(term).nextElementSibling?.textContent;
-
-const resumePrompt = () => screen.queryByRole("button", { name: "clique ou tape pour reprendre" });
-
-const typingInput = () => screen.getByLabelText("Zone de frappe");
-
-// The words of the Text on screen, in order, read from their letters.
-const shownWords = () =>
-  Array.from(
-    new Set(
-      Array.from(document.querySelectorAll("[data-status]"), (letter) => letter.parentElement),
-    ),
-    (word) => word?.textContent ?? "",
-  );
-
-// Whether the page shows the Text of Seed 42: its first ten words, in order. Another Text may hold
-// some of them too, even twice.
-const showsSeed42Text = () => shownWords().slice(0, 10).join(" ") === text;
-
-describe("HomePage", () => {
-  test("shows the Text to type and the word counter", () => {
-    renderRun();
-
-    expect(screen.getByRole("heading", { level: 1, name: "Jouer" })).toBeInTheDocument();
-
-    for (const word of text.split(" ")) {
-      expect(screen.getByText(isWord(word))).toBeInTheDocument();
+    for (const name of ["Entraînement", "Ranked", "Duel entre amis"]) {
+      expect(card(name)).toBeInTheDocument();
     }
 
-    expect(screen.getByText("0/10")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Zone de frappe")).not.toBeInTheDocument();
   });
 
-  test("colors each typed letter right or wrong, and counts validated words", async () => {
-    const { user } = renderRun();
+  test("are named in English", async () => {
+    await renderAppFor("/en", { reader: ada, openSocket: sockets.open });
 
-    await user.keyboard("sn");
+    expect(screen.getByRole("heading", { level: 1, name: "Pick your mode" })).toBeVisible();
 
-    expect(letterStatuses("small")).toEqual([
-      "correct",
-      "incorrect",
-      "pending",
-      "pending",
-      "pending",
-    ]);
+    for (const name of ["Training", "Ranked", "Duel a Friend"]) {
+      expect(card(name)).toBeInTheDocument();
+    }
 
-    await user.keyboard("all ");
-
-    expect(screen.getByText("1/10")).toBeInTheDocument();
-  });
-
-  test("shows every letter state apart: right, wrong, extra, missed and not typed yet", async () => {
-    const { user } = renderRun();
-
-    await user.keyboard("sma helpx whxle");
-
-    expect(letterStatuses("small")).toEqual(["correct", "correct", "correct", "missed", "missed"]);
-    expect(letterStatuses("helpx")).toEqual(["correct", "correct", "correct", "correct", "extra"]);
-    expect(letterStatuses("while")).toEqual([
-      "correct",
-      "correct",
-      "incorrect",
-      "correct",
-      "correct",
-    ]);
-    expect(letterStatuses("late")).toEqual(["pending", "pending", "pending", "pending"]);
-  });
-
-  test("a word validated with a wrong, an extra or skipped letters is a Wrong word", async () => {
-    const { user } = renderRun();
-
-    await user.keyboard("sma helpx whxle lxt");
-
-    expect(isWrong("small")).toBe(true);
-    expect(isWrong("helpx")).toBe(true);
-    expect(isWrong("while")).toBe(true);
-    // Still being typed: its mistake can be taken back.
-    expect(isWrong("late")).toBe(false);
-  });
-
-  test("a right word, or one corrected before the space, is no Wrong word", async () => {
-    const { user } = renderRun();
-
-    await user.keyboard("small hx{Backspace}elp ");
-
-    expect(isWrong("small")).toBe(false);
-    expect(isWrong("help")).toBe(false);
-  });
-
-  test("backspace reopens a Wrong word, which is one again only if validated wrong", async () => {
-    const { user } = renderRun();
-
-    await user.keyboard("smalx ");
-
-    expect(isWrong("small")).toBe(true);
-
-    await user.keyboard("{Backspace}");
-
-    expect(isWrong("small")).toBe(false);
-
-    await user.keyboard(" ");
-
-    expect(isWrong("small")).toBe(true);
-
-    await user.keyboard("{Backspace}{Backspace}l ");
-
-    expect(isWrong("small")).toBe(false);
-  });
-
-  test("backspace corrects the current word, then goes back to a wrong previous word", async () => {
-    const { user } = renderRun();
-
-    await user.keyboard("smallx {Backspace}");
-
-    expect(screen.getByText("0/10")).toBeInTheDocument();
-
-    await user.keyboard("{Backspace} help");
-
-    expect(letterStatuses("small").every((status) => status === "correct")).toBe(true);
-    expect(screen.getByText("1/10")).toBeInTheDocument();
-
-    // "small" is right now: backspace stops at the start of "help".
-    await user.keyboard("{Backspace}{Backspace}{Backspace}{Backspace}{Backspace}");
-
-    expect(screen.getByText("1/10")).toBeInTheDocument();
-  });
-
-  test("Ctrl+Backspace erases the current word", async () => {
-    const { user } = renderRun();
-
-    await user.keyboard("smoll{Control>}{Backspace}{/Control}");
-
-    expect(letterStatuses("small")).toEqual([
-      "pending",
-      "pending",
-      "pending",
-      "pending",
-      "pending",
-    ]);
-  });
-
-  test("a full Run ends on its Result", async () => {
-    const { user, advance } = renderRun();
-
-    await user.keyboard(text.slice(0, -1));
-    advance(60_000);
-    await user.keyboard(text.slice(-1));
-
-    // 49 letters and 9 spaces, all right, in one minute: 58 / 5 = 11.6 wpm, and as much raw.
-    expect(stat("wpm")).toBe("12");
-    expect(stat("raw")).toBe("12");
-    expect(stat("précision")).toBe("100 %");
-    // Right, wrong, extra and missed letters.
-    expect(stat("caractères")).toBe("49/0/0/0");
-    expect(screen.queryByText(isWord("small"))).not.toBeInTheDocument();
-  });
-
-  // The clock does not move: every word of 4 letters or more is a Burst, its points doubled.
-  // "small " 6 + "help " 5 + "while " 6 + "late " 5 at x1, then "letter " 7 at x2, all doubled.
-  test("shows the Score, the multiplier and the Combo while typing", async () => {
-    const { user } = renderRun();
-
-    await user.keyboard("small help while late ");
-
-    // The multiplier shown is the one of the word in progress: the 5th is paid x2.
-    expect(stat("score")).toBe("44");
-    expect(stat("multiplicateur")).toBe("x2");
-
-    await user.keyboard("letter ");
-
-    expect(stat("score")).toBe("72");
-    expect(stat("multiplicateur")).toBe("x2");
-    expect(stat("combo")).toBe("5");
-
-    await user.keyboard("x");
-
-    expect(stat("score")).toBe("72");
-    expect(stat("multiplicateur")).toBe("x1");
-    expect(stat("combo")).toBe("0");
-  });
-
-  // At the default Pace of 50 wpm, a Burst goes at 60 wpm or more.
-  test("a Burst doubles the points of a word and highlights it", async () => {
-    const { user, advance } = renderRun();
-
-    await user.keyboard("small ");
-
-    expect(stat("score")).toBe("12");
-    expect(stat("bursts")).toBe("1");
-    expect(isBurst("small")).toBe(true);
-
-    // "help " takes 5 s: 12 wpm, no Burst. The last one stays highlighted.
-    advance(5_000);
-    await user.keyboard("help ");
-
-    expect(stat("score")).toBe("17");
-    expect(stat("bursts")).toBe("1");
-    expect(isBurst("small")).toBe(true);
-    expect(isBurst("help")).toBe(false);
-
-    await user.keyboard("while ");
-
-    expect(stat("bursts")).toBe("2");
-    expect(isBurst("while")).toBe(true);
-    expect(isBurst("small")).toBe(false);
-  });
-
-  test("a User's Bursts are judged against the Pace of their Duels", async () => {
-    const me = {
-      id: "u1",
-      name: "Ada",
-      email: "ada@example.com",
-      image: null,
-      handle: "ada",
-      rank: null,
-      ornament: null,
-      ornamentChoice: null,
-    };
-
-    // At a Pace of 500 wpm, a Burst takes 600 wpm: "help " in 150 ms, 400 wpm, is not one, when it
-    // would be at the default Pace.
-    const { user, advance } = renderRun(words10, { me, pace: 500 });
-
-    await user.keyboard("small ");
-    advance(150);
-    await user.keyboard("help ");
-
-    expect(stat("bursts")).toBe("1");
-    expect(isBurst("small")).toBe(true);
-    expect(isBurst("help")).toBe(false);
-  });
-
-  // Four words at x1 (22), then "letter " 7, "sell " 5, "driver " 7, "quiet " 6, "never " 6 at
-  // x2 (62), then "learn" 5, the last word without a space, at x3 (15): 99, every word a Burst.
-  test("the Result shows the Score, the best Combo and the Bursts", async () => {
-    const { user } = renderRun();
-
-    await user.keyboard(text);
-
-    expect(stat("score")).toBe("198");
-    expect(stat("meilleur combo")).toBe("10");
-    expect(stat("bursts")).toBe("10");
+    expect(within(card("Training")).getByRole("button", { name: "words 50" })).toBeInTheDocument();
+    expect(within(rankedCard()).getByRole("button", { name: "Start searching" })).toBeEnabled();
   });
 });
 
-// The line that tells the keys to Suivant, its keys in their own elements.
-const keysHint = () =>
-  screen.getByText(
-    (_, element) => element?.tagName === "P" && element.textContent === "tab puis entrée : Suivant",
-  );
+describe("the Training card", () => {
+  test.each([
+    ["time 30", "time", "30"],
+    ["words 50", "words", "50"],
+    ["time 60", "time", "60"],
+  ])("%s opens the Run on its settings", async (preset, mode, count) => {
+    const { user, url } = await renderAppFor("/fr", { reader: null, openSocket: sockets.open });
 
-describe("HomePage between Runs", () => {
-  test("Rejouer starts the same Text again", async () => {
-    const { user } = renderRun();
+    await user.click(within(card("Entraînement")).getByRole("button", { name: preset }));
 
-    await user.keyboard(text);
-    await user.click(screen.getByRole("button", { name: "Rejouer" }));
-
-    expect(showsSeed42Text()).toBe(true);
-    expect(screen.getByText("0/10")).toBeInTheDocument();
-    expect(typingInput()).toHaveFocus();
+    expect(url()).toBe("/fr/run");
+    expect(await screen.findByLabelText("Zone de frappe")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: mode })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: count })).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("Suivant starts another Text, in the same Mode", async () => {
-    const { user } = renderRun();
+  test("keeps the preset for the Runs after it, as a setting chosen", async () => {
+    const { user } = await renderAppFor("/fr", { reader: null, openSocket: sockets.open });
 
-    await user.keyboard(text);
-    await user.click(screen.getByRole("button", { name: "Suivant" }));
+    await user.click(within(card("Entraînement")).getByRole("button", { name: "words 50" }));
 
-    expect(showsSeed42Text()).toBe(false);
-    expect(screen.getByText("0/10")).toBeInTheDocument();
-    expect(typingInput()).toHaveFocus();
-  });
+    expect(JSON.parse(localStorage.getItem("typomaniac-settings") ?? "{}")).toMatchObject({
+      state: { mode: "words", words: 50 },
+    });
 
-  test("Tab then Enter starts the next Run from the Result", async () => {
-    const { user } = renderRun();
-
-    await user.keyboard(text);
-    await user.tab();
-    await user.keyboard("{Enter}");
-
-    expect(showsSeed42Text()).toBe(false);
-    expect(screen.getByText("0/10")).toBeInTheDocument();
-    expect(typingInput()).toHaveFocus();
-  });
-
-  test("Tab then Enter starts the next Run during a Run", async () => {
-    const { user } = renderRun();
-
-    await user.keyboard("small hel");
-    await user.tab();
-    await user.keyboard("{Enter}");
-
-    expect(showsSeed42Text()).toBe(false);
-    expect(screen.getByText("0/10")).toBeInTheDocument();
-    expect(typingInput()).toHaveFocus();
-    expect(resumePrompt()).not.toBeInTheDocument();
-  });
-
-  test("the keys to Suivant are told at the foot of the page, during the Run and on its Result", async () => {
-    const { user } = renderRun();
-
-    expect(keysHint()).toBeInTheDocument();
-
-    await user.keyboard(text);
-
-    expect(screen.getByText("wpm")).toBeInTheDocument();
-    expect(keysHint()).toBeInTheDocument();
-  });
-});
-
-const timeLeft = () => screen.getByRole("timer", { name: "temps restant" });
-
-describe("HomePage in time Mode", () => {
-  test("a first Run is a time 30 Run", () => {
-    useRunStore.setState(useRunStore.getInitialState());
-    renderPage();
-
-    expect(timeLeft()).toHaveTextContent("30");
-    expect(screen.queryByText("0/10")).not.toBeInTheDocument();
-  });
-
-  test("the clock only starts on the first Keystroke", async () => {
-    const { user, advance } = renderRun(time30);
-
-    advance(5_000);
-
-    expect(timeLeft()).toHaveTextContent("30");
-
-    await user.keyboard("s");
-    advance(1_000);
-
-    expect(timeLeft()).toHaveTextContent("29");
-
-    advance(18_500);
-
-    expect(timeLeft()).toHaveTextContent("11");
-  });
-
-  // Seed 42 goes on with "brother" after its tenth word.
-  test("the Text does not stop after ten words", async () => {
-    const { user } = renderRun(time30);
-
-    await user.keyboard(`${text} brother`);
-
-    expect(letterStatuses("brother").every((status) => status === "correct")).toBe(true);
-    expect(timeLeft()).toHaveTextContent("30");
-  });
-
-  // The time is up on "wh", 2 letters into "while", which count in wpm:
-  // "small " + "help " + "wh" = 13 chars in 30 s, so 13 / 5 / 0.5 = 5.2.
-  test("the Run ends when the time is up, on its Result", async () => {
-    const { user, advance } = renderRun(time30);
-
-    await user.keyboard("small help wh");
-    advance(29_000);
-
-    expect(timeLeft()).toHaveTextContent("1");
-
-    advance(1_000);
-
-    expect(screen.queryByRole("timer")).not.toBeInTheDocument();
-    expect(stat("wpm")).toBe("5");
-    expect(stat("précision")).toBe("100 %");
-    // All 13 chars in the first second, none in the 29 others: a raw of 156, then 0. The mean is
-    // 5.2 and the deviation 28, so c ≈ 5.4 and tanh(c + c³/3 + c⁵/5) rounds to 1.
-    expect(stat("régularité")).toBe("0 %");
-    // "small " and "help " are Bursts at x1, and the word in progress pays its right letters too,
-    // never doubled: 12 + 10 + 2.
-    expect(stat("score")).toBe("24");
-  });
-
-  test("the time keeps running out while the focus is lost", async () => {
-    const { user, advance } = renderRun(time30);
-
-    await user.keyboard("small help wh");
-    await user.click(document.body);
-    advance(10_000);
-
-    expect(timeLeft()).toHaveTextContent("20");
-
-    advance(20_000);
-
-    expect(stat("wpm")).toBe("5");
-  });
-});
-
-describe("HomePage focus", () => {
-  test("losing the focus hides the Text behind a prompt to resume", async () => {
-    const { user } = renderRun();
-
-    expect(typingInput()).toHaveFocus();
-    expect(resumePrompt()).not.toBeInTheDocument();
-
-    await user.click(document.body);
-
-    expect(resumePrompt()).toBeInTheDocument();
-  });
-
-  test("a click on the Text gives the focus back", async () => {
-    const { user } = renderRun();
-
-    await user.click(document.body);
-    await user.click(screen.getByRole("button", { name: "clique ou tape pour reprendre" }));
-
-    expect(typingInput()).toHaveFocus();
-    expect(resumePrompt()).not.toBeInTheDocument();
-
-    await user.keyboard("s");
-
-    expect(letterStatuses("small")[0]).toBe("correct");
-  });
-
-  test("a key gives the focus back without being typed", async () => {
-    const { user } = renderRun();
-
-    await user.click(document.body);
-    await user.keyboard("x");
-
-    expect(typingInput()).toHaveFocus();
-    expect(resumePrompt()).not.toBeInTheDocument();
-    expect(letterStatuses("small")[0]).toBe("pending");
-  });
-
-  test("a key typed on a focused button gives the focus back too", async () => {
-    const { user } = renderRun();
-
-    await user.click(document.body);
-    // Backwards from the page, Suivant is the first stop, then the overlay.
-    await user.tab({ shift: true });
-    await user.tab({ shift: true });
-
-    expect(resumePrompt()).toHaveFocus();
-
-    await user.keyboard("x");
-
-    expect(typingInput()).toHaveFocus();
-  });
-
-  test("the clock keeps running while the focus is lost", async () => {
-    const { user, advance } = renderRun();
-
-    await user.keyboard("small help while late letter");
-    await user.click(document.body);
-    advance(60_000);
-    await user.click(screen.getByRole("button", { name: "clique ou tape pour reprendre" }));
-    await user.keyboard(" sell driver quiet never learn");
-
-    // Same Run as above, typed in one minute because the minute out of focus counts.
-    expect(stat("wpm")).toBe("12");
-  });
-});
-
-const setting = (name: string) => screen.getByRole("button", { name });
-
-const settingsBar = () => screen.queryByRole("group", { name: "Réglages" });
-
-type StoredSettings = { mode: string; seconds: number; words: number; language: string };
-
-// Fills the storage as an earlier visit would have.
-const storeSettings = (state: StoredSettings) =>
-  localStorage.setItem("typomaniac-settings", JSON.stringify({ state, version: 1 }));
-
-// Loads the page afresh, as a reload does: every store is created again from the storage.
-const reload = async () => {
-  cleanup();
-  vi.resetModules();
-  const { useLocaleStore: reloadedLocaleStore } = await import("@/stores/locale-store");
-
-  // The page reloads in the Locale shown before, as its URL keeps it.
-  reloadedLocaleStore.setState({ locale: useLocaleStore.getState().locale });
-  const { HomePage: ReloadedPage } = await import("@/pages/home-page");
-  const query = await import("@tanstack/react-query");
-  const queryClient = new query.QueryClient();
-
-  queryClient.setQueryData(meQueryOptions.queryKey, null);
-  queryClient.setQueryData(paceQueryOptions(null).queryKey, defaultPace);
-
-  render(
-    <query.QueryClientProvider client={queryClient}>
-      <ReloadedPage />
-    </query.QueryClientProvider>,
-  );
-
-  return { user: userEvent.setup() };
-};
-
-const unavailable = () => {
-  throw new DOMException("The storage is disabled.", "SecurityError");
-};
-
-describe("HomePage settings", () => {
-  test("a first visit is set to time 30 in the Language of the Locale", () => {
-    useRunStore.setState(useRunStore.getInitialState());
-    renderPage();
-
-    expect(setting("time")).toHaveAttribute("aria-pressed", "true");
-    expect(setting("30")).toHaveAttribute("aria-pressed", "true");
-    expect(setting("français")).toHaveAttribute("aria-pressed", "true");
-    expect(setting("words")).toHaveAttribute("aria-pressed", "false");
-  });
-
-  test("the Language, never chosen, follows the Locale", () => {
-    renderPage();
-
-    act(() => useLocaleStore.setState({ locale: "en" }));
-
-    expect(setting("English")).toHaveAttribute("aria-pressed", "true");
-    expect(shownWords().every((word) => currentWords("en").includes(word))).toBe(true);
-  });
-
-  test("a Language chosen stays whatever the Locale", async () => {
-    const { user } = renderPage();
-
-    await user.click(setting("français"));
-    act(() => useLocaleStore.setState({ locale: "en" }));
-
-    expect(setting("French")).toHaveAttribute("aria-pressed", "true");
-    expect(shownWords().every((word) => currentWords("fr").includes(word))).toBe(true);
-  });
-
-  test("English, kept before as the default, follows the Locale", async () => {
-    storeSettings({ mode: "time", seconds: 30, words: 10, language: "en" });
-    await reload();
-
-    expect(setting("français")).toHaveAttribute("aria-pressed", "true");
-    expect(shownWords().every((word) => currentWords("fr").includes(word))).toBe(true);
-  });
-
-  test.each(["15", "30", "60", "120"])("time %s s can be chosen", async (seconds) => {
-    const { user } = renderPage();
-
-    await user.click(setting(seconds));
-
-    expect(setting(seconds)).toHaveAttribute("aria-pressed", "true");
-    expect(timeLeft()).toHaveTextContent(seconds);
-  });
-
-  test.each(["10", "25", "50", "100"])("words %s can be chosen", async (words) => {
-    const { user } = renderPage();
-
-    await user.click(setting("words"));
-    await user.click(setting(words));
-
-    expect(setting("words")).toHaveAttribute("aria-pressed", "true");
-    expect(setting(words)).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText(`0/${words}`)).toBeInTheDocument();
-  });
-
-  test("a Visitor who picks Duel is asked to sign in and stays in Solo", async () => {
-    useAuthStore.setState({ signInOpen: false });
-    const { user } = renderPage();
-
-    expect(setting("solo")).toHaveAttribute("aria-pressed", "true");
-
-    await user.click(setting("duel"));
-
-    expect(useAuthStore.getState().signInOpen).toBe(true);
-    expect(setting("solo")).toHaveAttribute("aria-pressed", "true");
-    expect(setting("time")).toBeInTheDocument();
-  });
-
-  test("the settings are hidden during a Run and come back on its Result", async () => {
-    const { user } = renderRun();
-
-    expect(settingsBar()).toBeInTheDocument();
-
-    await user.keyboard("s");
-
-    expect(settingsBar()).not.toBeInTheDocument();
-
-    await user.keyboard(text.slice(1));
-
-    expect(screen.getByText("wpm")).toBeInTheDocument();
-    expect(settingsBar()).toBeInTheDocument();
-  });
-
-  test("changing a setting on the Result starts a new Run on it", async () => {
-    const { user } = renderRun();
-
-    await user.keyboard(text);
-    await user.click(setting("15"));
-
-    expect(screen.queryByText("wpm")).not.toBeInTheDocument();
-    expect(timeLeft()).toHaveTextContent("15");
-    expect(typingInput()).toHaveFocus();
-  });
-
-  test("changing a setting before typing draws a new Text", async () => {
-    const { user } = renderRun(time30);
-
-    await user.click(setting("60"));
-
-    expect(showsSeed42Text()).toBe(false);
-    expect(timeLeft()).toHaveTextContent("60");
-  });
-
-  test("the settings are restored from the storage on reload", async () => {
-    storeSettings({ mode: "words", seconds: 60, words: 25, language: "fr" });
-    await reload();
-
-    expect(setting("words")).toHaveAttribute("aria-pressed", "true");
-    expect(setting("25")).toHaveAttribute("aria-pressed", "true");
-    expect(setting("français")).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("0/25")).toBeInTheDocument();
-    expect(shownWords().every((word) => currentWords("fr").includes(word))).toBe(true);
-  });
-
-  test("the settings chosen are stored for the next visit", async () => {
-    const { user } = renderPage();
-
-    await user.click(setting("words"));
-    await user.click(setting("50"));
-    await reload();
+    await user.click(await screen.findByRole("button", { name: "Suivant" }));
 
     expect(screen.getByText("0/50")).toBeInTheDocument();
   });
 
-  test("stored settings that do not check out give the defaults back", async () => {
-    storeSettings({ mode: "zen", seconds: 7, words: 25, language: "de" });
-    await reload();
+  test("a preset already set draws a fresh Run, ready to type", async () => {
+    const { user } = await renderAppFor("/fr/run", { reader: null, openSocket: sockets.open });
 
-    expect(setting("time")).toHaveAttribute("aria-pressed", "true");
-    expect(timeLeft()).toHaveTextContent("30");
-  });
+    await user.keyboard("a");
 
-  test("an unavailable storage gives the defaults, and the settings still work", async () => {
-    vi.spyOn(localStorage, "getItem").mockImplementation(unavailable);
-    vi.spyOn(localStorage, "setItem").mockImplementation(unavailable);
-    const errors: ErrorEvent[] = [];
-    const collectError = (event: ErrorEvent) => errors.push(event);
+    expect(screen.queryByRole("group", { name: "Réglages" })).not.toBeInTheDocument();
 
-    window.addEventListener("error", collectError);
-    const { user } = await reload();
+    await user.click(screen.getByRole("link", { name: /^Jouer/ }));
+    await user.click(within(card("Entraînement")).getByRole("button", { name: "time 30" }));
 
-    expect(timeLeft()).toHaveTextContent("30");
-
-    await user.click(setting("words"));
-    window.removeEventListener("error", collectError);
-
-    expect(screen.getByText("0/10")).toBeInTheDocument();
-    expect(errors).toEqual([]);
-  });
-
-  test("each Language draws its Text from its own word list", async () => {
-    const { user } = renderPage();
-
-    await user.click(setting("français"));
-
-    expect(setting("français")).toHaveAttribute("aria-pressed", "true");
-    expect(shownWords().every((word) => currentWords("fr").includes(word))).toBe(true);
-
-    await user.click(setting("anglais"));
-
-    expect(shownWords().every((word) => currentWords("en").includes(word))).toBe(true);
+    expect(await screen.findByRole("group", { name: "Réglages" })).toBeInTheDocument();
   });
 });
 
-describe("HomePage in English", () => {
-  // Shown before the Run is drawn: the Language, never chosen, is English too.
-  beforeEach(() => {
-    useLocaleStore.setState({ locale: "en" });
+describe("/run", () => {
+  test("opened directly, shows a Run ready to type, without Solo or Duel to choose", async () => {
+    await renderAppFor("/fr/run", { reader: ada, openSocket: sockets.open });
+
+    expect(screen.getByLabelText("Zone de frappe")).toHaveFocus();
+    expect(screen.getByRole("group", { name: "Mode" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Jeu" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "duel" })).not.toBeInTheDocument();
   });
 
-  test("names the page, its settings and the Language in English", async () => {
-    const { user } = renderRun();
+  test("Précédent leads back to the cards", async () => {
+    const { user, history } = await renderAppFor("/fr", { reader: null, openSocket: sockets.open });
 
-    expect(screen.getByRole("heading", { level: 1, name: "Play" })).toBeInTheDocument();
-    expect(settingsBar()).not.toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Settings" })).toBeInTheDocument();
-
-    for (const group of ["Game", "Mode", "Duration", "Language"]) {
-      expect(screen.getByRole("group", { name: group })).toBeInTheDocument();
-    }
-
-    expect(setting("English")).toHaveAttribute("aria-pressed", "true");
-    expect(setting("French")).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByRole("button", { name: "Sound" })).toBeInTheDocument();
-
-    await user.click(setting("words"));
-
-    expect(screen.getByRole("group", { name: "Word count" })).toBeInTheDocument();
-  });
-
-  test("tells the keys to the next Run in English", () => {
-    renderRun();
+    await user.click(within(card("Entraînement")).getByRole("button", { name: "time 30" }));
+    act(() => history.back());
 
     expect(
-      screen.getByText(
-        (_, element) => element?.tagName === "P" && element.textContent === "tab then enter: Next",
-      ),
+      await screen.findByRole("heading", { level: 1, name: "Choisis ton mode" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
+  });
+});
+
+describe("the Ranked card", () => {
+  test("Lancer la recherche joins the Queue and shows the search on Jouer; Annuler, the cards again", async () => {
+    const { user, url } = await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
+
+    receive(idle());
+    await user.click(within(rankedCard()).getByRole("button", { name: "Lancer la recherche" }));
+
+    expect(sent()).toEqual([{ type: "join-queue" }]);
+    expect(url()).toBe("/fr");
+    expect(
+      screen.getByRole("heading", { name: "On te trouve un adversaire…" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Entraînement" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Annuler" }));
+
+    expect(sent()).toEqual([{ type: "join-queue" }, { type: "leave-queue" }]);
+    expect(card("Ranked")).toBeInTheDocument();
   });
 
-  test("names the typing input, the prompt to resume and the time left in English", async () => {
-    const { user } = renderRun(time30);
+  test("a Visitor is asked to sign in", async () => {
+    const { user } = await renderAppFor("/fr", { reader: null, openSocket: sockets.open });
 
-    expect(screen.getByLabelText("Typing area")).toHaveFocus();
-    expect(screen.getByRole("timer", { name: "time left" })).toHaveTextContent("30");
+    await user.click(within(rankedCard()).getByRole("button", { name: "Lancer la recherche" }));
 
-    await user.click(document.body);
-
-    expect(screen.getByRole("button", { name: "click or type to resume" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Se connecter" })).toBeInTheDocument();
   });
 
-  test("shows the Score while typing in English", async () => {
-    const { user } = renderRun();
+  test("a User without a Handle is asked to choose one", async () => {
+    const { user } = await renderAppFor("/fr", {
+      reader: { ...ada, handle: null },
+      openSocket: sockets.open,
+    });
 
-    await user.keyboard("small help while late letter ");
+    await user.click(await screen.findByRole("button", { name: "Plus tard" }));
 
-    expect(stat("score")).toBe("72");
-    expect(stat("multiplier")).toBe("x2");
-    expect(stat("combo")).toBe("5");
-    expect(stat("bursts")).toBe("5");
+    expect(within(rankedCard()).queryByRole("button", { name: "Lancer la recherche" })).toBeNull();
+
+    await user.click(within(rankedCard()).getByRole("button", { name: "Choisir mon Handle" }));
+
+    expect(await screen.findByRole("dialog", { name: "Choisis ton Handle" })).toBeInTheDocument();
   });
 
-  test("shows the Result in English, the percent sign stuck to its figure", async () => {
-    const { user, advance } = renderRun();
+  test("shows the User's rank, its Crest and its TP bar", async () => {
+    await renderAppFor("/fr", {
+      reader: adaRanked({ tier: "gold", division: 2, tp: 42, shielded: false }),
+      openSocket: sockets.open,
+    });
 
-    await user.keyboard(text.slice(0, -1));
-    advance(60_000);
-    await user.keyboard(text.slice(-1));
-
-    expect(stat("wpm")).toBe("12");
-    expect(stat("raw")).toBe("12");
-    expect(stat("accuracy")).toBe("100%");
-    expect(stat("consistency")).toMatch(/^\d+%$/);
-    expect(stat("characters")).toBe("49/0/0/0");
-    expect(screen.getByText("characters").nextElementSibling).toHaveAttribute(
-      "title",
-      "correct / incorrect / extra / missed",
+    expect(within(rankedCard()).getByText("Gold II · 42 TP")).toBeInTheDocument();
+    expect(within(rankedCard()).getByText("Gold II")).toHaveClass("sr-only");
+    expect(within(rankedCard()).getByRole("meter", { name: "TP de la Division" })).toHaveAttribute(
+      "aria-valuetext",
+      "42 TP sur 100 · 58 TP avant Gold I",
     );
-    expect(stat("best combo")).toBe("10");
-    expect(screen.getByRole("button", { name: "Play again" })).toBeInTheDocument();
+  });
+
+  test("in Placement, where the User is of it", async () => {
+    await renderAppFor("/fr", {
+      reader: adaRanked({ placementsLeft: 3 }),
+      openSocket: sockets.open,
+    });
+
+    expect(within(rankedCard()).getByText("Placement · 3 Duels restants")).toBeInTheDocument();
+    expect(within(rankedCard()).getByRole("meter", { name: "Placement" })).toHaveAttribute(
+      "aria-valuetext",
+      "2 Duels de Placement joués sur 5",
+    );
+  });
+
+  test("before any Duel, Unranked", async () => {
+    await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
+
+    expect(within(rankedCard()).getByText("Non classé")).toBeInTheDocument();
+  });
+
+  test("a Visitor has no rank there", async () => {
+    await renderAppFor("/fr", { reader: null, openSocket: sockets.open });
+
+    expect(within(rankedCard()).queryByText("Non classé")).not.toBeInTheDocument();
+    expect(within(rankedCard()).queryByRole("meter")).not.toBeInTheDocument();
+  });
+
+  test("under a Queue lock, the time left, then open again once it is over", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(100_000);
+    await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
+
+    receive(idle(80_000, 20_000));
+
+    const search = within(rankedCard()).getByRole("button", { name: /^Lancer la recherche/ });
+
+    expect(search).toBeDisabled();
+    expect(search).toHaveTextContent("1:00");
+
+    vi.setSystemTime(160_000);
+
+    await waitFor(() => expect(search).toBeEnabled());
+    expect(sent()).toEqual([]);
+  });
+
+  test("a Dodge here shows its Queue lock on the card, back from the search", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(100_000);
+
+    const { user } = await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
+
+    receive(idle());
+    await user.click(within(rankedCard()).getByRole("button", { name: "Lancer la recherche" }));
+    receive({ type: "queued" });
+    receive({
+      type: "match-proposed",
+      expiresAt: 30_000,
+      serverTime: 20_000,
+      opponent: { handle: "kzr_", image: null, ornament: null },
+      selfOrnament: null,
+      selfRank: null,
+      opponentRank: null,
+      selfAccepted: false,
+      opponentAccepted: false,
+      dodgeLock: 120_000,
+    });
+    await user.click(await screen.findByRole("button", { name: /^Refuser/ }));
+    receive({ type: "proposal-ended", reason: "declined", queueLockedUntil: 140_000 });
+    await user.click(await screen.findByRole("button", { name: "Retour au Solo" }));
+
+    const search = within(rankedCard()).getByRole("button", { name: /^Lancer la recherche/ });
+
+    expect(search).toBeDisabled();
+    expect(search).toHaveTextContent("2:00");
+  });
+
+  test("the search launched in another tab is said, with no way to launch a second one", async () => {
+    await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
+
+    receive(queueElsewhere());
+
+    expect(within(rankedCard()).getByText("Recherche dans un autre onglet")).toBeInTheDocument();
+    expect(within(rankedCard()).queryByRole("button")).not.toBeInTheDocument();
+
+    receive(idle());
+
+    expect(within(rankedCard()).getByRole("button", { name: "Lancer la recherche" })).toBeEnabled();
+  });
+});
+
+describe("the card of the Duel with a Friend", () => {
+  test("Défier un Friend leads to Friends", async () => {
+    const { user, url } = await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
+
+    await user.click(
+      within(card("Duel entre amis")).getByRole("button", { name: "Défier un Friend" }),
+    );
+
+    expect(url()).toBe("/fr/friends");
+  });
+
+  test("shows the User facing a Friend online, none while no Friend is", async () => {
+    await renderAppFor("/fr", {
+      reader: ada,
+      openSocket: sockets.open,
+      friends: [friend("grace"), friend("linus")],
+    });
+
+    expect(within(card("Duel entre amis")).queryByText(/^Toi face à/)).not.toBeInTheDocument();
+
+    receive({
+      type: "friends-snapshot",
+      presences: [
+        { userId: "grace-id", presence: "in-duel" },
+        { userId: "linus-id", presence: "online" },
+      ],
+      requestsReceived: 0,
+    });
+
+    expect(
+      within(card("Duel entre amis")).getByText("Toi face à @linus, en ligne"),
+    ).toBeInTheDocument();
+  });
+
+  test("a Visitor, who has no Friends, is asked to sign in", async () => {
+    const { user, url } = await renderAppFor("/fr", { reader: null, openSocket: sockets.open });
+
+    await user.click(
+      within(card("Duel entre amis")).getByRole("button", { name: "Défier un Friend" }),
+    );
+
+    expect(await screen.findByRole("dialog", { name: "Se connecter" })).toBeInTheDocument();
+    expect(url()).toBe("/fr");
+  });
+});
+
+describe("the fade between Jouer and the Run", () => {
+  test("the Run fades in from the cards, rising a little, and is left without a style", async () => {
+    const { user } = await renderAppFor("/fr", { reader: null, openSocket: sockets.open });
+
+    await user.click(within(card("Entraînement")).getByRole("button", { name: "time 30" }));
+    await screen.findByLabelText("Zone de frappe");
+
+    expect(page()?.style.opacity).toBe("0");
+    expect(page()?.style.transform).toContain("10px");
+
+    gsapClock.advance(PLAY_FADE_SECONDS / 2);
+
+    expect(Number(page()?.style.opacity)).toBeGreaterThan(0);
+    expect(Number(page()?.style.opacity)).toBeLessThan(1);
+
+    gsapClock.advance(PLAY_FADE_SECONDS);
+
+    expect(page()?.getAttribute("style")).toBeFalsy();
+  });
+
+  test("the cards fade in back from the Run", async () => {
+    const { user } = await renderAppFor("/fr/run", { reader: null, openSocket: sockets.open });
+
+    await user.click(screen.getByRole("link", { name: /^Jouer/ }));
+    await screen.findByRole("heading", { level: 1, name: "Choisis ton mode" });
+
+    expect(page()?.style.opacity).toBe("0");
+  });
+
+  test("no other way in fades: a first load, another page", async () => {
+    const { user } = await renderAppFor("/fr/leaderboard", {
+      reader: null,
+      openSocket: sockets.open,
+    });
+
+    await user.click(screen.getByRole("link", { name: /^Jouer/ }));
+    await screen.findByRole("heading", { level: 1, name: "Choisis ton mode" });
+
+    expect(page()?.getAttribute("style")).toBeFalsy();
+  });
+
+  test("under reduced motion, the Run is there at once", async () => {
+    vi.spyOn(window, "matchMedia").mockImplementation((media) => ({
+      matches: media === "(prefers-reduced-motion: reduce)",
+      media,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => true,
+    }));
+
+    const { user } = await renderAppFor("/fr", { reader: null, openSocket: sockets.open });
+
+    await user.click(within(card("Entraînement")).getByRole("button", { name: "time 30" }));
+    await screen.findByLabelText("Zone de frappe");
+
+    expect(page()?.getAttribute("style")).toBeFalsy();
   });
 });

@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, test } from "vitest";
 import { type Me, meQueryOptions } from "@/api/me";
 import { DuelHandleRequired } from "@/components/duel/duel-handle-required";
 import { TabAttentionContext } from "@/components/tab-attention/tab-attention-context";
-import { PlaySetting } from "@/components/settings/play-setting";
+import { RankedSearchAction } from "@/components/play/ranked-search-action";
 import { quietTabAttention, type NotificationAccess } from "@/lib/tab-attention";
 import { usePlayStore } from "@/stores/play-store";
 
@@ -60,10 +60,10 @@ describe("the notification permission, asked on the click that searches for a Du
     expect(requests.count).toBe(1);
   });
 
-  test("choosing Duel asks it too", async () => {
-    const requests = renderWithPermission(<PlaySetting />, "default");
+  test("Lancer la recherche asks it too", async () => {
+    const requests = renderWithPermission(<RankedSearchAction />, "default");
 
-    await userEvent.click(screen.getByRole("button", { name: "duel" }));
+    await userEvent.click(screen.getByRole("button", { name: "Lancer la recherche" }));
 
     expect(requests.count).toBe(1);
   });

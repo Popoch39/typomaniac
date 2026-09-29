@@ -25,6 +25,7 @@ const SHELL_DELAY_OPTIONS = SHELL_DELAYS.map((delay) => ({ value: delay, label: 
 // A dev page, in French only: the names of its options below.
 const PAGE_NAMES: Record<IntroPage, string> = {
   "/": "Accueil",
+  "/run": "Entraînement",
   "/leaderboard": "Classement",
   "/themes": "Themes",
 };

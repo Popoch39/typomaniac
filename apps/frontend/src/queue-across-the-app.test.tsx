@@ -74,7 +74,7 @@ const renderQueue = async (friends = [friend("grace")]) => {
   const app = await renderAppFor("/fr", { reader: ada, openSocket: sockets.open, friends });
 
   receive(idle());
-  await app.user.click(screen.getByRole("button", { name: "duel" }));
+  await app.user.click(screen.getByRole("button", { name: "Lancer la recherche" }));
   receive({ type: "queued" });
   receive({
     type: "queue-status",
@@ -137,7 +137,7 @@ describe("the Queue follows the User across the app", () => {
     await user.click(screen.getByRole("button", { name: "Annuler" }));
 
     expect(sent()).toEqual([{ type: "join-queue" }, { type: "leave-queue" }]);
-    expect(screen.getByRole("button", { name: "solo" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("region", { name: "Ranked" })).toBeInTheDocument();
   });
 });
 

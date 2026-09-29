@@ -1,9 +1,6 @@
-import { type Clock, useClock } from "@/components/run/clock-context";
+import { type Clock, useClock, wallClock } from "@/components/run/clock-context";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore, waitingQueueOf } from "@/stores/duel-store";
-
-// The clock another tab's wait is told on, as the Challenges' expiries.
-const wallClock: Clock = () => Date.now();
 
 export type QueueWaitSince = { joinedAt: number; clock: Clock };
 

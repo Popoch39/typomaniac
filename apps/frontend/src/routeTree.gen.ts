@@ -17,6 +17,7 @@ import { Route as HealthRouteImport } from './routes/health'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RankedRouteImport } from './routes/ranked'
+import { Route as RunRouteImport } from './routes/run'
 import { Route as ThemesRouteImport } from './routes/themes'
 import { Route as DuelsDuelIdRouteImport } from './routes/duels_.$duelId'
 import { Route as UHandleRouteImport } from './routes/u.$handle'
@@ -61,6 +62,11 @@ const RankedRoute = RankedRouteImport.update({
   path: '/ranked',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RunRoute = RunRouteImport.update({
+  id: '/run',
+  path: '/run',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ThemesRoute = ThemesRouteImport.update({
   id: '/themes',
   path: '/themes',
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/ranked': typeof RankedRoute
+  '/run': typeof RunRoute
   '/themes': typeof ThemesRoute
   '/duels/$duelId': typeof DuelsDuelIdRoute
   '/u/$handle': typeof UHandleRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/ranked': typeof RankedRoute
+  '/run': typeof RunRoute
   '/themes': typeof ThemesRoute
   '/duels/$duelId': typeof DuelsDuelIdRoute
   '/u/$handle': typeof UHandleRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/leaderboard': typeof LeaderboardRoute
   '/profile': typeof ProfileRoute
   '/ranked': typeof RankedRoute
+  '/run': typeof RunRoute
   '/themes': typeof ThemesRoute
   '/duels_/$duelId': typeof DuelsDuelIdRoute
   '/u/$handle': typeof UHandleRoute
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/profile'
     | '/ranked'
+    | '/run'
     | '/themes'
     | '/duels/$duelId'
     | '/u/$handle'
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/profile'
     | '/ranked'
+    | '/run'
     | '/themes'
     | '/duels/$duelId'
     | '/u/$handle'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/profile'
     | '/ranked'
+    | '/run'
     | '/themes'
     | '/duels_/$duelId'
     | '/u/$handle'
@@ -168,6 +180,7 @@ export interface RootRouteChildren {
   LeaderboardRoute: typeof LeaderboardRoute
   ProfileRoute: typeof ProfileRoute
   RankedRoute: typeof RankedRoute
+  RunRoute: typeof RunRoute
   ThemesRoute: typeof ThemesRoute
   DuelsDuelIdRoute: typeof DuelsDuelIdRoute
   UHandleRoute: typeof UHandleRoute
@@ -231,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RankedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/run': {
+      id: '/run'
+      path: '/run'
+      fullPath: '/run'
+      preLoaderRoute: typeof RunRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/themes': {
       id: '/themes'
       path: '/themes'
@@ -264,6 +284,7 @@ const rootRouteChildren: RootRouteChildren = {
   LeaderboardRoute: LeaderboardRoute,
   ProfileRoute: ProfileRoute,
   RankedRoute: RankedRoute,
+  RunRoute: RunRoute,
   ThemesRoute: ThemesRoute,
   DuelsDuelIdRoute: DuelsDuelIdRoute,
   UHandleRoute: UHandleRoute,

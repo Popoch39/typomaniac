@@ -1,14 +1,13 @@
 import { useLocation } from "@tanstack/react-router";
 
-import { useInDuel } from "@/components/duel/use-in-duel";
+import { RUN_PATH } from "@/components/play/play-paths";
 import { useRunStore } from "@/stores/run-store";
 
-// A Solo Run is being typed on the play page: from its first Keystroke until its Result. A Run left
-// unfinished on another page, or under a Duel, is not being typed.
+// A Solo Run is being typed on its page: from its first Keystroke until its Result, the Queue
+// waited in or not. A Run left unfinished on another page is not being typed.
 export const useSoloRunTyping = () => {
-  const onPlayPage = useLocation({ select: (location) => location.pathname === "/" });
-  const inDuel = useInDuel();
+  const onRunPage = useLocation({ select: (location) => location.pathname === RUN_PATH });
   const typing = useRunStore((state) => state.startedAt !== null && state.result === null);
 
-  return onPlayPage && !inDuel && typing;
+  return onRunPage && typing;
 };

@@ -173,14 +173,14 @@ const settings = () => screen.queryByRole("group", { name: "Réglages" });
 const sidebar = () => screen.getByLabelText("Barre latérale");
 
 describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
-  test("in the Queue, the app keeps its sidebar and its settings, without the scene's header", async () => {
+  test("in the Queue, the app keeps its sidebar, without the scene's header nor the Run's settings", async () => {
     await renderPlayPage();
 
     expect(sidebar()).toBeVisible();
     expect(sidebar()).not.toHaveAttribute("inert");
     expect(within(sidebar()).getByRole("button", { name: "Menu de Ada" })).toBeInTheDocument();
     expect(screen.queryByRole("banner")).not.toBeInTheDocument();
-    expect(settings()).toBeInTheDocument();
+    expect(settings()).not.toBeInTheDocument();
   });
 
   test("the Match proposal opens over the page, the sidebar still there", async () => {

@@ -108,10 +108,13 @@ const choose = async (setting: string, option: string) =>
     within(screen.getByRole("group", { name: setting })).getByRole("button", { name: option }),
   );
 
+// Jouer's cards, the home page the replay leads to.
+const playCards = () => screen.findByRole("heading", { level: 1, name: "Choisis ton mode" });
+
 // Replays the Intro, then waits for the home page it leads to, and for the lockup's fonts.
 const replay = async () => {
   await userEvent.click(screen.getByRole("button", { name: "Rejouer" }));
-  await screen.findByLabelText("Zone de frappe");
+  await playCards();
   await act(() => Promise.resolve());
 };
 
@@ -143,7 +146,7 @@ describe("IntroDevPage", () => {
     // The end of the blink under way, then the landing.
     gsapClock.advance(0.63 + LANDING_S);
     expect(intro()).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Zone de frappe")).toHaveFocus();
+    expect(await playCards()).toBeVisible();
   });
 
   test("replayed at 2×, the Intro plays in half its time; the next page start plays at its own pace", async () => {

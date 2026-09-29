@@ -10,10 +10,10 @@ export const INTRO_SPEEDS = [0.25, 0.5, 1, 1.5, 2] as const;
 // How late the shell is, counted from the waiting point: how long the caret waits for it.
 export const SHELL_DELAYS = [0, 2, 5] as const;
 
-// The page the replayed Intro lands on: the home page and its parts, or a page coming in as one
-// block, with a loader (the Leaderboard) or without (the Themes). Pages open to a Visitor: one
-// that asks for a User would send them home.
-export const INTRO_PAGES = ["/", "/leaderboard", "/themes"] as const;
+// The page the replayed Intro lands on: Jouer's cards or the Run, each with its parts, or a page
+// coming in as one block, with a loader (the Leaderboard) or without (the Themes). Pages open to a
+// Visitor: one that asks for a User would send them home.
+export const INTRO_PAGES = ["/", "/run", "/leaderboard", "/themes"] as const;
 
 export type IntroSpeed = (typeof INTRO_SPEEDS)[number];
 

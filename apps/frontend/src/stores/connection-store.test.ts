@@ -10,6 +10,8 @@ import {
   onServerMessage,
   type Place,
   placeAfter,
+  type KnownQueueLock,
+  queueLockAfter,
   reconnectDelay,
   sendToServer,
   useConnectionStore,
@@ -156,6 +158,57 @@ describe("the User's place, from the server's messages", () => {
     expect(after(place, { type: "opponent-disconnected" })).toBe(place);
     expect(after(place, { type: "opponent-keystrokes", keystrokes: [] })).toBe(place);
     expect(after({ at: "idle" }, { type: "handle-required" })).toEqual({ at: "idle" });
+  });
+});
+
+describe("the User's Queue lock, from the server's messages", () => {
+  const none: KnownQueueLock = { until: null, serverOffset: 0 };
+
+  test("none until the server tells one", () => {
+    expect(queueLockAfter(none, idle(), 50_000)).toEqual(none);
+  });
+
+  test("told with the place, on this tab's clock", () => {
+    expect(queueLockAfter(none, idle(80_000, 20_000), 50_000).until).toBe(110_000);
+  });
+
+  test("told as the Queue is refused, on this tab's clock", () => {
+    expect(
+      queueLockAfter(none, { type: "queue-locked", until: 80_000, serverTime: 20_000 }, 50_000)
+        .until,
+    ).toBe(110_000);
+  });
+
+  test("imposed by a Dodge here, shifted as the Match proposal was", () => {
+    const proposed = queueLockAfter(none, { ...matchProposed, serverTime: 20_000 }, 50_000);
+
+    expect(
+      queueLockAfter(
+        proposed,
+        { type: "proposal-ended", reason: "declined", queueLockedUntil: 80_000 },
+        55_000,
+      ).until,
+    ).toBe(110_000);
+    expect(
+      queueLockAfter(
+        proposed,
+        { type: "proposal-ended", reason: "missed", queueLockedUntil: null },
+        55_000,
+      ).until,
+    ).toBeNull();
+  });
+
+  test("over once the User is in the Queue again", () => {
+    const locked = queueLockAfter(none, idle(80_000, 20_000), 50_000);
+
+    expect(queueLockAfter(locked, { type: "queued" }, 200_000).until).toBeNull();
+    expect(queueLockAfter(locked, idle(), 200_000).until).toBeNull();
+  });
+
+  test("unchanged by the other messages", () => {
+    const locked = queueLockAfter(none, idle(80_000, 20_000), 50_000);
+
+    expect(queueLockAfter(locked, { type: "opponent-disconnected" }, 60_000)).toBe(locked);
   });
 });
 
