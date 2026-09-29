@@ -1,4 +1,4 @@
-import { BrandMark } from "@/components/brand-mark";
+import { BrandMark } from "@/components/brand/brand-mark";
 import { SidebarAccount } from "@/components/sidebar/sidebar-account";
 import { SidebarNav } from "@/components/sidebar/sidebar-nav";
 import { SidebarOnlineFriends } from "@/components/sidebar/sidebar-online-friends";
@@ -12,7 +12,7 @@ type AppSidebarProps = {
   faded: boolean;
 };
 
-// The floating sidebar, left of every page, the window's height: the brand, the nav, the Friends
+// The floating sidebar, left of every page, the window's height: the Logo, the nav, the Friends
 // online, then the Theme button and the User's card (or the Visitor's).
 export const AppSidebar = ({ hidden, faded }: AppSidebarProps) => (
   <Sidebar
@@ -22,7 +22,8 @@ export const AppSidebar = ({ hidden, faded }: AppSidebarProps) => (
     data-faded={faded ? "" : undefined}
     className="sticky top-3 h-[calc(100svh-1.5rem)] px-3 pt-4.5 pb-3 transition-opacity duration-300 data-faded:opacity-30"
   >
-    <SidebarHeader className="px-2.5 pt-0.5 pb-4.5">
+    {/* 4 px less on the left than on the right: the symbol has its own margin. */}
+    <SidebarHeader className="pt-0.5 pr-2.5 pb-4.5 pl-1.5">
       <BrandMark />
     </SidebarHeader>
     <SidebarContent>

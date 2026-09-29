@@ -1,13 +1,15 @@
-// A Theme in miniature, painted in the colours of the `data-theme` it sits under: the sidebar and
-// its nav, the Run settings, a Text with both carets, a Duel's band. A picture only: its words are
-// the card's.
+import { LogoSymbol } from "@/components/brand/logo-symbol";
+
+// A Theme in miniature, painted in the colours of the `data-theme` it sits under: the sidebar with
+// its Logo and its nav, the Run settings, a Text with both carets, a Duel's band. A picture only:
+// its words are the card's.
 export const ThemePreview = () => (
   <span
     aria-hidden="true"
     className="flex h-37.5 gap-1.5 rounded-[18px] bg-background p-1.5 text-foreground"
   >
     <span className="flex w-11 shrink-0 flex-col gap-1.25 rounded-xl bg-card px-1.5 py-1.75">
-      <span className="mb-1 size-3.5 rounded-[5px] bg-brand" />
+      <LogoSymbol drawing="simplified" className="mb-1 size-3.5" />
       <span className="h-2 rounded-full bg-brand" />
       <span className="h-2 rounded-full bg-border" />
       <span className="h-2 rounded-full bg-border" />

@@ -190,8 +190,8 @@ Le palier du rang d'un User : Fer, Bronze, Argent, Or, Platine, Diamant, chacun 
 _Avoid_ : ligue, rang, elo, Maître
 
 **Emblem** :
-Le logo d'un Tier, le même pour toutes ses Divisions : bouclier du Fer à l'Or, hexagone du Platine, gemme du Diamant, couronne du Maniac.
-_Avoid_ : icône de rang, logo de rang, badge
+L'insigne d'un Tier, le même pour toutes ses Divisions : bouclier du Fer à l'Or, hexagone du Platine, gemme du Diamant, couronne du Maniac.
+_Avoid_ : icône de rang, logo de rang, logo, badge
 
 **Ornament** :
 La décoration d'un Tier que porte un User autour de son avatar, plus riche à chaque Tier. Hors Placement, il choisit de suivre son Tier (le défaut), de figer celui d'un Tier atteint à ou sous son Tier actuel, ou de n'en porter aucun. Il ne porte jamais celui d'un Tier au-dessus du sien : s'il descend sous le Tier figé, il porte celui de son Tier actuel. Les autres Users le voient partout où ils voient son avatar.
@@ -256,3 +256,7 @@ _Avoid_ : feed, fil, timeline, fil d'actualité
 **Theme** :
 Les couleurs de l'app, choisies sur un navigateur par un User ou un Visitor : le fond, les surfaces, l'accent (la couleur de Toi) et la couleur de l'adversaire. Il ne change jamais la place des choses ni la couleur des Tiers. Le choix reste sur ce navigateur, il ne suit pas le User.
 _Avoid_ : skin, palette, mode
+
+**Logo** :
+La marque de typomaniac : le symbole, un t souligné d'une vague comme une faute de frappe, puis le mot typomaniac. Le t prend la couleur du texte du Theme, la vague son accent : il change avec le Theme, jusque dans l'onglet du navigateur.
+_Avoid_ : marque, icône de l'app, BrandMark
