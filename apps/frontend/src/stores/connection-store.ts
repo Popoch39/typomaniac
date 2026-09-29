@@ -5,10 +5,16 @@ import { api } from "@/api/client";
 import { type Arrival, arrivalsAfter } from "@/lib/activity-feed";
 
 // The User's place as the server tells this connection: none, or in the Queue or a Duel, played
-// here or not (another tab holds it, or none does while they come back to their Duel).
+// here or not (another tab holds it, or none does while they come back to their Duel). The Queue
+// played elsewhere says since when they wait, on this tab's clock (`Date.now()`): this tab shows
+// it too.
+type Elsewhere = Extract<ServerMessage, { type: "elsewhere" }>;
+
 export type Place =
   | { at: "idle" }
-  | { at: Extract<ServerMessage, { type: "elsewhere" }>["place"]; here: boolean };
+  | { at: Elsewhere["place"]; here: true }
+  | { at: Extract<Elsewhere, { place: "duel" }>["place"]; here: false }
+  | { at: Extract<Elsewhere, { place: "queue" }>["place"]; here: false; joinedAt: number };
 
 export type ConnectionStatus =
   // No socket: a Visitor, or a User signed out.
@@ -69,15 +75,22 @@ export type OpenLiveSocket = () => LiveSocket;
 
 export const openApiSocket: OpenLiveSocket = () => api.duel.subscribe();
 
-// The place after a message: the connection that plays it learns it from its own messages, the
-// others from `idle` and `elsewhere`.
-export const placeAfter = (place: Place | null, message: ServerMessage): Place | null => {
+// The place after a message, `now` read when it arrived: the connection that plays it learns it
+// from its own messages, the others from `idle` and `elsewhere`. The server's join time is shifted
+// onto this tab's clock as a Challenge's expiry is.
+export const placeAfter = (
+  place: Place | null,
+  message: ServerMessage,
+  now: number,
+): Place | null => {
   switch (message.type) {
     case "idle":
     case "duel-ended":
       return { at: "idle" };
     case "elsewhere":
-      return { at: message.place, here: false };
+      return message.place === "queue"
+        ? { at: "queue", here: false, joinedAt: message.joinedAt - message.serverTime + now }
+        : { at: "duel", here: false };
     // A Match proposal is still the Queue's, until the Duel is found.
     case "queued":
     case "match-proposed":
@@ -260,12 +273,14 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
         return;
       }
 
+      const now = Date.now();
+
       attempts = 0;
       set({
         status: "open",
-        place: placeAfter(get().place, data),
+        place: placeAfter(get().place, data, now),
         friends: friendsAfter(get().friends, data),
-        challenges: challengesAfter(get().challenges, data, Date.now()),
+        challenges: challengesAfter(get().challenges, data, now),
         arrivals: arrivalsAfter(get().arrivals, data),
       });
 

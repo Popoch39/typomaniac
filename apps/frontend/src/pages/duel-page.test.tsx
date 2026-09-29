@@ -1,35 +1,15 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createMemoryHistory, RouterProvider } from "@tanstack/react-router";
-import { act, render, screen, waitFor, within } from "@testing-library/react";
-import { userEvent } from "@testing-library/user-event";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import type { ServerMessage } from "api";
-import { defaultPace } from "typing-engine";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
-import { activityQueryOptions } from "@/api/activity";
-import { friendRequestsQueryOptions, friendsQueryOptions } from "@/api/friends";
-import { type Me, meQueryOptions } from "@/api/me";
-import { paceQueryOptions } from "@/api/pace";
-import { createAppRouter } from "@/app-router";
-import { LiveSocketContext } from "@/components/live-socket-context";
-import { ClockContext } from "@/components/run/clock-context";
+import type { Me } from "@/api/me";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
 import { usePlayStore } from "@/stores/play-store";
 import { useRunStore } from "@/stores/run-store";
-import { fakeServer, idle } from "@/test/fake-socket";
+import { fakeServer, idle, queueElsewhere } from "@/test/fake-socket";
 import { holdGsapClock } from "@/test/gsap-clock";
-
-const me: Me = {
-  id: "ada-id",
-  name: "Ada",
-  email: "ada@example.com",
-  image: null,
-  handle: "ada",
-  rank: null,
-  ornament: null,
-  ornamentChoice: null,
-};
+import { ada, renderAppFor } from "@/test/render-app";
 
 const placement = { placementsLeft: 5 };
 
@@ -125,50 +105,9 @@ const receive = (message: ServerMessage) => act(() => server().receive(message))
 
 const sent = () => server().sent;
 
-// The cache as the root route's beforeLoad leaves it, for Ada, who has no Friend yet, or for a
-// Visitor.
-const cacheFor = (reader: Me | null) => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
-  });
-
-  queryClient.setQueryData(meQueryOptions.queryKey, reader);
-  queryClient.setQueryData(paceQueryOptions(reader).queryKey, defaultPace);
-  queryClient.setQueryData(friendsQueryOptions.queryKey, []);
-  // What /friends and /profile load.
-  queryClient.setQueryData(friendRequestsQueryOptions.queryKey, { received: [], sent: [] });
-  queryClient.setQueryData(activityQueryOptions.queryKey, []);
-
-  return queryClient;
-};
-
-// The whole app at `path` for Ada (or a Visitor), on a clock stopped at 0, its connection on the
-// fake server.
-const renderApp = async (path: string, reader: Me | null = me) => {
-  const history = createMemoryHistory({ initialEntries: [path] });
-  const queryClient = cacheFor(reader);
-
-  const router = createAppRouter({
-    history,
-    storage: () => localStorage,
-    languages: [],
-    queryClient,
-  });
-
-  await act(() => router.load());
-  render(
-    <QueryClientProvider client={queryClient}>
-      <LiveSocketContext value={sockets.open}>
-        <ClockContext value={() => 0}>
-          <RouterProvider router={router} />
-        </ClockContext>
-      </LiveSocketContext>
-    </QueryClientProvider>,
-  );
-  await screen.findByLabelText("Barre latérale");
-
-  return { history, url: () => history.location.pathname, user: userEvent.setup() };
-};
+// The whole app at `path` for Ada (or a Visitor), on the fake server.
+const renderApp = (path: string, reader: Me | null = ada) =>
+  renderAppFor(path, { reader, openSocket: sockets.open });
 
 // The play page, Duel chosen: in the Queue.
 const renderQueue = async () => {
@@ -295,7 +234,7 @@ describe("/duel without a Duel", () => {
   test("so does the Queue, held by another tab", async () => {
     const { url } = await renderApp("/fr/duel");
 
-    receive({ type: "elsewhere", place: "queue" });
+    receive(queueElsewhere());
 
     expect(await screen.findByRole("heading", { level: 1, name: "Jouer" })).toBeInTheDocument();
     expect(url()).toBe("/fr");

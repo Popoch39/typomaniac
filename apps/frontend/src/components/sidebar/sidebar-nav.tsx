@@ -10,6 +10,7 @@ import {
 
 import { meQueryOptions } from "@/api/me";
 import { FriendRequestsBadge } from "@/components/friends/friend-requests-badge";
+import { QueueWaitBadge } from "@/components/sidebar/queue-wait-badge";
 import { SidebarNavLink } from "@/components/sidebar/sidebar-nav-link";
 import { SidebarGroup, SidebarMenu } from "@/components/ui/sidebar";
 import { useLocale } from "@/locale/use-locale";
@@ -19,8 +20,8 @@ import { m } from "@/paraglide/messages";
 const homeActiveOptions = { exact: true };
 
 // The app's main nav: Play, Ranked and the Leaderboard for everyone; Duels, Friends and the
-// Profile with a Session only, a Visitor has none. With a Handle, the Friend requests received on
-// Friends.
+// Profile with a Session only, a Visitor has none. On Play, the User's wait in the Queue; with a
+// Handle, the Friend requests received on Friends.
 export const SidebarNav = () => {
   const { data: me } = useSuspenseQuery(meQueryOptions);
   const locale = useLocale();
@@ -33,6 +34,7 @@ export const SidebarNav = () => {
           activeOptions={homeActiveOptions}
           icon={KeyboardIcon}
           label={m.sidebar_nav_play({}, { locale })}
+          badge={me === null ? null : <QueueWaitBadge />}
         />
         <SidebarNavLink
           to="/ranked"

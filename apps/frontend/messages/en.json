@@ -20,6 +20,7 @@
   "sidebar_nav_profile": "Profile",
   "sidebar_online_title": "Online · {count}",
   "sidebar_online_queued": "Challenge them without leaving the Queue.",
+  "sidebar_queue_wait": "In the Queue for {elapsed}",
   "sidebar_online_none": "No Friends online",
   "sidebar_online_all": "All your Friends · {count}",
   "sidebar_online_loading": "Loading Friends online",

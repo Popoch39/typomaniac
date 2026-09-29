@@ -19,6 +19,7 @@ import { type Me, meQueryOptions } from "@/api/me";
 import { AppFrame } from "@/components/app-frame";
 import { DuelOnItsUrl } from "@/components/duel/duel-on-its-url";
 import { DuelPlace } from "@/components/duel/duel-place";
+import { QueueProposal } from "@/components/match-proposal/queue-proposal";
 import { ClockContext } from "@/components/run/clock-context";
 import { DuelPage } from "@/pages/duel-page";
 import { HomePage } from "@/pages/home-page";
@@ -129,8 +130,8 @@ const renderPlayPage = async () => {
   queryClient.setQueryData(meQueryOptions.queryKey, me);
   queryClient.setQueryData(friendsQueryOptions.queryKey, []);
 
-  // The play page and the Duel's, in the app's frame, with what holds the User's place and takes a
-  // Duel found to its URL.
+  // The play page and the Duel's, in the app's frame, with what holds the User's place, shows its
+  // Match proposal and takes a Duel found to its URL.
   const root = createRootRoute({
     component: () => (
       <>
@@ -138,6 +139,7 @@ const renderPlayPage = async () => {
           <Outlet />
         </AppFrame>
         <DuelPlace />
+        <QueueProposal />
         <DuelOnItsUrl />
       </>
     ),

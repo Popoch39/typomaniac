@@ -161,11 +161,16 @@ const ServerMessage = t.Union([
     serverTime: t.Number(),
   }),
   // The User has a place that this connection does not play: another one holds it, or none does
-  // while they come back to their Duel. `join-queue` or `resume-duel` plays it here.
+  // while they come back to their Duel. `join-queue` or `resume-duel` plays it here. In the Queue,
+  // when they joined (server time), kept through a Match proposal and the way back from it: every
+  // tab shows their wait.
   t.Object({
     type: t.Literal("elsewhere"),
-    place: t.Union([t.Literal("queue"), t.Literal("duel")]),
+    place: t.Literal("queue"),
+    joinedAt: t.Number(),
+    serverTime: t.Number(),
   }),
+  t.Object({ type: t.Literal("elsewhere"), place: t.Literal("duel") }),
   t.Object({ type: t.Literal("queued") }),
   // The Queue as its Users see it while they wait, after `queued` and whenever it changes (at most
   // once a second): when they joined (server time, their wait survives a reload), how many Users

@@ -1,21 +1,22 @@
 import { useEffect, useState } from "react";
 
-import { useClock } from "@/components/run/clock-context";
+import { type Clock, useClock } from "@/components/run/clock-context";
 
-// Milliseconds since `joinedAt`, on the tab's clock, read a few times a second: React skips the
-// render while the value stays the same second.
-export const useQueueElapsed = (joinedAt: number) => {
-  const clock = useClock();
-  const [elapsed, setElapsed] = useState(() => clock() - joinedAt);
+// Milliseconds since `joinedAt`, on `clock` (the tab's, unless another is given), read a few times
+// a second: React skips the render while the value stays the same second.
+export const useQueueElapsed = (joinedAt: number, clock?: Clock) => {
+  const tabClock = useClock();
+  const read = clock ?? tabClock;
+  const [elapsed, setElapsed] = useState(() => read() - joinedAt);
 
   useEffect(() => {
-    const read = () => setElapsed(Math.floor((clock() - joinedAt) / 1000) * 1000);
-    const timer = setInterval(read, 250);
+    const update = () => setElapsed(Math.floor((read() - joinedAt) / 1000) * 1000);
+    const timer = setInterval(update, 250);
 
-    read();
+    update();
 
     return () => clearInterval(timer);
-  }, [clock, joinedAt]);
+  }, [read, joinedAt]);
 
   return elapsed;
 };

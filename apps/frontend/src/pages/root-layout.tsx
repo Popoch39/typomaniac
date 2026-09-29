@@ -13,6 +13,7 @@ import { DesktopOnly } from "@/components/desktop-only";
 import { WaitingChallenges } from "@/components/challenge/waiting-challenges";
 import { LiveFriendLists } from "@/components/friends/live-friend-lists";
 import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
+import { QueueProposal } from "@/components/match-proposal/queue-proposal";
 import { DocumentLocale } from "@/components/locale/document-locale";
 import { RealtimeConnection } from "@/components/realtime-connection";
 import { DocumentTheme } from "@/components/theme/document-theme";
@@ -37,6 +38,7 @@ export const RootLayout = () => (
     <WaitingChallenges />
     <ChallengeNotices />
     <DuelPlace />
+    <QueueProposal />
     <DuelOnItsUrl />
     <SignInDialog />
     <HandleChoiceDialog />

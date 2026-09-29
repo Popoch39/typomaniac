@@ -356,18 +356,16 @@ export class DuelQueue implements ChallengeArena {
   // told is still their place: only a connection that resumes it is told the end. Still being
   // read, the Queue is no place yet: it becomes one with `queued`. A Match proposal is still the
   // Queue's, and so is the way back to it. Idle, with their Queue lock: a Dodge that imposes one
-  // changes the place.
+  // changes the place. In the Queue, with when they joined: every tab shows their wait.
   #placeOf(userId: string): ServerMessage {
     if (this.isInDuel(userId) || this.#missed.has(userId)) {
       return { type: "elsewhere", place: "duel" };
     }
 
-    if (
-      this.#queue.get(userId)?.user ||
-      this.#proposals.has(userId) ||
-      this.#returning.has(userId)
-    ) {
-      return { type: "elsewhere", place: "queue" };
+    const joinedAt = this.#joinedAtOf(userId);
+
+    if (joinedAt !== null) {
+      return { type: "elsewhere", place: "queue", joinedAt, serverTime: this.#clock.now() };
     }
 
     return {
@@ -375,6 +373,20 @@ export class DuelQueue implements ChallengeArena {
       queueLockedUntil: this.#queueLockedUntil(userId),
       serverTime: this.#clock.now(),
     };
+  }
+
+  // When the User joined the Queue, while it is their place: waiting in it once read, in its Match
+  // proposal, or on the way back to it. Null otherwise.
+  #joinedAtOf(userId: string) {
+    const entry = this.#queue.get(userId);
+
+    if (entry?.user) {
+      return entry.joinedAt;
+    }
+
+    const player = this.#proposals.get(userId)?.players.find(({ user }) => user.id === userId);
+
+    return player?.joinedAt ?? this.#returning.get(userId)?.joinedAt ?? null;
   }
 
   // The place changed: every connection of the User that does not play it is told. The one that

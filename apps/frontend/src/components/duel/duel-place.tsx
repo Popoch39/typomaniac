@@ -4,10 +4,11 @@ import { useDuelSeat } from "@/components/duel/use-duel-seat";
 import { useClock } from "@/components/run/clock-context";
 import { useDuelStore } from "@/stores/duel-store";
 
-// Takes the User's place while a screen of the Duel is shown, above the pages: going from the
-// Queue to the Duel's URL once it is found, and back to the Queue from its end, never lets it go.
-// Leaving them both takes the User out of the Queue, or forfeits the Duel in play. The connection
-// stays open (RealtimeConnection).
+// Takes the User's place while this tab holds a seat of the Duel, above the pages: the Queue from
+// Lancer la recherche to Annuler, whatever page they go to meanwhile, then the Duel's URL once it
+// is found, and back to the Queue from its end, never letting it go. Leaving them both takes the
+// User out of the Queue, or forfeits the Duel in play. The connection stays open
+// (RealtimeConnection).
 export const DuelPlace = () => {
   const clock = useClock();
   const seat = useDuelSeat();

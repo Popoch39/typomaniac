@@ -114,8 +114,9 @@ export type DuelState =
   // Waiting for the User's place, to join the Queue or resume their Duel here.
   | { phase: "connecting" }
   | { phase: "queued"; queue: QueueView | null }
-  // Paired by the Queue: the Duel waits for both to accept it. The Queue's place still.
-  | { phase: "proposed"; proposal: ProposalView }
+  // Paired by the Queue: the Duel waits for both to accept it. The Queue's place still, with the
+  // Queue as it stood (null when it was not told here).
+  | { phase: "proposed"; proposal: ProposalView; queue: QueueView | null }
   // Refused the Queue: the User has no Handle yet.
   | { phase: "handle-required" }
   // Refused the Queue: the User dodged too often, it is closed to them until `until`, on this
@@ -278,12 +279,14 @@ const withQueueStatus = (state: DuelState, status: QueueStatus): DuelState =>
       }
     : state;
 
-// The Match proposal, its end shifted onto this tab's clock as the Duel's start is.
-const proposedState = (message: MatchProposed): DuelState => {
+// The Match proposal, its end shifted onto this tab's clock as the Duel's start is. The Queue's
+// place still: it keeps the wait shown until then, the server's `joinedAt` kept through it.
+const proposedState = (state: DuelState, message: MatchProposed): DuelState => {
   proposalOffset = message.serverTime - clock();
 
   return {
     phase: "proposed",
+    queue: state.phase === "queued" ? state.queue : null,
     proposal: {
       stage: message.selfAccepted ? "accepted" : "pending",
       expiresAt: message.expiresAt - proposalOffset,
@@ -317,7 +320,7 @@ const updateProposal = (
   state: DuelState,
   update: (proposal: ProposalView) => ProposalView,
 ): DuelState =>
-  state.phase === "proposed" ? { phase: "proposed", proposal: update(state.proposal) } : state;
+  state.phase === "proposed" ? { ...state, proposal: update(state.proposal) } : state;
 
 // Each User's acceptance is kept as it was: the dialog still shows who was ready. The User's
 // Dodge says the Queue lock it imposed.
@@ -606,7 +609,8 @@ const stateAfter = (
     case "elsewhere":
       return elsewhere(state);
     case "queued":
-      return { phase: "queued", queue: state.phase === "queued" ? state.queue : null };
+      // Back from a Match proposal the opponent was at fault for: the same wait.
+      return { phase: "queued", queue: waitingQueueOf(state) };
     case "queue-status":
       return withQueueStatus(state, message);
     case "handle-required":
@@ -614,7 +618,7 @@ const stateAfter = (
     case "queue-locked":
       return { phase: "locked", until: message.until - message.serverTime + clock() };
     case "match-proposed":
-      return proposedState(message);
+      return proposedState(state, message);
     case "opponent-accepted":
       return updateProposal(state, (proposal) => ({ ...proposal, opponentAccepted: true }));
     case "proposal-ended":
@@ -720,6 +724,13 @@ const ticked = (state: DuelState, now: number): DuelState => {
 const isOutOfQueue = (state: DuelState) =>
   state.phase === "proposed" &&
   (state.proposal.stage === "declined" || state.proposal.stage === "missed");
+
+// The Queue as the User waits in it here, their Match proposal included; null outside it, or
+// until the server told it here.
+export const waitingQueueOf = (state: DuelState) =>
+  state.phase === "queued" || (state.phase === "proposed" && !isOutOfQueue(state))
+    ? state.queue
+    : null;
 
 // The Queue's place, or on the way to it: waiting in the Queue or its Match proposal.
 const inQueuePlace = (state: DuelState) =>

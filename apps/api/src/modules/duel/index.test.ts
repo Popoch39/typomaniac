@@ -197,6 +197,15 @@ const idle = (queueLockedUntil: number | null = null, at?: number) => ({
   serverTime: at ?? expect.any(Number),
 });
 
+// The User waits in the Queue on another connection, since `joinedAt` (any when left out), told on
+// the server's clock.
+const queueElsewhere = (joinedAt?: number, at?: number) => ({
+  type: "elsewhere" as const,
+  place: "queue" as const,
+  joinedAt: joinedAt ?? expect.any(Number),
+  serverTime: at ?? expect.any(Number),
+});
+
 // A Match proposal the User let run out, as they are told its end.
 const missed = (queueLockedUntil: number | null): ServerMessage => ({
   type: "proposal-ended",
@@ -475,7 +484,7 @@ describe("duel socket", () => {
     const firstTab = await queued(cookie);
     const secondTab = await connect(cookie);
 
-    expect(await secondTab.next()).toEqual({ type: "elsewhere", place: "queue" });
+    expect(await secondTab.next()).toEqual(queueElsewhere());
     await firstTab.settle();
 
     // Leaving from the tab that does not play: ignored, she is still in the Queue.
@@ -506,10 +515,10 @@ describe("duel socket", () => {
     const firstTab = await queued(cookie);
     const secondTab = await connect(cookie);
 
-    expect(await secondTab.next()).toEqual({ type: "elsewhere", place: "queue" });
+    expect(await secondTab.next()).toEqual(queueElsewhere());
     secondTab.send({ type: "join-queue" });
     expect(await secondTab.next()).toEqual({ type: "queued" });
-    expect(await firstTab.next()).toEqual({ type: "elsewhere", place: "queue" });
+    expect(await firstTab.next()).toEqual(queueElsewhere());
 
     // Never paired against herself.
     await secondTab.settle();
@@ -528,14 +537,14 @@ describe("duel socket", () => {
 
     const playing = await queued(cookie);
 
-    expect(await watching.next()).toEqual({ type: "elsewhere", place: "queue" });
+    expect(await watching.next()).toEqual(queueElsewhere());
 
     playing.send({ type: "leave-queue" });
     expect(await watching.next()).toEqual(idle());
 
     playing.send({ type: "join-queue" });
     expect(await playing.next()).toEqual({ type: "queued" });
-    expect(await watching.next()).toEqual({ type: "elsewhere", place: "queue" });
+    expect(await watching.next()).toEqual(queueElsewhere());
 
     const alan = await queued(await signedIn("Alan"));
 
@@ -549,9 +558,43 @@ describe("duel socket", () => {
     // Closing the tab that played while in the Queue: the others see her leave it.
     playing.send({ type: "join-queue" });
     expect(await playing.next()).toEqual({ type: "queued" });
-    expect(await watching.next()).toEqual({ type: "elsewhere", place: "queue" });
+    expect(await watching.next()).toEqual(queueElsewhere());
     playing.socket.close();
     expect(await watching.next()).toEqual(idle());
+  });
+
+  test("the other tabs are told since when the User waits, through a Match proposal too", async () => {
+    const cookie = await signedIn("Ada");
+    const watching = await connect(cookie);
+
+    expect(await watching.next()).toEqual(idle());
+
+    const playing = await queued(cookie);
+
+    expect(await watching.next()).toEqual(queueElsewhere(NOW, NOW));
+
+    setNow(NOW + 5000);
+
+    const opened = await connect(cookie);
+
+    expect(await opened.next()).toEqual(queueElsewhere(NOW, NOW + 5000));
+
+    // Paired: the Match proposal is still the Queue's, with the same wait.
+    const alan = await queued(await signedIn("Alan"));
+
+    await Promise.all([playing.next(), alan.next()]);
+
+    const duringProposal = await connect(cookie);
+
+    expect(await duringProposal.next()).toEqual(queueElsewhere(NOW, NOW + 5000));
+
+    // Declined by the opponent: on the way back to the Queue, the wait is still the one she had.
+    alan.send({ type: "decline-proposal" });
+    expect(await playing.next()).toEqual({ type: "proposal-ended", reason: "opponent-declined" });
+
+    const onTheWayBack = await connect(cookie);
+
+    expect(await onTheWayBack.next()).toEqual(queueElsewhere(NOW, NOW + 5000));
   });
 
   test("tells a User with no place that they are idle on connection", async () => {
@@ -1100,7 +1143,7 @@ describe("duel socket", () => {
 
     const later = await connect(cookie);
 
-    expect(await later.next()).toEqual({ type: "elsewhere", place: "queue" });
+    expect(await later.next()).toEqual(queueElsewhere());
   });
 
   test("a second disconnection gets its own 10 s", async () => {
@@ -1782,7 +1825,7 @@ describe("duel socket", () => {
       const watching = await connect(cookie);
 
       await Promise.all([ada.next(), alan.next()]);
-      expect(await watching.next()).toEqual({ type: "elsewhere", place: "queue" });
+      expect(await watching.next()).toEqual(queueElsewhere());
 
       setNow(NOW + 9999);
       await ada.settle();
@@ -1945,7 +1988,7 @@ describe("duel socket", () => {
 
       const back = await connect(cookie);
 
-      expect(await back.next()).toEqual({ type: "elsewhere", place: "queue" });
+      expect(await back.next()).toEqual(queueElsewhere());
       back.send({ type: "join-queue" });
       expect(await back.next()).toEqual({ type: "queued" });
       expect(await back.nextQueueStatus()).toMatchObject({ joinedAt: NOW });
@@ -2026,7 +2069,7 @@ describe("duel socket", () => {
 
       const back = await connect(cookie);
 
-      expect(await back.next()).toEqual({ type: "elsewhere", place: "queue" });
+      expect(await back.next()).toEqual(queueElsewhere());
       back.send({ type: "join-queue" });
       expect(await back.next()).toMatchObject({
         type: "match-proposed",
@@ -2058,7 +2101,7 @@ describe("duel socket", () => {
 
       const back = await connect(cookie);
 
-      expect(await back.next()).toEqual({ type: "elsewhere", place: "queue" });
+      expect(await back.next()).toEqual(queueElsewhere());
       back.send({ type: "resume-duel" });
       expect(await back.next()).toMatchObject({
         type: "match-proposed",
@@ -2103,7 +2146,7 @@ describe("duel socket", () => {
       // Reopened, it plays nothing until it takes the place back: too late.
       const back = await connect(cookie);
 
-      expect(await back.next()).toEqual({ type: "elsewhere", place: "queue" });
+      expect(await back.next()).toEqual(queueElsewhere());
       setNow(NOW + 10_000);
       await alan.next();
       expect(await back.next()).toEqual(idle());
@@ -2184,7 +2227,7 @@ describe("duel socket", () => {
       const other = await connect(cookie);
 
       await Promise.all([ada.next(), alan.next()]);
-      expect(await other.next()).toEqual({ type: "elsewhere", place: "queue" });
+      expect(await other.next()).toEqual(queueElsewhere());
 
       other.send({ type: "accept-proposal" });
       other.send({ type: "decline-proposal" });
@@ -2193,7 +2236,7 @@ describe("duel socket", () => {
       // A tab opened meanwhile is told the place only.
       const opened = await connect(cookie);
 
-      expect(await opened.next()).toEqual({ type: "elsewhere", place: "queue" });
+      expect(await opened.next()).toEqual(queueElsewhere());
       await opened.settle();
     });
   });
@@ -2232,11 +2275,11 @@ describe("duel socket", () => {
 
       const other = await connect(cookie);
 
-      expect(await other.next()).toEqual({ type: "elsewhere", place: "queue" });
+      expect(await other.next()).toEqual(queueElsewhere());
       setNow(NOW + 3000);
       other.send({ type: "resume-duel" });
       expect(await other.next()).toMatchObject({ type: "match-proposed", dodgeLock: 60_000 });
-      expect(await ada.next()).toEqual({ type: "elsewhere", place: "queue" });
+      expect(await ada.next()).toEqual(queueElsewhere());
 
       // Its connection lost, then back in time.
       other.socket.close();
@@ -2244,7 +2287,7 @@ describe("duel socket", () => {
 
       const back = await connect(cookie);
 
-      expect(await back.next()).toEqual({ type: "elsewhere", place: "queue" });
+      expect(await back.next()).toEqual(queueElsewhere());
       setNow(NOW + 6000);
       back.send({ type: "join-queue" });
       expect(await back.next()).toMatchObject({ type: "match-proposed", dodgeLock: 60_000 });
@@ -2254,17 +2297,17 @@ describe("duel socket", () => {
       const { ada, alan, cookie } = await proposedPair();
       const other = await connect(cookie);
 
-      expect(await other.next()).toEqual({ type: "elsewhere", place: "queue" });
+      expect(await other.next()).toEqual(queueElsewhere());
 
       // A free Dodge: idle, the Queue open.
       await adaDeclines(ada, alan, null);
       expect(await other.next()).toEqual(idle(null, NOW));
       await pairedAgain(ada, alan);
-      expect(await other.next()).toEqual({ type: "elsewhere", place: "queue" });
+      expect(await other.next()).toEqual(queueElsewhere());
       await adaDeclines(ada, alan, null);
       expect(await other.next()).toEqual(idle(null, NOW));
       await pairedAgain(ada, alan, 60_000);
-      expect(await other.next()).toEqual({ type: "elsewhere", place: "queue" });
+      expect(await other.next()).toEqual(queueElsewhere());
 
       setNow(NOW + 2000);
       await adaDeclines(ada, alan, NOW + 62_000);
@@ -2439,7 +2482,7 @@ describe("duel socket", () => {
       // Reopened, it plays nothing until it takes the place back: too late.
       const back = await connect(cookie);
 
-      expect(await back.next()).toEqual({ type: "elsewhere", place: "queue" });
+      expect(await back.next()).toEqual(queueElsewhere());
       setNow(NOW + 10_000);
       expect(await alan.next()).toEqual({ type: "proposal-ended", reason: "opponent-missed" });
       // Its other tabs are told the Queue lock at once.

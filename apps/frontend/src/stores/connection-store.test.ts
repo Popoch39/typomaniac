@@ -8,12 +8,13 @@ import {
   type LiveFriends,
   friendsAfter,
   onServerMessage,
+  type Place,
   placeAfter,
   reconnectDelay,
   sendToServer,
   useConnectionStore,
 } from "@/stores/connection-store";
-import { fakeServer, idle } from "@/test/fake-socket";
+import { fakeServer, idle, queueElsewhere } from "@/test/fake-socket";
 
 const duel = {
   id: "duel-1",
@@ -96,27 +97,34 @@ const duelEnded: ServerMessage = {
   opponent,
 };
 
+// The place after a message told at 0 on this tab's clock.
+const after = (place: Place | null, message: ServerMessage) => placeAfter(place, message, 0);
+
 describe("the User's place, from the server's messages", () => {
   test("is unknown until the server tells it", () => {
-    expect(placeAfter(null, { type: "invalid-message" })).toBeNull();
+    expect(after(null, { type: "invalid-message" })).toBeNull();
   });
 
   test("idle, or held by another connection", () => {
-    expect(placeAfter(null, idle())).toEqual({ at: "idle" });
-    expect(placeAfter(null, { type: "elsewhere", place: "queue" })).toEqual({
-      at: "queue",
-      here: false,
-    });
-    expect(placeAfter(null, { type: "elsewhere", place: "duel" })).toEqual({
+    expect(after(null, idle())).toEqual({ at: "idle" });
+    expect(after(null, { type: "elsewhere", place: "duel" })).toEqual({
       at: "duel",
       here: false,
     });
   });
 
+  test("the Queue held by another connection, since when the User waits on this tab's clock", () => {
+    expect(placeAfter(null, queueElsewhere(10_000, 17_000), 50_000)).toEqual({
+      at: "queue",
+      here: false,
+      joinedAt: 43_000,
+    });
+  });
+
   test("in the Queue or in a Duel played on this connection", () => {
-    expect(placeAfter({ at: "idle" }, { type: "queued" })).toEqual({ at: "queue", here: true });
-    expect(placeAfter({ at: "queue", here: true }, duelFound)).toEqual({ at: "duel", here: true });
-    expect(placeAfter({ at: "duel", here: false }, duelResumed)).toEqual({
+    expect(after({ at: "idle" }, { type: "queued" })).toEqual({ at: "queue", here: true });
+    expect(after({ at: "queue", here: true }, duelFound)).toEqual({ at: "duel", here: true });
+    expect(after({ at: "duel", here: false }, duelResumed)).toEqual({
       at: "duel",
       here: true,
     });
@@ -125,29 +133,29 @@ describe("the User's place, from the server's messages", () => {
   test("in the Queue through a Match proposal, until the Duel is found or its time runs out", () => {
     const queue = { at: "queue", here: true } as const;
 
-    expect(placeAfter(null, matchProposed)).toEqual(queue);
-    expect(placeAfter(queue, { type: "opponent-accepted" })).toEqual(queue);
-    expect(placeAfter(queue, { type: "proposal-ended", reason: "accepted" })).toEqual(queue);
-    expect(placeAfter(queue, duelFound)).toEqual({ at: "duel", here: true });
+    expect(after(null, matchProposed)).toEqual(queue);
+    expect(after(queue, { type: "opponent-accepted" })).toEqual(queue);
+    expect(after(queue, { type: "proposal-ended", reason: "accepted" })).toEqual(queue);
+    expect(after(queue, duelFound)).toEqual({ at: "duel", here: true });
     expect(
-      placeAfter(queue, { type: "proposal-ended", reason: "missed", queueLockedUntil: null }),
+      after(queue, { type: "proposal-ended", reason: "missed", queueLockedUntil: null }),
     ).toEqual({ at: "idle" });
     // Refused the Queue during a Queue lock: still idle.
     expect(
-      placeAfter({ at: "idle" }, { type: "queue-locked", until: 50_000, serverTime: 20_000 }),
+      after({ at: "idle" }, { type: "queue-locked", until: 50_000, serverTime: 20_000 }),
     ).toEqual({ at: "idle" });
   });
 
   test("idle again once the Duel is over", () => {
-    expect(placeAfter({ at: "duel", here: true }, duelEnded)).toEqual({ at: "idle" });
+    expect(after({ at: "duel", here: true }, duelEnded)).toEqual({ at: "idle" });
   });
 
   test("unchanged by the messages of a Duel in play or a refusal", () => {
     const place = { at: "duel", here: true } as const;
 
-    expect(placeAfter(place, { type: "opponent-disconnected" })).toBe(place);
-    expect(placeAfter(place, { type: "opponent-keystrokes", keystrokes: [] })).toBe(place);
-    expect(placeAfter({ at: "idle" }, { type: "handle-required" })).toEqual({ at: "idle" });
+    expect(after(place, { type: "opponent-disconnected" })).toBe(place);
+    expect(after(place, { type: "opponent-keystrokes", keystrokes: [] })).toBe(place);
+    expect(after({ at: "idle" }, { type: "handle-required" })).toEqual({ at: "idle" });
   });
 });
 
@@ -357,8 +365,13 @@ describe("the connection store", () => {
       place: { at: "idle" },
     });
 
-    fake.server().receive({ type: "elsewhere", place: "queue" });
-    expect(useConnectionStore.getState().place).toEqual({ at: "queue", here: false });
+    vi.setSystemTime(50_000);
+    fake.server().receive(queueElsewhere(10_000, 17_000));
+    expect(useConnectionStore.getState().place).toEqual({
+      at: "queue",
+      here: false,
+      joinedAt: 43_000,
+    });
   });
 
   test("hands every server message on and sends on the open socket", () => {

@@ -18,7 +18,7 @@ import { ClockContext } from "@/components/run/clock-context";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useLocaleStore } from "@/stores/locale-store";
 import { usePlayStore } from "@/stores/play-store";
-import { fakeServer, idle } from "@/test/fake-socket";
+import { fakeServer, idle, queueElsewhere } from "@/test/fake-socket";
 
 const me: Me = {
   id: "ada-id",
@@ -202,7 +202,7 @@ describe("the Queue screen in English", () => {
 
   test("another tab playing the place: said, with the way to play here", async () => {
     await renderDuel();
-    receive({ type: "elsewhere", place: "queue" });
+    receive(queueElsewhere());
 
     expect(await screen.findByText("This Duel is open in another tab.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Play here" })).toBeInTheDocument();
@@ -265,14 +265,14 @@ describe("the Queue screen during a Queue lock", () => {
 
   test("another tab shows the lock as soon as the Dodge played elsewhere imposes one", async () => {
     await renderDuel();
-    receive({ type: "elsewhere", place: "queue" });
+    receive(queueElsewhere());
     expect(await screen.findByText("Le Duel est ouvert dans un autre onglet.")).toBeInTheDocument();
 
     // A free Dodge there: nothing to show here.
     receive(idle());
     expect(screen.getByText("Le Duel est ouvert dans un autre onglet.")).toBeInTheDocument();
 
-    receive({ type: "elsewhere", place: "queue" });
+    receive(queueElsewhere());
     receive(idle(80_000, 20_000));
 
     const search = await screen.findByRole("button", { name: /Chercher un Duel/ });

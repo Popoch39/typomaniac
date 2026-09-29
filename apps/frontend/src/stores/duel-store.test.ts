@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
-import { fakeServer, idle } from "@/test/fake-socket";
+import { fakeServer, idle, queueElsewhere } from "@/test/fake-socket";
 
 const duel = {
   id: "duel-1",
@@ -129,7 +129,7 @@ describe("the Duel on the app's connection", () => {
     enter();
     expect(server().sent).toEqual([]);
 
-    server().receive({ type: "elsewhere", place: "queue" });
+    server().receive(queueElsewhere());
     expect(server().sent).toEqual([{ type: "join-queue" }]);
   });
 
@@ -144,7 +144,7 @@ describe("the Duel on the app's connection", () => {
     server().receive(idle());
     enter();
     server().receive({ type: "queued" });
-    server().receive({ type: "elsewhere", place: "queue" });
+    server().receive(queueElsewhere());
 
     expect(phase()).toBe("elsewhere");
     expect(server().sent).toEqual([{ type: "join-queue" }]);
@@ -158,7 +158,7 @@ describe("the Duel on the app's connection", () => {
   test("taken by another tab before this one was told it queued: not taken back", () => {
     server().receive(idle());
     enter();
-    server().receive({ type: "elsewhere", place: "queue" });
+    server().receive(queueElsewhere());
 
     expect(phase()).toBe("elsewhere");
     expect(server().sent).toEqual([{ type: "join-queue" }]);
@@ -286,7 +286,46 @@ describe("the Duel on the app's connection", () => {
           queueLock: null,
           dodgeLock: 60_000,
         },
+        queue: null,
       });
+    });
+
+    test("keeps the wait the Queue told, and so does the way back after the opponent's Dodge", () => {
+      inQueue();
+      server().receive({
+        type: "queue-status",
+        joinedAt: 10_000,
+        serverTime: 17_000,
+        size: 2,
+        estimatedWait: null,
+      });
+
+      const queue = { joinedAt: -7000, size: 2, estimatedWait: null };
+
+      server().receive(matchProposed);
+      expect(useDuelStore.getState().state).toMatchObject({ phase: "proposed", queue });
+
+      server().receive({ type: "proposal-ended", reason: "opponent-declined" });
+      server().receive({ type: "queued" });
+      expect(useDuelStore.getState().state).toEqual({ phase: "queued", queue });
+    });
+
+    test("forgets it once the User dodged: joining again is a new wait", () => {
+      inQueue();
+      server().receive({
+        type: "queue-status",
+        joinedAt: 10_000,
+        serverTime: 17_000,
+        size: 2,
+        estimatedWait: null,
+      });
+      server().receive(matchProposed);
+      useDuelStore.getState().declineProposal();
+      server().receive({ type: "proposal-ended", reason: "declined", queueLockedUntil: null });
+      useDuelStore.getState().joinQueue();
+      server().receive({ type: "queued" });
+
+      expect(useDuelStore.getState().state).toEqual({ phase: "queued", queue: null });
     });
 
     test("accepting tells the server once, then waits for the opponent", () => {
@@ -415,7 +454,7 @@ describe("the Duel on the app's connection", () => {
 
     test("comes back as it stood, joining the Queue again from another tab", () => {
       enter();
-      server().receive({ type: "elsewhere", place: "queue" });
+      server().receive(queueElsewhere());
       server().receive({ ...matchProposed, selfAccepted: true, opponentAccepted: true });
 
       expect(proposal()).toMatchObject({ stage: "accepted", opponentAccepted: true });
@@ -437,7 +476,7 @@ describe("the Duel on the app's connection", () => {
       expect(phase()).toBe("connecting");
 
       vi.advanceTimersByTime(1_000);
-      server().receive({ type: "elsewhere", place: "queue" });
+      server().receive(queueElsewhere());
 
       expect(server().sent).toEqual([{ type: "join-queue" }]);
     });
@@ -448,7 +487,7 @@ describe("the Duel on the app's connection", () => {
       useDuelStore.getState().acceptProposal();
       server().drop();
       vi.advanceTimersByTime(1_000);
-      server().receive({ type: "elsewhere", place: "queue" });
+      server().receive(queueElsewhere());
       server().receive({
         ...matchProposed,
         serverTime: 23_000,
@@ -510,7 +549,7 @@ describe("the Duel on the app's connection", () => {
       // Another tab took the place since this one asked for it.
       server().receive(idle());
       enter();
-      server().receive({ type: "elsewhere", place: "queue" });
+      server().receive(queueElsewhere());
       server().receive(idle());
 
       expect(phase()).toBe("elsewhere");
