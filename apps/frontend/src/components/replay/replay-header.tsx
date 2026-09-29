@@ -1,6 +1,6 @@
 import type { ReplayedDuel } from "@/api/duel-history";
-import { DuelOpponentLabel } from "@/components/duel-history/duel-opponent-label";
 import { FinishedDuelOutcome } from "@/components/duel-history/finished-duel-outcome";
+import { DuelOpponentLabel } from "@/components/replay/duel-opponent-label";
 
 // Atop the Replay: against whom, when, and how the Duel ended for the User.
 export const ReplayHeader = ({ duel }: { duel: ReplayedDuel }) => (

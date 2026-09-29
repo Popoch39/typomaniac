@@ -286,6 +286,7 @@ export const memoryDuelStore = () => {
               player: historyPlayer(player),
               opponent: opponent ? historyPlayer(opponent) : null,
               tp: player.rated?.tp ?? null,
+              ranked: record.players.every(({ rated }) => rated !== null),
             },
           ];
         })

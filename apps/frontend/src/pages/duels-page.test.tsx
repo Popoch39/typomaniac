@@ -2,12 +2,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
   createRootRoute,
+  createRoute,
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Suspense } from "react";
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import {
@@ -19,6 +19,7 @@ import {
 } from "@/api/duel-history";
 import { type Me, meQueryOptions } from "@/api/me";
 import { DuelsPage } from "@/pages/duels-page";
+import { Route as DuelsRoute } from "@/routes/duels";
 
 const me: Me = {
   id: "ada-id",
@@ -44,21 +45,25 @@ const entry = (overrides: Partial<Entry>): Entry => ({
   wpm: 90,
   opponentWpm: 70,
   tp: null,
+  ranked: false,
   ...overrides,
 });
 
-const player = (handle: string, score: number, pace: number | null): ReplayedPlayer => ({
+const player = (
+  handle: string,
+  { score, wpm, pace }: { score: number; wpm: number; pace: number | null },
+): ReplayedPlayer => ({
   handle,
   image: null,
   result: {
-    wpm: 42,
-    raw: 45,
-    accuracy: 96,
-    consistency: 80,
+    wpm,
+    raw: wpm + 3.4,
+    accuracy: 96.2,
+    consistency: 80.4,
     chars: { correct: 21, incorrect: 1, extra: 0, missed: 0 },
   },
   pace,
-  score: pace === null ? null : { score, bestCombo: 3, bursts: 0 },
+  score: pace === null ? null : { score, bestCombo: wpm / 2, bursts: wpm / 20 },
   // Seed 42 in English, version 1, starts with "small".
   keystrokes: [
     { kind: "char", char: "s", at: 100 },
@@ -77,8 +82,8 @@ const replayed = (overrides: Partial<ReplayedDuel>): ReplayedDuel => ({
   endedAt: Date.UTC(2026, 8, 20, 18, 30),
   outcome: "win",
   forfeit: false,
-  me: player("ada", 1234, 50),
-  opponent: player("alan", 567, 50),
+  me: player("ada", { score: 1234, wpm: 42, pace: 50 }),
+  opponent: player("alan", { score: 567, wpm: 60, pace: 50 }),
   ...overrides,
 });
 
@@ -101,10 +106,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// The page with its first page of Duels in the cache, the way the route's loader leaves it, on a
-// router of its own: its rows are links.
-const renderPage = async (first: DuelHistoryPage, details: ReplayedDuel[] = []) => {
-  const queryClient = new QueryClient();
+// The page with its first page of Duels in the cache, the way the route's loader leaves it, on
+// `/duels` of a router of its own, at `url`: its search says which Duel is chosen.
+const renderPage = async (first: DuelHistoryPage, details: ReplayedDuel[] = [], url = "/duels") => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
   queryClient.setQueryData(meQueryOptions.queryKey, me);
 
@@ -117,22 +122,32 @@ const renderPage = async (first: DuelHistoryPage, details: ReplayedDuel[] = []) 
     pageParams: [null],
   });
 
+  const rootRoute = createRootRoute();
+
+  const duelsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/duels",
+    // The route's own schema: the page reads the search the way `/duels` validates it.
+    validateSearch: DuelsRoute.options.validateSearch,
+    component: DuelsPage,
+  });
+
   const router = createRouter({
-    routeTree: createRootRoute({ component: DuelsPage }),
-    history: createMemoryHistory({ initialEntries: ["/duels"] }),
+    routeTree: rootRoute.addChildren([duelsRoute]),
+    history: createMemoryHistory({ initialEntries: [url] }),
   });
 
   await router.load();
 
   render(
     <QueryClientProvider client={queryClient}>
-      <Suspense>
-        <RouterProvider router={router} />
-      </Suspense>
+      <RouterProvider router={router} />
     </QueryClientProvider>,
   );
 
-  await screen.findByRole("heading", { name: "Duels" });
+  await screen.findByRole("heading", { name: "Duels", level: 1 });
+
+  return router;
 };
 
 const rows = () =>
@@ -148,62 +163,221 @@ const row = (index: number) => {
   return found;
 };
 
-// The row itself, which opens and closes the Duel's details.
-const toggle = (index: number) =>
+// The row's button, which chooses its Duel.
+const choice = (index: number) =>
   within(row(index)).getByRole("button", { name: /@|User supprimé/ });
 
-// « Revoir », in the details of an open Duel: a link styled as a button.
-const replayLink = (index: number) => within(row(index)).queryByRole("button", { name: "Revoir" });
+// The chosen Duel's details, beside the list, named by how it ended.
+const details = () => screen.getByRole("region", { name: /Victoire|Défaite|Draw/ });
+
+const table = () => within(details()).getByRole("table", { name: "Results du Duel" });
+
+// A line of the Results table: what it measures, then the User's value and the opponent's.
+const tableLine = (name: string) => {
+  const line = within(table()).getByRole("rowheader", { name }).closest("tr");
+
+  if (line === null) {
+    throw new Error(`No line ${name}`);
+  }
+
+  return within(line)
+    .getAllByRole("cell")
+    .map((cell) => cell.textContent);
+};
 
 describe("DuelsPage", () => {
-  test("lists each Duel from the User's side: opponent, outcome, Scores and wpm", async () => {
+  test("lists each Duel from the User's side, without wpm: opponent, date, Scores, outcome and TP", async () => {
     await renderPage({
       duels: [
-        entry({ id: "won" }),
+        entry({ id: "won", ranked: true, tp: 18 }),
         entry({
           id: "forfeited",
           outcome: "loss",
           forfeit: true,
+          ranked: true,
+          tp: -15,
+          score: 1284,
           opponent: { handle: "grace", image: null },
         }),
+        entry({ id: "challenge" }),
+        entry({ id: "placement", ranked: true }),
         entry({ id: "drawn", outcome: "draw", score: null, opponentScore: null }),
         entry({ id: "deleted", opponent: null, opponentScore: null, opponentWpm: null }),
       ],
       next: null,
     });
 
-    const [won, forfeited, drawn, deleted] = rows();
+    const [won, forfeited, challenge, placement, drawn, deleted] = rows();
 
     expect(won).toHaveTextContent("@alan");
-    expect(won).toHaveTextContent("Victoire");
-    expect(won).toHaveTextContent("1200 – 800");
-    expect(won).toHaveTextContent("90 – 70 wpm");
+    expect(won).toHaveTextContent("20 sept. 2026");
+    expect(won).toHaveTextContent("1 200800");
+    expect(won).toHaveTextContent("Victoire+18 TP");
+    expect(won).not.toHaveTextContent("wpm");
+    expect(won).not.toHaveTextContent("Forfeit");
 
     expect(forfeited).toHaveTextContent("@grace");
-    expect(forfeited).toHaveTextContent("Défaite par Forfeit");
+    expect(forfeited).toHaveTextContent("· Forfeit");
+    expect(forfeited).toHaveTextContent("1 284");
+    expect(forfeited).toHaveTextContent("Défaite−15 TP");
+
+    expect(challenge).toHaveTextContent("VictoireChallenge");
+
+    // Ranked, but in Placement: no TP moved, and not a Challenge.
+    expect(placement).not.toHaveTextContent("TP");
+    expect(placement).not.toHaveTextContent("Challenge");
 
     // Played before the Score.
+    expect(drawn).toHaveTextContent("——");
     expect(drawn).toHaveTextContent("Draw");
-    expect(drawn).toHaveTextContent("— – —");
 
     expect(deleted).toHaveTextContent("User supprimé");
-    expect(deleted).toHaveTextContent("1200 – —");
-    expect(deleted).toHaveTextContent("90 – — wpm");
+    expect(deleted).toHaveTextContent("1 200—");
   });
 
-  test("the opponent's Handle leads to their Profile without opening the Duel", async () => {
+  test("chooses the most recent Duel on arrival", async () => {
+    await renderPage(
+      { duels: [entry({ id: "won" }), entry({ id: "lost", outcome: "loss" })], next: null },
+      [replayed({ id: "won" })],
+    );
+
+    expect(choice(0)).toHaveAttribute("aria-pressed", "true");
+    expect(choice(1)).toHaveAttribute("aria-pressed", "false");
+    expect(within(details()).getByRole("heading", { level: 2 })).toHaveTextContent("Victoire");
+  });
+
+  test("the URL says which Duel is chosen", async () => {
+    await renderPage(
+      { duels: [entry({ id: "won" }), entry({ id: "lost", outcome: "loss" })], next: null },
+      [replayed({ id: "lost", outcome: "loss" })],
+      "/duels?duel=lost",
+    );
+
+    expect(choice(0)).toHaveAttribute("aria-pressed", "false");
+    expect(choice(1)).toHaveAttribute("aria-pressed", "true");
+    expect(within(details()).getByRole("heading", { level: 2 })).toHaveTextContent("Défaite");
+  });
+
+  test("a Duel of the URL that is not in the list falls back to the most recent", async () => {
+    await renderPage(
+      { duels: [entry({ id: "won" })], next: null },
+      [replayed({ id: "won" })],
+      "/duels?duel=gone",
+    );
+
+    expect(choice(0)).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("choosing another Duel shows it beside the list and puts it in the URL", async () => {
+    const router = await renderPage(
+      { duels: [entry({ id: "won" }), entry({ id: "lost", outcome: "loss" })], next: null },
+      [replayed({ id: "won" }), replayed({ id: "lost", outcome: "loss" })],
+    );
+
+    await userEvent.click(choice(1));
+
+    expect(choice(0)).toHaveAttribute("aria-pressed", "false");
+    expect(choice(1)).toHaveAttribute("aria-pressed", "true");
+    expect(router.state.location.search).toEqual({ duel: "lost" });
+    expect(within(details()).getByRole("heading", { level: 2 })).toHaveTextContent("Défaite");
+    // A link styled as a button.
+    expect(within(details()).getByRole("button", { name: "Revoir le Replay" })).toHaveAttribute(
+      "href",
+      "/duels/lost",
+    );
+  });
+
+  test("the opponent's Handle leads to their Profile, never from inside the row's button", async () => {
     await renderPage({ duels: [entry({ id: "won" })], next: null }, [replayed({ id: "won" })]);
 
     const link = within(row(0)).getByRole("link", { name: "@alan" });
 
     expect(link).toHaveAttribute("href", "/u/alan");
-
-    await userEvent.click(link);
-
-    expect(toggle(0)).toHaveAttribute("aria-expanded", "false");
+    expect(link.closest("button")).toBeNull();
   });
 
-  test("a deleted opponent stays « User supprimé », with no link", async () => {
+  test("the details say how the Duel ended, against whom, when, what kind of Duel and its TP", async () => {
+    await renderPage({ duels: [entry({ id: "won", ranked: true, tp: 18 })], next: null }, [
+      replayed({ id: "won" }),
+    ]);
+
+    expect(details()).toHaveTextContent("contre @alan · 20 sept. 2026");
+    expect(details()).toHaveTextContent("· Duel classé");
+    expect(details()).toHaveTextContent("+18 TP");
+    // In the header, then in the Duel chart's legend.
+    expect(
+      within(details())
+        .getAllByRole("link", { name: "@alan" })
+        .map((link) => link.getAttribute("href")),
+    ).toEqual(["/u/alan", "/u/alan"]);
+  });
+
+  test("a Challenge says so in its details, with no TP", async () => {
+    await renderPage(
+      { duels: [entry({ id: "won", outcome: "loss", forfeit: true })], next: null },
+      [replayed({ id: "won" })],
+    );
+
+    expect(within(details()).getByRole("heading", { level: 2 })).toHaveTextContent(
+      "Défaite par Forfeit",
+    );
+    expect(details()).toHaveTextContent("· Challenge");
+    expect(details()).not.toHaveTextContent("TP");
+  });
+
+  test("the details show the Duel chart with its legend, the opponent named by a link", async () => {
+    await renderPage({ duels: [entry({ id: "won" })], next: null }, [replayed({ id: "won" })]);
+
+    const chart = within(details()).getByRole("figure", { name: "Duel chart" });
+
+    expect(chart).toHaveTextContent("ton wpm");
+    expect(chart).toHaveTextContent("wpm de @alan");
+    expect(chart).toHaveTextContent("raw de chaque seconde");
+    expect(chart).toHaveTextContent("Misses");
+    expect(within(chart).getByRole("link", { name: "@alan" })).toHaveAttribute("href", "/u/alan");
+  });
+
+  test("the details compare both sides in a table of seven lines", async () => {
+    await renderPage({ duels: [entry({ id: "won" })], next: null }, [replayed({ id: "won" })]);
+
+    expect(
+      within(table())
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).toEqual(["Result", "Toi", "@alan"]);
+    expect(
+      within(table())
+        .getAllByRole("rowheader")
+        .map((header) => header.textContent),
+    ).toEqual(["Score", "wpm", "raw", "précision", "régularité", "meilleur Combo", "Bursts"]);
+    // Grouped by thousands with a narrow no-break space, the French way.
+    expect(tableLine("Score")).toEqual(["1 234", "567"]);
+    expect(tableLine("wpm")).toEqual(["42", "60"]);
+    expect(tableLine("raw")).toEqual(["45", "63"]);
+    expect(tableLine("précision")).toEqual(["96 %", "96 %"]);
+    expect(tableLine("régularité")).toEqual(["80 %", "80 %"]);
+    expect(tableLine("meilleur Combo")).toEqual(["21", "30"]);
+    expect(tableLine("Bursts")).toEqual(["2", "3"]);
+  });
+
+  test("a Duel before the Score shows dashes for what it did not count", async () => {
+    await renderPage(
+      { duels: [entry({ id: "old", score: null, opponentScore: null })], next: null },
+      [
+        replayed({
+          id: "old",
+          me: player("ada", { score: 0, wpm: 42, pace: null }),
+          opponent: player("alan", { score: 0, wpm: 60, pace: null }),
+        }),
+      ],
+    );
+
+    expect(tableLine("Score")).toEqual(["—", "—"]);
+    expect(tableLine("meilleur Combo")).toEqual(["—", "—"]);
+    expect(tableLine("wpm")).toEqual(["42", "60"]);
+  });
+
+  test("a deleted opponent: « User supprimé », no link, the User's column only", async () => {
     await renderPage(
       {
         duels: [entry({ id: "deleted", opponent: null, opponentScore: null, opponentWpm: null })],
@@ -212,37 +386,17 @@ describe("DuelsPage", () => {
       [replayed({ id: "deleted", opponent: null })],
     );
 
-    await userEvent.click(toggle(0));
-
     expect(row(0)).toHaveTextContent("User supprimé");
-    expect(within(row(0)).queryByRole("link", { name: /User supprimé/ })).not.toBeInTheDocument();
-    expect(within(row(0)).queryAllByRole("link", { name: /^@/ })).toHaveLength(0);
+    expect(details()).toHaveTextContent("contre User supprimé");
+    expect(screen.queryAllByRole("link", { name: /^@/ })).toHaveLength(0);
+    expect(
+      within(table())
+        .getAllByRole("columnheader")
+        .map((header) => header.textContent),
+    ).toEqual(["Result", "Toi"]);
   });
 
-  test("the Duel chart names the opponent by a link to their Profile", async () => {
-    await renderPage({ duels: [entry({ id: "won" })], next: null }, [replayed({ id: "won" })]);
-
-    await userEvent.click(toggle(0));
-
-    const chart = within(row(0)).getByRole("figure", { name: "Duel chart" });
-
-    expect(within(chart).getByRole("link", { name: "@alan" })).toHaveAttribute("href", "/u/alan");
-  });
-
-  test("a click opens the Duel in place: its detailed Results and the way to its Replay", async () => {
-    await renderPage({ duels: [entry({ id: "won" })], next: null }, [replayed({ id: "won" })]);
-
-    expect(replayLink(0)).not.toBeInTheDocument();
-
-    await userEvent.click(toggle(0));
-
-    expect(toggle(0)).toHaveAttribute("aria-expanded", "true");
-    expect(within(row(0)).getByRole("region", { name: "Toi" })).toHaveTextContent("1234");
-    expect(within(row(0)).getByRole("region", { name: "@alan" })).toHaveTextContent("567");
-    expect(replayLink(0)).toHaveAttribute("href", "/duels/won");
-  });
-
-  test("shows a loading state while the Duel loads", async () => {
+  test("the details load with a skeleton, the list already there", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => new Promise<Response>(() => {})),
@@ -250,78 +404,34 @@ describe("DuelsPage", () => {
 
     await renderPage({ duels: [entry({ id: "won" })], next: null });
 
-    await userEvent.click(toggle(0));
-
-    expect(within(row(0)).getByRole("status", { name: "Chargement du Duel" })).toBeInTheDocument();
-  });
-
-  test("one Duel open at a time, a second click closes it", async () => {
-    await renderPage({ duels: [entry({ id: "won" }), entry({ id: "lost" })], next: null }, [
-      replayed({ id: "won" }),
-      replayed({ id: "lost" }),
-    ]);
-
-    await userEvent.click(toggle(0));
-    await userEvent.click(toggle(1));
-
-    expect(toggle(0)).toHaveAttribute("aria-expanded", "false");
-    expect(replayLink(0)).not.toBeInTheDocument();
-    expect(replayLink(1)).toHaveAttribute("href", "/duels/lost");
-
-    await userEvent.click(toggle(1));
-
-    expect(replayLink(1)).not.toBeInTheDocument();
-  });
-
-  test("a deleted opponent: the User's Results only, still marked deleted", async () => {
-    await renderPage(
-      {
-        duels: [entry({ id: "deleted", opponent: null, opponentScore: null, opponentWpm: null })],
-        next: null,
-      },
-      [replayed({ id: "deleted", opponent: null })],
-    );
-
-    await userEvent.click(toggle(0));
-
-    expect(row(0)).toHaveTextContent("User supprimé");
+    expect(rows()).toHaveLength(1);
+    expect(within(details()).getByRole("heading", { level: 2 })).toHaveTextContent("Victoire");
     expect(
-      within(row(0))
-        .getAllByRole("region")
-        .map((region) => region.getAttribute("aria-label")),
-    ).toEqual(["Toi"]);
+      within(details()).getByRole("status", { name: "Chargement du Duel" }),
+    ).toBeInTheDocument();
   });
 
-  test("a Duel before the Score shows its Scores as dashes", async () => {
-    await renderPage(
-      { duels: [entry({ id: "old", score: null, opponentScore: null })], next: null },
-      [
-        replayed({
-          id: "old",
-          me: player("ada", 1234, null),
-          opponent: player("alan", 567, null),
-        }),
-      ],
+  test("details that cannot be read say so, the list still there", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              error: { code: "INTERNAL_SERVER_ERROR", message: "boom", requestId: "r" },
+            }),
+            { status: 500, headers: { "content-type": "application/json" } },
+          ),
+      ),
     );
 
-    await userEvent.click(toggle(0));
+    await renderPage({ duels: [entry({ id: "won" })], next: null });
 
-    expect(within(row(0)).getByRole("region", { name: "Toi" })).toHaveTextContent("score—");
-  });
-
-  test("a ranked Duel shows the TP it moved, a Challenge or an older Duel none", async () => {
-    await renderPage({
-      duels: [
-        entry({ id: "won", tp: 18 }),
-        entry({ id: "lost", outcome: "loss", tp: -15 }),
-        entry({ id: "challenge" }),
-      ],
-      next: null,
-    });
-
-    expect(row(0)).toHaveTextContent("+18 TP");
-    expect(row(1)).toHaveTextContent("−15 TP");
-    expect(row(2)).not.toHaveTextContent("TP");
+    expect(
+      await within(details()).findByRole("heading", { name: "Duel illisible" }),
+    ).toBeInTheDocument();
+    expect(within(details()).getByRole("button", { name: "Réessayer" })).toBeInTheDocument();
+    expect(rows()).toHaveLength(1);
   });
 
   test("says the Duel history fills up by playing when there is none yet", async () => {
@@ -347,9 +457,13 @@ describe("DuelsPage", () => {
     vi.stubGlobal("fetch", fetch);
     vi.stubGlobal("IntersectionObserver", VisibleAtOnce);
 
-    await renderPage({ duels: [entry({ id: "recent" })], next: "1000:recent" });
+    await renderPage({ duels: [entry({ id: "recent" })], next: "1000:recent" }, [
+      replayed({ id: "recent" }),
+    ]);
 
-    expect(await screen.findByText("@linus")).toBeInTheDocument();
+    expect(
+      await within(screen.getByRole("list", { name: "Duel history" })).findByText("@linus"),
+    ).toBeInTheDocument();
     expect(rows()).toHaveLength(2);
     expect(String(fetch.mock.calls[0]?.[0])).toContain("before=1000%3Arecent");
   });

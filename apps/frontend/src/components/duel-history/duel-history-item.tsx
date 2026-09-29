@@ -1,50 +1,43 @@
-import { Suspense } from "react";
+import { cn } from "cn";
 
 import type { DuelHistoryEntry } from "@/api/duel-history";
-import { DuelDetails } from "@/components/duel-chart/duel-details";
-import { DuelDetailsSkeleton } from "@/components/duel-chart/duel-details-skeleton";
+import { duelNumber } from "@/components/duel-history/duel-number";
+import { DuelHistoryOpponent } from "@/components/duel-history/duel-history-opponent";
 import { DuelHistoryTp } from "@/components/duel-history/duel-history-tp";
-import { DuelOpponentLabel } from "@/components/duel-history/duel-opponent-label";
 import { FinishedDuelOutcome } from "@/components/duel-history/finished-duel-outcome";
 import { opponentName } from "@/lib/opponent-name";
 
-// A Score or a wpm that is not there: a Duel before the Score, a deleted opponent.
-const orDash = (value: number | null) => (value === null ? "—" : String(Math.round(value)));
+type DuelHistoryItemProps = { duel: DuelHistoryEntry; chosen: boolean; onChoose: () => void };
 
-type DuelHistoryItemProps = { duel: DuelHistoryEntry; open: boolean; onToggle: () => void };
-
-// One Duel of the Duel history, from the User's side: when, against whom, how it ended, both Scores
-// and both wpm (theirs first). A click opens its details under it, another closes them.
-export const DuelHistoryItem = ({ duel, open, onToggle }: DuelHistoryItemProps) => (
-  <li>
-    <div className="relative flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 has-[button:hover]:bg-muted has-[button:focus-visible]:bg-muted">
-      <DuelOpponentLabel opponent={duel.opponent} endedAt={duel.endedAt} />
-      {/* The toggle stretches over the whole row; the opponent's Handle stays above it. */}
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={onToggle}
-        className="flex flex-wrap items-center gap-x-4 gap-y-1 text-left outline-none after:absolute after:inset-0"
-      >
-        <span className="sr-only">Duel contre {opponentName(duel.opponent)}</span>
-        <FinishedDuelOutcome outcome={duel.outcome} forfeit={duel.forfeit} />
-        {/* Each User keeps their colour: the accent for the User, opponent for the other. */}
-        <span className="font-mono tabular-nums">
-          <span className="text-[0.7rem] text-muted-foreground">Score </span>
-          <span className="text-caret">{orDash(duel.score)}</span> –{" "}
-          <span className="text-opponent-caret">{orDash(duel.opponentScore)}</span>
-        </span>
-        <span className="text-muted-foreground font-mono tabular-nums">
-          <span className="text-caret">{orDash(duel.wpm)}</span> –{" "}
-          <span className="text-opponent-caret">{orDash(duel.opponentWpm)}</span> wpm
-        </span>
-        <DuelHistoryTp tp={duel.tp} />
-      </button>
-    </div>
-    {open ? (
-      <Suspense fallback={<DuelDetailsSkeleton />}>
-        <DuelDetails duelId={duel.id} />
-      </Suspense>
-    ) : null}
+// One Duel of the Duel history, from the User's side: against whom and when, both Scores (theirs
+// first), how it ended and its TP. A click chooses it: its details show beside the list.
+export const DuelHistoryItem = ({ duel, chosen, onChoose }: DuelHistoryItemProps) => (
+  <li
+    className={cn(
+      "relative flex h-16.5 items-center gap-3.5 rounded-[20px] px-4",
+      chosen ? "bg-primary/16" : "has-[button:hover]:bg-muted",
+      "has-[button:focus-visible]:ring-2 has-[button:focus-visible]:ring-ring",
+    )}
+  >
+    <DuelHistoryOpponent opponent={duel.opponent} endedAt={duel.endedAt} forfeit={duel.forfeit} />
+    {/* The button stretches over the whole row; the opponent's Handle stays above it. */}
+    <button
+      type="button"
+      aria-pressed={chosen}
+      onClick={onChoose}
+      className="flex items-center gap-3.5 text-left outline-none after:absolute after:inset-0 after:rounded-[20px]"
+    >
+      <span className="sr-only">Duel contre {opponentName(duel.opponent)}</span>
+      {/* Each User keeps their colour: the accent for the User, opponent for the other. */}
+      <span className="flex flex-col items-end gap-0.75 font-mono font-semibold tabular-nums">
+        <span className="text-sm text-caret">{duelNumber(duel.score)}</span>
+        <span className="text-xs text-opponent-caret">{duelNumber(duel.opponentScore)}</span>
+      </span>
+      <span className="flex w-21 flex-col items-end gap-0.75">
+        {/* The Forfeit is said under the Handle, beside the date. */}
+        <FinishedDuelOutcome outcome={duel.outcome} forfeit={false} className="text-sm" />
+        <DuelHistoryTp tp={duel.tp} ranked={duel.ranked} />
+      </span>
+    </button>
   </li>
 );

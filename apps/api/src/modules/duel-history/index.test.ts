@@ -170,6 +170,7 @@ describe("GET /api/duels", () => {
           wpm: 90,
           opponentWpm: 70,
           tp: null,
+          ranked: false,
         },
       ],
       next: null,
@@ -224,6 +225,54 @@ describe("GET /api/duels", () => {
       { id: "placement", tp: -12 },
       { id: "challenge", tp: null },
     ]);
+  });
+
+  test("a Duel says whether it was Ranked, Placement included, and a Challenge is not", async () => {
+    const { duels, newUser } = setup();
+    const ada = await newUser("ada");
+    const alan = await newUser("alan");
+
+    duels.saved.push(
+      finishedDuel({
+        id: "ranked",
+        endedAt: 3000,
+        winnerId: ada.id,
+        players: [
+          { userId: ada.id, wpm: 90, score: 1200, rated: { tp: 18 } },
+          { userId: alan.id, wpm: 70, score: 800, rated: { tp: -15 } },
+        ],
+      }),
+      finishedDuel({
+        id: "placement",
+        endedAt: 2000,
+        winnerId: ada.id,
+        players: [
+          { userId: ada.id, wpm: 90, score: 1200, rated: { tp: null } },
+          { userId: alan.id, wpm: 70, score: 800, rated: { tp: null } },
+        ],
+      }),
+      finishedDuel({
+        id: "challenge",
+        endedAt: 1000,
+        winnerId: ada.id,
+        players: [
+          { userId: ada.id, wpm: 90, score: 1200 },
+          { userId: alan.id, wpm: 70, score: 800 },
+        ],
+      }),
+    );
+
+    const kinds = async (user: typeof ada) =>
+      (await user.page()).duels.map(({ id, ranked }) => ({ id, ranked }));
+
+    const expected = [
+      { id: "ranked", ranked: true },
+      { id: "placement", ranked: true },
+      { id: "challenge", ranked: false },
+    ];
+
+    expect(await kinds(ada)).toEqual(expected);
+    expect(await kinds(alan)).toEqual(expected);
   });
 
   test("a Visitor gets 401", async () => {
@@ -428,6 +477,7 @@ describe("GET /api/duels", () => {
           forfeit: false,
           score: 500,
           tp: null,
+          ranked: false,
           opponentScore: null,
           wpm: 60,
           opponentWpm: null,

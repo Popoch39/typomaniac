@@ -43,6 +43,7 @@ const entryOf = (
   wpm: row.player.wpm,
   opponentWpm: row.opponent?.wpm ?? null,
   tp: row.tp,
+  ranked: row.ranked,
 });
 
 // A page of the User's Duel history, the most recent first, from `before` when given. The

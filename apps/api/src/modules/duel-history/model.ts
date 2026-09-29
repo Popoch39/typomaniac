@@ -24,6 +24,8 @@ const duelHistoryEntry = t.Object({
   // The TP the Duel moved for the reader, never the MMR: null for a Challenge, a Duel in Placement
   // or one played before the ranked.
   tp: t.Nullable(t.Integer()),
+  // A Ranked Duel, Placement included: false for a Challenge and for a Duel played before the ranked.
+  ranked: t.Boolean(),
 });
 
 export type DuelHistoryEntry = typeof duelHistoryEntry.static;

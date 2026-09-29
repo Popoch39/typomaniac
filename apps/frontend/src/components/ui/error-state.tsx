@@ -5,8 +5,9 @@ type ErrorStateProps = {
   happened: ReactNode;
   cost: ReactNode;
   action?: ReactNode;
-  // A whole page's error titles the page (h1); one inside a page sits under its title (h2).
-  heading?: "h1" | "h2";
+  // A whole page's error titles the page (h1); one inside a page sits under its title (h2), one
+  // inside a titled part of a page under that part's title (h3).
+  heading?: "h1" | "h2" | "h3";
 };
 
 // Something went wrong: what happens, what it costs the User, and a way out.

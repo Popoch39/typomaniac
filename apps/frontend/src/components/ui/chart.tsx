@@ -91,25 +91,4 @@ function ChartTooltipContent({ active, payload, label, labelFormatter }: ChartTo
   );
 }
 
-const ChartLegend = RechartsPrimitive.Legend;
-
-// Every series of the chart, by its color and label, from the config.
-function ChartLegendContent() {
-  const config = useChart();
-
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-4 pt-3">
-      {Object.entries(config).map(([key, series]) => (
-        <div key={key} className="flex items-center gap-1.5">
-          <div
-            className="size-2 shrink-0 rounded-[2px]"
-            style={{ backgroundColor: series.color }}
-          />
-          {series.label}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-export { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent };
+export { ChartContainer, ChartTooltip, ChartTooltipContent };
