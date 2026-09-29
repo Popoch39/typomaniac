@@ -1,0 +1,37 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "sidebar_label": "Barre latérale",
+  "sidebar_nav_label": "Navigation principale",
+  "sidebar_nav_play": "Jouer",
+  "sidebar_nav_ranked": "Ranked",
+  "sidebar_nav_leaderboard": "Classement",
+  "sidebar_nav_duels": "Duels",
+  "sidebar_nav_friends": "Friends",
+  "sidebar_friend_requests": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{shown} Friend request",
+        "countPlural=*": "{shown} Friend requests"
+      }
+    }
+  ],
+  "sidebar_nav_profile": "Profil",
+  "sidebar_online_title": "En ligne · {count}",
+  "sidebar_online_queued": "Défie-les sans quitter la Queue.",
+  "sidebar_online_none": "Aucun Friend en ligne",
+  "sidebar_online_all": "Tous tes Friends · {count}",
+  "sidebar_online_loading": "Chargement des Friends en ligne",
+  "sidebar_theme": "Thème",
+  "sidebar_locale_label": "Langue : {current}. Passer en {next}",
+  "sidebar_menu_label": "Menu de {name}",
+  "sidebar_menu_profile": "Mon Profile",
+  "sidebar_menu_handle": "Réglages du Handle",
+  "sidebar_menu_sign_out": "Se déconnecter",
+  "sidebar_visitor_pitch": "Connecte-toi pour jouer en Duel, entrer au Classement et défier tes Friends.",
+  "sidebar_visitor_sign_in": "Se connecter",
+  "friends_presence_online": "en ligne",
+  "friends_presence_in_duel": "en Duel",
+  "friends_presence_offline": "hors ligne"
+}

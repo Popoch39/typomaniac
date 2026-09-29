@@ -1,0 +1,37 @@
+{
+  "$schema": "https://inlang.com/schema/inlang-message-format",
+  "sidebar_label": "Sidebar",
+  "sidebar_nav_label": "Main navigation",
+  "sidebar_nav_play": "Play",
+  "sidebar_nav_ranked": "Ranked",
+  "sidebar_nav_leaderboard": "Leaderboard",
+  "sidebar_nav_duels": "Duels",
+  "sidebar_nav_friends": "Friends",
+  "sidebar_friend_requests": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{shown} Friend request",
+        "countPlural=*": "{shown} Friend requests"
+      }
+    }
+  ],
+  "sidebar_nav_profile": "Profile",
+  "sidebar_online_title": "Online · {count}",
+  "sidebar_online_queued": "Challenge them without leaving the Queue.",
+  "sidebar_online_none": "No Friends online",
+  "sidebar_online_all": "All your Friends · {count}",
+  "sidebar_online_loading": "Loading Friends online",
+  "sidebar_theme": "Theme",
+  "sidebar_locale_label": "Language: {current}. Switch to {next}",
+  "sidebar_menu_label": "Menu for {name}",
+  "sidebar_menu_profile": "My Profile",
+  "sidebar_menu_handle": "Handle settings",
+  "sidebar_menu_sign_out": "Sign out",
+  "sidebar_visitor_pitch": "Sign in to play Duels, join the Leaderboard and challenge your Friends.",
+  "sidebar_visitor_sign_in": "Sign in",
+  "friends_presence_online": "online",
+  "friends_presence_in_duel": "in a Duel",
+  "friends_presence_offline": "offline"
+}

@@ -25,7 +25,8 @@ export const useAuthStore = create<AuthState>()((set) => ({
   startSignIn: async (provider) => {
     set({ pendingProvider: provider });
 
-    // The provider sends the User back to this very page, with `?error=` on failure.
+    // The provider sends the User back to this very page, with `?error=` on failure, and in the
+    // current Locale: the URL carries it ("/en/…"), as the router writes every URL.
     const { error } = await authClient.signIn.social({
       provider,
       callbackURL: window.location.href,

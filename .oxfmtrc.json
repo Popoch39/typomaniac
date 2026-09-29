@@ -9,6 +9,8 @@
     ".cursor/**",
     "tools/oxlint/anti-slop/**",
     "bun.lock",
-    "**/routeTree.gen.ts"
+    "**/routeTree.gen.ts",
+    "apps/frontend/src/paraglide/**",
+    "apps/frontend/project.inlang/**"
   ]
 }

@@ -1,15 +1,13 @@
-import { createRouter } from "@tanstack/react-router";
+import { createBrowserHistory } from "@tanstack/react-router";
 
-import { withDevRoutes } from "@/dev-routes";
+import { createAppRouter } from "@/app-router";
 import { queryClient } from "@/query-client";
-import { routeTree } from "@/routeTree.gen";
 
-export const router = createRouter({
-  routeTree: import.meta.env.DEV ? withDevRoutes(routeTree) : routeTree,
-  context: { queryClient },
-  defaultPreload: "intent",
-  // React Query owns caching: always let loaders call ensureQueryData on preload.
-  defaultPreloadStaleTime: 0,
+export const router = createAppRouter({
+  history: createBrowserHistory(),
+  storage: () => window.localStorage,
+  languages: navigator.languages,
+  queryClient,
 });
 
 declare module "@tanstack/react-router" {

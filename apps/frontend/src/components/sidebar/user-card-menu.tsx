@@ -14,11 +14,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { atHandle } from "@/lib/at-handle";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 // The ⋯ of the User's card: their public Profile (once they have a Handle), the Handle's
 // settings, and signing out.
 export const UserCardMenu = ({ me }: { me: Me }) => {
   const signOut = useSignOut();
+  const locale = useLocale();
 
   return (
     <DropdownMenu>
@@ -27,7 +30,7 @@ export const UserCardMenu = ({ me }: { me: Me }) => {
           <Button
             variant="ghost"
             size="icon"
-            aria-label={`Menu de ${me.name}`}
+            aria-label={m.sidebar_menu_label({ name: me.name }, { locale })}
             className="rounded-[14px] text-muted-foreground"
           />
         }
@@ -45,16 +48,16 @@ export const UserCardMenu = ({ me }: { me: Me }) => {
         {me.handle === null ? null : (
           <DropdownMenuItem render={<Link to="/u/$handle" params={{ handle: me.handle }} />}>
             <UserRoundIcon />
-            Mon Profile
+            {m.sidebar_menu_profile({}, { locale })}
           </DropdownMenuItem>
         )}
         <DropdownMenuItem render={<Link to="/profile" />}>
           <AtSignIcon />
-          Réglages du Handle
+          {m.sidebar_menu_handle({}, { locale })}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={signOut}>
           <LogOutIcon />
-          Se déconnecter
+          {m.sidebar_menu_sign_out({}, { locale })}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { act, render, screen, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import type { Presence } from "api";
+import type { Presence, ServerMessage } from "api";
 import type { Rank } from "ranked";
 import { defaultPace, type RunConfig } from "typing-engine";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -23,6 +23,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { HomePage } from "@/pages/home-page";
 import { useAuthStore } from "@/stores/auth-store";
 import { useConnectionStore } from "@/stores/connection-store";
+import { useDuelStore } from "@/stores/duel-store";
+import { useLocaleStore } from "@/stores/locale-store";
 import { usePlayStore } from "@/stores/play-store";
 import { useRunStore } from "@/stores/run-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -127,7 +129,8 @@ const renderApp = async (me: Me | null, path = "/leaderboard", friends: Friend[]
       </ClockContext>
     </QueryClientProvider>,
   );
-  await screen.findByRole("complementary", { name: "Barre latérale" });
+  // Unnamed: the sidebar is named in the Locale of the test.
+  await screen.findByRole("complementary");
 
   return { queryClient, user: userEvent.setup() };
 };
@@ -543,6 +546,196 @@ describe("the Visitor's card", () => {
     await user.click(within(sidebar()).getByRole("button", { name: "Se connecter" }));
 
     expect(useAuthStore.getState().signInOpen).toBe(true);
+  });
+});
+
+describe("the sidebar in English", () => {
+  beforeEach(() => {
+    useLocaleStore.setState({ locale: "en" });
+  });
+
+  test("names the sidebar and its nav, and a Visitor's pages", async () => {
+    await renderApp(null);
+
+    expect(screen.getByRole("complementary", { name: "Sidebar" })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("navigation", { name: "Main navigation" }))
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual(["Play", "Ranked", "Leaderboard"]);
+  });
+
+  test("invites a Visitor to sign in", async () => {
+    await renderApp(null);
+
+    const englishSidebar = screen.getByRole("complementary", { name: "Sidebar" });
+
+    expect(
+      within(englishSidebar).getByText(
+        "Sign in to play Duels, join the Leaderboard and challenge your Friends.",
+      ),
+    ).toBeInTheDocument();
+    expect(within(englishSidebar).getByRole("button", { name: "Sign in" })).toBeInTheDocument();
+    expect(within(englishSidebar).getByRole("link", { name: /^Theme / })).toBeInTheDocument();
+  });
+
+  test("a User's pages, their Friend requests counted in the singular and the plural", async () => {
+    await renderApp(ada);
+
+    const englishNav = screen.getByRole("navigation", { name: "Main navigation" });
+
+    expect(
+      within(englishNav)
+        .getAllByRole("link")
+        .map((link) => link.textContent),
+    ).toEqual(["Play", "Ranked", "Leaderboard", "Duels", "Friends", "Profile"]);
+
+    act(() =>
+      sockets.server().receive({ type: "friends-snapshot", presences: [], requestsReceived: 1 }),
+    );
+    expect(within(englishNav).getByLabelText("1 Friend request")).toHaveTextContent("1");
+
+    act(() =>
+      sockets.server().receive({ type: "friends-snapshot", presences: [], requestsReceived: 2 }),
+    );
+    expect(within(englishNav).getByLabelText("2 Friend requests")).toHaveTextContent("2");
+  });
+
+  test("the User's menu", async () => {
+    const { user } = await renderApp(ada);
+
+    await user.click(screen.getByRole("button", { name: "Menu for Ada Lovelace" }));
+
+    expect(await screen.findByRole("menuitem", { name: "My Profile" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Handle settings" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Sign out" })).toBeInTheDocument();
+  });
+
+  test("the Friends online, the Queue's hint, and the way to all of them", async () => {
+    usePlayStore.setState({ play: "duel" });
+    await renderApp(ada, "/", [friend("grace"), friend("mary"), friend("alan")]);
+
+    expect(screen.getByRole("status", { name: "Loading Friends online" })).toBeInTheDocument();
+
+    tellPresences([
+      ["grace", "online"],
+      ["alan", "in-duel"],
+    ]);
+    act(() => sockets.server().receive({ type: "queued" }));
+
+    const online = screen.getByRole("region", { name: "Online · 2" });
+
+    expect(
+      within(online)
+        .getAllByRole("listitem")
+        .map((row) => within(row).getByText(/^(online|in a Duel)$/).textContent),
+    ).toEqual(["online", "in a Duel"]);
+
+    expect(
+      within(online).getByText("Challenge them without leaving the Queue."),
+    ).toBeInTheDocument();
+    expect(within(online).getByRole("link", { name: "All your Friends · 3" })).toBeInTheDocument();
+
+    act(() => {
+      sockets.server().receive({ type: "presence", userId: "grace-id", presence: "offline" });
+      sockets.server().receive({ type: "presence", userId: "alan-id", presence: "offline" });
+    });
+
+    expect(within(online).getByText("No Friends online")).toBeInTheDocument();
+  });
+});
+
+const duelFound: ServerMessage = {
+  type: "duel-found",
+  duel: {
+    id: "duel-1",
+    seed: 42,
+    language: "en",
+    wordListVersion: 1,
+    seconds: 30,
+    startsAt: 3_000,
+  },
+  opponent: { handle: "grace", image: null, ornament: null },
+  selfOrnament: null,
+  serverTime: 0,
+  pace: 40,
+  opponentPace: 40,
+  selfRank: null,
+  opponentRank: null,
+  selfForm: null,
+  opponentForm: null,
+  selfStake: null,
+};
+
+const localeSwitch = () => screen.getByRole("button", { name: /^(Langue|Language)/, hidden: true });
+
+// Presses Tab until `target` has the focus, `presses` times at most.
+const tabTo = async (
+  user: ReturnType<typeof userEvent.setup>,
+  target: () => HTMLElement,
+  presses = 30,
+): Promise<void> => {
+  if (presses === 0 || document.activeElement === target()) {
+    return;
+  }
+
+  await user.tab();
+
+  return tabTo(user, target, presses - 1);
+};
+
+describe("the Locale switch", () => {
+  afterEach(() => {
+    useDuelStore.setState(useDuelStore.getInitialState());
+    vi.unstubAllEnvs();
+  });
+
+  test("says the Locale shown and the one it proposes, each in its own language", async () => {
+    await renderApp(null);
+
+    expect(localeSwitch()).toHaveAccessibleName("Langue : Français. Passer en English");
+    expect(within(localeSwitch()).getByText("Français")).toHaveAttribute("lang", "fr");
+    expect(within(localeSwitch()).getByText("English")).toHaveAttribute("lang", "en");
+  });
+
+  test("in English, proposes Français", async () => {
+    useLocaleStore.setState({ locale: "en" });
+    await renderApp(null);
+
+    expect(localeSwitch()).toHaveAccessibleName("Language: English. Switch to Français");
+  });
+
+  test("is reached with Tab, for everyone", async () => {
+    const { user } = await renderApp(ada);
+
+    await tabTo(user, localeSwitch);
+
+    expect(localeSwitch()).toHaveFocus();
+    expect(localeSwitch()).toBeEnabled();
+  });
+
+  test("is disabled from the Countdown to the end of the Duel", async () => {
+    await renderApp(ada, "/leaderboard");
+
+    act(() => {
+      useDuelStore.getState().enter(() => 0);
+      sockets.server().receive({ type: "queued" });
+    });
+    expect(localeSwitch()).toBeEnabled();
+
+    act(() => sockets.server().receive(duelFound));
+    expect(localeSwitch()).toBeDisabled();
+
+    act(() => useDuelStore.getState().tick(3_000));
+    expect(useDuelStore.getState().state.phase).toBe("running");
+    expect(localeSwitch()).toBeDisabled();
+  });
+
+  test("is not there until English opens, in a production build", async () => {
+    vi.stubEnv("DEV", false);
+    await renderApp(null);
+
+    expect(screen.queryByRole("button", { name: /^Langue/ })).not.toBeInTheDocument();
   });
 });
 

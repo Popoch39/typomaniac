@@ -9,6 +9,8 @@ lerna-debug.log*
 
 node_modules
 dist
+# Compiled from messages/ by Paraglide (paraglide.options.ts)
+src/paraglide
 dist-ssr
 *.local
 

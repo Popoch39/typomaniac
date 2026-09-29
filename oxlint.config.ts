@@ -18,6 +18,7 @@ export default defineConfig({
     "**/dist/**",
     "**/next-env.d.ts",
     "**/routeTree.gen.ts",
+    "apps/frontend/src/paraglide/**",
     ".agent/**",
     ".agents/**",
     ".claude/**",

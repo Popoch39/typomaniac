@@ -10,7 +10,11 @@
          the CSS loads: the page is painted in it from the start. An unknown one paints as Corail.
          Papier, the only light one (`scheme` in src/components/theme/themes.ts), turns the
          browser's native controls light. A known one puts its icon in the tab
-         (src/components/theme/theme-favicon.ts); any other keeps Corail's, the link's own. -->
+         (src/components/theme/theme-favicon.ts); any other keeps Corail's, the link's own.
+         Then <html lang>, the Locale the router will show (src/app-router.ts): the URL's prefix,
+         else the one kept by src/stores/locale-store.ts (same key, same JSON), else the browser's
+         languages (src/locale/browser-locale.ts). French for all until English opens
+         (src/locale/english-open.ts), which Vite writes in place of the DEV placeholder. -->
     <script>
       try {
         const themeIds = [
@@ -40,6 +44,35 @@
           document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", "light");
         }
       } catch {}
+
+      {
+        const locales = ["fr", "en"];
+        const keptLocale = () => {
+          try {
+            const stored = JSON.parse(localStorage.getItem("typomaniac-locale"));
+
+            return stored?.version === 1 ? stored.state?.chosen : undefined;
+          } catch {
+            return undefined;
+          }
+        };
+        const browserLocale = () => {
+          const spoken = navigator.languages.find((language) => /^(fr|en)(-|$)/i.test(language));
+
+          return spoken?.toLowerCase().startsWith("fr") ? "fr" : "en";
+        };
+        const prefix = location.pathname.split("/")[1];
+        const kept = keptLocale();
+
+        document.documentElement.lang =
+          "%DEV%" !== "true"
+            ? "fr"
+            : locales.includes(prefix)
+              ? prefix
+              : locales.includes(kept)
+                ? kept
+                : browserLocale();
+      }
     </script>
     <!-- The ink, text and accent of each Theme (src/index.css), painted before the CSS loads: no
          flash. The text and the accent paint the Logo waiting in #root, by class: var() does not
