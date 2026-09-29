@@ -15,9 +15,9 @@ type TpChangeProps = Extract<RankChange, { kind: "moved" | "promoted" | "demoted
 const headlines = {
   moved: () => null,
   promoted: (standing: Standing, locale: Locale) =>
-    m.duel_rank_promoted({ standing: standingName(standing) }, { locale }),
+    m.duel_rank_promoted({ standing: standingName(standing, locale) }, { locale }),
   demoted: (standing: Standing, locale: Locale) =>
-    m.duel_rank_demoted({ standing: standingName(standing) }, { locale }),
+    m.duel_rank_demoted({ standing: standingName(standing, locale) }, { locale }),
 };
 
 // The TP of a ranked Duel: the delta, the rank after it and its TP, and a promotion or a

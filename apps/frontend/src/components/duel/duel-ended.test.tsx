@@ -465,6 +465,31 @@ describe("DuelEnded in English", () => {
   });
 });
 
+describe("the Tier-up in English", () => {
+  beforeEach(() => {
+    useLocaleStore.setState({ locale: "en" });
+  });
+
+  test("a new Tier: its name, the route of the rank, and « Continue »", async () => {
+    await renderInEnglish({ ranked: intoGold });
+
+    const tierUp = screen.getByRole("dialog", { name: "Gold" });
+
+    expect(tierUp).toHaveTextContent("New Tier");
+    expect(tierUp).toHaveTextContent("Silver I → Gold IV");
+    expect(within(tierUp).getByRole("button", { name: "Continue" })).toBeInTheDocument();
+  });
+
+  test("Maniac, the top Tier", async () => {
+    await renderInEnglish({ ranked: intoManiac });
+
+    const tierUp = screen.getByRole("dialog", { name: "Maniac" });
+
+    expect(tierUp).toHaveTextContent("Top Tier");
+    expect(tierUp).toHaveTextContent("Diamond I → Maniac");
+  });
+});
+
 describe("the Tier-up", () => {
   test("a Duel into a new Tier opens it, named by the Tier, all its text there at once", async () => {
     await renderEnded({ ranked: intoGold });

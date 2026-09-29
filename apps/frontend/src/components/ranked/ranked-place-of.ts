@@ -1,6 +1,9 @@
 import type { Rank } from "ranked";
 
 import { type TpProgress, tpProgressOf } from "@/components/tier/rank/tp-progress-of";
+import { numberFormat } from "@/locale/formats";
+import type { Locale } from "@/locale/locales";
+import { m } from "@/paraglide/messages";
 
 type DivisionProgress = Extract<TpProgress, { kind: "division" }>;
 
@@ -14,9 +17,9 @@ export type RankedPlaceView =
   | Exclude<TpProgress, DivisionProgress>
   | { kind: "unranked" };
 
-// The reader's place from their rank, by the same progress as the User card's bar.
-export const rankedPlaceOf = (rank: Rank | null): RankedPlaceView => {
-  const progress = tpProgressOf(rank);
+// The reader's place from their rank, in the Locale, by the same progress as the User card's bar.
+export const rankedPlaceOf = (rank: Rank | null, locale: Locale): RankedPlaceView => {
+  const progress = tpProgressOf(rank, locale);
 
   if (progress === null) {
     return { kind: "unranked" };
@@ -26,5 +29,10 @@ export const rankedPlaceOf = (rank: Rank | null): RankedPlaceView => {
     return progress;
   }
 
-  return { ...progress, ahead: `${progress.of - progress.tp} avant ${progress.next}` };
+  const ahead = m.ranked_place_ahead(
+    { tp: numberFormat(locale).format(progress.of - progress.tp), standing: progress.next },
+    { locale },
+  );
+
+  return { ...progress, ahead };
 };

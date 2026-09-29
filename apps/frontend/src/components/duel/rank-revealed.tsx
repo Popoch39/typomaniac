@@ -14,7 +14,7 @@ export const RankRevealed = ({ standing }: { standing: Standing }) => {
       <TierBadge standing={standing} size="lg" className="motion-safe:animate-tp-pop" />
       <div className="flex flex-col">
         <p className="text-sm text-muted-foreground">{m.duel_rank_revealed({}, { locale })}</p>
-        <p className="text-2xl font-extrabold">{standingName(standing)}</p>
+        <p className="text-2xl font-extrabold">{standingName(standing, locale)}</p>
       </div>
     </div>
   );

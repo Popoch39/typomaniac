@@ -24,11 +24,11 @@ export const FaceOffStake = ({ rank, stake }: FaceOffStakeProps) => {
     >
       <p>
         <span className="sr-only">{m.face_off_win({}, { locale })} </span>
-        {signedTp(stake.win.tp)}
+        {signedTp(stake.win.tp, locale)}
       </p>{" "}
       <p>
         <span className="sr-only">{m.face_off_loss({}, { locale })} </span>
-        {signedTp(stake.loss.tp)}
+        {signedTp(stake.loss.tp, locale)}
       </p>
     </section>
   );

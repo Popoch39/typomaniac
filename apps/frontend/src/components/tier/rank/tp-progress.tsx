@@ -1,8 +1,11 @@
 import { cn } from "cn";
 import { PLACEMENT_DUELS, type Rank } from "ranked";
 
+import { divisionMeterText, placementMeterText } from "@/components/tier/rank/tp-meter-text";
 import { tpProgressOf } from "@/components/tier/rank/tp-progress-of";
 import { TIER_COLORS } from "@/components/tier/tier";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 // One notch per Placement Duel, numbered from 1.
 const PLACEMENT_NOTCHES = Array.from({ length: PLACEMENT_DUELS }, (_, index) => index + 1);
@@ -17,7 +20,8 @@ type TpProgressProps = { rank: Rank | null; size?: keyof typeof THICKNESS };
 // Placement Duel, those played filled. Nothing for Maniac, whose TP have no ceiling, nor without a
 // Rating. Screen readers read a meter, with what is left to the next rank; the drawing is hidden.
 export const TpProgress = ({ rank, size = "sm" }: TpProgressProps) => {
-  const progress = tpProgressOf(rank);
+  const locale = useLocale();
+  const progress = tpProgressOf(rank, locale);
   const thickness = THICKNESS[size];
 
   if (progress === null || progress.kind === "maniac") {
@@ -29,11 +33,11 @@ export const TpProgress = ({ rank, size = "sm" }: TpProgressProps) => {
       <div>
         <meter
           className="sr-only"
-          aria-label="Placement"
+          aria-label={m.tp_progress_placement_label({}, { locale })}
           min={0}
           max={progress.of}
           value={progress.played}
-          aria-valuetext={`${progress.played} Duels de Placement joués sur ${progress.of}`}
+          aria-valuetext={placementMeterText(progress.played, progress.of, locale)}
         />
         <div aria-hidden="true" className="flex gap-1">
           {PLACEMENT_NOTCHES.map((notch) => (
@@ -55,11 +59,11 @@ export const TpProgress = ({ rank, size = "sm" }: TpProgressProps) => {
     <div>
       <meter
         className="sr-only"
-        aria-label="TP de la Division"
+        aria-label={m.tp_progress_division_label({}, { locale })}
         min={0}
         max={progress.of}
         value={progress.tp}
-        aria-valuetext={`${progress.tp} TP sur ${progress.of} · ${progress.toNext}`}
+        aria-valuetext={divisionMeterText(progress.tp, progress.of, progress.toNext, locale)}
       />
       <div aria-hidden="true" className={cn("overflow-hidden rounded-full bg-border", thickness)}>
         <div

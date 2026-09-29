@@ -15,7 +15,7 @@ export const DuelHistoryTp = ({ tp, ranked }: DuelHistoryTpProps) => {
   if (tp !== null) {
     return (
       <span className={cn("font-mono text-xs font-semibold tabular-nums", tpTone(tp))}>
-        {signedTp(tp)}
+        {signedTp(tp, locale)}
       </span>
     );
   }

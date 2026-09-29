@@ -2,11 +2,14 @@ import { cn } from "cn";
 
 import { tpTone } from "@/components/duel-history/tp-tone";
 import { signedTp } from "@/components/tier/rank/rank-label";
+import { useLocale } from "@/locale/use-locale";
 
 // The TP the chosen Duel moved for the User, in a pill tinted like its figure. Nothing for a
 // Challenge, a Duel in Placement or one played before the ranked.
-export const DuelDetailsTp = ({ tp }: { tp: number | null }) =>
-  tp === null ? null : (
+export const DuelDetailsTp = ({ tp }: { tp: number | null }) => {
+  const locale = useLocale();
+
+  return tp === null ? null : (
     <span
       className={cn(
         "shrink-0 rounded-full px-3 py-1.5 font-mono text-sm font-semibold tabular-nums",
@@ -14,6 +17,7 @@ export const DuelDetailsTp = ({ tp }: { tp: number | null }) =>
         tpTone(tp),
       )}
     >
-      {signedTp(tp)}
+      {signedTp(tp, locale)}
     </span>
   );
+};

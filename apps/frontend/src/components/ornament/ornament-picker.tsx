@@ -7,34 +7,38 @@ import { OrnamentOption } from "@/components/ornament/ornament-option";
 import { ORNAMENT_OPTIONS } from "@/components/ornament/ornament-options";
 import { useSaveOrnament } from "@/components/ornament/use-save-ornament";
 import { SMALL_TITLE_PAINT } from "@/components/small-title-paint";
+import type { Locale } from "@/locale/locales";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 // What the picker says under its tiles: why everything is locked in Placement (or without a
 // Rating), how the locked Ornaments open up; nothing once every one is open.
-const hintOf = (standing: Standing | null) => {
+const hintOf = (standing: Standing | null, locale: Locale) => {
   if (standing === null) {
-    return "Termine ton Placement";
+    return m.ornament_hint_placement({}, { locale });
   }
 
   return ORNAMENT_OPTIONS.every((option) => canWear(standing, option.choice))
     ? null
-    : "Ceux des Tiers au-dessus du tien se débloquent en y montant.";
+    : m.ornament_hint_locked({}, { locale });
 };
 
 // The Ornament the User wears, chosen by mouse or arrow keys on a grid of 9: « Suivre mon Tier »,
 // « Aucun », then each Tier's. What they may not wear is locked: the Tiers above their own,
 // everything in Placement. The choice shows while it is being saved.
 export const OrnamentPicker = ({ me, handle }: { me: Me; handle: string }) => {
+  const locale = useLocale();
   const save = useSaveOrnament(handle);
   const name = useId();
   const hintId = useId();
   const chosen = save.isPending ? save.variables : me.ornamentChoice;
   // The User's rank once past Placement: null until then, or without a Rating.
   const standing = me.rank === null || isPlacement(me.rank) ? null : me.rank;
-  const hint = hintOf(standing);
+  const hint = hintOf(standing, locale);
 
   return (
     <fieldset aria-describedby={hint === null ? undefined : hintId} className="flex flex-col gap-3">
-      <legend className={cn("mb-3", SMALL_TITLE_PAINT)}>Ornament</legend>
+      <legend className={cn("mb-3", SMALL_TITLE_PAINT)}>{m.ornament_title({}, { locale })}</legend>
       <div className="grid grid-cols-3 gap-2">
         {ORNAMENT_OPTIONS.map((option) => (
           <OrnamentOption

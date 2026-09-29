@@ -4,6 +4,8 @@ import { RankedDivisionTicks } from "@/components/ranked/ranked-division-ticks";
 import type { TierReach, TierRow } from "@/components/ranked/tier-rows";
 import { TierEmblem } from "@/components/tier/drawing/tier-emblem";
 import { TIER_COLORS, TIER_NAMES } from "@/components/tier/tier";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 // The name of a Tier: in its colour for the reader's, faint for those still ahead.
 const nameColor = (row: TierRow) => {
@@ -20,6 +22,7 @@ const nameColor = (row: TierRow) => {
 // A Tier of the Ranked page: its step, its Emblem, its name in large, « ← toi » on the reader's,
 // then its Divisions, those climbed lit.
 export const RankedTierRow = ({ row }: { row: TierRow }) => {
+  const locale = useLocale();
   const mine = row.reach === "mine";
   const ahead = row.reach === "ahead";
 
@@ -36,7 +39,9 @@ export const RankedTierRow = ({ row }: { row: TierRow }) => {
       <span className={cn("flex-1 text-[44px] font-bold tracking-[-0.035em]", nameColor(row))}>
         {TIER_NAMES[row.tier]}
       </span>
-      {mine ? <span className="font-mono text-xs text-primary">← toi</span> : null}
+      {mine ? (
+        <span className="font-mono text-xs text-primary">{m.ranked_tier_you({}, { locale })}</span>
+      ) : null}
       <RankedDivisionTicks row={row} />
     </li>
   );

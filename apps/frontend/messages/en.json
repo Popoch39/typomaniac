@@ -357,5 +357,95 @@
   ],
   "duel_rank_revealed": "Placement complete. Your rank:",
   "duel_rank_promoted": "Promoted: {standing}",
-  "duel_rank_demoted": "Demoted to {standing}"
+  "duel_rank_demoted": "Demoted to {standing}",
+  "rank_division": "{tier} {division}",
+  "rank_tp": "{tp} TP",
+  "rank_tp_gain": "+{tp} TP",
+  "rank_tp_loss": "−{tp} TP",
+  "rank_tp_to_next": "{tp} TP to {standing}",
+  "tp_progress_division_label": "Division TP",
+  "tp_progress_division_value": "{tp} TP out of {of} · {toNext}",
+  "tp_progress_placement_label": "Placement",
+  "tp_progress_placement_value": [
+    {
+      "declarations": [
+        "input count",
+        "input played",
+        "input of",
+        "local countPlural = count: plural"
+      ],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{played} of {of} Placement Duels played",
+        "countPlural=*": "{played} of {of} Placement Duels played"
+      }
+    }
+  ],
+  "ranked_title": "Ranked",
+  "ranked_tiers_label": "Tiers",
+  "ranked_tier_counts": [
+    {
+      "declarations": [
+        "input tiers",
+        "input divisions",
+        "input summits",
+        "input summitCount",
+        "local summitPlural = summitCount: plural"
+      ],
+      "selectors": ["summitPlural"],
+      "match": {
+        "summitPlural=one": "{tiers} Tiers · {divisions} Divisions · {summits} summit",
+        "summitPlural=*": "{tiers} Tiers · {divisions} Divisions · {summits} summits"
+      }
+    }
+  ],
+  "ranked_tier_you": "← you",
+  "ranked_aside_label": "Your Ranked",
+  "ranked_aside_note": "Right after a promotion, your next loss won't knock you back down. In Maniac, there are no more Divisions: your TP just keep adding up.",
+  "ranked_play": "Play Ranked",
+  "ranked_place_title": "Where you stand",
+  "ranked_place_ahead": "{tp} to {standing}",
+  "ranked_place_no_ceiling": "no ceiling",
+  "ranked_place_placement": "Placement",
+  "ranked_place_placement_played": "{played} / {of} Duels",
+  "ranked_place_placement_then": "then your rank",
+  "ranked_place_unranked": "Unranked",
+  "ranked_place_unranked_duels": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{shown} Placement Duel",
+        "countPlural=*": "{shown} Placement Duels"
+      }
+    }
+  ],
+  "ranked_place_unranked_then": "to get ranked",
+  "ranked_rule_placement": "Placement",
+  "ranked_rule_placement_value": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{shown} Duel",
+        "countPlural=*": "{shown} Duels"
+      }
+    }
+  ],
+  "ranked_rule_per_duel": "Per Duel",
+  "ranked_rule_per_duel_value": "{min} to {max} TP",
+  "ranked_rule_division": "One Division",
+  "ranked_rule_below_zero": "Below 0 TP",
+  "ranked_rule_below_zero_value": "{tp} TP, one step down",
+  "ranked_rule_tier_change": "Changing Tier",
+  "ranked_rule_tier_change_value": "1 Promotion Duel",
+  "ornament_title": "Ornament",
+  "ornament_follow": "Follow my Tier",
+  "ornament_none": "None",
+  "ornament_hint_placement": "Finish your Placement",
+  "ornament_hint_locked": "Ornaments from the Tiers above yours unlock as you reach them.",
+  "ornament_save_failed": "Couldn't change your Ornament. Try again.",
+  "tier_up_kicker": "New Tier",
+  "tier_up_kicker_maniac": "Top Tier",
+  "tier_up_continue": "Continue"
 }

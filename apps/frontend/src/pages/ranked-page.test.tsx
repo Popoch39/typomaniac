@@ -8,11 +8,12 @@ import {
 } from "@tanstack/react-router";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { Rank } from "ranked";
-import { afterEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { type Me, meQueryOptions } from "@/api/me";
 import { RankedPage } from "@/pages/ranked-page";
 import { useAuthStore } from "@/stores/auth-store";
+import { useLocaleStore } from "@/stores/locale-store";
 import { usePlayStore } from "@/stores/play-store";
 
 const userWith = (rank: Rank | null): Me => ({
@@ -31,6 +32,8 @@ const goldII: Rank = { tier: "gold", division: 2, tp: 42, shielded: false };
 const rows = () => within(screen.getByRole("list", { name: "Tiers" })).getAllByRole("listitem");
 
 const place = () => screen.getByRole("region", { name: "Ta place" });
+
+const placeInEnglish = () => screen.getByRole("region", { name: "Where you stand" });
 
 // The Divisions a row shows climbed.
 const lit = (row: HTMLElement | undefined) =>
@@ -164,6 +167,80 @@ describe("RankedPage", () => {
 
     expect(await screen.findByRole("heading", { level: 1, name: "Jouer" })).toBeTruthy();
     expect(usePlayStore.getState().play).toBe("duel");
+  });
+
+  describe("in English", () => {
+    beforeEach(() => {
+      useLocaleStore.setState({ locale: "en" });
+    });
+
+    test("the Tiers, their figures and the reader's", async () => {
+      await renderPage(userWith(goldII));
+
+      expect(screen.getByRole("complementary", { name: "Your Ranked" })).toBeInTheDocument();
+      expect(screen.getByText("7 Tiers · 24 Divisions · 1 summit")).toBeInTheDocument();
+      expect(
+        within(screen.getByRole("list", { name: "Tiers" })).getAllByRole("listitem")[3],
+      ).toHaveTextContent("04Gold← you");
+    });
+
+    test("where the reader stands: the rank, its TP and what is left, read by the meter", async () => {
+      await renderPage(userWith(goldII));
+
+      expect(within(placeInEnglish()).getByText("Gold II")).toBeInTheDocument();
+      expect(within(placeInEnglish()).getByText("42 TP")).toBeInTheDocument();
+      expect(within(placeInEnglish()).getByText("58 to Gold I")).toBeInTheDocument();
+      expect(within(placeInEnglish()).getByRole("meter", { name: "Division TP" })).toHaveAttribute(
+        "aria-valuetext",
+        "42 TP out of 100 · 58 to Gold I",
+      );
+    });
+
+    test("in Maniac, the TP grouped the English way, without a ceiling", async () => {
+      await renderPage(userWith({ tier: "maniac", tp: 1284, shielded: false }));
+
+      expect(within(placeInEnglish()).getByText("1,284 TP")).toBeInTheDocument();
+      expect(within(placeInEnglish()).getByText("no ceiling")).toBeInTheDocument();
+    });
+
+    test("in Placement, the Duels played", async () => {
+      await renderPage(userWith({ placementsLeft: 3 }));
+
+      expect(within(placeInEnglish()).getByText("2 / 5 Duels")).toBeInTheDocument();
+      expect(within(placeInEnglish()).getByText("then your rank")).toBeInTheDocument();
+      expect(within(placeInEnglish()).getByRole("meter", { name: "Placement" })).toHaveAttribute(
+        "aria-valuetext",
+        "2 of 5 Placement Duels played",
+      );
+    });
+
+    test("without a Rating, what gets the reader in", async () => {
+      await renderPage(userWith(null));
+
+      expect(within(placeInEnglish()).getByText("Unranked")).toBeInTheDocument();
+      expect(within(placeInEnglish()).getByText("5 Placement Duels")).toBeInTheDocument();
+      expect(within(placeInEnglish()).getByText("to get ranked")).toBeInTheDocument();
+    });
+
+    test("the rules of the Ranked, and the way to play it", async () => {
+      await renderPage(userWith(goldII));
+
+      expect(screen.getAllByRole("term").map((term) => term.textContent)).toEqual([
+        "Placement",
+        "Per Duel",
+        "One Division",
+        "Below 0 TP",
+        "Changing Tier",
+      ]);
+      expect(screen.getAllByRole("definition").map((value) => value.textContent)).toEqual([
+        "5 Duels",
+        "8 to 35 TP",
+        "100 TP",
+        "75 TP, one step down",
+        "1 Promotion Duel",
+      ]);
+      expect(screen.getByRole("link", { name: "Play Ranked" })).toBeInTheDocument();
+    });
   });
 
   test("a Visitor sees the Tiers, and is asked to sign in to play", async () => {

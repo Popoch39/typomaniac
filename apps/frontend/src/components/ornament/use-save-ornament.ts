@@ -4,11 +4,14 @@ import { toast } from "sonner";
 import { meQueryOptions } from "@/api/me";
 import { saveOrnament } from "@/api/ornament";
 import { type Profile, profileQueryKey } from "@/api/profile";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 // Chooses the User's Ornament. Once saved, the User in the cache and every window of their Profile
 // wear what the API resolved: the header and the Profile change at once.
 export const useSaveOrnament = (handle: string) => {
   const queryClient = useQueryClient();
+  const locale = useLocale();
 
   return useMutation({
     mutationFn: saveOrnament,
@@ -19,7 +22,7 @@ export const useSaveOrnament = (handle: string) => {
       );
     },
     onError: () => {
-      toast.error("L'Ornament n'a pas pu être changé. Réessaie.");
+      toast.error(m.ornament_save_failed({}, { locale }));
     },
   });
 };

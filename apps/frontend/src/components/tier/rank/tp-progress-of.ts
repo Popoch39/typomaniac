@@ -8,6 +8,9 @@ import {
 } from "ranked";
 
 import { standingName } from "@/components/tier/tier";
+import { numberFormat } from "@/locale/formats";
+import type { Locale } from "@/locale/locales";
+import { m } from "@/paraglide/messages";
 
 // Where a rank stands on its way up: the TP of its Division out of 100, the Placement Duels played
 // out of 5, or Maniac's TP alone, which has no ceiling.
@@ -27,8 +30,8 @@ export type TpProgress =
   | { kind: "placement"; played: number; of: typeof PLACEMENT_DUELS }
   | { kind: "maniac"; tp: number };
 
-// A rank's progress, null without a Rating.
-export const tpProgressOf = (rank: Rank | null): TpProgress | null => {
+// A rank's progress, in the Locale; null without a Rating.
+export const tpProgressOf = (rank: Rank | null, locale: Locale): TpProgress | null => {
   if (rank === null) {
     return null;
   }
@@ -47,15 +50,18 @@ export const tpProgressOf = (rank: Rank | null): TpProgress | null => {
     return { kind: "maniac", tp: rank.tp };
   }
 
-  const nextName = standingName(next);
+  const nextName = standingName(next, locale);
 
   return {
     kind: "division",
     tp: rank.tp,
     of: DIVISION_TP,
     tier: rank.tier,
-    name: standingName(rank),
+    name: standingName(rank, locale),
     next: nextName,
-    toNext: `${DIVISION_TP - rank.tp} TP avant ${nextName}`,
+    toNext: m.rank_tp_to_next(
+      { tp: numberFormat(locale).format(DIVISION_TP - rank.tp), standing: nextName },
+      { locale },
+    ),
   };
 };

@@ -5,11 +5,13 @@ import { TierBadge } from "@/components/tier/rank/tier-badge";
 import { TpProgress } from "@/components/tier/rank/tp-progress";
 import { tpProgressOf } from "@/components/tier/rank/tp-progress-of";
 import { standingName, TIER_COLORS } from "@/components/tier/tier";
+import { useLocale } from "@/locale/use-locale";
 
 // Where a ranked reader stands: their place in the Classement, their rank, and how far the next.
 export const LeaderboardPlaceRanked = ({ reader }: { reader: ReaderPlace }) => {
+  const locale = useLocale();
   const { position, standing } = reader;
-  const progress = tpProgressOf(standing);
+  const progress = tpProgressOf(standing, locale);
 
   return (
     <>
@@ -28,7 +30,7 @@ export const LeaderboardPlaceRanked = ({ reader }: { reader: ReaderPlace }) => {
         </span>
         <span className="flex flex-col gap-0.5">
           <span className={cn("text-xl font-bold", TIER_COLORS[standing.tier])}>
-            {standingName(standing)}
+            {standingName(standing, locale)}
           </span>
           <span className="font-mono text-[13px] text-muted-foreground tabular-nums">
             {standing.tp} TP

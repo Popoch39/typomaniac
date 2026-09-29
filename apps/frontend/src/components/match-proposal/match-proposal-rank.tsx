@@ -26,7 +26,9 @@ export const MatchProposalRank = ({ rank }: { rank: Rank | null }) => {
         <TierEmblem tier={rank.tier} />
       </span>
       <span>
-        <span className={cn("font-semibold", TIER_COLORS[rank.tier])}>{standingName(rank)}</span>
+        <span className={cn("font-semibold", TIER_COLORS[rank.tier])}>
+          {standingName(rank, locale)}
+        </span>
         {" · "}
         <span className="font-mono text-xs tabular-nums">
           {numberFormat(locale).format(rank.tp)} TP
