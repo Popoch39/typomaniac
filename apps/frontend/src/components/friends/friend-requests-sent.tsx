@@ -15,8 +15,8 @@ export const FriendRequestsSent = () => {
 
   return (
     <FriendsListSection
-      title="Friend requests envoyées"
-      count={sent.length}
+      title={`Friend requests envoyées · ${sent.length}`}
+      isEmpty={sent.length === 0}
       empty={
         <p className="px-1 text-sm text-muted-foreground">
           Aucune Friend request envoyée en attente.
@@ -24,7 +24,11 @@ export const FriendRequestsSent = () => {
       }
     >
       {sent.map((user) => (
-        <UserRow key={user.id} user={user}>
+        <UserRow
+          key={user.id}
+          user={user}
+          aside={<span className="text-xs text-muted-foreground">en attente</span>}
+        >
           <FriendActionButton
             action="cancel"
             userId={user.id}

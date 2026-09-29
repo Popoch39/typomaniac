@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { activityQueryOptions } from "@/api/activity";
 import { ActivityEmpty } from "@/components/activity/activity-empty";
+import { ACTIVITY_CARD_PAINT } from "@/components/activity/activity-paint";
 import { ArrivalActivityItem } from "@/components/activity/arrival-activity-item";
 import { DuelActivityItem } from "@/components/activity/duel-activity-item";
 import { FriendshipActivityItem } from "@/components/activity/friendship-activity-item";
@@ -24,7 +25,7 @@ export const ActivityList = ({ searchInputId }: ActivityListProps) => {
   }
 
   return (
-    <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-card bg-card">
+    <ul className={ACTIVITY_CARD_PAINT}>
       {items.map((item) => {
         if (item.kind === "arrival") {
           return (

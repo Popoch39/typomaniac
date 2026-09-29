@@ -3,6 +3,7 @@ import { HANDLE_SEARCH_MIN_LENGTH } from "handle";
 
 import { ApiError } from "@/api/client";
 import { userSearchQueryOptions } from "@/api/user-search";
+import { FRIENDS_CARD_PAINT } from "@/components/friends/friends-paint";
 import { UserFoundItem } from "@/components/friends/user-found-item";
 import { UserRowsSkeleton } from "@/components/friends/user-rows-skeleton";
 
@@ -30,7 +31,7 @@ export const UserSearchResults = ({ typed, handle }: UserSearchResultsProps) => 
 
   if (!searchable) {
     return (
-      <p className="text-muted-foreground">
+      <p className="px-1 text-sm text-muted-foreground">
         Tape au moins {HANDLE_SEARCH_MIN_LENGTH} caractères du Handle.
       </p>
     );
@@ -42,7 +43,7 @@ export const UserSearchResults = ({ typed, handle }: UserSearchResultsProps) => 
 
   if (search.isError) {
     return (
-      <p role="alert" className="text-destructive">
+      <p role="alert" className="px-1 text-sm text-destructive">
         {errorMessage(search.error)}
       </p>
     );
@@ -57,7 +58,7 @@ export const UserSearchResults = ({ typed, handle }: UserSearchResultsProps) => 
   }
 
   return (
-    <ul className="flex flex-col divide-y divide-border overflow-hidden rounded-card bg-card">
+    <ul className={FRIENDS_CARD_PAINT}>
       {search.data.map((user) => (
         <UserFoundItem key={user.id} user={user} />
       ))}

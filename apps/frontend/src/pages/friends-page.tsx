@@ -4,7 +4,6 @@ import { meQueryOptions } from "@/api/me";
 import { FriendsHandleRequired } from "@/components/friends/friends-handle-required";
 import { FriendsHeader } from "@/components/friends/friends-header";
 import { FriendsOverview } from "@/components/friends/friends-overview";
-import { cn } from "cn";
 
 // Where a User finds the others by their Handle, answers their Friend requests and sees their
 // Friends.
@@ -19,9 +18,13 @@ export const FriendsPage = () => {
   return (
     <section className="flex flex-col gap-6">
       <FriendsHeader />
-      <div className={cn("w-full", me.handle === null ? "max-w-md" : "max-w-4xl")}>
-        {me.handle === null ? <FriendsHandleRequired /> : <FriendsOverview />}
-      </div>
+      {me.handle === null ? (
+        <div className="max-w-md">
+          <FriendsHandleRequired />
+        </div>
+      ) : (
+        <FriendsOverview />
+      )}
     </section>
   );
 };

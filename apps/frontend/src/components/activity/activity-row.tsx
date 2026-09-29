@@ -14,11 +14,17 @@ type ActivityRowProps = {
 
 // One Activity: the Friend's avatar, what happened, and how long ago.
 export const ActivityRow = ({ friend, at, now, children }: ActivityRowProps) => (
-  <li className="flex items-start gap-3 px-5 py-3">
-    <UserAvatar handle={friend.handle} image={friend.image} ornament={friend.ornament} />
+  <li className="flex items-start gap-3 p-3">
+    <UserAvatar
+      handle={friend.handle}
+      image={friend.image}
+      ornament={friend.ornament}
+      className="size-9"
+      fallbackClassName="bg-surface-2 text-[13px] font-bold text-foreground"
+    />
     {/* Positioned after the avatar: drawn over the Ornament's overflow, never under it. */}
     <div className="relative flex min-w-0 flex-1 flex-col gap-1">
-      <p className="text-sm">{children}</p>
+      <p className="text-sm leading-[1.4]">{children}</p>
       <time dateTime={new Date(at).toISOString()} className="text-xs text-muted-foreground">
         {relativeTime(at, now)}
       </time>

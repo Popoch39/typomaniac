@@ -1,3 +1,4 @@
+import { cn } from "cn";
 import { SwordsIcon } from "lucide-react";
 
 import { challengeBlocker } from "@/components/challenge/challenge-blocker";
@@ -28,12 +29,15 @@ export const ChallengeButton = ({ friend, iconOnly = false }: ChallengeButtonPro
     // A disabled button gets no pointer events: the reason's tooltip is on its wrapper.
     <span title={blocker ?? undefined}>
       <Button
-        size={iconOnly ? "icon" : "sm"}
-        variant={iconOnly ? "ghost" : "outline"}
+        size={iconOnly ? "icon" : "default"}
+        variant={iconOnly ? "ghost" : "secondary"}
         aria-label={blocker === null ? label : `${label} : ${blocker}`}
         disabled={blocker !== null}
         onClick={challenge}
-        className={iconOnly ? "rounded-[14px] text-muted-foreground [&_svg]:size-4.5" : undefined}
+        className={cn(
+          "rounded-[14px]",
+          iconOnly ? "text-muted-foreground [&_svg]:size-4.5" : "pr-3.5 pl-3",
+        )}
       >
         <SwordsIcon aria-hidden />
         {iconOnly ? null : "Défier"}

@@ -2,6 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 
 import { friendRequestsQueryOptions } from "@/api/friends";
 import { FriendActionButton } from "@/components/friends/friend-action-button";
+import { FriendRequestsCount } from "@/components/friends/friend-requests-count";
 import { FriendsListSection } from "@/components/friends/friends-list-section";
 import { UserRow } from "@/components/friends/user-row";
 import { atHandle } from "@/lib/at-handle";
@@ -15,8 +16,13 @@ export const FriendRequestsReceived = () => {
 
   return (
     <FriendsListSection
-      title="Friend requests reçues"
-      count={received.length}
+      title={
+        <>
+          Friend requests reçues{" "}
+          {received.length > 0 ? <FriendRequestsCount count={received.length} /> : null}
+        </>
+      }
+      isEmpty={received.length === 0}
       empty={
         <p className="px-1 text-sm text-muted-foreground">Aucune Friend request en attente.</p>
       }

@@ -5,10 +5,11 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { Presence } from "api";
 import { Suspense } from "react";
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test } from "vitest";
 
 import {
   type Friend,
@@ -21,6 +22,7 @@ import { type Me, meQueryOptions } from "@/api/me";
 import { type UserFound, userSearchQueryOptions } from "@/api/user-search";
 import { LiveActivity } from "@/components/activity/live-activity";
 import { FriendsPage } from "@/pages/friends-page";
+import { FriendsPendingPage } from "@/pages/friends-pending-page";
 import { useConnectionStore } from "@/stores/connection-store";
 import { fakeServer } from "@/test/fake-socket";
 
@@ -52,6 +54,38 @@ const ornamentBy = (handle: string) =>
     ?.querySelector("[data-ornament] use")
     ?.getAttribute("href") ?? null;
 
+// The row of that Handle's link, to look into.
+const rowOf = (handle: string) => {
+  const row = screen.getByRole("link", { name: `@${handle}` }).closest("li");
+
+  if (row === null) {
+    throw new Error(`No row for @${handle}`);
+  }
+
+  return within(row);
+};
+
+const friendNamed = (handle: string): Friend => ({
+  id: `${handle}-id`,
+  handle,
+  image: null,
+  ornament: null,
+});
+
+// The server tells each Friend's Presence (the others are offline), then that nothing waits for
+// Ada: she can challenge.
+const tellPresences = (sockets: ReturnType<typeof fakeServer>, presences: [string, Presence][]) =>
+  act(() => {
+    sockets.server().receive({
+      type: "friends-snapshot",
+      presences: presences.map(([handle, presence]) => ({ userId: `${handle}-id`, presence })),
+      requestsReceived: 1,
+    });
+    sockets
+      .server()
+      .receive({ type: "challenges-snapshot", sent: null, received: [], serverTime: 1_000 });
+  });
+
 const activities: Activity[] = [
   {
     type: "duel",
@@ -81,11 +115,15 @@ const found: UserFound[] = [
   { id: "barbara-id", handle: "barbara", image: null, ornament: "bronze", relation: "none" },
 ];
 
-// The page with the User's lists and a search already in the cache, on a router of its own.
-const renderPage = async (userFriends: Friend[] = friends, activity: Activity[] = activities) => {
+// The page of `user` with their lists and a search already in the cache, on a router of its own.
+const renderPage = async (
+  userFriends: Friend[] = friends,
+  activity: Activity[] = activities,
+  user: Me = me,
+) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
 
-  queryClient.setQueryData(meQueryOptions.queryKey, me);
+  queryClient.setQueryData(meQueryOptions.queryKey, user);
   queryClient.setQueryData(activityQueryOptions.queryKey, activity);
   queryClient.setQueryData(friendsQueryOptions.queryKey, userFriends);
   queryClient.setQueryData(friendRequestsQueryOptions.queryKey, requests);
@@ -110,7 +148,93 @@ const renderPage = async (userFriends: Friend[] = friends, activity: Activity[] 
   await screen.findByRole("heading", { name: "Friends" });
 };
 
+// A test that opens the connection leaves none behind, even when it fails.
+afterEach(() => {
+  useConnectionStore.getState().close();
+});
+
 describe("FriendsPage", () => {
+  test("each list is titled with its count, the Friend requests received in a badge", async () => {
+    await renderPage();
+
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Friend requests reçues 1" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Friend requests envoyées · 1" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Friends · 1" })).toBeInTheDocument();
+  });
+
+  test("a Friend request sent waits for its answer, and can be cancelled", async () => {
+    await renderPage();
+
+    const row = rowOf("linus");
+
+    expect(row.getByText("en attente")).toBeInTheDocument();
+    expect(
+      row.getByRole("button", { name: "Annuler la Friend request à @linus" }),
+    ).toBeInTheDocument();
+  });
+
+  test("each Friend shows their Presence; only one online can be challenged", async () => {
+    const sockets = fakeServer();
+
+    useConnectionStore.getState().open(sockets.open);
+    await renderPage(["alan", "mary", "ken"].map(friendNamed), []);
+    tellPresences(sockets, [
+      ["alan", "online"],
+      ["mary", "in-duel"],
+    ]);
+
+    expect(rowOf("alan").getByText("en ligne")).toBeInTheDocument();
+    expect(rowOf("alan").getByRole("button", { name: "Défier @alan" })).toBeEnabled();
+
+    expect(rowOf("mary").getByText("en Duel")).toBeInTheDocument();
+    expect(rowOf("ken").getByText("hors ligne")).toBeInTheDocument();
+
+    for (const handle of ["mary", "ken"]) {
+      expect(rowOf(handle).queryByRole("button", { name: /^Défier/ })).not.toBeInTheDocument();
+    }
+
+    for (const handle of ["alan", "mary", "ken"]) {
+      expect(
+        rowOf(handle).getByRole("button", { name: `Retirer @${handle} de tes Friends` }),
+      ).toBeInTheDocument();
+    }
+  });
+
+  test("before the connection tells their Presence, a Friend has neither Presence nor Défier", async () => {
+    await renderPage(friends, []);
+
+    expect(rowOf("alan").queryByText("en ligne")).not.toBeInTheDocument();
+    expect(rowOf("alan").queryByRole("button", { name: /^Défier/ })).not.toBeInTheDocument();
+    expect(
+      rowOf("alan").getByRole("button", { name: "Retirer @alan de tes Friends" }),
+    ).toBeInTheDocument();
+  });
+
+  test("without a Handle, the User is asked to choose one before anything else", async () => {
+    await renderPage(friends, activities, { ...me, handle: null });
+
+    expect(screen.getByRole("button", { name: "Choisir mon Handle" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Chercher un User")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Activity" })).not.toBeInTheDocument();
+  });
+
+  test("while it loads, Skeletons stand in for each list and the Activity", () => {
+    render(<FriendsPendingPage />);
+
+    for (const label of [
+      "Chargement des Friend requests reçues",
+      "Chargement des Friend requests envoyées",
+      "Chargement des Friends",
+      "Chargement de l'Activity",
+    ]) {
+      expect(screen.getByRole("status", { name: label })).toBeInTheDocument();
+    }
+  });
+
   test("each Handle leads to its User's Profile: Friends and Friend requests", async () => {
     await renderPage(friends, []);
 
@@ -233,8 +357,6 @@ describe("FriendsPage", () => {
       "A@alan a battu @turing par abandon72 wpm · 40 wpmil y a 5 minutes",
       "A@alan et @ada sont maintenant Friendsavant-hier",
     ]);
-
-    useConnectionStore.getState().close();
   });
 
   test("a Friend's arrival online comes first, and is gone once the tab starts again", async () => {

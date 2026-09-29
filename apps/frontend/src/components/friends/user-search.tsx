@@ -1,6 +1,7 @@
 import { SearchIcon } from "lucide-react";
 import { useState } from "react";
 
+import { FRIENDS_TITLE_PAINT } from "@/components/friends/friends-paint";
 import { UserSearchResults } from "@/components/friends/user-search-results";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 
@@ -19,15 +20,12 @@ export const UserSearch = ({ inputId }: UserSearchProps) => {
   const handle = useDebouncedValue(typed, SEARCH_DELAY_MS);
 
   return (
-    <section className="flex flex-col gap-3">
-      <label
-        htmlFor={inputId}
-        className="px-1 font-mono text-[0.7rem] font-medium text-muted-foreground uppercase"
-      >
+    <section className="flex flex-col gap-2.5">
+      <label htmlFor={inputId} className={FRIENDS_TITLE_PAINT}>
         Chercher un User
       </label>
-      <div className="flex h-11 items-center gap-2 rounded-full bg-card px-4 focus-within:ring-2 focus-within:ring-ring">
-        <SearchIcon aria-hidden="true" className="size-4 text-muted-foreground" />
+      <div className="flex h-12 items-center gap-2.5 rounded-full bg-card px-4.5 focus-within:ring-2 focus-within:ring-ring">
+        <SearchIcon aria-hidden="true" className="size-4.5 text-muted-foreground" />
         <input
           id={inputId}
           type="search"
@@ -37,7 +35,7 @@ export const UserSearch = ({ inputId }: UserSearchProps) => {
           autoComplete="off"
           autoCapitalize="none"
           spellCheck={false}
-          className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+          className="h-full min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground"
         />
       </div>
       <UserSearchResults typed={typed} handle={handle} />
