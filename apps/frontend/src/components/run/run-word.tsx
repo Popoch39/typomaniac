@@ -2,7 +2,7 @@ import type { RunWord as Word } from "typing-engine";
 
 import { displayedStatus, isTypedWrong, isWrongWord } from "@/components/run/displayed-status";
 import type { RunTone } from "@/components/run/run-tone";
-import { WrongWordWave } from "@/components/run/wrong-word-wave";
+import { WrongWordWaves } from "@/components/run/wrong-word-waves";
 
 type RunWordProps = {
   word: Word;
@@ -13,8 +13,9 @@ type RunWordProps = {
 };
 
 // One word of the Text, each letter colored by its status (`data-status`), a skipped one in red like
-// a wrong one. A Wrong word (`data-wrong`) is underlined with the Logo's wave; a word typed wrong
-// but not validated holds its wave too, hidden, to take it back when backspace reopens it.
+// a wrong one. A Wrong word (`data-wrong`) has its mistakes underlined with the Logo's wave; a word
+// typed wrong but not validated holds its waves too, hidden, to take them back when backspace
+// reopens it.
 export const RunWord = ({ word, validated, burst }: RunWordProps) => {
   const wrong = isWrongWord(word, validated);
 
@@ -36,12 +37,12 @@ export const RunWord = ({ word, validated, burst }: RunWordProps) => {
         </span>
       ))}
       {isTypedWrong(word) ? (
-        // Across the letters, inside the word's padding (an SVG is not stretched by left and right),
-        // and at the canvas's place: 1.33em from the top of the Run's 1.625 line, under the baseline.
-        <WrongWordWave
-          letters={word.letters.length}
+        // From the first letter, inside the word's padding, and at the canvas's place: 1.33em from
+        // the top of the Run's 1.625 line, under the baseline.
+        <WrongWordWaves
+          word={word}
           drawn={wrong}
-          className="top-[calc(50%_+_0.52em)] left-[0.25ch] w-[calc(100%_-_0.5ch)]"
+          className="top-[calc(50%_+_0.52em)] left-[0.25ch]"
         />
       ) : null}
     </span>

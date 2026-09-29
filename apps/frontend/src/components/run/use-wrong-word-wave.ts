@@ -40,12 +40,12 @@ export const useWrongWordWave = (
         return;
       }
 
-      // The word just validated, or the one reopened: a word only has a wave typed wrong, so once
-      // validated, a Wrong word.
+      // The word just validated, or the one reopened: a word only has waves typed wrong, so once
+      // validated, a Wrong word. All of its waves move together.
       const index = Math.min(validatedWords, before.validatedWords);
-      const wave = textRef.current?.querySelector(`[data-word="${index}"] [data-wave]`) ?? null;
+      const waves = textRef.current?.querySelectorAll(`[data-word="${index}"] [data-wave]`) ?? [];
 
-      if (wave === null) {
+      if (waves.length === 0) {
         return;
       }
 
@@ -53,7 +53,7 @@ export const useWrongWordWave = (
 
       gsap.matchMedia().add("(prefers-reduced-motion: no-preference)", () => {
         gsap.fromTo(
-          wave,
+          waves,
           { "--wave": drawn ? 0 : 1 },
           { "--wave": drawn ? 1 : 0, duration: drawn ? DRAW : RETRACT, ease: BOARD_EASE },
         );
