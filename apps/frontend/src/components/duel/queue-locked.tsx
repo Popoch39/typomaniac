@@ -2,6 +2,8 @@ import { QueueCard } from "@/components/duel/queue-card";
 import { QueueLockButton } from "@/components/duel/queue-lock-button";
 import { useSearchDuel } from "@/components/duel/use-search-duel";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 type QueueLockedProps = {
   // The end of the Queue lock, on the tab's clock.
@@ -13,19 +15,20 @@ type QueueLockedProps = {
 // own once the lock is over, and joins the Queue on a click. The Friends are still there to
 // challenge meanwhile, in the sidebar.
 export const QueueLocked = ({ until, onSolo }: QueueLockedProps) => {
+  const locale = useLocale();
   const searchDuel = useSearchDuel();
 
   return (
     <QueueCard
-      title="Queue bloquée"
-      subtitle="Tu pourras relancer la recherche à la fin du compte à rebours. Tu peux toujours défier un Friend."
+      title={m.queue_locked_title({}, { locale })}
+      subtitle={m.queue_locked_pitch({}, { locale })}
     >
       <div className="flex gap-3">
         <Button variant="secondary" size="lg" onClick={onSolo}>
-          Retour au Solo
+          {m.queue_back_to_solo({}, { locale })}
         </Button>
         <QueueLockButton lockedUntil={until} onClick={searchDuel} size="lg">
-          Chercher un Duel
+          {m.queue_search_duel({}, { locale })}
         </QueueLockButton>
       </div>
     </QueueCard>

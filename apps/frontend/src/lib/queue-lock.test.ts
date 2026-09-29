@@ -18,7 +18,7 @@ describe("lockTimeLeftLabel", () => {
 
 describe("queueLockLabel", () => {
   test("says how long the Queue is locked, in minutes", () => {
-    expect([60_000, 300_000, 900_000].map(queueLockLabel)).toEqual([
+    expect([60_000, 300_000, 900_000].map((duration) => queueLockLabel(duration, "fr"))).toEqual([
       "Queue bloquée 1 min",
       "Queue bloquée 5 min",
       "Queue bloquée 15 min",
@@ -26,7 +26,11 @@ describe("queueLockLabel", () => {
   });
 
   test("rounds a lock told a little late up to its minute", () => {
-    expect(queueLockLabel(59_950)).toBe("Queue bloquée 1 min");
-    expect(queueLockLabel(12_000)).toBe("Queue bloquée 1 min");
+    expect(queueLockLabel(59_950, "fr")).toBe("Queue bloquée 1 min");
+    expect(queueLockLabel(12_000, "fr")).toBe("Queue bloquée 1 min");
+  });
+
+  test("says it in English", () => {
+    expect(queueLockLabel(300_000, "en")).toBe("Queue locked for 5 min");
   });
 });

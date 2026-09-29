@@ -1,13 +1,11 @@
 import { cn } from "cn";
 import type { ReactNode } from "react";
 
+import type { DuelFormat } from "@/components/duel/duel-format-line";
 import { DUEL_SCENE } from "@/components/duel-scene/duel-scene";
 import { DuelSceneHeader } from "@/components/duel-scene/duel-scene-header";
 import { fitDuelScene } from "@/components/duel-scene/fit-duel-scene";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
-
-// The Duel whose scene the frame is: whether it is a Challenge.
-export type DuelFormat = { challenge: boolean };
 
 type AppFrameLayoutProps = {
   // The Duel whose scene the frame is; null for the app's own layout.
@@ -40,7 +38,7 @@ export const AppFrameLayout = ({ duelFormat, soloTyping, children }: AppFrameLay
             : "min-h-[calc(100svh-1.5rem)] flex-1 pt-9 pr-11 pb-7 pl-12",
         )}
       >
-        {duelFormat === null ? null : <DuelSceneHeader challenge={duelFormat.challenge} />}
+        {duelFormat === null ? null : <DuelSceneHeader format={duelFormat} />}
         <main className="flex flex-1 flex-col">{children}</main>
       </div>
     </div>

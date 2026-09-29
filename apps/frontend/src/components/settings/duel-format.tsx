@@ -1,14 +1,8 @@
-import type { Language } from "typing-engine";
-
+import { DUEL_LANGUAGE, DUEL_SECONDS } from "@/components/duel/duel-format-line";
 import { languageName } from "@/lib/language-names";
 import { numberFormat } from "@/locale/formats";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
-
-// Every Duel has the same format, set by the server.
-const DUEL_SECONDS = 30;
-
-const DUEL_LANGUAGE: Language = "en";
 
 // The Duel's format, shown, not chosen: « time 30 · English ».
 export const DuelFormat = () => {

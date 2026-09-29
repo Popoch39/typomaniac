@@ -1,4 +1,5 @@
 import { AppFrameLayout } from "@/components/app-frame-layout";
+import { DUEL_LANGUAGE } from "@/components/duel/duel-format-line";
 import { DuelHud } from "@/components/duel-hud/duel-hud";
 import {
   isOver,
@@ -30,7 +31,10 @@ export const DuelHudDevStage = ({ t, clock }: DuelHudDevStageProps) => {
 
   return (
     <div className="fixed inset-0 bg-background">
-      <AppFrameLayout duelFormat={{ challenge: model.challenge }} soloTyping={false}>
+      <AppFrameLayout
+        duelFormat={{ challenge: model.challenge, seconds: model.seconds, language: DUEL_LANGUAGE }}
+        soloTyping={false}
+      >
         <ClockContext value={clock}>
           <DuelHud model={model} veil={null} onLeave={noForfeit} />
         </ClockContext>

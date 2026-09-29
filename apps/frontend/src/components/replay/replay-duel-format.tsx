@@ -11,7 +11,7 @@ export const ReplayDuelFormat = ({ duel }: { duel: ReplayedDuel }) => {
 
   return (
     <p className="text-[13px] text-muted-foreground">
-      <DuelTime endedAt={duel.endedAt} /> · {duelKind(duel.ranked)} · {duel.seconds} s ·{" "}
+      <DuelTime endedAt={duel.endedAt} /> · {duelKind(duel.ranked, locale)} · {duel.seconds} s ·{" "}
       {languageName(duel.language, locale)}
     </p>
   );

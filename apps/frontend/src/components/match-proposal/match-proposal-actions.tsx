@@ -4,6 +4,9 @@ import { CheckIcon } from "lucide-react";
 import { QueueLockButton } from "@/components/duel/queue-lock-button";
 import { dodgeWarning, REQUEUE_SECONDS } from "@/components/match-proposal/match-proposal-copy";
 import { Button } from "@/components/ui/button";
+import { secondsLabel } from "@/lib/durations";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 import type { ProposalStage } from "@/stores/duel-store";
 
 export type MatchProposalHandlers = {
@@ -48,27 +51,33 @@ export const MatchProposalActions = ({
   onSearchAgain,
   onSolo,
 }: MatchProposalActionsProps) => {
+  const locale = useLocale();
+
   switch (stage) {
     case "pending":
       return (
         <div className="flex w-full flex-col gap-2.5">
           <div className="grid w-full grid-cols-[1fr_1.6fr] gap-3">
             <Button variant="secondary" onClick={onDecline} className={SECONDARY}>
-              Refuser
-              <kbd className={`${KEY} bg-card text-muted-foreground`}>Échap</kbd>
+              {m.proposal_decline({}, { locale })}
+              <kbd className={`${KEY} bg-card text-muted-foreground`}>
+                {m.proposal_key_escape({}, { locale })}
+              </kbd>
             </Button>
             <Button
               ref={acceptRef}
               onClick={onAccept}
               className={`${PRIMARY} shadow-[0_10px_30px_-8px_var(--brand)]`}
             >
-              Accepter
-              <kbd className={`${KEY} bg-primary-foreground/18`}>Entrée</kbd>
+              {m.proposal_accept({}, { locale })}
+              <kbd className={`${KEY} bg-primary-foreground/18`}>
+                {m.proposal_key_enter({}, { locale })}
+              </kbd>
             </Button>
           </div>
           {dodgeLock === null ? null : (
             <p className="text-center text-[0.8125rem] font-semibold text-destructive">
-              {dodgeWarning(dodgeLock)}
+              {dodgeWarning(dodgeLock, locale)}
             </p>
           )}
         </div>
@@ -80,14 +89,14 @@ export const MatchProposalActions = ({
             aria-hidden
             className="size-4 rounded-full border-[2.5px] border-primary border-t-transparent motion-safe:animate-spin"
           />
-          En attente de {opponent}…
+          {m.proposal_waiting_for({ opponent }, { locale })}
         </div>
       );
     case "ready":
       return (
         <div className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-primary text-[1.0625rem] font-extrabold text-primary-foreground">
           <CheckIcon aria-hidden className="size-4.5" strokeWidth={3} />
-          Au Face-off
+          {m.proposal_to_face_off({}, { locale })}
         </div>
       );
     case "opponent-declined":
@@ -95,11 +104,13 @@ export const MatchProposalActions = ({
       return (
         <div className="flex w-full flex-col gap-2.5">
           <Button onClick={onSearchAgain} className={PRIMARY}>
-            Reprendre la recherche
+            {m.proposal_resume_search({}, { locale })}
           </Button>
           <p className="text-center text-[0.8125rem] text-muted-foreground">
-            Reprise automatique dans{" "}
-            <span className="font-mono text-foreground">{REQUEUE_SECONDS} s</span>
+            {m.proposal_requeue_in({}, { locale })}{" "}
+            <span className="font-mono text-foreground">
+              {secondsLabel(REQUEUE_SECONDS, locale)}
+            </span>
           </p>
         </div>
       );
@@ -108,14 +119,14 @@ export const MatchProposalActions = ({
       return (
         <div className="grid w-full grid-cols-[1fr_1.6fr] gap-3">
           <Button variant="secondary" onClick={onSolo} className={SECONDARY}>
-            Retour au Solo
+            {m.queue_back_to_solo({}, { locale })}
           </Button>
           <QueueLockButton
             lockedUntil={queueLockedUntil}
             onClick={onSearchAgain}
             className={PRIMARY}
           >
-            Relancer la recherche
+            {m.proposal_search_again({}, { locale })}
           </QueueLockButton>
         </div>
       );

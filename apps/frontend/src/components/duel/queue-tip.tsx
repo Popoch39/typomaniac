@@ -1,9 +1,16 @@
 import { ArrowLeftIcon } from "lucide-react";
 
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
+
 // Under the search: the Friends online are in the sidebar, to challenge while the User waits.
-export const QueueTip = () => (
-  <p className="flex items-center gap-2.5 text-sm text-muted-foreground">
-    <ArrowLeftIcon aria-hidden className="size-4.5" />
-    En attendant, défie un Friend en ligne : le premier Duel qui aboutit l'emporte.
-  </p>
-);
+export const QueueTip = () => {
+  const locale = useLocale();
+
+  return (
+    <p className="flex items-center gap-2.5 text-sm text-muted-foreground">
+      <ArrowLeftIcon aria-hidden className="size-4.5" />
+      {m.queue_tip({}, { locale })}
+    </p>
+  );
+};

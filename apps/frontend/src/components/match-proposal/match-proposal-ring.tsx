@@ -5,6 +5,10 @@ import {
   isCancelled,
   PROPOSAL_SECONDS,
 } from "@/components/match-proposal/match-proposal-copy";
+import { numberFormat } from "@/locale/formats";
+import type { Locale } from "@/locale/locales";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 import type { ProposalStage } from "@/stores/duel-store";
 
 type MatchProposalRingProps = { stage: ProposalStage; secondsLeft: number };
@@ -13,25 +17,32 @@ const RADIUS = 58;
 
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-// The count at the centre and the word under it.
-const countOf = (stage: ProposalStage, secondsLeft: number) => {
+// The count at the centre and the word under it, in the Locale.
+const countOf = (stage: ProposalStage, secondsLeft: number, locale: Locale) => {
   if (stage === "ready") {
-    return { count: "GO", unit: "Face-off" };
+    return {
+      count: m.proposal_ring_go({}, { locale }),
+      unit: m.proposal_ring_face_off({}, { locale }),
+    };
   }
 
   return isCancelled(stage)
-    ? { count: "–", unit: "annulé" }
-    : { count: String(secondsLeft), unit: "secondes" };
+    ? { count: "–", unit: m.proposal_ring_cancelled({}, { locale }) }
+    : {
+        count: numberFormat(locale).format(secondsLeft),
+        unit: m.proposal_ring_seconds({ count: secondsLeft }, { locale }),
+      };
 };
 
 // Between the two players: the time left to answer as a ring that empties, in the alert colour
 // in the last seconds; full and green once both accepted, empty once it ended without a Duel.
 export const MatchProposalRing = ({ stage, secondsLeft }: MatchProposalRingProps) => {
+  const locale = useLocale();
   const ready = stage === "ready";
   const cancelled = isCancelled(stage);
   const alert = !ready && !cancelled && secondsLeft <= ALERT_SECONDS;
   const filled = ready ? 1 : cancelled ? 0 : secondsLeft / PROPOSAL_SECONDS;
-  const { count, unit } = countOf(stage, secondsLeft);
+  const { count, unit } = countOf(stage, secondsLeft, locale);
 
   return (
     <div

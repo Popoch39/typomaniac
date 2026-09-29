@@ -15,6 +15,7 @@ import { type Me, meQueryOptions } from "@/api/me";
 import { DuelArea } from "@/components/duel/duel-area";
 import { ClockContext } from "@/components/run/clock-context";
 import { useConnectionStore } from "@/stores/connection-store";
+import { useLocaleStore } from "@/stores/locale-store";
 import { fakeServer, idle } from "@/test/fake-socket";
 
 const me: Me = {
@@ -132,6 +133,59 @@ describe("the Queue screen", () => {
       screen.queryByRole("region", { name: "On te trouve un adversaire…" }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(TIP)).not.toBeInTheDocument();
+  });
+});
+
+describe("the Queue screen in English", () => {
+  beforeEach(() => {
+    useLocaleStore.setState({ locale: "en" });
+  });
+
+  test("the search, its format, the wait, the players waiting and the tip", async () => {
+    await renderDuel();
+    receive({ type: "queued" });
+    receive({
+      type: "queue-status",
+      joinedAt: 0,
+      serverTime: 12_000,
+      size: 1284,
+      estimatedWait: 8000,
+    });
+
+    const card = screen.getByRole("region", { name: "Finding you an opponent…" });
+
+    expect(within(card).getByText("Ranked Duel · 30 s · English")).toBeInTheDocument();
+    expect(within(card).getByLabelText("Wait time")).toHaveTextContent("0:12");
+    expect(within(card).getByText("≈ 8 s wait · 1,284 players in the Queue")).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "While you wait, challenge a Friend who's online: whichever Duel comes together first is the one you play.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test("a single player waiting is counted as one", async () => {
+    await renderDuel();
+    receive({ type: "queued" });
+    receive({ type: "queue-status", joinedAt: 0, serverTime: 0, size: 1, estimatedWait: null });
+
+    expect(screen.getByText("1 player in the Queue")).toBeInTheDocument();
+  });
+
+  test("a Queue lock: its title, why, and the way back to Solo", async () => {
+    await renderDuel();
+    receive({ type: "queue-locked", until: 60_000, serverTime: 0 });
+
+    const card = await screen.findByRole("region", { name: "Queue locked" });
+
+    expect(
+      within(card).getByText(
+        "You can search again when the countdown ends. You can still challenge a Friend.",
+      ),
+    ).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Back to Solo" })).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: /Find a Duel/ })).toHaveTextContent("1:00");
   });
 });
 

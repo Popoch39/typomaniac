@@ -5,6 +5,7 @@ import { proposalNotification } from "@/components/match-proposal/match-proposal
 import { useTabAttention } from "@/components/tab-attention/tab-attention-context";
 import type { ProposalStage } from "@/stores/duel-store";
 import { useFaceOffSoundStore } from "@/stores/face-off-sound-store";
+import { useLocaleStore } from "@/stores/locale-store";
 
 // Once, when a Match proposal arrives waiting for an answer: its sound, unless the Face-off is
 // muted, and a system notification if the tab is hidden and allowed to show one. One that comes
@@ -27,7 +28,8 @@ export const useProposalArrival = (stage: ProposalStage, opponent: string) => {
     }
 
     if (attention.hidden() && attention.permission() === "granted") {
-      const { title, body } = proposalNotification(opponent);
+      // Told once, in the Locale shown when it arrives.
+      const { title, body } = proposalNotification(opponent, useLocaleStore.getState().locale);
 
       attention.notify(title, body);
     }

@@ -19,18 +19,31 @@ describe("formatElapsed", () => {
 
 describe("queueSizeLabel", () => {
   test("counts the User among the players", () => {
-    expect(queueSizeLabel(1)).toBe("1 joueur en file");
-    expect(queueSizeLabel(12)).toBe("12 joueurs en file");
+    expect(queueSizeLabel(1, "fr")).toBe("1 joueur en file");
+    expect(queueSizeLabel(12, "fr")).toBe("12 joueurs en file");
+  });
+
+  test("counts them in English, the thousands grouped", () => {
+    expect([0, 1, 12, 1284].map((size) => queueSizeLabel(size, "en"))).toEqual([
+      "1 player in the Queue",
+      "1 player in the Queue",
+      "12 players in the Queue",
+      "1,284 players in the Queue",
+    ]);
   });
 });
 
 describe("estimatedWaitLabel", () => {
   test("rounds to the second above", () => {
-    expect(estimatedWaitLabel(14_200)).toBe("≈ 15 s d'attente");
-    expect(estimatedWaitLabel(0)).toBe("≈ 1 s d'attente");
+    expect(estimatedWaitLabel(14_200, "fr")).toBe("≈ 15 s d'attente");
+    expect(estimatedWaitLabel(0, "fr")).toBe("≈ 1 s d'attente");
+  });
+
+  test("says it in English", () => {
+    expect(estimatedWaitLabel(14_200, "en")).toBe("≈ 15 s wait");
   });
 
   test("says nothing without a recent pairing", () => {
-    expect(estimatedWaitLabel(null)).toBeNull();
+    expect(estimatedWaitLabel(null, "fr")).toBeNull();
   });
 });

@@ -129,5 +129,123 @@
   "run_stat_accuracy": "accuracy",
   "run_stat_consistency": "consistency",
   "run_stat_chars": "characters",
-  "run_stat_chars_detail": "correct / incorrect / extra / missed"
+  "run_stat_chars_detail": "correct / incorrect / extra / missed",
+  "format_seconds": "{value} s",
+  "format_minutes": "{value} min",
+  "duel_kind_ranked": "Ranked Duel",
+  "duel_kind_challenge": "Challenge",
+  "duel_format_line": "{kind} · {duration} · {language}",
+  "rank_standing": "{standing} · {tp} TP",
+  "rank_placement": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Placement · {shown} Duel left",
+        "countPlural=*": "Placement · {shown} Duels left"
+      }
+    }
+  ],
+  "queue_search_title": "Finding you an opponent…",
+  "queue_cancel": "Cancel",
+  "queue_tip": "While you wait, challenge a Friend who's online: whichever Duel comes together first is the one you play.",
+  "queue_wait_label": "Wait time",
+  "queue_estimated_wait": "≈ {duration} wait",
+  "queue_size": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{shown} player in the Queue",
+        "countPlural=*": "{shown} players in the Queue"
+      }
+    }
+  ],
+  "queue_locked_title": "Queue locked",
+  "queue_locked_pitch": "You can search again when the countdown ends. You can still challenge a Friend.",
+  "queue_back_to_solo": "Back to Solo",
+  "queue_search_duel": "Find a Duel",
+  "queue_lock": "Queue locked for {duration}",
+  "proposal_found_title": "Opponent found!",
+  "proposal_found_subtitle": "Accept before the countdown runs out.",
+  "proposal_accepted_title": "Accepted",
+  "proposal_accepted_subtitle": "Waiting for {opponent} to answer.",
+  "proposal_ready_title": "Let's go!",
+  "proposal_ready_subtitle": "You both accepted. The Face-off is starting.",
+  "proposal_declined_title": "Duel declined",
+  "proposal_declined_subtitle": "You left the Queue. No TP at stake.",
+  "proposal_missed_title": "Time's up",
+  "proposal_missed_subtitle": "You didn't answer in time, so you left the Queue. No TP at stake.",
+  "proposal_opponent_declined_title": "{opponent} declined",
+  "proposal_opponent_missed_title": "{opponent} didn't answer",
+  "proposal_search_goes_on": "You keep your spot at the front of the Queue, and the search picks back up.",
+  "proposal_locked": "{lock}.",
+  "proposal_dodge_warning": "Declining will lock the Queue for {duration}",
+  "proposal_announce_found": [
+    {
+      "declarations": [
+        "input opponent",
+        "input count",
+        "input shown",
+        "local countPlural = count: plural"
+      ],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Opponent found: {opponent}, {shown} second to accept",
+        "countPlural=*": "Opponent found: {opponent}, {shown} seconds to accept"
+      }
+    }
+  ],
+  "proposal_announce_warned": "{found}. {warning}",
+  "proposal_announce_accepted": "Accepted, waiting for {opponent} to answer",
+  "proposal_announce_ready": "Let's go! The Face-off is starting.",
+  "proposal_announce_declined": "Duel declined, you left the Queue.",
+  "proposal_announce_missed": "Time's up, you left the Queue.",
+  "proposal_announce_opponent_declined": "{opponent} declined, the search picks back up.",
+  "proposal_announce_opponent_missed": "{opponent} didn't answer, the search picks back up.",
+  "proposal_notification_title": "Opponent found",
+  "proposal_notification_body": [
+    {
+      "declarations": [
+        "input opponent",
+        "input count",
+        "input shown",
+        "local countPlural = count: plural"
+      ],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{opponent} is waiting: {shown} second to accept.",
+        "countPlural=*": "{opponent} is waiting: {shown} seconds to accept."
+      }
+    }
+  ],
+  "proposal_status_turn": "Your turn",
+  "proposal_status_ready": "Ready",
+  "proposal_status_thinking": "Thinking…",
+  "proposal_status_declined": "Declined",
+  "proposal_status_missed": "No answer",
+  "proposal_status_requeued": "Back in the Queue",
+  "proposal_self": "(you)",
+  "proposal_decline": "Decline",
+  "proposal_key_escape": "Esc",
+  "proposal_accept": "Accept",
+  "proposal_key_enter": "Enter",
+  "proposal_waiting_for": "Waiting for {opponent}…",
+  "proposal_to_face_off": "On to the Face-off",
+  "proposal_resume_search": "Resume search",
+  "proposal_requeue_in": "Resuming automatically in",
+  "proposal_search_again": "Search again",
+  "proposal_ring_go": "GO",
+  "proposal_ring_face_off": "Face-off",
+  "proposal_ring_cancelled": "canceled",
+  "proposal_ring_seconds": [
+    {
+      "declarations": ["input count", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "second",
+        "countPlural=*": "seconds"
+      }
+    }
+  ]
 }

@@ -12,6 +12,7 @@ import { ClockContext } from "@/components/run/clock-context";
 import type { NotificationAccess, TabAttention } from "@/lib/tab-attention";
 import type { ProposalStage, ProposalView } from "@/stores/duel-store";
 import { useFaceOffSoundStore } from "@/stores/face-off-sound-store";
+import { useLocaleStore } from "@/stores/locale-store";
 
 const me: Me = {
   id: "popoch-id",
@@ -194,5 +195,45 @@ describe("a Match proposal, for a User looking elsewhere", () => {
 
     rerender(within(<MatchProposal proposal={at("opponent-declined")} />));
     expect(screen.getByRole("status")).toHaveTextContent("kaelis a refusé, la recherche reprend.");
+  });
+});
+
+describe("a Match proposal in English, for a User looking elsewhere", () => {
+  beforeEach(() => {
+    useLocaleStore.setState({ locale: "en" });
+  });
+
+  test("the tab's title blinks in English", async () => {
+    const { tab, within } = fakeTab();
+
+    render(within(<MatchProposal proposal={pending} />));
+
+    expect(tab.title).toBe("Opponent found!");
+
+    await act(async () => vi.advanceTimersByTime(1000));
+    expect(tab.title).toBe("typomaniac");
+  });
+
+  test("the title follows a switch of Locale while it blinks", async () => {
+    const { tab, within } = fakeTab();
+
+    render(within(<MatchProposal proposal={pending} />));
+    act(() => useLocaleStore.setState({ locale: "fr" }));
+
+    expect(tab.title).toBe("Adversaire trouvé !");
+
+    await act(async () => vi.advanceTimersByTime(1000));
+    expect(tab.title).toBe("typomaniac");
+  });
+
+  test("the notification of a hidden tab is in English", async () => {
+    const { tab, within } = fakeTab({ hidden: true });
+
+    render(within(<MatchProposal proposal={pending} />));
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(tab.notified).toEqual([
+      { title: "Opponent found", body: "kaelis is waiting: 10 seconds to accept." },
+    ]);
   });
 });

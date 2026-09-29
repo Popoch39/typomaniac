@@ -5,6 +5,8 @@ import { MatchProposalChip } from "@/components/match-proposal/match-proposal-ch
 import type { PlayerStatus } from "@/components/match-proposal/match-proposal-copy";
 import { MatchProposalRank } from "@/components/match-proposal/match-proposal-rank";
 import { UserAvatar } from "@/components/user-avatar/user-avatar";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 type MatchProposalPlayerProps = {
   handle: string;
@@ -38,32 +40,41 @@ export const MatchProposalPlayer = ({
   status,
   self = false,
   faded = false,
-}: MatchProposalPlayerProps) => (
-  <div
-    className={cn(
-      "flex flex-col items-center gap-3 rounded-[1.375rem] bg-muted px-3 py-5 transition-[box-shadow,opacity] duration-300",
-      RINGS[status],
-      faded && "opacity-55",
-    )}
-  >
-    <UserAvatar
-      handle={handle}
-      image={image}
-      ornament={ornament}
-      className="size-21 rounded-[33%] after:hidden"
-      fallbackClassName={cn(
-        "text-[2rem] font-extrabold",
-        self ? "bg-primary text-primary-foreground" : "bg-opponent text-on-opponent",
+}: MatchProposalPlayerProps) => {
+  const locale = useLocale();
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center gap-3 rounded-[1.375rem] bg-muted px-3 py-5 transition-[box-shadow,opacity] duration-300",
+        RINGS[status],
+        faded && "opacity-55",
       )}
-    />
-    {/* Positioned after the avatar: drawn over the Ornament's overflow, never under it. */}
-    <div className="relative flex flex-col items-center gap-1">
-      <span className="text-lg font-bold">
-        {handle}
-        {self ? <span className="font-medium text-muted-foreground"> (toi)</span> : null}
-      </span>
-      <MatchProposalRank rank={rank} />
+    >
+      <UserAvatar
+        handle={handle}
+        image={image}
+        ornament={ornament}
+        className="size-21 rounded-[33%] after:hidden"
+        fallbackClassName={cn(
+          "text-[2rem] font-extrabold",
+          self ? "bg-primary text-primary-foreground" : "bg-opponent text-on-opponent",
+        )}
+      />
+      {/* Positioned after the avatar: drawn over the Ornament's overflow, never under it. */}
+      <div className="relative flex flex-col items-center gap-1">
+        <span className="text-lg font-bold">
+          {handle}
+          {self ? (
+            <span className="font-medium text-muted-foreground">
+              {" "}
+              {m.proposal_self({}, { locale })}
+            </span>
+          ) : null}
+        </span>
+        <MatchProposalRank rank={rank} />
+      </div>
+      <MatchProposalChip status={status} />
     </div>
-    <MatchProposalChip status={status} />
-  </div>
-);
+  );
+};

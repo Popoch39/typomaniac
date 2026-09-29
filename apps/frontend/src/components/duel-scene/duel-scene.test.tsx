@@ -9,6 +9,7 @@ import { act, render, screen, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import type { ServerMessage } from "api";
 import { StrictMode } from "react";
+import type { Language } from "typing-engine";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { friendsQueryOptions } from "@/api/friends";
@@ -17,6 +18,7 @@ import { AppFrame } from "@/components/app-frame";
 import { ClockContext } from "@/components/run/clock-context";
 import { HomePage } from "@/pages/home-page";
 import { useConnectionStore } from "@/stores/connection-store";
+import { useLocaleStore } from "@/stores/locale-store";
 import { usePlayStore } from "@/stores/play-store";
 import { fakeServer, idle } from "@/test/fake-socket";
 import { holdGsapClock } from "@/test/gsap-clock";
@@ -35,14 +37,17 @@ const me: Me = {
 const placement = { placementsLeft: 5 };
 
 // A Duel found in the Queue, its start far enough for the Countdown to still run.
-const duelFound = (selfRank: typeof placement | null): ServerMessage => ({
+const duelFound = (
+  selfRank: typeof placement | null,
+  { language = "en", seconds = 30 }: { language?: Language; seconds?: number } = {},
+): ServerMessage => ({
   type: "duel-found",
   duel: {
     id: "duel-1",
     seed: 42,
-    language: "en",
+    language,
     wordListVersion: 1,
-    seconds: 30,
+    seconds,
     startsAt: 60_000,
   },
   opponent: { handle: "kzr_", image: null, ornament: null },
@@ -242,5 +247,31 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
     expect(sidebar()).not.toHaveAttribute("inert");
     expect(screen.queryByRole("banner")).not.toBeInTheDocument();
     expect(screen.queryByText(/· 30 s ·/)).not.toBeInTheDocument();
+  });
+});
+
+// The play page shown in French, then switched to English.
+const renderInEnglish = async () => {
+  await renderPlayPage();
+  act(() => useLocaleStore.setState({ locale: "en" }));
+};
+
+describe("the Duel's scene in English", () => {
+  test("the header says the kind of Duel, its time and its Language", async () => {
+    await renderInEnglish();
+    receive(duelFound(placement));
+
+    expect(
+      within(screen.getByRole("banner")).getByText("Ranked Duel · 30 s · English"),
+    ).toBeInTheDocument();
+  });
+
+  test("the format is the Duel's own: a Challenge of another time and Language says so", async () => {
+    await renderInEnglish();
+    receive(duelFound(null, { language: "fr", seconds: 60 }));
+
+    expect(
+      within(screen.getByRole("banner")).getByText("Challenge · 60 s · French"),
+    ).toBeInTheDocument();
   });
 });

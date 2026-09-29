@@ -7,6 +7,7 @@ import { type Me, meQueryOptions } from "@/api/me";
 import { MatchProposalDialog } from "@/components/match-proposal/match-proposal-dialog";
 import { ClockContext } from "@/components/run/clock-context";
 import type { ProposalStage, ProposalView } from "@/stores/duel-store";
+import { useLocaleStore } from "@/stores/locale-store";
 
 const me: Me = {
   id: "popoch-id",
@@ -285,5 +286,81 @@ describe("MatchProposalDialog", () => {
 
     await user.click(screen.getByRole("button", { name: "Reprendre la recherche" }));
     expect(onSearchAgain).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("MatchProposalDialog in English", () => {
+  beforeEach(() => {
+    useLocaleStore.setState({ locale: "en" });
+  });
+
+  test("to answer: the format, both players and their ranks, the keys shown", async () => {
+    shown({ ...pending, dodgeLock: 300_000 });
+
+    expect(
+      await screen.findByRole("dialog", { name: "Opponent found!" }),
+    ).toHaveAccessibleDescription("Accept before the countdown runs out.");
+    expect(screen.getByText("Ranked Duel · 30 s · English")).toBeInTheDocument();
+    expect(screen.getByText("(you)")).toBeInTheDocument();
+    expect(screen.getByText("Placement · 3 Duels left")).toBeInTheDocument();
+    expect(screen.getByText("Your turn")).toBeInTheDocument();
+    expect(screen.getByText("Thinking…")).toBeInTheDocument();
+    expect(screen.getByText("seconds")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Decline Esc" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Accept Enter" })).toHaveFocus();
+    expect(screen.getByText("Declining will lock the Queue for 5 min")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Opponent found: kaelis, 10 seconds to accept. Declining will lock the Queue for 5 min",
+    );
+  });
+
+  test("the last second is counted as one", async () => {
+    shown(pending);
+
+    now = 9500;
+    await act(async () => vi.advanceTimersByTime(250));
+    expect(screen.getByText("second")).toBeInTheDocument();
+  });
+
+  test("accepted, then accepted by both", async () => {
+    shown(at("accepted", { selfAccepted: true }));
+
+    expect(await screen.findByRole("dialog", { name: "Accepted" })).toBeInTheDocument();
+    expect(screen.getByText("Waiting for kaelis…")).toBeInTheDocument();
+    expect(screen.getByText("Ready")).toBeInTheDocument();
+
+    cleanup();
+    shown(at("ready", { selfAccepted: true, opponentAccepted: true }));
+
+    expect(await screen.findByRole("dialog", { name: "Let's go!" })).toBeInTheDocument();
+    expect(screen.getByText("On to the Face-off")).toBeInTheDocument();
+  });
+
+  test("a Dodge that locked the Queue: out of it, searching again once the lock is over", async () => {
+    shown(at("declined", { queueLock: { until: 300_000, duration: 300_000 } }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Duel declined" }),
+    ).toHaveAccessibleDescription("You left the Queue. No TP at stake. Queue locked for 5 min.");
+    expect(screen.getByText("Declined")).toBeInTheDocument();
+    expect(screen.getByText("Back in the Queue")).toBeInTheDocument();
+    expect(screen.getByText("canceled")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back to Solo" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Search again/ })).toHaveTextContent("5:00");
+  });
+
+  test("the opponent at fault: the search picks back up on its own", async () => {
+    shown(at("opponent-missed", { selfAccepted: true }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "kaelis didn't answer" }),
+    ).toHaveAccessibleDescription(
+      "You keep your spot at the front of the Queue, and the search picks back up.",
+    );
+    expect(screen.getByText("No answer")).toBeInTheDocument();
+    expect(screen.getByText(/Resuming automatically in/)).toHaveTextContent(
+      "Resuming automatically in 3 s",
+    );
+    expect(screen.getByRole("button", { name: "Resume search" })).toBeInTheDocument();
   });
 });

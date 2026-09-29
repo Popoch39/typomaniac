@@ -19,6 +19,7 @@ import { MatchProposalPlayer } from "@/components/match-proposal/match-proposal-
 import { MatchProposalRing } from "@/components/match-proposal/match-proposal-ring";
 import { useAcceptOnEnter } from "@/components/match-proposal/use-accept-on-enter";
 import { useSecondsLeft } from "@/components/match-proposal/use-seconds-left";
+import { useLocale } from "@/locale/use-locale";
 import type { ProposalView } from "@/stores/duel-store";
 
 type MatchProposalDialogProps = MatchProposalHandlers & {
@@ -41,11 +42,12 @@ export const MatchProposalDialog = ({
   onSearchAgain,
   onSolo,
 }: MatchProposalDialogProps) => {
+  const locale = useLocale();
   const { data: me } = useQuery(meQueryOptions);
   const acceptRef = useRef<HTMLButtonElement>(null);
   const left = useSecondsLeft(proposal.expiresAt);
   const { stage, opponent, dodgeLock, queueLock } = proposal;
-  const headline = proposalHeadline(stage, opponent.handle, queueLock);
+  const headline = proposalHeadline(stage, opponent.handle, locale, queueLock);
 
   useAcceptOnEnter(stage === "pending", onAccept);
 

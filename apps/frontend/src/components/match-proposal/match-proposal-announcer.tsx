@@ -1,4 +1,5 @@
 import { proposalAnnouncement } from "@/components/match-proposal/match-proposal-copy";
+import { useLocale } from "@/locale/use-locale";
 import type { ProposalStage, QueueLock } from "@/stores/duel-store";
 
 // Told to screen readers: the opponent and the time to answer, with the warning when declining
@@ -13,8 +14,12 @@ export const MatchProposalAnnouncer = ({
   opponent: string;
   dodgeLock: number | null;
   queueLock: QueueLock | null;
-}) => (
-  <output aria-live="assertive" className="sr-only">
-    {proposalAnnouncement(stage, opponent, { dodgeLock, queueLock })}
-  </output>
-);
+}) => {
+  const locale = useLocale();
+
+  return (
+    <output aria-live="assertive" className="sr-only">
+      {proposalAnnouncement(stage, opponent, locale, { dodgeLock, queueLock })}
+    </output>
+  );
+};

@@ -1,9 +1,10 @@
 import { useSearchDuel } from "@/components/duel/use-search-duel";
 import { useFaceOffSounds } from "@/components/face-off/face-off-sounds-context";
-import { PROPOSAL_TAB_TITLE } from "@/components/match-proposal/match-proposal-copy";
+import { proposalTabTitle } from "@/components/match-proposal/match-proposal-copy";
 import { MatchProposalDialog } from "@/components/match-proposal/match-proposal-dialog";
 import { useBlinkingTitle } from "@/components/match-proposal/use-blinking-title";
 import { useProposalArrival } from "@/components/match-proposal/use-proposal-arrival";
+import { useLocale } from "@/locale/use-locale";
 import { type ProposalView, useDuelStore } from "@/stores/duel-store";
 import { usePlayStore } from "@/stores/play-store";
 
@@ -17,9 +18,10 @@ export const MatchProposal = ({ proposal }: { proposal: ProposalView }) => {
   const setPlay = usePlayStore((state) => state.setPlay);
   const { unlock } = useFaceOffSounds();
   const searchDuel = useSearchDuel();
+  const locale = useLocale();
 
   useProposalArrival(proposal.stage, proposal.opponent.handle);
-  useBlinkingTitle(proposal.stage === "pending", PROPOSAL_TAB_TITLE);
+  useBlinkingTitle(proposal.stage === "pending", proposalTabTitle(locale));
 
   const accept = () => {
     unlock();
