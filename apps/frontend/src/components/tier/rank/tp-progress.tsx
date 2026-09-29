@@ -7,11 +7,17 @@ import { TIER_COLORS } from "@/components/tier/tier";
 // One notch per Placement Duel, numbered from 1.
 const PLACEMENT_NOTCHES = Array.from({ length: PLACEMENT_DUELS }, (_, index) => index + 1);
 
+// The drawing's thickness: thin under a rank in a line, thicker where the rank stands alone.
+const THICKNESS = { sm: "h-1", lg: "h-2" };
+
+type TpProgressProps = { rank: Rank | null; size?: keyof typeof THICKNESS };
+
 // Under a rank: a bar filled to the Division's TP out of 100 in the Tier's colour, or a notch per
 // Placement Duel, those played filled. Nothing for Maniac, whose TP have no ceiling, nor without a
 // Rating. Screen readers read a meter, with what is left to the next rank; the drawing is hidden.
-export const TpProgress = ({ rank }: { rank: Rank | null }) => {
+export const TpProgress = ({ rank, size = "sm" }: TpProgressProps) => {
   const progress = tpProgressOf(rank);
+  const thickness = THICKNESS[size];
 
   if (progress === null || progress.kind === "maniac") {
     return null;
@@ -33,7 +39,10 @@ export const TpProgress = ({ rank }: { rank: Rank | null }) => {
             <span
               key={notch}
               data-played={notch <= progress.played ? "" : undefined}
-              className="h-1 flex-1 rounded-full bg-border data-played:bg-muted-foreground"
+              className={cn(
+                "flex-1 rounded-full bg-border data-played:bg-muted-foreground",
+                thickness,
+              )}
             />
           ))}
         </div>
@@ -51,7 +60,7 @@ export const TpProgress = ({ rank }: { rank: Rank | null }) => {
         value={progress.tp}
         aria-valuetext={`${progress.tp} TP sur ${progress.of} · ${progress.toNext}`}
       />
-      <div aria-hidden="true" className="h-1 overflow-hidden rounded-full bg-border">
+      <div aria-hidden="true" className={cn("overflow-hidden rounded-full bg-border", thickness)}>
         <div
           className={cn("h-full rounded-full bg-current", TIER_COLORS[progress.tier])}
           style={{ width: `${Math.min(progress.tp / progress.of, 1) * 100}%` }}

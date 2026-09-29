@@ -5,8 +5,6 @@ import { LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-skelet
 export const LeaderboardPendingPage = () => (
   <section className="flex flex-col gap-6">
     <LeaderboardHeader />
-    <div className="w-full max-w-2xl">
-      <LeaderboardSkeleton />
-    </div>
+    <LeaderboardSkeleton />
   </section>
 );

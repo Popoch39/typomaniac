@@ -1,19 +1,47 @@
+import { LeaderboardColumns } from "@/components/leaderboard/leaderboard-columns";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Stable keys for the placeholder rows (they have no identity of their own).
-const ROW_KEYS = ["a", "b", "c", "d", "e", "f"];
+// Stable keys for the placeholders (they have no identity of their own): the podium's cards,
+// second, first and third, the first raised; then the list's rows.
+const PODIUM_CARDS = [
+  { key: "second", height: "h-62.5" },
+  { key: "first", height: "h-81" },
+  { key: "third", height: "h-62.5" },
+];
 
-// Rows of the Classement while they load: place, avatar, Handle, rank.
+const ROW_KEYS = ["a", "b", "c", "d", "e"];
+
+// The Classement while it loads: the podium, the list's rows (place, avatar, Handle, rank), then
+// the right column's cards.
 export const LeaderboardSkeleton = () => (
   <LoadingRegion label="Chargement du Classement">
-    {ROW_KEYS.map((row) => (
-      <div key={row} className="flex items-center gap-4 rounded-2xl bg-card px-5 py-3">
-        <Skeleton className="h-5 w-10" />
-        <Skeleton className="size-9 rounded-[33%]" />
-        <Skeleton className="h-4 flex-1" />
-        <Skeleton className="h-4 w-24" />
-      </div>
-    ))}
+    <LeaderboardColumns
+      standings={
+        <>
+          <div className="grid grid-cols-3 items-end gap-4">
+            {PODIUM_CARDS.map((card) => (
+              <Skeleton key={card.key} className={`${card.height} rounded-card bg-card`} />
+            ))}
+          </div>
+          <div className="flex flex-col gap-2">
+            {ROW_KEYS.map((row) => (
+              <div key={row} className="flex h-14 items-center gap-4 rounded-[18px] bg-card px-5">
+                <Skeleton className="h-5 w-9" />
+                <Skeleton className="size-9 rounded-[33%]" />
+                <Skeleton className="h-4 flex-1" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </div>
+        </>
+      }
+      aside={
+        <>
+          <Skeleton className="h-62 rounded-card bg-card" />
+          <Skeleton className="h-80 rounded-card bg-card" />
+        </>
+      }
+    />
   </LoadingRegion>
 );

@@ -2,6 +2,8 @@ import { cn } from "cn";
 
 import type { LeaderboardEntry } from "@/api/leaderboard";
 import { HandleLink } from "@/components/handle/handle-link";
+import { initialsPaint, MINE_PLACE_PAINT } from "@/components/leaderboard/leaderboard-paint";
+import { LeaderboardYou } from "@/components/leaderboard/leaderboard-you";
 import { RankChip } from "@/components/tier/rank/rank-chip";
 import { UserAvatar } from "@/components/user-avatar/user-avatar";
 
@@ -13,11 +15,16 @@ export const LeaderboardRow = ({ entry, mine }: LeaderboardRowProps) => (
   <li
     aria-current={mine ? "true" : undefined}
     className={cn(
-      "flex items-center gap-4 rounded-2xl px-5 py-3",
-      mine ? "bg-primary/15 ring-1 ring-primary" : "bg-card",
+      "flex h-14 items-center gap-4 rounded-[18px] px-5",
+      mine ? MINE_PLACE_PAINT : "bg-card",
     )}
   >
-    <span className="w-10 text-right font-mono text-lg font-bold tabular-nums">
+    <span
+      className={cn(
+        "w-9 text-right font-mono font-semibold tabular-nums",
+        mine ? "text-foreground" : "text-muted-foreground",
+      )}
+    >
       {entry.position}
     </span>
     <UserAvatar
@@ -25,13 +32,15 @@ export const LeaderboardRow = ({ entry, mine }: LeaderboardRowProps) => (
       image={entry.image}
       ornament={entry.ornament}
       className="size-9"
-      fallbackClassName="bg-primary text-sm font-bold text-primary-foreground"
+      fallbackClassName={cn("text-[13px] font-bold", initialsPaint(mine))}
     />
     {/* Positioned after the avatar: drawn over the Ornament's overflow, never under it. */}
-    <span className="relative flex min-w-0 flex-1 items-center gap-2 font-semibold">
-      <HandleLink handle={entry.handle} className="truncate" />
-      {mine ? <span className="text-xs text-primary">Toi</span> : null}
+    <span className="relative flex min-w-0 flex-1 items-center gap-2 text-[15px] font-semibold">
+      <HandleLink handle={entry.handle} className={cn("truncate", mine ? "font-bold" : null)} />
+      {mine ? <LeaderboardYou /> : null}
     </span>
-    <RankChip rank={entry.rank} />
+    <span className="relative">
+      <RankChip rank={entry.rank} />
+    </span>
   </li>
 );
