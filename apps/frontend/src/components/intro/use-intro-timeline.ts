@@ -6,10 +6,13 @@ import { atReplaySpeed } from "@/components/intro-dev/intro-replay";
 import {
   fadeOutTimeline,
   type IntroTargets,
+  landingTimeline,
   LOGO_PX,
+  type ShellTargets,
   typingTimeline,
   waitingBlinkTimeline,
 } from "@/components/intro/intro-timelines";
+import { landingGeometry, type LandingMeasures } from "@/components/intro/landing-geometry";
 import { useIntroStore } from "@/stores/intro-store";
 
 gsap.registerPlugin(useGSAP);
@@ -51,6 +54,60 @@ const targetsIn = (overlay: HTMLElement): IntroTargets | null => {
   };
 };
 
+const elementsIn = (root: ParentNode, name: string) =>
+  Array.from(root.querySelectorAll<HTMLElement>(part(name)));
+
+// The shell the lockup lands in, outside the overlay: the sidebar, its brand, its nav, its Friends
+// online (or none) and its foot, the page's parts. None without a sidebar (the page's start
+// failed, its error shown instead).
+const shellIn = (document: Document): ShellTargets | null => {
+  const sidebar = document.querySelector<HTMLElement>(part("sidebar"));
+  const brand = sidebar?.querySelector<HTMLElement>(part("brand")) ?? null;
+  const brandLogo = brand?.querySelector<SVGElement>('[data-logo="symbol"]') ?? null;
+  const brandWave = brand?.querySelector<SVGElement>('[data-logo="wave"]') ?? null;
+  const brandWord = brand?.querySelector<HTMLElement>(part("brand-word")) ?? null;
+  const foot = sidebar?.querySelector<HTMLElement>(part("foot")) ?? null;
+
+  if (
+    sidebar === null ||
+    brandLogo === null ||
+    brandWave === null ||
+    brandWord === null ||
+    foot === null
+  ) {
+    return null;
+  }
+
+  return {
+    sidebar,
+    brandLogo,
+    brandWord,
+    brandWave,
+    nav: elementsIn(sidebar, "nav"),
+    lower: [...elementsIn(sidebar, "online"), foot],
+    parts: elementsIn(document, "part"),
+  };
+};
+
+const boxOf = (element: Element) => {
+  const { left, top, width, height } = element.getBoundingClientRect();
+
+  return { left, top, width, height };
+};
+
+// Every measure of the landing, read at once on the real sidebar as it starts, before anything
+// is written. The lockup's box before its transform: the overlay, fixed, is the window.
+const measure = (
+  { lockup, logo }: IntroTargets,
+  { sidebar, brandLogo, brandWord }: ShellTargets,
+): LandingMeasures => ({
+  lockup: { left: lockup.offsetLeft, top: lockup.offsetTop },
+  logoTop: logo.offsetTop,
+  sidebar: boxOf(sidebar),
+  brandLogo: boxOf(brandLogo),
+  brandWord: boxOf(brandWord),
+});
+
 // How far right of its place in the lockup the Logo starts, for it to be at the centre of the
 // screen: half the typed lockup's width, less half the Logo. The letters are shown to be measured
 // (one read), then hidden again in the same task: never painted.
@@ -70,31 +127,56 @@ const end = () => useIntroStore.getState().end();
 // In a dev build, an Intro replayed from /dev/intro plays at its chosen speed (see intro-replay).
 const atSpeed = import.meta.env.DEV ? atReplaySpeed : (timeline: gsap.core.Timeline) => timeline;
 
-// The three phases, built at once so that the context reverts them all: the typing, then a blink
-// of the caret as long as the shell is awaited, then the end.
-const play = (targets: IntroTargets) => {
+// The end of the Intro, once the shell is there, right where `before` (the typing, or the last
+// blink) ended: on the frame that passed it, the landing starts that much in, never a frame late.
+// Measured on the real sidebar, then the landing into it. A resize as it lands would move the
+// sidebar: the Intro jumps to its end. With no sidebar to land in (the page's start failed), the
+// overlay fades out over the error.
+const finish = (targets: IntroTargets, before: gsap.core.Timeline) => {
+  const shell = shellIn(targets.overlay.ownerDocument);
+
+  if (shell === null) {
+    atSpeed(fadeOutTimeline(targets)).eventCallback("onComplete", end);
+
+    return;
+  }
+
+  const landing = atSpeed(landingTimeline(targets, shell, landingGeometry(measure(targets, shell))))
+    .startTime(before.endTime())
+    .eventCallback("onComplete", end);
+
+  const jumpToEnd = () => landing.progress(1);
+
+  window.addEventListener("resize", jumpToEnd);
+
+  return () => window.removeEventListener("resize", jumpToEnd);
+};
+
+// The typing, then a blink of the caret as long as the shell is awaited, then the end, built in
+// `context` when it comes: the context reverts them all, the shell's inline styles with them.
+const play = (targets: IntroTargets, context: gsap.Context) => {
   const typing = atSpeed(typingTimeline(targets, { shift: logoShift(targets) }));
   const blink = atSpeed(waitingBlinkTimeline(targets));
-  const fadeOut = atSpeed(fadeOutTimeline(targets)).pause().eventCallback("onComplete", end);
 
   // At the waiting point, and at the end of each blink: on to the end once the shell is there,
   // else one more blink.
-  const goOn = () => {
+  const goOn = (before: gsap.core.Timeline) => {
     if (useIntroStore.getState().shellReady) {
-      fadeOut.play();
+      context.add(() => finish(targets, before));
     } else {
       blink.restart();
     }
   };
 
-  typing.eventCallback("onComplete", goOn);
-  blink.eventCallback("onComplete", goOn);
+  typing.eventCallback("onComplete", () => goOn(typing));
+  blink.eventCallback("onComplete", () => goOn(blink));
 };
 
 // Plays the Intro inside `scope`, from the boot Logo, on GSAP's clock: once the word's font is
 // there, the typing; then, until the home page is mounted, the caret blinks, the Intro going on at
-// the end of a blink; then the overlay fades out, and the Intro ends. Under reduced motion (the
-// preference changed since the start), it ends at once. Everything is reverted on unmount.
+// the end of a blink; then the lockup lands in the sidebar and the app comes in, and the Intro
+// ends. Under reduced motion (the preference changed since the start), it ends at once.
+// Everything is reverted on unmount: the overlay's, and the shell's inline styles.
 export const useIntroTimeline = (scope: RefObject<HTMLDivElement | null>) => {
   useGSAP(
     () => {
@@ -123,7 +205,7 @@ export const useIntroTimeline = (scope: RefObject<HTMLDivElement | null>) => {
 
           void lockupFontLoaded().then(() => {
             if (live) {
-              context.add(() => play(targets));
+              context.add(() => play(targets, context));
             }
           });
 

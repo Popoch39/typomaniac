@@ -12,7 +12,8 @@ type SidebarNavLinkProps = Pick<LinkComponentProps, "to" | "activeOptions"> & {
 };
 
 // One entry of the sidebar's nav: a link to a page, its icon then its name. The router's Link sets
-// `aria-current="page"` on the current one, which fills it with the accent.
+// `aria-current="page"` on the current one, which fills it with the accent. One of the items the
+// Intro brings in after the sidebar.
 export const SidebarNavLink = ({
   to,
   activeOptions,
@@ -20,7 +21,7 @@ export const SidebarNavLink = ({
   label,
   badge,
 }: SidebarNavLinkProps) => (
-  <SidebarMenuItem>
+  <SidebarMenuItem data-intro="nav">
     <SidebarMenuButton render={<Link to={to} activeOptions={activeOptions} />}>
       <Icon aria-hidden="true" />
       {label}

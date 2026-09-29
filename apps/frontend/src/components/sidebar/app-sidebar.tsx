@@ -18,12 +18,13 @@ type AppSidebarProps = {
 
 // The floating sidebar, left of every page, the window's height: the Logo, the nav, the Friends
 // online, then the Locale switch (once English opens), the Theme button and the User's card (or
-// the Visitor's).
+// the Visitor's). The Intro lands in it: it grows from its brand, its foot coming last.
 export const AppSidebar = ({ hidden, faded }: AppSidebarProps) => {
   const locale = useLocale();
 
   return (
     <Sidebar
+      data-intro="sidebar"
       aria-label={m.sidebar_label({}, { locale })}
       hidden={hidden}
       inert={hidden || faded}
@@ -38,7 +39,7 @@ export const AppSidebar = ({ hidden, faded }: AppSidebarProps) => {
         <SidebarNav />
         <SidebarOnlineFriends />
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter data-intro="foot">
         {englishOpen() ? <LocaleButton /> : null}
         <ThemeButton />
         <SidebarAccount />

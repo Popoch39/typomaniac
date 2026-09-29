@@ -118,6 +118,12 @@ const heldShell = () => {
   return { shell, mount: () => act(async () => open?.()) };
 };
 
+// The landing, from the waiting point to the last part of the page in place: about 2.1 s.
+const LANDING_S = 2.2;
+
+// The whole Intro, the shell there all along: the typing to its waiting point, then the landing.
+const OVER_S = 2.62 + LANDING_S;
+
 // The fonts of the lockup load (at once here), then the typing starts on GSAP's clock.
 const fontsLoaded = () => act(() => Promise.resolve());
 
@@ -138,6 +144,30 @@ const typed = () =>
 
 // The app's frame, around the sidebar and the page.
 const frame = () => screen.getByLabelText("Barre latérale").parentElement;
+
+const sidebar = () => screen.getByLabelText("Barre latérale");
+
+// The parts of the shell the landing moves, by their `data-intro`.
+const shellParts = (name: string) =>
+  Array.from(document.querySelectorAll(`[data-intro='${name}']`));
+
+// Everything the landing moves: the sidebar, its brand (Logo, wave, word), its nav, its Friends
+// online and its foot, and the page's parts.
+const moved = () => [
+  sidebar(),
+  ...sidebar().querySelectorAll("[data-logo]"),
+  ...shellParts("brand-word"),
+  ...shellParts("nav"),
+  ...shellParts("online"),
+  ...shellParts("foot"),
+  ...shellParts("part"),
+];
+
+// What the landing left inline on the shell, element by element: nothing once the Intro is over,
+// its classes alone.
+const leftInline = () => moved().map((element) => element.getAttribute("style") ?? "");
+
+const nothingInline = () => moved().map(() => "");
 
 const resumePrompt = () => screen.queryByRole("button", { name: "clique ou tape pour reprendre" });
 
@@ -206,7 +236,7 @@ describe("the Intro, as the home page starts", () => {
 
     await mount();
     await screen.findByLabelText("Zone de frappe");
-    gsapClock.advance(1.2);
+    gsapClock.advance(0.63 + LANDING_S);
 
     expect(intro()).not.toBeInTheDocument();
   });
@@ -232,7 +262,7 @@ describe("the Intro, as the home page starts", () => {
     expect(input).not.toHaveFocus();
     expect(resumePrompt()).not.toBeInTheDocument();
 
-    gsapClock.advance(3.2);
+    gsapClock.advance(OVER_S);
 
     expect(intro()).not.toBeInTheDocument();
     expect(frame()).not.toHaveAttribute("inert");
@@ -246,7 +276,7 @@ describe("the Intro, as the home page starts", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    gsapClock.advance(3.2);
+    gsapClock.advance(OVER_S);
 
     expect(await screen.findByRole("dialog", { name: "Choisis ton Handle" })).toBeInTheDocument();
   });
@@ -263,7 +293,7 @@ describe("the Intro, as the home page starts", () => {
 
     expect(screen.queryByText("Te revoilà")).not.toBeInTheDocument();
 
-    gsapClock.advance(3.2);
+    gsapClock.advance(OVER_S);
 
     expect(await screen.findByText("Te revoilà")).toBeInTheDocument();
   });
@@ -292,7 +322,7 @@ describe("the Intro, as the home page starts", () => {
 
     await fontsLoaded();
     await screen.findByLabelText("Zone de frappe");
-    gsapClock.advance(3.2);
+    gsapClock.advance(OVER_S);
 
     await act(() => router.navigate({ to: "/leaderboard" }));
     await act(() => router.navigate({ to: "/" }));
@@ -300,5 +330,73 @@ describe("the Intro, as the home page starts", () => {
     expect(await screen.findByLabelText("Zone de frappe")).toHaveFocus();
     expect(intro()).not.toBeInTheDocument();
     expect(frame()).not.toHaveAttribute("inert");
+  });
+});
+
+describe("the Intro's landing into the sidebar", () => {
+  test("the shell there at the waiting point, the lockup dives into the sidebar and the app follows", async () => {
+    renderApp();
+    await fontsLoaded();
+    await screen.findByLabelText("Zone de frappe");
+    gsapClock.advance(2.62 + 0.5);
+
+    expect(intro()).toBeInTheDocument();
+    expect(frame()).toHaveAttribute("inert");
+    // The User's six items of nav, the page's five parts, the Friends online, the foot.
+    expect(shellParts("nav")).toHaveLength(6);
+    expect(shellParts("part")).toHaveLength(5);
+    expect(shellParts("online")).toHaveLength(1);
+    expect(shellParts("foot")).toHaveLength(1);
+
+    gsapClock.advance(LANDING_S);
+
+    expect(intro()).not.toBeInTheDocument();
+  });
+
+  test("for a Visitor, the three items of nav land, and no Friends online", async () => {
+    renderApp({ me: null });
+    await fontsLoaded();
+    await screen.findByLabelText("Zone de frappe");
+    gsapClock.advance(2.62 + 0.5);
+
+    expect(shellParts("nav")).toHaveLength(3);
+    expect(shellParts("online")).toHaveLength(0);
+    expect(shellParts("foot")).toHaveLength(1);
+
+    gsapClock.advance(LANDING_S);
+
+    expect(intro()).not.toBeInTheDocument();
+    expect(leftInline()).toEqual(nothingInline());
+  });
+
+  test("once landed, the sidebar and the page are theirs again, the sidebar fading while a Run is typed", async () => {
+    const user = userEvent.setup();
+
+    renderApp();
+    await fontsLoaded();
+    await screen.findByLabelText("Zone de frappe");
+    gsapClock.advance(OVER_S);
+
+    expect(leftInline()).toEqual(nothingInline());
+
+    await user.keyboard("s");
+
+    expect(sidebar()).toHaveAttribute("data-faded");
+  });
+
+  test("the window resized during the landing, the Intro jumps to its end", async () => {
+    renderApp();
+    await fontsLoaded();
+    await screen.findByLabelText("Zone de frappe");
+    gsapClock.advance(2.62 + 0.6);
+
+    expect(intro()).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(new Event("resize"));
+    });
+
+    expect(intro()).not.toBeInTheDocument();
+    expect(leftInline()).toEqual(nothingInline());
   });
 });

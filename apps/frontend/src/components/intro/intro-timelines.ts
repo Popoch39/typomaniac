@@ -1,4 +1,9 @@
 import { gsap } from "gsap";
+import { DrawSVGPlugin } from "gsap/DrawSVGPlugin";
+
+import { DIVE_SCALE, type Landing } from "@/components/intro/landing-geometry";
+
+gsap.registerPlugin(DrawSVGPlugin);
 
 // The Intro's timelines, from board F · Ancrage × Faute de frappe of the canvas « Intro · Logo vers
 // app shell » (`Ancrage-Frappe.dc.html`): its times, eases and sizes. Built on the elements given,
@@ -34,8 +39,28 @@ const WAIT_OFF_S = 0.13;
 
 const WAIT_BLINK_S = 0.63;
 
-// The provisional end: the overlay fades out over the app.
+// With no sidebar to land in (the page's start failed), the overlay fades out over the error.
 const FADE_OUT_S = 0.4;
+
+// The landing's times are the board's, from its start: the waiting point.
+const landingAt = (boardTime: number) => boardTime - WAIT_S;
+
+// The landing's beats: the dive (after the breath), the sidebar growing, the brand taking over,
+// then the cascade of the nav, of the page's parts and of the sidebar's lower part.
+const DIVE_AT = landingAt(2.82);
+
+const ANCHOR_AT = landingAt(3.55);
+
+const RELAY_AT = landingAt(3.62);
+
+const NAV_AT = landingAt(3.69);
+
+const PARTS_AT = landingAt(3.74);
+
+const LOWER_AT = landingAt(3.89);
+
+// The dive, from the lockup's place to the brand's.
+const DIVE_S = 0.8;
 
 export type IntroTargets = {
   overlay: HTMLElement;
@@ -45,6 +70,20 @@ export type IntroTargets = {
   letters: HTMLElement[];
   typo: HTMLElement[];
   caret: HTMLElement;
+};
+
+// The shell the lockup lands in: the sidebar and its brand, then what comes in after it.
+export type ShellTargets = {
+  sidebar: HTMLElement;
+  brandLogo: SVGElement;
+  brandWord: HTMLElement;
+  brandWave: SVGElement;
+  // The items of nav there for this User or Visitor: 3 or 6.
+  nav: HTMLElement[];
+  // The sidebar's lower part: the Friends online (or their Skeleton) when there, then its foot.
+  lower: HTMLElement[];
+  // The page's parts, in order: settings, counter and stats, the Text's card, Next, the keys.
+  parts: HTMLElement[];
 };
 
 type TypingOptions = {
@@ -113,6 +152,75 @@ export const waitingBlinkTimeline = ({ caret }: IntroTargets) =>
     .set(caret, { display: "inline-block" }, WAIT_OFF_S)
     .set(caret, { display: "none" }, WAIT_BLINK_S);
 
-// Until the landing into the sidebar: the overlay fades out, the app as it is underneath.
+// With no shell to land in: the overlay fades out, whatever the page shows underneath.
 export const fadeOutTimeline = ({ overlay }: IntroTargets) =>
   gsap.timeline().to(overlay, { opacity: 0, duration: FADE_OUT_S, ease: "power2.out" });
+
+// From the waiting point to the app: the lockup takes a breath and dives along an arc (x and y on
+// their own eases) onto the sidebar's brand as its wave undraws; the sidebar grows out of the
+// brand's footprint; the brand takes over from the lockup and its wave draws itself again; then
+// the nav, the page's parts, the Friends online and the foot come in. As it starts, in the same
+// frame, the overlay lets the ink through and the shell is hidden. The sidebar's own fade (a CSS
+// transition on its opacity) is off meanwhile; reverting the timeline gives the shell back its
+// classes alone.
+export const landingTimeline = (
+  { overlay, lockup, logo, wave }: IntroTargets,
+  { sidebar, brandLogo, brandWord, brandWave, nav, lower, parts }: ShellTargets,
+  { dive, clipFrom, clipTo }: Landing,
+) => {
+  const brand = [brandLogo, brandWord];
+
+  return (
+    gsap
+      .timeline()
+      .set(sidebar, { transition: "none", immediateRender: true }, 0)
+      .set(overlay, { backgroundColor: "transparent", immediateRender: true }, 0)
+      .set(sidebar, { autoAlpha: 0, clipPath: clipFrom, immediateRender: true }, 0)
+      .set(brand, { opacity: 0, immediateRender: true }, 0)
+      // The breath: the Logo gathers itself before the dive.
+      .to(logo, { scale: 0.88, duration: 0.2, ease: "power2.in" }, 0)
+      .to(logo, { scale: 1, duration: 0.6, ease: "back.out(2)" }, DIVE_AT)
+      // The dive, the lockup scaled from its top left corner: will-change only as long as it lasts.
+      .fromTo(
+        wave,
+        { drawSVG: "0% 100%" },
+        { drawSVG: "100% 100%", duration: 0.35, ease: "power2.in" },
+        DIVE_AT,
+      )
+      .set(lockup, { transformOrigin: "0 0", willChange: "transform" }, DIVE_AT)
+      .to(lockup, { x: dive.x, duration: DIVE_S, ease: "power3.inOut" }, DIVE_AT)
+      .to(lockup, { y: dive.y, duration: DIVE_S, ease: "power2.in" }, DIVE_AT)
+      .to(lockup, { scale: DIVE_SCALE, duration: DIVE_S, ease: "power3.inOut" }, DIVE_AT)
+      // The anchor: the sidebar grows out of the lockup as it lands.
+      .set(sidebar, { autoAlpha: 1 }, ANCHOR_AT)
+      .to(sidebar, { clipPath: clipTo, duration: 0.85, ease: "expo.out" }, ANCHOR_AT)
+      // The relay: the brand in the lockup's place, its wave typed again.
+      .set(lockup, { opacity: 0, willChange: "auto" }, RELAY_AT)
+      .set(brand, { opacity: 1 }, RELAY_AT)
+      .fromTo(
+        brandWave,
+        { drawSVG: "0% 0%" },
+        { drawSVG: "0% 100%", duration: 0.5, ease: "power2.out" },
+        RELAY_AT,
+      )
+      // The cascade.
+      .fromTo(
+        nav,
+        { x: -14, opacity: 0 },
+        { x: 0, opacity: 1, duration: 0.5, stagger: 0.05, ease: "power3.out" },
+        NAV_AT,
+      )
+      .fromTo(
+        parts,
+        { y: 26, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.7, stagger: 0.07, ease: "power3.out" },
+        PARTS_AT,
+      )
+      .fromTo(
+        lower,
+        { y: 12, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.5, stagger: 0.08, ease: "power3.out" },
+        LOWER_AT,
+      )
+  );
+};

@@ -7,5 +7,9 @@ import { useRunStore } from "@/stores/run-store";
 export const RunSettings = () => {
   const typing = useRunStore((state) => state.startedAt !== null && state.result === null);
 
-  return <div className="flex min-h-13 justify-center">{typing ? null : <SettingsBar />}</div>;
+  return (
+    <div data-intro="part" className="flex min-h-13 justify-center">
+      {typing ? null : <SettingsBar />}
+    </div>
+  );
 };

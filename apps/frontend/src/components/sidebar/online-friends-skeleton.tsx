@@ -11,7 +11,11 @@ export const OnlineFriendsSkeleton = () => {
   const locale = useLocale();
 
   return (
-    <LoadingRegion label={m.sidebar_online_loading({}, { locale })} className="gap-0 pt-5">
+    <LoadingRegion
+      data-intro="online"
+      label={m.sidebar_online_loading({}, { locale })}
+      className="gap-0 pt-5"
+    >
       {SKELETON_ROWS.map((row) => (
         <div key={row} className="flex h-12 items-center gap-2.5 pl-2.5">
           <Skeleton className="size-8 rounded-[33%]" />

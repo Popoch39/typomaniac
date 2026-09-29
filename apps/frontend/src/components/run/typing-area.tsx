@@ -20,16 +20,17 @@ export const TypingArea = () => {
         onFocusChange={setFocused}
         onPress={(key, now) => press(key, now, pace)}
       />
-      <div className="flex items-end justify-between gap-4 px-2">
+      {/* The counter and the stats, the Text's card and Next: parts the Intro brings in. */}
+      <div data-intro="part" className="flex items-end justify-between gap-4 px-2">
         <RunProgress />
         <LiveScore />
       </div>
-      <div className="relative rounded-card bg-card px-10 py-7.5">
+      <div data-intro="part" className="relative rounded-card bg-card px-10 py-7.5">
         <SoloText />
         {veiled ? <FocusOverlay onResume={focus} /> : null}
       </div>
       {/* Right after the input in the tab order: Tab then Enter starts the next Run. */}
-      <div className="self-center">
+      <div data-intro="part" className="self-center">
         <NextRunButton />
       </div>
     </div>

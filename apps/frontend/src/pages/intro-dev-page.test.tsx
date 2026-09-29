@@ -119,6 +119,9 @@ const typed = () =>
 
 const fps = () => screen.queryByRole("status", { name: "Images par seconde" });
 
+// The landing, from the waiting point (2.62 s) to the last part of the page in place: about 2.1 s.
+const LANDING_S = 2.2;
+
 describe("IntroDevPage", () => {
   test("replayed with the shell 2 s late, the Intro plays on the home page, the caret waiting up to 2 s", async () => {
     await renderPage();
@@ -131,7 +134,8 @@ describe("IntroDevPage", () => {
     expect(intro()).toBeInTheDocument();
     expect(typed()).toBe("typomaniac");
 
-    gsapClock.advance(1.2);
+    // The end of the blink under way, then the landing.
+    gsapClock.advance(0.63 + LANDING_S);
     expect(intro()).not.toBeInTheDocument();
     expect(screen.getByLabelText("Zone de frappe")).toHaveFocus();
   });
@@ -141,9 +145,10 @@ describe("IntroDevPage", () => {
     await choose("Vitesse", "2×");
     await replay();
 
-    gsapClock.advance(1.25);
+    // 4.7 s at its own pace: 2.35 s at 2×.
+    gsapClock.advance(2.2);
     expect(intro()).toBeInTheDocument();
-    gsapClock.advance(0.35);
+    gsapClock.advance(0.3);
     expect(intro()).not.toBeInTheDocument();
 
     // As main.tsx starts it, without the page's options.
@@ -162,7 +167,7 @@ describe("IntroDevPage", () => {
     await replay();
     expect(fps()).toHaveTextContent("fps");
 
-    gsapClock.advance(3.2);
+    gsapClock.advance(2.62 + LANDING_S);
     expect(intro()).not.toBeInTheDocument();
     expect(fps()).not.toBeInTheDocument();
   });

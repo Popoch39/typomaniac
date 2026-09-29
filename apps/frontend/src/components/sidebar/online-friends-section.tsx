@@ -25,7 +25,7 @@ export const OnlineFriendsSection = () => {
   const numbers = numberFormat(locale);
 
   return (
-    <section aria-labelledby={titleId} className="flex flex-col pt-5">
+    <section data-intro="online" aria-labelledby={titleId} className="flex flex-col pt-5">
       <h2
         id={titleId}
         className="px-3.5 pb-1.5 font-mono text-[0.66rem] font-medium tracking-[0.06em] text-muted-foreground uppercase"

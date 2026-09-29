@@ -8,7 +8,10 @@ export const NextRunKeys = () => {
   const locale = useLocale();
 
   return (
-    <p className="flex items-center justify-center gap-2 text-[13px] text-muted-foreground">
+    <p
+      data-intro="part"
+      className="flex items-center justify-center gap-2 text-[13px] text-muted-foreground"
+    >
       <Kbd>{m.run_keys_tab({}, { locale })}</Kbd> {m.run_keys_then({}, { locale })}{" "}
       <Kbd>{m.run_keys_enter({}, { locale })}</Kbd>
       {m.run_keys_next({}, { locale })}
