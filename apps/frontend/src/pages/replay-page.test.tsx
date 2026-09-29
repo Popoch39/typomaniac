@@ -127,8 +127,9 @@ const renderReplay = async (duel: ReplayedDuel) => {
 const isWord = (word: string) => (_: string, element: Element | null) =>
   element !== null && element.children.length > 0 && element.textContent === word;
 
+// Its letters only: a word typed wrong holds its wave too.
 const statuses = (word: string) =>
-  Array.from(screen.getByText(isWord(word)).children, (letter) =>
+  Array.from(screen.getByText(isWord(word)).querySelectorAll("[data-status]"), (letter) =>
     letter.getAttribute("data-status"),
   );
 

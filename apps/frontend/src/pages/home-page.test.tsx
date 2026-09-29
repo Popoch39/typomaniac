@@ -94,13 +94,17 @@ const renderRun = (config: RunConfig = words10, session: Parameters<typeof rende
 const isWord = (word: string) => (_: string, element: Element | null) =>
   element !== null && element.children.length > 0 && element.textContent === word;
 
+// Its letters only: a Wrong word holds its wave too.
 const letterStatuses = (word: string) =>
-  Array.from(screen.getByText(isWord(word)).children, (letter) =>
+  Array.from(screen.getByText(isWord(word)).querySelectorAll("[data-status]"), (letter) =>
     letter.getAttribute("data-status"),
   );
 
 // Whether the word is highlighted as the last Burst.
 const isBurst = (word: string) => screen.getByText(isWord(word)).dataset.burst === "true";
+
+// Whether the word is a Wrong word, underlined with its wave.
+const isWrong = (word: string) => screen.getByText(isWord(word)).dataset.wrong !== undefined;
 
 const stat = (term: string) => screen.getByText(term).nextElementSibling?.textContent;
 
@@ -167,6 +171,47 @@ describe("HomePage", () => {
       "correct",
     ]);
     expect(letterStatuses("late")).toEqual(["pending", "pending", "pending", "pending"]);
+  });
+
+  test("a word validated with a wrong, an extra or skipped letters is a Wrong word", async () => {
+    const { user } = renderRun();
+
+    await user.keyboard("sma helpx whxle lxt");
+
+    expect(isWrong("small")).toBe(true);
+    expect(isWrong("helpx")).toBe(true);
+    expect(isWrong("while")).toBe(true);
+    // Still being typed: its mistake can be taken back.
+    expect(isWrong("late")).toBe(false);
+  });
+
+  test("a right word, or one corrected before the space, is no Wrong word", async () => {
+    const { user } = renderRun();
+
+    await user.keyboard("small hx{Backspace}elp ");
+
+    expect(isWrong("small")).toBe(false);
+    expect(isWrong("help")).toBe(false);
+  });
+
+  test("backspace reopens a Wrong word, which is one again only if validated wrong", async () => {
+    const { user } = renderRun();
+
+    await user.keyboard("smalx ");
+
+    expect(isWrong("small")).toBe(true);
+
+    await user.keyboard("{Backspace}");
+
+    expect(isWrong("small")).toBe(false);
+
+    await user.keyboard(" ");
+
+    expect(isWrong("small")).toBe(true);
+
+    await user.keyboard("{Backspace}{Backspace}l ");
+
+    expect(isWrong("small")).toBe(false);
   });
 
   test("backspace corrects the current word, then goes back to a wrong previous word", async () => {
