@@ -13,15 +13,16 @@ const rowOf = (handle: string) => {
 type DuelBandMarqueeProps = { handle: string; mirrored: boolean };
 
 // A player's Handle repeated big and faint behind their half of the band, on two rows set off
-// from each other; the opponent's runs from the right edge.
+// from each other, in the ink the Theme lays on their colour; the opponent's runs from the right
+// edge.
 export const DuelBandMarquee = ({ handle, mirrored }: DuelBandMarqueeProps) => {
   const row = rowOf(handle);
 
   return (
     <div
       className={cn(
-        "absolute -top-4 flex flex-col font-display text-[69px] leading-[0.9] font-extrabold whitespace-nowrap text-ink/10",
-        mirrored ? "-right-[30px] items-end" : "-left-[30px]",
+        "absolute -top-4 flex flex-col font-display text-[69px] leading-[0.9] font-extrabold whitespace-nowrap",
+        mirrored ? "-right-[30px] items-end text-on-opponent/10" : "-left-[30px] text-on-brand/10",
       )}
     >
       <span>{row}</span>

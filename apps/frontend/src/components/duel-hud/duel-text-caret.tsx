@@ -2,12 +2,8 @@ import type { Ref } from "react";
 
 import { cn } from "cn";
 
+import { CARET_TONES } from "@/components/run/caret-tones";
 import type { RunTone } from "@/components/run/run-tone";
-
-const toneClassNames: Record<RunTone, string> = {
-  own: "bg-caret",
-  opponent: "bg-opponent-caret",
-};
 
 type DuelTextCaretProps = {
   ref: Ref<HTMLSpanElement>;
@@ -26,14 +22,14 @@ export const DuelTextCaret = ({ ref, tone, label, hidden }: DuelTextCaretProps) 
     hidden={hidden}
     className={cn(
       "absolute top-[0.1em] -left-[2px] h-[1.1em] w-[5px] rounded-[2px] will-change-transform",
-      toneClassNames[tone],
+      CARET_TONES[tone].caret,
     )}
   >
     {label === null ? null : (
       <span
         className={cn(
-          "absolute top-[calc(100%+2px)] left-1/2 -translate-x-1/2 rounded-[4px] px-1 py-px font-sans text-[12px] leading-[1.2] font-extrabold text-background",
-          toneClassNames[tone],
+          "absolute top-[calc(100%+2px)] left-1/2 -translate-x-1/2 rounded-[4px] px-1 py-px font-sans text-[12px] leading-[1.2] font-extrabold",
+          CARET_TONES[tone].label,
         )}
       >
         {label}

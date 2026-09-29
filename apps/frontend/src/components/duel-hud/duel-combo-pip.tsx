@@ -29,8 +29,9 @@ type DuelComboPipProps = {
   startsAt: number;
 };
 
-// One pip of a Combo gauge, as its board draws it: slanted, in ink when lit and faint otherwise,
-// its colour changing in 160 ms. The last one lit punches; red, fading, when the Combo breaks.
+// One pip of a Combo gauge, as its board draws it: slanted, in its half's ink when lit and faint
+// otherwise, its colour changing in 160 ms. The last one lit punches; red, fading, when the Combo
+// breaks.
 export const DuelComboPip = ({ lit, mirrored, punchAt, broken, startsAt }: DuelComboPipProps) => {
   const pipRef = useRef<HTMLSpanElement>(null);
   const inkRef = useRef<HTMLSpanElement>(null);
@@ -55,7 +56,7 @@ export const DuelComboPip = ({ lit, mirrored, punchAt, broken, startsAt }: DuelC
       <span
         ref={inkRef}
         style={{ opacity: tone }}
-        className="absolute inset-0 rounded-[2px] bg-ink"
+        className="absolute inset-0 rounded-[2px] bg-current"
       />
       {broken ? (
         <span

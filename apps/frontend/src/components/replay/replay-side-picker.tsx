@@ -2,11 +2,12 @@ import { ReplayChoice } from "@/components/replay/replay-choice";
 import type { ReplayView } from "@/components/replay/replay-sides";
 import { RadioGroup } from "@/components/ui/radio-group";
 
-// Each choice keeps its player's colour: in its text, then filling its pill once chosen.
-const ownTone = "text-caret has-data-checked:bg-caret has-data-checked:text-primary-foreground";
+// Each choice keeps its player's colour: in its text, then filling its pill once chosen, under the
+// ink the Theme lays on it.
+const ownTone = "text-caret has-data-checked:bg-caret has-data-checked:text-on-brand";
 
 const opponentTone =
-  "text-opponent-caret has-data-checked:bg-opponent-caret has-data-checked:text-background";
+  "text-opponent-caret has-data-checked:bg-opponent-caret has-data-checked:text-on-opponent";
 
 type ReplaySidePickerProps = {
   view: ReplayView;

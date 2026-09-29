@@ -374,6 +374,14 @@ describe("the Tier-up", () => {
     expect(screen.queryByRole("region", { name: "Rang" })).toBeNull();
   });
 
+  test("stays in the dark of its metal under Papier, the light Theme", async () => {
+    document.documentElement.dataset.theme = "papier";
+    await renderEnded({ ranked: intoOr });
+
+    expect(screen.getByRole("dialog", { name: "Or" })).toHaveAttribute("data-theme", "corail");
+    delete document.documentElement.dataset.theme;
+  });
+
   test("scales its stage to fit the window whole", async () => {
     await renderEnded({ ranked: intoOr });
 

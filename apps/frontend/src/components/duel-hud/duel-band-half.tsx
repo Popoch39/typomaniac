@@ -25,9 +25,10 @@ type DuelBandHalfProps = {
   beaten: boolean;
 };
 
-// One player's half of the band, in ink over whatever colour lies under it: their initials, their
-// Handle, their multiplier and Combo gauge, and their Score with the « +N » of their last word.
-// Greyed once they lost the Duel.
+// One player's half of the band, in the ink the Theme lays on their colour (the same on both
+// colours in every Theme: it reads over whichever lies under it): their initials, their Handle,
+// their multiplier and Combo gauge, and their Score with the « +N » of their last word. Greyed
+// once they lost the Duel.
 export const DuelBandHalf = ({
   name,
   handle,
@@ -46,8 +47,8 @@ export const DuelBandHalf = ({
       ref={halfRef}
       aria-label={name}
       className={cn(
-        "absolute inset-y-0 flex items-center gap-4 text-ink",
-        mirrored ? "right-[26px] flex-row-reverse" : "left-[26px]",
+        "absolute inset-y-0 flex items-center gap-4",
+        mirrored ? "right-[26px] flex-row-reverse text-on-opponent" : "left-[26px] text-on-brand",
       )}
     >
       <DuelBandAvatar handle={handle} tone={mirrored ? "opponent" : "own"} />

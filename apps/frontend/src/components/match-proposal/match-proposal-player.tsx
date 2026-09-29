@@ -52,8 +52,8 @@ export const MatchProposalPlayer = ({
       ornament={ornament}
       className="size-21 rounded-[33%] after:hidden"
       fallbackClassName={cn(
-        "text-[2rem] font-extrabold text-primary-foreground",
-        self ? "bg-primary" : "bg-opponent",
+        "text-[2rem] font-extrabold",
+        self ? "bg-primary text-primary-foreground" : "bg-opponent text-on-opponent",
       )}
     />
     {/* Positioned after the avatar: drawn over the Ornament's overflow, never under it. */}

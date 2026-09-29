@@ -3,7 +3,10 @@ const EFFECTS = [
   { title: "Fond et surfaces", text: "Le fond de page, les cartes et la barre latérale." },
   { title: "Accent", text: "Toi : tes boutons, ton caret, ta moitié du HUD en Duel." },
   { title: "Adversaire", text: "Sa couleur en Duel et en Replay, toujours loin de l'accent." },
-  { title: "Tiers", text: "Ils gardent leur couleur, quel que soit le Theme." },
+  {
+    title: "Tiers",
+    text: "Ils gardent leur couleur ; sur Papier, elle est assombrie pour rester lisible.",
+  },
 ] as const;
 
 // Under the Themes: what choosing one changes.

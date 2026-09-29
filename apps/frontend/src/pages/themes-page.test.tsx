@@ -8,11 +8,24 @@ import { useThemeStore } from "@/stores/theme-store";
 
 const storageKey = "typomaniac-theme";
 
-// Every test starts on a first visit: nothing stored, no Theme on the page yet.
+// The meta of index.html that tells the browser whether its native controls are dark or light.
+const schemeMeta = () => {
+  const meta = document.querySelector('meta[name="color-scheme"]');
+
+  if (meta === null) {
+    throw new Error("No color-scheme meta");
+  }
+
+  return meta;
+};
+
+// Every test starts on a first visit: nothing stored, no Theme on the page yet, the page's meta
+// as index.html writes it.
 beforeEach(() => {
   localStorage.clear();
   useThemeStore.setState(useThemeStore.getInitialState());
   delete document.documentElement.dataset.theme;
+  document.head.innerHTML = '<meta name="color-scheme" content="dark" />';
 });
 
 afterEach(() => {
@@ -66,14 +79,23 @@ const activeChip = () =>
   });
 
 describe("the Themes page", () => {
-  test("offers the seven Themes, Corail on a first visit", () => {
+  test("offers the eight Themes, Corail on a first visit", () => {
     renderPage();
 
     const picker = screen.getByRole("group", { name: "Theme" });
 
-    expect(within(picker).getAllByRole("radio")).toHaveLength(7);
+    expect(within(picker).getAllByRole("radio")).toHaveLength(8);
 
-    for (const name of ["Corail", "Lagon", "Matcha", "Lilas", "Sakura", "Arcade", "Craie"]) {
+    for (const name of [
+      "Corail",
+      "Lagon",
+      "Matcha",
+      "Lilas",
+      "Sakura",
+      "Arcade",
+      "Craie",
+      "Papier",
+    ]) {
       expect(within(picker).getByRole("radio", { name })).toBeInTheDocument();
     }
 
@@ -112,6 +134,42 @@ describe("the Themes page", () => {
 
     expect(screen.getByRole("radio", { name: "Lagon" })).toBeChecked();
     expect(pageTheme()).toBe("lagon");
+  });
+
+  test("Papier, the light one, turns the browser's native controls light, and back", async () => {
+    const user = renderPage();
+
+    expect(screen.getByRole("radio", { name: "Papier" })).toHaveAccessibleDescription(
+      "Le seul clair : encre sur papier, pour taper en plein jour.",
+    );
+    expect(schemeMeta()).toHaveAttribute("content", "dark");
+
+    await user.click(screen.getByRole("radio", { name: "Papier" }));
+
+    expect(pageTheme()).toBe("papier");
+    expect(activeChip()).toHaveTextContent("Actif Papier");
+    expect(schemeMeta()).toHaveAttribute("content", "light");
+
+    await user.click(screen.getByRole("radio", { name: "Craie" }));
+
+    expect(schemeMeta()).toHaveAttribute("content", "dark");
+  });
+
+  test("Papier chosen comes back on this browser, light from the start", async () => {
+    const user = renderPage();
+
+    await user.click(screen.getByRole("radio", { name: "Papier" }));
+    expect(JSON.parse(localStorage.getItem(storageKey) ?? "null")).toEqual({
+      state: { theme: "papier" },
+      version: 1,
+    });
+
+    document.head.innerHTML = '<meta name="color-scheme" content="dark" />';
+    await reload();
+
+    expect(screen.getByRole("radio", { name: "Papier" })).toBeChecked();
+    expect(pageTheme()).toBe("papier");
+    expect(schemeMeta()).toHaveAttribute("content", "light");
   });
 
   test("the Theme chosen comes back on this browser", async () => {
@@ -165,5 +223,6 @@ describe("the Themes page", () => {
     expect(section).toHaveTextContent("Accent");
     expect(section).toHaveTextContent("Adversaire");
     expect(section).toHaveTextContent("Tiers");
+    expect(section).toHaveTextContent("sur Papier, elle est assombrie pour rester lisible");
   });
 });

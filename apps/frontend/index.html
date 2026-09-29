@@ -7,7 +7,9 @@
     <meta name="color-scheme" content="dark" />
     <title>typomaniac</title>
     <!-- The Theme stored by src/stores/theme-store.ts (same key, same JSON), set on <html> before
-         the CSS loads: the page is painted in it from the start. An unknown one paints as Corail. -->
+         the CSS loads: the page is painted in it from the start. An unknown one paints as Corail.
+         Papier, the only light one (`scheme` in src/components/theme/themes.ts), turns the
+         browser's native controls light. -->
     <script>
       try {
         const stored = JSON.parse(localStorage.getItem("typomaniac-theme"));
@@ -15,6 +17,10 @@
 
         if (theme) {
           document.documentElement.dataset.theme = theme;
+        }
+
+        if (theme === "papier") {
+          document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", "light");
         }
       } catch {}
     </script>
@@ -40,6 +46,10 @@
       }
       html[data-theme="craie"] {
         background: #111111;
+      }
+      html[data-theme="papier"] {
+        background: #f3eee4;
+        color-scheme: light;
       }
     </style>
   </head>

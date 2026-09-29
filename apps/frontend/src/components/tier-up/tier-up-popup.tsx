@@ -3,6 +3,7 @@ import type { Standing } from "ranked";
 import { type KeyboardEvent, type MouseEvent, useRef, useState } from "react";
 
 import { reducedMotion, useForcedReducedMotion } from "@/components/motion/reduced-motion-context";
+import { DEFAULT_THEME } from "@/components/theme/themes";
 import { TierUpCaption } from "@/components/tier-up/caption/tier-up-caption";
 import { choreographyOf, NAME_LOOK } from "@/components/tier-up/choreography/tier-up-choreography";
 import { TierUpStage } from "@/components/tier-up/stage/tier-up-stage";
@@ -50,6 +51,9 @@ export const TierUpPopup = ({ from, to, onClose }: TierUpPopupProps) => {
       ref={popup}
       initialFocus={still ? proceed : popup}
       finalFocus={false}
+      // Under the base Theme whatever the one chosen: its ground is the sprite's ink, always dark,
+      // and its caption must read on it (Papier's text is dark).
+      data-theme={DEFAULT_THEME.id}
       className="fixed inset-0 z-[60] overflow-hidden bg-background text-foreground outline-none"
       onClick={advance}
       onKeyDown={pressed}

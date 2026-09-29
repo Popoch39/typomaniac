@@ -18,25 +18,25 @@ type FaceOffPanelProps = {
 };
 
 // Each side's half of the screen, cut on the diagonal (a static clip-path: only the panel's
-// transform moves), filled with the player's colour.
+// transform moves), filled with the player's colour, written in the ink the Theme lays on it.
 const SIDES = {
   own: {
-    cut: "bg-caret [clip-path:polygon(0_0,54%_0,46%_100%,0_100%)]",
+    cut: "bg-caret text-on-brand [clip-path:polygon(0_0,54%_0,46%_100%,0_100%)]",
     content: "left-24 items-start text-left",
     initials: "text-caret",
     reversed: false,
   },
   opponent: {
-    cut: "bg-opponent-caret [clip-path:polygon(54%_0,100%_0,100%_100%,46%_100%)]",
+    cut: "bg-opponent-caret text-on-opponent [clip-path:polygon(54%_0,100%_0,100%_100%,46%_100%)]",
     content: "right-24 items-end text-right",
     initials: "text-opponent-caret",
     reversed: true,
   },
 };
 
-// One player in the Face-off, in ink on their colour: their Handle sliding behind, then their
-// avatar (their initials without one), their Handle and what the side adds, risen in after the
-// impact.
+// One player in the Face-off, in their ink on their colour: their Handle sliding behind, then
+// their avatar (their initials without one), their Handle and what the side adds, risen in after
+// the impact.
 export const FaceOffPanel = ({ side, handle, image, ornament, children }: FaceOffPanelProps) => {
   const style = SIDES[side];
 
@@ -47,7 +47,7 @@ export const FaceOffPanel = ({ side, handle, image, ornament, children }: FaceOf
         <div
           data-face-off="reveal"
           className={cn(
-            "invisible absolute inset-y-0 flex max-w-[38%] flex-col justify-center gap-4 text-background opacity-0",
+            "invisible absolute inset-y-0 flex max-w-[38%] flex-col justify-center gap-4 opacity-0",
             style.content,
           )}
         >

@@ -37,7 +37,7 @@ export const UserSearch = ({ inputId }: UserSearchProps) => {
           autoComplete="off"
           autoCapitalize="none"
           spellCheck={false}
-          className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-faint"
+          className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
         />
       </div>
       <UserSearchResults typed={typed} handle={handle} />

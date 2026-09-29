@@ -2,11 +2,12 @@ import { cn } from "cn";
 
 import type { DuelVerdict } from "@/components/duel-hud/duel-hud-model";
 
-// What the pill says of each outcome, the sign of the gap, and its colour.
+// What the pill says of each outcome, the sign of the gap, and its colour under the ink the Theme
+// lays on it (a draw's in the text's colour, under the ground's).
 const VERDICT_LOOKS = {
-  win: { text: "VICTOIRE", sign: "+", tone: "bg-brand" },
-  loss: { text: "DÉFAITE", sign: "−", tone: "bg-opponent" },
-  draw: { text: "DRAW", sign: "", tone: "bg-foreground" },
+  win: { text: "VICTOIRE", sign: "+", tone: "bg-brand text-on-brand" },
+  loss: { text: "DÉFAITE", sign: "−", tone: "bg-opponent text-on-opponent" },
+  draw: { text: "DRAW", sign: "", tone: "bg-foreground text-ink" },
 } as const;
 
 // The server's verdict where the Callouts go, as the board draws it once the time is up: a big
@@ -18,7 +19,7 @@ export const DuelVerdictCallout = ({ verdict }: { verdict: DuelVerdict }) => {
   return (
     <span
       className={cn(
-        "inline-flex rotate-[-2deg] items-baseline gap-2.5 rounded-full px-[18px] py-2.5 font-display text-[21px] leading-none font-extrabold whitespace-nowrap text-ink",
+        "inline-flex rotate-[-2deg] items-baseline gap-2.5 rounded-full px-[18px] py-2.5 font-display text-[21px] leading-none font-extrabold whitespace-nowrap",
         tone,
       )}
     >

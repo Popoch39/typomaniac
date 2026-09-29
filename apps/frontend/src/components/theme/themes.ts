@@ -1,41 +1,55 @@
-// The Themes to choose from, in the order of their page, with the words of the "Thèmes" board.
+// The Themes to choose from, in the order of their page, with the words of the "Thèmes" board, and
+// whether they are dark or light: the scheme of the browser's native controls (scrollbars, fields).
 // Their colours live in the stylesheet (src/index.css), one rule per `[data-theme]`, and their inks
-// in index.html too, painted before the CSS loads (theme-boot.test.ts keeps them in step).
+// and schemes in index.html too, set before the CSS loads (theme-boot.test.ts keeps them in step).
 export const THEMES = [
   {
     id: "corail",
     name: "Corail",
     description: "L'original : corail chaud sur encre, adversaire bleu ciel.",
+    scheme: "dark",
   },
   {
     id: "lagon",
     name: "Lagon",
     description: "Bleu du large. Les rôles s'inversent : l'adversaire passe au corail.",
+    scheme: "dark",
   },
   {
     id: "matcha",
     name: "Matcha",
     description: "Vert tendre sur sous-bois, adversaire lilas.",
+    scheme: "dark",
   },
   {
     id: "lilas",
     name: "Lilas",
     description: "Violet doux sur nuit, adversaire ambre.",
+    scheme: "dark",
   },
   {
     id: "sakura",
     name: "Sakura",
     description: "Rose poudré sur prune, adversaire menthe.",
+    scheme: "dark",
   },
   {
     id: "arcade",
     name: "Arcade",
     description: "Magenta et cyan sur noir profond.",
+    scheme: "dark",
   },
   {
     id: "craie",
     name: "Craie",
     description: "Noir et blanc, rien d'autre. L'adversaire en ambre.",
+    scheme: "dark",
+  },
+  {
+    id: "papier",
+    name: "Papier",
+    description: "Le seul clair : encre sur papier, pour taper en plein jour.",
+    scheme: "light",
   },
 ] as const;
 

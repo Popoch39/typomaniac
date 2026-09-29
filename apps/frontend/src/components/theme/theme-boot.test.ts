@@ -44,9 +44,21 @@ const paintedInk = (id: string) =>
         new RegExp(`html\\[data-theme="${id}"\\]\\s*\\{\\s*background:\\s*(#[0-9a-f]{6})`),
       );
 
+// Whether the browser's native controls are dark or light: the meta, then the stylesheet.
+const pageScheme = () =>
+  document.querySelector('meta[name="color-scheme"]')?.getAttribute("content");
+
+// A Theme without a scheme of its own keeps the base's, Corail's on :root.
+const baseScheme = inkIn(stylesheet, /:root,\s*\[data-theme\]\s*\{[^}]*color-scheme:\s*(\w+)/);
+
+const cssScheme = (id: string) =>
+  inkIn(stylesheet, new RegExp(`\\[data-theme="${id}"\\]\\s*\\{[^}]*color-scheme:\\s*(\\w+)`)) ??
+  baseScheme;
+
 beforeEach(() => {
   localStorage.clear();
   delete document.documentElement.dataset.theme;
+  document.head.innerHTML = '<meta name="color-scheme" content="dark" />';
 });
 
 afterEach(() => {
@@ -77,7 +89,8 @@ describe("the Theme set before the first paint", () => {
   });
 
   test("a storage that throws sets none, without breaking the page", () => {
-    vi.spyOn(localStorage, "getItem").mockImplementation(() => {
+    // Once, the boot's one read: restoring the spy leaves happy-dom's storage throwing.
+    vi.spyOn(localStorage, "getItem").mockImplementationOnce(() => {
       throw new DOMException("Blocked", "SecurityError");
     });
 
@@ -88,5 +101,22 @@ describe("the Theme set before the first paint", () => {
   test.each(THEMES.map((theme) => theme.id))("%s is painted in its own ink", (id) => {
     expect(cssInk(id)).toMatch(/^#/);
     expect(paintedInk(id)).toBe(cssInk(id));
+  });
+
+  test.each(THEMES.map((theme) => [theme.id, theme.scheme]))(
+    "%s turns the native controls %s, before the CSS and in it",
+    (id, scheme) => {
+      useThemeStore.getState().setTheme(id);
+      boot();
+
+      expect(pageScheme()).toBe(scheme);
+      expect(cssScheme(id)).toBe(scheme);
+    },
+  );
+
+  test("Papier is the only light one", () => {
+    expect(THEMES.flatMap((theme) => (theme.scheme === "light" ? [theme.id] : []))).toEqual([
+      "papier",
+    ]);
   });
 });

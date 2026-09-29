@@ -26,8 +26,10 @@ export const ThemePreview = () => (
         tape sans regarder le clavier
       </span>
       <span className="flex h-6 overflow-hidden rounded-lg font-display text-[10px] font-extrabold">
-        <span className="flex w-[56%] items-center bg-brand pl-2 text-ink">412</span>
-        <span className="flex grow items-center justify-end bg-opponent pr-2 text-ink">358</span>
+        <span className="flex w-[56%] items-center bg-brand pl-2 text-on-brand">412</span>
+        <span className="flex grow items-center justify-end bg-opponent pr-2 text-on-opponent">
+          358
+        </span>
       </span>
     </span>
   </span>

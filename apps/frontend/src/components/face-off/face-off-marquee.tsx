@@ -16,13 +16,13 @@ type FaceOffMarqueeProps = {
   reversed: boolean;
 };
 
-// A player's Handle, giant and faint, repeated on rows that drift one way then the other behind
-// their panel, moved by the timeline. Each row is far longer than the panel: its drift never
-// shows its end.
+// A player's Handle, giant and faint in their panel's ink, repeated on rows that drift one way
+// then the other behind their panel, moved by the timeline. Each row is far longer than the
+// panel: its drift never shows its end.
 export const FaceOffMarquee = ({ handle, reversed }: FaceOffMarqueeProps) => (
   <div
     aria-hidden
-    className="absolute -top-[2.5vh] left-0 flex flex-col text-[18.5vh] leading-[0.92] font-extrabold tracking-[-0.03em] whitespace-nowrap text-background/12"
+    className="absolute -top-[2.5vh] left-0 flex flex-col text-[18.5vh] leading-[0.92] font-extrabold tracking-[-0.03em] whitespace-nowrap opacity-12"
   >
     {handle === null
       ? null

@@ -5,8 +5,8 @@ import { useInkFade } from "@/components/duel-hud/use-ink-fade";
 // How long a mark takes to change colour, in seconds, as on the board.
 const TONE_S = 0.2;
 
-// The multiplier mark that closes a group of a Combo gauge, as its board draws it: in ink once
-// reached, faint before, its colour changing in 200 ms.
+// The multiplier mark that closes a group of a Combo gauge, as its board draws it: in its half's
+// ink once reached, faint before, its colour changing in 200 ms.
 export const DuelComboMark = ({
   multiplier,
   reached,
@@ -24,7 +24,7 @@ export const DuelComboMark = ({
       ref={markRef}
       aria-hidden="true"
       style={{ opacity: tone }}
-      className="mx-[3px] font-display text-[10px] leading-none font-extrabold text-ink"
+      className="mx-[3px] font-display text-[10px] leading-none font-extrabold"
     >
       ×{multiplier}
     </span>

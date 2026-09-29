@@ -17,8 +17,10 @@
   --font-display: "Unbounded Variable", ui-sans-serif, system-ui, sans-serif;
   --font-text: "JetBrains Mono Variable", ui-monospace, monospace;
   --color-brand: var(--brand);
+  --color-on-brand: var(--on-brand);
   --color-pending: var(--pending);
   --color-opponent: var(--opponent);
+  --color-on-opponent: var(--on-opponent);
   --color-faint: var(--faint);
   --color-ink: var(--ink);
   --color-caret: var(--caret);
@@ -117,12 +119,15 @@
 
 /* Social style. A Theme (src/components/theme/themes.ts) is chosen by `data-theme` on <html>: it
    changes the ground, the surfaces, the texts, the accent (Toi) and the opponent, never the place of
-   things nor the Tiers. Corail is the base, set here on :root; each other Theme overrides it in its
-   own rule below, from the "Layouts et thèmes" canvas. Everything derived from those colours is
-   declared on each `[data-theme]` too, not only on :root: a Theme's preview card, under its own
-   `data-theme`, is painted in its colours, shadcn's included. */
+   things nor the Tiers' colours (only darkened on the light one). Corail is the base, set here on
+   :root; each other Theme overrides it in its own rule below, from the "Layouts et thèmes" canvas.
+   Everything derived from those colours is declared on each `[data-theme]` too, not only on :root:
+   a Theme's preview card, under its own `data-theme`, is painted in its colours, shadcn's
+   included. */
 :root,
 [data-theme] {
+  /* The dark Themes; Papier, the light one, turns the native controls light. */
+  color-scheme: dark;
   --ink: #15141c;
   --surface: #1f1e29;
   --surface-2: #2b2a38;
@@ -134,6 +139,10 @@
   /* The one accent: buttons, focus, the caret, the curves. */
   --brand: #ff8a65;
   --opponent: #7fc8f8;
+  /* What is written on a fill of the accent or of the opponent (buttons, the Duel's band and
+     Callouts, the Face-off): the ink in the dark Themes, whichever each sets. */
+  --on-brand: var(--ink);
+  --on-opponent: var(--ink);
   --tier-iron: #8b8e9c;
   --tier-bronze: #c48154;
   --tier-silver: #c0c3cc;
@@ -154,7 +163,7 @@
   --popover: var(--surface);
   --popover-foreground: var(--text);
   --primary: var(--brand);
-  --primary-foreground: var(--ink);
+  --primary-foreground: var(--on-brand);
   --secondary: var(--surface-2);
   --secondary-foreground: var(--text);
   --muted: var(--surface-2);
@@ -176,7 +185,7 @@
   --sidebar: var(--surface);
   --sidebar-foreground: var(--text);
   --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: var(--ink);
+  --sidebar-primary-foreground: var(--on-brand);
   --sidebar-accent: var(--surface-2);
   --sidebar-accent-foreground: var(--text);
   --sidebar-border: var(--border);
@@ -259,6 +268,34 @@
   --opponent: #ffcb57;
 }
 
+/* The only light one: ink on paper, white on the accent and the opponent, and every colour written
+   as text darkened to read at 4.5:1 on the paper, the Tiers' included (the accent, Argent, Or and
+   Platine a touch darker than the canvas for it). */
+[data-theme="papier"] {
+  color-scheme: light;
+  --ink: #f3eee4;
+  --surface: #fbf8f2;
+  --surface-2: #e9e2d5;
+  --text: #1f1c17;
+  --text-secondary: #6b6357;
+  --faint: #b8ae9e;
+  --pending: #8a8173;
+  --brand: #ba431d;
+  --opponent: #1f6fb0;
+  --on-brand: #ffffff;
+  --on-opponent: #ffffff;
+  --tier-iron: #55575f;
+  --tier-bronze: #9c5a2c;
+  --tier-silver: #616b84;
+  --tier-gold: #8b6400;
+  --tier-platinum: #17786a;
+  --tier-diamond: #4a63c9;
+  --tier-maniac: #b5441f;
+  --win: #1a7a4b;
+  --destructive: #c0303f;
+  --online: #16a36a;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -268,6 +305,5 @@
   }
   html {
     @apply font-sans;
-    color-scheme: dark;
   }
 }
