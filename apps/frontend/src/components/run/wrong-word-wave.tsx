@@ -13,10 +13,11 @@ type WrongWordWaveProps = {
 
 // The Logo's wave under a Wrong word, in the Theme's error red (a class: `var()` does not work in
 // an SVG presentation attribute), stretched across the word, its stroke kept as thick. `--wave` is
-// how much of it shows, from the left: all of it on a Wrong word, none on the others. A drawing
-// only.
+// how much of it shows, from the left: all of it on a Wrong word, none on the others, what
+// `useWrongWordWave` moves in between (`data-wave`). A drawing only.
 export const WrongWordWave = ({ letters, drawn, className }: WrongWordWaveProps) => (
   <svg
+    data-wave
     viewBox={`0 0 ${letters} 1`}
     preserveAspectRatio="none"
     fill="none"

@@ -4,6 +4,7 @@ import { RunCaret } from "@/components/run/run-caret";
 import type { RunTone } from "@/components/run/run-tone";
 import { RunWord } from "@/components/run/run-word";
 import { type CaretPosition, useTextLayout } from "@/components/run/use-text-layout";
+import { useWrongWordWave } from "@/components/run/use-wrong-word-wave";
 
 // The other player's caret in the same Text: where it stands, their colour and their initial.
 export type OtherCaret = CaretPosition & { tone: RunTone; label: string };
@@ -27,6 +28,8 @@ export const RunText = ({ run, tone, other, lastBurst }: RunTextProps) => {
     { wordIndex, letterIndex },
     other,
   );
+
+  useWrongWordWave(wordsRef, run);
 
   return (
     <div className="h-[3lh] overflow-hidden font-mono text-2xl leading-relaxed">

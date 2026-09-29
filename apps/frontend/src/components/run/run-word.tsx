@@ -20,6 +20,7 @@ export const RunWord = ({ word, validated, burst }: RunWordProps) => {
 
   return (
     <span
+      data-word={word.index}
       data-burst={burst !== null}
       data-tone={burst ?? undefined}
       data-wrong={wrong ? "" : undefined}
