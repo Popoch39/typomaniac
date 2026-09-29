@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-router";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import {
   type DuelHistoryPage,
@@ -20,6 +20,7 @@ import {
 import { type Me, meQueryOptions } from "@/api/me";
 import { DuelsPage } from "@/pages/duels-page";
 import { Route as DuelsRoute } from "@/routes/duels";
+import { useLocaleStore } from "@/stores/locale-store";
 
 const me: Me = {
   id: "ada-id",
@@ -177,6 +178,23 @@ const table = () => within(details()).getByRole("table", { name: "Results du Due
 // A line of the Results table: what it measures, then the User's value and the opponent's.
 const tableLine = (name: string) => {
   const line = within(table()).getByRole("rowheader", { name }).closest("tr");
+
+  if (line === null) {
+    throw new Error(`No line ${name}`);
+  }
+
+  return within(line)
+    .getAllByRole("cell")
+    .map((cell) => cell.textContent);
+};
+
+// The same, in English.
+const englishDetails = () => screen.getByRole("region", { name: /Victory|Defeat|Draw/ });
+
+const englishTable = () => within(englishDetails()).getByRole("table", { name: "Duel Results" });
+
+const englishLine = (name: string) => {
+  const line = within(englishTable()).getByRole("rowheader", { name }).closest("tr");
 
   if (line === null) {
     throw new Error(`No line ${name}`);
@@ -468,5 +486,142 @@ describe("DuelsPage", () => {
     ).toBeInTheDocument();
     expect(rows()).toHaveLength(2);
     expect(String(fetch.mock.calls[0]?.[0])).toContain("before=1000%3Arecent");
+  });
+
+  describe("in English", () => {
+    beforeEach(() => {
+      useLocaleStore.setState({ locale: "en" });
+    });
+
+    test("the header, then each Duel: its date, Scores grouped and outcome the English way", async () => {
+      await renderPage({
+        duels: [
+          entry({ id: "won", ranked: true, tp: 18 }),
+          entry({
+            id: "forfeited",
+            outcome: "loss",
+            forfeit: true,
+            ranked: true,
+            tp: -15,
+            score: 1284,
+            opponent: { handle: "grace", image: null },
+          }),
+          entry({ id: "challenge" }),
+          entry({ id: "deleted", opponent: null, opponentScore: null, opponentWpm: null }),
+        ],
+        next: null,
+      });
+
+      expect(
+        screen.getByText("Your finished Duels, newest first. Pick one to see its Duel chart."),
+      ).toBeInTheDocument();
+
+      const [won, forfeited, challenge, deleted] = rows();
+
+      expect(won).toHaveTextContent(/Sep 20, 2026, \d{1,2}:\d\d\s[AP]M/);
+      expect(won).toHaveTextContent("1,200800");
+      expect(won).toHaveTextContent("Victory+18 TP");
+      expect(forfeited).toHaveTextContent("· Forfeit");
+      expect(forfeited).toHaveTextContent("1,284");
+      expect(forfeited).toHaveTextContent("Defeat−15 TP");
+      expect(challenge).toHaveTextContent("VictoryChallenge");
+      expect(deleted).toHaveTextContent("Deleted User");
+      // The row's button is named by its opponent first, then what it shows.
+      expect(within(row(0)).getByRole("button", { name: /^Duel vs\. @alan/ })).toBeInTheDocument();
+    });
+
+    test("the details: against whom, when, what kind, the chart's legend and the Replay", async () => {
+      await renderPage({ duels: [entry({ id: "won", ranked: true, tp: 18 })], next: null }, [
+        replayed({ id: "won", ranked: true, tp: 18 }),
+      ]);
+
+      expect(englishDetails()).toHaveTextContent(/vs\. @alan · Sep 20, 2026, .* · Ranked Duel/);
+
+      const chart = within(englishDetails()).getByRole("figure", { name: "Duel chart" });
+
+      expect(chart).toHaveTextContent("your wpm");
+      expect(chart).toHaveTextContent("@alan's wpm");
+      expect(chart).toHaveTextContent("raw per second");
+      expect(chart).toHaveTextContent("Misses");
+      expect(within(chart).getByRole("link", { name: "@alan" })).toHaveAttribute("href", "/u/alan");
+      expect(
+        within(englishDetails()).getByRole("button", { name: "Watch the Replay" }),
+      ).toHaveAttribute("href", "/duels/won");
+    });
+
+    test("the Results table, its lines named and its figures written the English way", async () => {
+      await renderPage({ duels: [entry({ id: "won" })], next: null }, [replayed({ id: "won" })]);
+
+      expect(
+        within(englishTable())
+          .getAllByRole("columnheader")
+          .map((header) => header.textContent),
+      ).toEqual(["Result", "You", "@alan"]);
+      expect(
+        within(englishTable())
+          .getAllByRole("rowheader")
+          .map((header) => header.textContent),
+      ).toEqual(["Score", "wpm", "raw", "accuracy", "consistency", "best Combo", "Bursts"]);
+      expect(englishLine("Score")).toEqual(["1,234", "567"]);
+      expect(englishLine("accuracy")).toEqual(["96%", "96%"]);
+      expect(englishLine("consistency")).toEqual(["80%", "80%"]);
+    });
+
+    test("a deleted opponent is a Deleted User, the User's column alone", async () => {
+      await renderPage(
+        {
+          duels: [entry({ id: "deleted", opponent: null, opponentScore: null, opponentWpm: null })],
+          next: null,
+        },
+        [replayed({ id: "deleted", opponent: null })],
+      );
+
+      expect(englishDetails()).toHaveTextContent("vs. Deleted User");
+      expect(
+        within(row(0)).getByRole("button", { name: /^Duel vs\. Deleted User/ }),
+      ).toBeInTheDocument();
+      expect(
+        within(englishTable())
+          .getAllByRole("columnheader")
+          .map((header) => header.textContent),
+      ).toEqual(["Result", "You"]);
+    });
+
+    test("the details' loading and their error", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          async () =>
+            new Response(
+              JSON.stringify({
+                error: { code: "INTERNAL_SERVER_ERROR", message: "boom", requestId: "r" },
+              }),
+              { status: 500, headers: { "content-type": "application/json" } },
+            ),
+        ),
+      );
+
+      await renderPage({ duels: [entry({ id: "won" })], next: null });
+
+      expect(
+        within(englishDetails()).getByRole("status", { name: "Loading the Duel" }),
+      ).toBeInTheDocument();
+      expect(
+        await within(englishDetails()).findByRole("heading", { name: "Couldn't load this Duel" }),
+      ).toBeInTheDocument();
+      expect(
+        within(englishDetails()).getByRole("button", { name: "Try again" }),
+      ).toBeInTheDocument();
+    });
+
+    test("no Duel yet", async () => {
+      await renderPage({ duels: [], next: null });
+
+      expect(screen.getByText("No Duels yet")).toBeInTheDocument();
+      expect(
+        screen.getByText("Your Duel history fills up with every Duel you finish."),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Start a Duel" })).toHaveAttribute("href", "/");
+    });
   });
 });

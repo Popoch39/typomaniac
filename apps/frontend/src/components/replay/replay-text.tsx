@@ -2,6 +2,8 @@ import { replayRunName } from "@/components/replay/replay-run-name";
 import type { DuelSide, ReplaySide } from "@/components/replay/replay-sides";
 import { RunText } from "@/components/run/run-text";
 import { initials } from "@/lib/initials";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 type ReplayTextProps = {
   shown: ReplaySide;
@@ -24,11 +26,12 @@ export const ReplayText = ({
   opponentName,
   opponentInitial,
 }: ReplayTextProps) => {
+  const locale = useLocale();
   const otherSide = otherSideOf(shownSide);
 
   return (
     <section
-      aria-label={replayRunName(shownSide, opponentName)}
+      aria-label={replayRunName(shownSide, opponentName, locale)}
       className="rounded-card bg-card px-10 py-7.5"
     >
       <RunText
@@ -41,7 +44,9 @@ export const ReplayText = ({
                 wordIndex: caretSide.run.wordIndex,
                 letterIndex: caretSide.run.letterIndex,
                 tone: otherSide,
-                label: otherSide === "own" ? initials("Toi") : opponentInitial,
+                // The User's caret carries the initial of how the Locale names them.
+                label:
+                  otherSide === "own" ? initials(m.duel_self({}, { locale })) : opponentInitial,
               }
         }
         lastBurst={shown.score?.lastBurst ?? null}

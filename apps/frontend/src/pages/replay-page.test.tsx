@@ -14,6 +14,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { ReplayedDuel, ReplayedPlayer } from "@/api/duel-history";
 import { DuelReplay } from "@/components/replay/duel-replay";
 import { ClockContext } from "@/components/run/clock-context";
+import { ReplayErrorPage } from "@/pages/replay-error-page";
+import { useLocaleStore } from "@/stores/locale-store";
 
 // Seed 42 in English, version 1, starts with "small help while" (pinned in the typing-engine tests).
 const adaTyped: Keystroke[] = [
@@ -485,5 +487,128 @@ describe("DuelReplay", () => {
     const own = screen.getByRole("region", { name: "Toi" });
 
     expect(within(own).getByText("score").nextElementSibling).toHaveTextContent("—");
+  });
+
+  describe("in English", () => {
+    beforeEach(() => {
+      useLocaleStore.setState({ locale: "en" });
+    });
+
+    test("the header: against whom, when, what kind of Duel, its time and Language", async () => {
+      await renderReplay(replayed({ outcome: "loss", forfeit: true, tp: -15 }));
+
+      expect(
+        screen.getByRole("heading", { level: 1, name: "Replay vs. @alan" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/ · 30 s · English$/)).toHaveTextContent(
+        /^Sep 20, 2026, \d{1,2}:\d\d\s[AP]M · Ranked Duel · 30 s · English$/,
+      );
+      expect(screen.getByText("Defeat by Forfeit")).toBeInTheDocument();
+      expect(screen.getByText("−15 TP")).toBeInTheDocument();
+    });
+
+    test("the Lecture card: its time bar, its seconds and its controls, named in English", async () => {
+      const { user, advance } = await renderReplay(replayed());
+
+      const lecture = within(screen.getByRole("region", { name: "Playback" }));
+      const bar = lecture.getByLabelText("Replay time", { selector: "input[type=range]" });
+
+      advance(3_050);
+
+      expect(lecture.getByRole("timer", { name: "Playback time" })).toHaveTextContent("3.1 s");
+      expect(bar).toHaveAttribute("aria-valuetext", "3.1 s of 30 s");
+      expect(lecture.getByRole("radiogroup", { name: "Playback speed" })).toBeInTheDocument();
+      expect(lecture.getByRole("radio", { name: "0.5×" })).toBeInTheDocument();
+      expect(lecture.getByRole("radiogroup", { name: "Run shown" })).toBeInTheDocument();
+
+      await user.click(lecture.getByRole("button", { name: "Pause" }));
+
+      expect(lecture.getByRole("button", { name: "Play" })).toBeInTheDocument();
+    });
+
+    test("the Score cards and the Runs, named after their player", async () => {
+      const { user } = await renderReplay(replayed());
+
+      expect(screen.getByRole("region", { name: "Your Score" })).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "@alan's Score" })).toBeInTheDocument();
+      expect(screen.getByRole("radio", { name: "Your Run" })).toBeChecked();
+      expect(screen.getByRole("region", { name: "Your Run" })).toBeInTheDocument();
+
+      await user.click(screen.getByRole("radio", { name: "@alan's Run" }));
+
+      expect(screen.getByRole("region", { name: "@alan's Run" })).toBeInTheDocument();
+    });
+
+    test("at the end, both Results, figures grouped the English way, and a way to watch again", async () => {
+      const { advance } = await renderReplay(replayed());
+
+      advance(30_000);
+
+      const own = screen.getByRole("region", { name: "You" });
+
+      expect(within(own).getByText("score").nextElementSibling).toHaveTextContent("1,234");
+      expect(screen.getByRole("region", { name: "@alan" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Watch again from the start" }),
+      ).toBeInTheDocument();
+    });
+
+    test("the Forfeit marker says who forfeited, and when", async () => {
+      await renderReplay(forfeitedAt("loss"));
+
+      expect(screen.getByText("You forfeited at 0.6 s")).toBeInTheDocument();
+    });
+
+    test("an opponent who forfeited, then deleted their User", async () => {
+      await renderReplay(forfeitedAt("win", { opponent: null }));
+
+      expect(
+        screen.getByRole("heading", { level: 1, name: "Replay vs. Deleted User" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Deleted User forfeited at 0.6 s")).toBeInTheDocument();
+    });
+
+    test("an opponent's Forfeit", async () => {
+      await renderReplay(forfeitedAt("win"));
+
+      expect(screen.getByText("@alan forfeited at 0.6 s")).toBeInTheDocument();
+    });
+  });
+});
+
+// The page shown for a Duel that cannot be read, on a router of its own: its way out is a link.
+const renderError = async () => {
+  const router = createRouter({
+    routeTree: createRootRoute({ component: ReplayErrorPage }),
+    history: createMemoryHistory({ initialEntries: ["/duels/gone"] }),
+  });
+
+  await router.load();
+  render(<RouterProvider router={router} />);
+};
+
+describe("ReplayErrorPage", () => {
+  test("says the Duel cannot be found, and leads back to the Duel history", async () => {
+    await renderError();
+
+    expect(await screen.findByRole("heading", { name: "Duel introuvable" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retour à la Duel history" })).toHaveAttribute(
+      "href",
+      "/duels",
+    );
+  });
+
+  test("in English", async () => {
+    useLocaleStore.setState({ locale: "en" });
+    await renderError();
+
+    expect(await screen.findByRole("heading", { name: "Duel not found" })).toBeInTheDocument();
+    expect(
+      screen.getByText("This Duel doesn't exist, or you didn't play in it."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back to Duel history" })).toHaveAttribute(
+      "href",
+      "/duels",
+    );
   });
 });

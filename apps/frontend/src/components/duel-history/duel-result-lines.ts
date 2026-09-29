@@ -1,31 +1,77 @@
 import type { ReplayedDuel, ReplayedPlayer } from "@/api/duel-history";
 import { duelNumber } from "@/components/duel-history/duel-number";
+import type { Locale } from "@/locale/locales";
+import { m } from "@/paraglide/messages";
 
-// A line of the Results table: what it measures, the User's value, then the opponent's (null once
-// their User is deleted), as they read.
-export type DuelResultLine = { name: string; own: string; opponent: string | null };
+// A line of the Results table: what it measures (`id`, and `name` in the Locale), the User's value,
+// then the opponent's (null once their User is deleted), as they read.
+export type DuelResultLine = {
+  id: DuelResultId;
+  name: string;
+  own: string;
+  opponent: string | null;
+};
 
-const percent = (value: number) => `${duelNumber(value)} %`;
+// What a line of the Results table measures.
+type DuelResultId = "score" | "wpm" | "raw" | "accuracy" | "consistency" | "best-combo" | "bursts";
+
+const percent = (value: number, locale: Locale) =>
+  m.format_percent({ value: duelNumber(value, locale) }, { locale });
+
+type Measure = {
+  id: DuelResultId;
+  name: (locale: Locale) => string;
+  of: (player: ReplayedPlayer, locale: Locale) => string;
+};
 
 // What a line reads of a player, in the table's order.
-const MEASURES: { name: string; of: (player: ReplayedPlayer) => string }[] = [
-  { name: "Score", of: ({ score }) => duelNumber(score?.score ?? null) },
-  { name: "wpm", of: ({ result }) => duelNumber(result.wpm) },
-  { name: "raw", of: ({ result }) => duelNumber(result.raw) },
-  { name: "précision", of: ({ result }) => percent(result.accuracy) },
-  { name: "régularité", of: ({ result }) => percent(result.consistency) },
+const MEASURES: Measure[] = [
+  {
+    id: "score",
+    name: (locale) => m.duel_results_score({}, { locale }),
+    of: ({ score }, locale) => duelNumber(score?.score ?? null, locale),
+  },
+  {
+    id: "wpm",
+    name: (locale) => m.duel_results_wpm({}, { locale }),
+    of: ({ result }, locale) => duelNumber(result.wpm, locale),
+  },
+  {
+    id: "raw",
+    name: (locale) => m.duel_results_raw({}, { locale }),
+    of: ({ result }, locale) => duelNumber(result.raw, locale),
+  },
+  {
+    id: "accuracy",
+    name: (locale) => m.duel_results_accuracy({}, { locale }),
+    of: ({ result }, locale) => percent(result.accuracy, locale),
+  },
+  {
+    id: "consistency",
+    name: (locale) => m.duel_results_consistency({}, { locale }),
+    of: ({ result }, locale) => percent(result.consistency, locale),
+  },
   // Null for a Duel played before the Score, like the Score itself.
-  { name: "meilleur Combo", of: ({ score }) => duelNumber(score?.bestCombo ?? null) },
-  { name: "Bursts", of: ({ score }) => duelNumber(score?.bursts ?? null) },
+  {
+    id: "best-combo",
+    name: (locale) => m.duel_results_best_combo({}, { locale }),
+    of: ({ score }, locale) => duelNumber(score?.bestCombo ?? null, locale),
+  },
+  {
+    id: "bursts",
+    name: (locale) => m.duel_results_bursts({}, { locale }),
+    of: ({ score }, locale) => duelNumber(score?.bursts ?? null, locale),
+  },
 ];
 
-// What each line measures, in the table's order: the skeleton draws one line per name.
-export const DUEL_RESULT_NAMES = MEASURES.map(({ name }) => name);
+// What each line measures, in the table's order: the skeleton draws one line per id.
+export const DUEL_RESULT_IDS = MEASURES.map(({ id }) => id);
 
-// The seven lines comparing both sides of a finished Duel.
-export const duelResultLines = ({ me, opponent }: ReplayedDuel): DuelResultLine[] =>
-  MEASURES.map(({ name, of }) => ({
-    name,
-    own: of(me),
-    opponent: opponent === null ? null : of(opponent),
+// The seven lines comparing both sides of a finished Duel, in the Locale.
+export const duelResultLines = ({ me, opponent }: ReplayedDuel, locale: Locale): DuelResultLine[] =>
+  MEASURES.map(({ id, name, of }) => ({
+    id,
+    name: name(locale),
+    own: of(me, locale),
+    opponent: opponent === null ? null : of(opponent, locale),
   }));

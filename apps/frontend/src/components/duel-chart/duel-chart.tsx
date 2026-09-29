@@ -1,40 +1,36 @@
 import type { ReactNode } from "react";
-import { CartesianGrid, ComposedChart, Line, XAxis, YAxis } from "recharts";
+import {
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  type TooltipPayloadEntry,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 import type { ReplayedDuel } from "@/api/duel-history";
+import { DUEL_CHART_COLORS } from "@/components/duel-chart/duel-chart-colors";
 import { DuelChartLegend } from "@/components/duel-chart/duel-chart-legend";
 import { missMark, rawDot } from "@/components/duel-chart/duel-chart-marks";
 import { duelChartRows } from "@/components/duel-chart/duel-chart-rows";
+import { duelChartConfig, duelChartFigure } from "@/components/duel-chart/duel-chart-text";
 import type { DuelSide } from "@/components/replay/replay-sides";
-import {
-  type ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { opponentName } from "@/lib/opponent-name";
-
-// Each side in its caret color.
-const COLORS: Record<DuelSide, string> = {
-  own: "var(--caret)",
-  opponent: "var(--opponent-caret)",
-};
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { secondsLabel } from "@/lib/durations";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 // How each side draws its raw dots and its Misses crosses, in its color.
 const MARKS: Record<
   DuelSide,
   { raw: ReturnType<typeof rawDot>; miss: ReturnType<typeof missMark> }
 > = {
-  own: { raw: rawDot(COLORS.own), miss: missMark(COLORS.own) },
-  opponent: { raw: rawDot(COLORS.opponent), miss: missMark(COLORS.opponent) },
+  own: { raw: rawDot(DUEL_CHART_COLORS.own), miss: missMark(DUEL_CHART_COLORS.own) },
+  opponent: {
+    raw: rawDot(DUEL_CHART_COLORS.opponent),
+    miss: missMark(DUEL_CHART_COLORS.opponent),
+  },
 };
-
-// The series of one side, labelled with its name.
-const sideConfig = (side: DuelSide, name: string): ChartConfig => ({
-  [`${side}Wpm`]: { label: `${name} wpm`, color: COLORS[side] },
-  [`${side}Raw`]: { label: `${name} raw`, color: COLORS[side] },
-  [`${side}Misses`]: { label: `${name} Misses`, color: COLORS[side] },
-});
 
 // The marks of one side: children of the chart itself, as recharts reads them. The raw dots and the
 // Misses crosses are the points of lines that draw no stroke.
@@ -52,7 +48,7 @@ const sideSeries = (side: DuelSide) => [
     key={`${side}Wpm`}
     yAxisId="speed"
     dataKey={`${side}Wpm`}
-    stroke={COLORS[side]}
+    stroke={DUEL_CHART_COLORS[side]}
     strokeWidth={side === "own" ? 3 : 2.5}
     strokeLinecap="round"
     strokeLinejoin="round"
@@ -70,27 +66,37 @@ const sideSeries = (side: DuelSide) => [
   />,
 ];
 
-const secondLabel = (second: ReactNode) => `${String(second)} s`;
-
 // The Duel second by second, the Monkeytype way, for both sides in their caret colors: the wpm so
 // far (line), the raw of each second (dots) and the Misses (crosses, on their own axis). The
-// opponent is drawn first, under the User. A deleted opponent leaves the User's marks only.
+// opponent is drawn first, under the User. A deleted opponent leaves the User's marks only. Every
+// figure, the axes' and the tooltip's, in the Locale.
 export const DuelChart = ({ duel }: { duel: ReplayedDuel }) => {
+  const locale = useLocale();
   const rows = duelChartRows(duel);
-  const own = sideConfig("own", "Toi");
 
-  const config =
-    duel.opponent === null
-      ? own
-      : { ...own, ...sideConfig("opponent", opponentName(duel.opponent)) };
+  // The hovered second, atop the tooltip: « 12 s ».
+  const secondLabel = (second: ReactNode) => secondsLabel(Number(second), locale);
+
+  // A value of an axis or of the tooltip: always a number here.
+  const formatValue = (value: TooltipPayloadEntry["value"]) =>
+    duelChartFigure(Number(value), locale);
 
   return (
-    <figure aria-label="Duel chart" className="flex flex-col gap-2.5">
-      <ChartContainer config={config} className="aspect-auto h-52 w-full">
+    <figure aria-label={m.duel_chart_label({}, { locale })} className="flex flex-col gap-2.5">
+      <ChartContainer
+        config={duelChartConfig(duel.opponent, locale)}
+        className="aspect-auto h-52 w-full"
+      >
         <ComposedChart data={rows} margin={{ left: 0, right: 0 }}>
           <CartesianGrid vertical={false} />
-          <XAxis dataKey="second" tickLine={false} axisLine={false} />
-          <YAxis yAxisId="speed" tickLine={false} axisLine={false} width={32} />
+          <XAxis dataKey="second" tickLine={false} axisLine={false} tickFormatter={formatValue} />
+          <YAxis
+            yAxisId="speed"
+            tickLine={false}
+            axisLine={false}
+            width={32}
+            tickFormatter={formatValue}
+          />
           <YAxis
             yAxisId="misses"
             orientation="right"
@@ -98,8 +104,13 @@ export const DuelChart = ({ duel }: { duel: ReplayedDuel }) => {
             tickLine={false}
             axisLine={false}
             width={24}
+            tickFormatter={formatValue}
           />
-          <ChartTooltip content={<ChartTooltipContent labelFormatter={secondLabel} />} />
+          <ChartTooltip
+            content={
+              <ChartTooltipContent labelFormatter={secondLabel} valueFormatter={formatValue} />
+            }
+          />
           {duel.opponent === null ? null : sideSeries("opponent")}
           {sideSeries("own")}
         </ComposedChart>

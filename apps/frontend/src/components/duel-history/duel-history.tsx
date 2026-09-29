@@ -8,6 +8,8 @@ import { DuelHistoryList } from "@/components/duel-history/duel-history-list";
 import { DuelHistorySkeleton } from "@/components/duel-history/duel-history-skeleton";
 import { NextPageSentinel } from "@/components/duel-history/next-page-sentinel";
 import { useChosenDuel } from "@/components/duel-history/use-chosen-duel";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 // The User's finished Duels, the most recent first, and beside them the chosen one: the next page
 // loads once the bottom of the list shows.
@@ -17,6 +19,7 @@ export const DuelHistory = () => {
 
   const duels = data.pages.flatMap((page) => page.duels);
   const { chosen, choose } = useChosenDuel(duels);
+  const locale = useLocale();
 
   // No Duel chosen only when there is none at all.
   if (chosen === undefined) {
@@ -36,7 +39,7 @@ export const DuelHistory = () => {
           <DuelHistoryList duels={duels} chosenId={chosen.id} onChoose={choose} />
           {hasNextPage ? <NextPageSentinel onVisible={loadNextPage} /> : null}
           {isFetchingNextPage ? (
-            <DuelHistorySkeleton label="Chargement des Duels suivants" rows={2} />
+            <DuelHistorySkeleton label={m.duel_history_loading_more({}, { locale })} rows={2} />
           ) : null}
         </>
       }

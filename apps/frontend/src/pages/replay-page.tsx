@@ -3,6 +3,8 @@ import { ArrowLeftIcon } from "lucide-react";
 
 import { DuelReplay } from "@/components/replay/duel-replay";
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 const route = getRouteApi("/duels_/$duelId");
 
@@ -10,6 +12,7 @@ const route = getRouteApi("/duels_/$duelId");
 // this Duel chosen. A new Duel starts a new Replay.
 export const ReplayPage = () => {
   const { duelId } = route.useParams();
+  const locale = useLocale();
 
   return (
     <section className="flex flex-col gap-5">
@@ -20,7 +23,7 @@ export const ReplayPage = () => {
         render={<Link to="/duels" search={{ duel: duelId }} />}
       >
         <ArrowLeftIcon aria-hidden="true" className="size-4.5" />
-        Duels
+        {m.replay_back({}, { locale })}
       </Button>
       <DuelReplay key={duelId} duelId={duelId} />
     </section>

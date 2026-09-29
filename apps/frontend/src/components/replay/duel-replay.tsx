@@ -14,6 +14,7 @@ import { ReplaySpeedPicker } from "@/components/replay/replay-speed-picker";
 import { ReplayTimeline } from "@/components/replay/replay-timeline";
 import { useReplayClock } from "@/components/replay/use-replay-clock";
 import { opponentName } from "@/lib/opponent-name";
+import { useLocale } from "@/locale/use-locale";
 
 // A finished Duel played again Keystroke by Keystroke, at the pace it was typed, from the start on:
 // both Runs rebuilt at each instant, all in the browser. Under its header, both Score cards and the
@@ -28,6 +29,7 @@ export const DuelReplay = ({ duelId }: { duelId: string }) => {
     useReplayClock(duration);
 
   const [view, setView] = useState<ReplayView>("own");
+  const locale = useLocale();
 
   return (
     <div className="flex flex-col gap-5">
@@ -48,7 +50,7 @@ export const DuelReplay = ({ duelId }: { duelId: string }) => {
           {duel.opponent === null || ended ? null : (
             <ReplaySidePicker
               view={view}
-              opponentName={opponentName(duel.opponent)}
+              opponentName={opponentName(duel.opponent, locale)}
               onChange={setView}
             />
           )}
