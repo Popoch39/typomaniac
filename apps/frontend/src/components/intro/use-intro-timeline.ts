@@ -115,18 +115,23 @@ const measure = (
   brandWord: boxOf(brandWord),
 });
 
-// How far right of its place in the lockup the Logo starts, for it to be at the centre of the
-// screen: half the typed lockup's width, less half the Logo. The letters are shown to be measured
-// (one read), then hidden again in the same task: never painted.
-const logoShift = ({ letters }: IntroTargets) => {
-  gsap.set(letters, { display: "inline-block" });
+// What the typing needs of the word's layout: each letter's width, the typo's too, for the caret
+// to glide by as much; and how far right of its place in the lockup the Logo starts, for it to be
+// at the centre of the screen: half the typed lockup's width, less half the Logo. The letters, the
+// typo with them, are shown to be measured (one read), then hidden again in the same task: never
+// painted. Side by side in a flex row, each keeps its own width.
+const typingLayout = ({ letters, typo }: IntroTargets) => {
+  gsap.set([...letters, ...typo], { display: "inline-block" });
 
-  const last = letters.at(-1);
-  const width = typeof last === "undefined" ? LOGO_PX : last.offsetLeft + last.offsetWidth;
+  const letterWidths = letters.map((letter) => letter.offsetWidth);
+  const typoWidths = typo.map((letter) => letter.offsetWidth);
+  const first = letters.at(0);
+  const wordWidth = letterWidths.reduce((sum, width) => sum + width, 0);
+  const width = typeof first === "undefined" ? LOGO_PX : first.offsetLeft + wordWidth;
 
-  gsap.set(letters, { display: "none" });
+  gsap.set([...letters, ...typo], { display: "none" });
 
-  return width / 2 - LOGO_PX / 2;
+  return { shift: width / 2 - LOGO_PX / 2, letterWidths, typoWidths };
 };
 
 const end = () => useIntroStore.getState().end();
@@ -162,7 +167,7 @@ const finish = (targets: IntroTargets, before: gsap.core.Timeline) => {
 // The typing, then a blink of the caret as long as the shell is awaited, then the end, built in
 // `context` when it comes: the context reverts them all, the shell's inline styles with them.
 const play = (targets: IntroTargets, context: gsap.Context) => {
-  const typing = atSpeed(typingTimeline(targets, { shift: logoShift(targets) }));
+  const typing = atSpeed(typingTimeline(targets, typingLayout(targets)));
   const blink = atSpeed(waitingBlinkTimeline(targets));
 
   // At the waiting point, and at the end of each blink: on to the end once the shell is there,

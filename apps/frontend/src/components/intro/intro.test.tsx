@@ -228,6 +228,26 @@ describe("the Intro, as the home page starts", () => {
     expect(typed()).toBe("typomaniac");
   });
 
+  test("each letter rises in as it is typed, and the typo fades out before it is erased", async () => {
+    renderApp();
+    await fontsLoaded();
+
+    const [first] = document.querySelectorAll<HTMLElement>("[data-intro='letter']");
+    const [, lastOfTypo] = document.querySelectorAll<HTMLElement>("[data-intro='typo']");
+
+    gsapClock.advance(0.97);
+    expect(Number(first?.style.opacity)).toBeGreaterThan(0);
+    expect(Number(first?.style.opacity)).toBeLessThan(1);
+    gsapClock.advance(0.1);
+    expect(first?.style.opacity).toBe("1");
+
+    gsapClock.advance(1.86 - 1.07);
+    expect(lastOfTypo?.style.display).toBe("inline-block");
+    expect(Number(lastOfTypo?.style.opacity)).toBeLessThan(1);
+    gsapClock.advance(0.03);
+    expect(lastOfTypo?.style.display).toBe("none");
+  });
+
   test("the shell not there at the end of the typing, the caret blinks until it is", async () => {
     const { shell, mount } = heldShell();
 

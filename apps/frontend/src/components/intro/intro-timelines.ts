@@ -87,19 +87,86 @@ export type ShellTargets = {
   parts: HTMLElement[];
 };
 
+// The Logo slides aside, then the first letter is typed as it gets there.
+const SLIDE_AT = 0.25;
+
+const SLIDE_S = 0.7;
+
+// A letter comes in, rising a little, or fades out before it is erased.
+const LETTER_IN_S = 0.08;
+
+const LETTER_RISE_PX = 6;
+
+const LETTER_OUT_S = 0.05;
+
+// The caret glides to its new place: shorter than the quickest keystroke (0.06 s), so a glide is
+// over before the next starts.
+const CARET_GLIDE_S = 0.06;
+
 type TypingOptions = {
   // How far the Logo sits right of its place in the lockup at the start, for it to be at the
   // centre of the screen: half the lockup's width, less half the Logo's.
   shift: number;
+  // The width of each letter, and of each letter of the typo: how far the caret moves as it is
+  // typed or erased.
+  letterWidths: number[];
+  typoWidths: number[];
 };
+
+// A letter typed at `at`: it is laid out (the caret jumps right of it), then rises in as the caret
+// glides from where it was to its new place.
+const typeLetter = (
+  timeline: gsap.core.Timeline,
+  {
+    letter,
+    caret,
+    width,
+    at,
+  }: { letter: HTMLElement; caret: HTMLElement; width: number; at: number },
+) =>
+  timeline
+    .set(letter, { display: "inline-block" }, at)
+    .fromTo(
+      letter,
+      { opacity: 0, y: LETTER_RISE_PX },
+      { opacity: 1, y: 0, duration: LETTER_IN_S, ease: "power2.out", immediateRender: false },
+      at,
+    )
+    .fromTo(
+      caret,
+      { x: -width },
+      { x: 0, duration: CARET_GLIDE_S, ease: "power2.out", immediateRender: false },
+      at,
+    );
+
+// A letter erased at `at`: it fades out, then leaves the layout (the caret jumps back) and the
+// caret glides back from where it was.
+const eraseLetter = (
+  timeline: gsap.core.Timeline,
+  {
+    letter,
+    caret,
+    width,
+    at,
+  }: { letter: HTMLElement; caret: HTMLElement; width: number; at: number },
+) =>
+  timeline
+    .to(letter, { opacity: 0, duration: LETTER_OUT_S, ease: "power1.in" }, at - LETTER_OUT_S)
+    .set(letter, { display: "none" }, at)
+    .fromTo(
+      caret,
+      { x: width },
+      { x: 0, duration: CARET_GLIDE_S, ease: "power2.out", immediateRender: false },
+      at,
+    );
 
 // From the boot Logo to the waiting point: the Logo slides aside to its place in the lockup and
 // takes its own size again, then the name is typed beside it with a typo that the wave flags and
-// the caret takes back. The lockup moves left by as much as its Logo sits right: the Logo stays
-// still until it slides.
+// the caret takes back, each letter rising in, the caret gliding. The lockup moves left by as much
+// as its Logo sits right: the Logo stays still until it slides.
 export const typingTimeline = (
   { lockup, logo, wave, letters, typo, caret }: IntroTargets,
-  { shift }: TypingOptions,
+  { shift, letterWidths, typoWidths }: TypingOptions,
 ) => {
   const timeline = gsap.timeline();
 
@@ -108,24 +175,24 @@ export const typingTimeline = (
     .set(logo, { x: shift, scale: BOOT_SCALE, transformOrigin: "50% 50%" }, 0)
     .set([...letters, ...typo], { display: "none" }, 0)
     .set(caret, { display: "inline-block", opacity: 0 }, 0)
-    .to(logo, { x: 0, scale: 1, duration: 0.6, ease: "expo.inOut" }, 0.35)
+    .to(logo, { x: 0, scale: 1, duration: SLIDE_S, ease: "power3.inOut" }, SLIDE_AT)
     .set(caret, { opacity: 1 }, 0.8);
 
   for (const [index, letter] of letters.entries()) {
     const at = TYPED_AT[index];
 
     if (typeof at !== "undefined") {
-      timeline.set(letter, { display: "inline-block" }, at);
+      typeLetter(timeline, { letter, caret, width: letterWidths[index] ?? 0, at });
     }
   }
 
   for (const [index, letter] of typo.entries()) {
     const times = TYPO[index];
+    const width = typoWidths[index] ?? 0;
 
     if (typeof times !== "undefined") {
-      timeline
-        .set(letter, { display: "inline-block" }, times.typed)
-        .set(letter, { display: "none" }, times.erased);
+      typeLetter(timeline, { letter, caret, width, at: times.typed });
+      eraseLetter(timeline, { letter, caret, width, at: times.erased });
     }
   }
 
