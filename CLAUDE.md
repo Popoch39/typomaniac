@@ -1,6 +1,6 @@
 # typomaniac
 
-Monorepo Turborepo : `apps/frontend` (Vite 8, React 19), `apps/api` (Elysia sur Bun), `packages/typing-engine`, `packages/handle` (règles du Handle, pures, partagées par le front et l'API), `packages/ranked` (règles de la Ranked, pures, partagées de même), `packages/typescript-config`.
+Monorepo Turborepo : `apps/frontend` (Vite 8, React 19), `apps/api` (Elysia sur Bun), `packages/typing-engine`, `packages/handle` (règles du Handle, pures, partagées par le front et l'API), `packages/ranked` (règles de la Ranked, pures, partagées de même), `packages/typescript-config`, `tools/loadtest`, `tools/oxlint/typomaniac` (règles oxlint maison).
 
 ## Instructions par workspace
 
@@ -39,6 +39,16 @@ Pas d'ESLint, pas de Prettier. N'en réinstalle pas et n'ajoute pas de config `e
 - **oxlint** : config unique à la racine, `oxlint.config.ts`. Lint lancé une seule fois depuis la racine, pas par workspace (il n'y a pas de tâche `lint` dans turbo).
 - **oxfmt** : config dans `.oxfmtrc.json`. Il formate aussi le JSON et le Markdown, et trie les clés des `package.json`.
 - **anti-slop** : règles oxlint de [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop), vendorisées dans `tools/oxlint/anti-slop/` et chargées via `jsPlugins`. Ce code appartient au repo : on peut l'adapter, mais toute modification se note dans `tools/oxlint/anti-slop/UPSTREAM.md`.
+- **typomaniac** : les règles maison, dans le workspace `tools/oxlint/typomaniac/` (jsPlugin chargé comme anti-slop, testé par `bun run test`).
+
+### Texte d'UI en dur : `typomaniac/no-hardcoded-ui-text`
+
+Dans le front livré (`apps/frontend/src/**/*.tsx`), la règle refuse le texte littéral en JSX (texte, `{"…"}`, template, branches d'un `? :` ou d'un `&&`) et les littéraux dans `aria-label`, `aria-valuetext`, `title`, `alt` et `placeholder`, sur un élément comme sur un composant. Tout texte passe par les messages (voir `apps/frontend/CLAUDE.md`).
+
+- **Autorisé** : un texte dont aucun mot n'est hors liste blanche, donc la ponctuation, les nombres, les symboles et les noms propres de `properNames` (`src/no-hardcoded-ui-text.ts` : typomaniac, GitHub, Google, Discord, TP, wpm). N'y ajouter qu'un mot identique dans toutes les Locales.
+- **Hors règle** (`outOfScopeFiles`, `src/ui-text-scope.ts`) : les tests et le code réservé au build de dev (pages `/dev/*`, labo du Face-off, galerie d'Auras, connexion email de dev). Un nouveau fichier de dev s'y ajoute.
+- **Liste d'exceptions à vider** (`untranslatedFiles`, même fichier) : les fichiers qui ont encore du texte en dur. Chaque ticket d'extraction retire ceux qu'il traduit ; elle est vide à l'ouverture de l'anglais. Le test échoue si un fichier listé n'a plus de texte en dur : le retirer. Ne jamais y ajouter un fichier pour faire passer le lint.
+- Les fichiers témoins sont dans `fixtures/ui-text/` : un cas nouveau se couvre là, avec les diagnostics attendus dans `src/no-hardcoded-ui-text.test.ts`.
 
 `oxlint` et `@oxlint/plugins` sont épinglés à la même version exacte : les monter ensemble. De même, `oxc-transform-react` (React Compiler Rust, dans `apps/frontend`) est épinglé exact sur la plage peer de `@vitejs/plugin-react` : les monter ensemble.
 

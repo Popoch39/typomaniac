@@ -1,0 +1,6 @@
+{
+  "plugins": [],
+  "categories": { "correctness": "off" },
+  "jsPlugins": [{ "name": "typomaniac", "specifier": "../src/index.ts" }],
+  "rules": { "typomaniac/no-hardcoded-ui-text": "error" }
+}

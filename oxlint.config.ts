@@ -1,5 +1,11 @@
 import { defineConfig } from "oxlint";
 
+import {
+  outOfScopeFiles,
+  uiTextFiles,
+  untranslatedFiles,
+} from "./tools/oxlint/typomaniac/src/ui-text-scope.ts";
+
 export default defineConfig({
   plugins: ["typescript", "unicorn", "oxc", "import", "react", "jsx-a11y"],
   categories: {
@@ -32,7 +38,17 @@ export default defineConfig({
     ".windsurf/**",
     "tools/oxlint/anti-slop/**",
   ],
-  jsPlugins: [{ name: "anti-slop", specifier: "./tools/oxlint/anti-slop/index.ts" }],
+  jsPlugins: [
+    { name: "anti-slop", specifier: "./tools/oxlint/anti-slop/index.ts" },
+    { name: "typomaniac", specifier: "./tools/oxlint/typomaniac/src/index.ts" },
+  ],
+  overrides: [
+    {
+      files: uiTextFiles,
+      excludeFiles: [...outOfScopeFiles, ...untranslatedFiles],
+      rules: { "typomaniac/no-hardcoded-ui-text": "error" },
+    },
+  ],
   rules: {
     "react/react-in-jsx-scope": "off",
     "react/rules-of-hooks": "error",

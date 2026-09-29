@@ -4,7 +4,8 @@
   "workspaces": [
     "apps/*",
     "packages/*",
-    "tools/loadtest"
+    "tools/loadtest",
+    "tools/oxlint/typomaniac"
   ],
   "type": "module",
   "scripts": {
