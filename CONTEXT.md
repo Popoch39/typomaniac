@@ -88,15 +88,19 @@ Deux Users, appariés par la Queue ou par un Challenge, qui tapent le même Text
 _Avoid_ : match, versus, 1v1, partie, race
 
 **Queue** :
-L'attente des Users qui veulent un Duel Ranked. Deux Users distincts y sont appariés quand leurs MMR sont assez proches : l'écart accepté part de ±100 et s'élargit avec l'attente, jusqu'à n'importe quel adversaire au bout de 30 secondes. Un appariement ouvre une Match proposal, il ne lance pas le Duel. Un User peut la rejoindre à tout moment, sauf pendant un Queue lock, et la quitter à tout moment ; pendant une Match proposal, la quitter revient à la refuser. Il peut y attendre tout en lançant un Challenge : le premier qui aboutit l'emporte. Un Challenge accepté le sort de la Queue ; une Match proposal annule ses Challenges en attente, envoyés comme reçus. Pendant l'attente, il voit depuis quand il attend, combien de Users sont dans la Queue, lui compris, et l'Estimated wait.
+L'attente des Users qui veulent un Duel Ranked. Deux Users distincts y sont appariés quand leurs MMR sont assez proches : l'écart accepté part de ±100 et s'élargit avec l'attente, jusqu'à n'importe quel adversaire au bout de 30 secondes. Un appariement ouvre une Match proposal, il ne lance pas le Duel. Un User peut la rejoindre à tout moment, sauf pendant un Queue lock, et la quitter à tout moment ; pendant une Match proposal, la quitter revient à la refuser. Il peut y attendre tout en lançant un Challenge : le premier qui aboutit l'emporte. Un Challenge accepté le sort de la Queue ; une Match proposal annule ses Challenges en attente, envoyés comme reçus. Pendant l'attente, il voit depuis quand il attend, combien de Users sont dans la Queue, lui compris, et l'Estimated wait ; avant de la rejoindre, il en voit déjà la taille et l'Estimated wait. Il peut aussi y attendre partout dans l'app, en jouant des Runs ou en allant sur d'autres pages : la Queue le suit dans la Queue pill.
 _Avoid_ : lobby, file, matchmaking, salle d'attente
+
+**Queue pill** :
+La forme repliée de la Queue, qui flotte au-dessus de n'importe quelle page tant que le User y attend : depuis quand il attend, l'Estimated wait, de quoi rouvrir la recherche ou quitter la Queue. Une Match proposal y arrive sans jamais recouvrir le Text d'un Run.
+_Avoid_ : pastille, widget, mini-recherche, bulle
 
 **Estimated wait** :
 L'attente probable dans la Queue : la médiane des attentes des 20 derniers appariements acceptés, toutes MMR confondues, jamais plus de 30 secondes. Une Match proposal refusée ou restée sans réponse n'y compte pas. Sans appariement récent, il n'y en a pas.
 _Avoid_ : ETA, temps estimé
 
 **Match proposal** :
-Les 10 secondes après un appariement de la Queue, pendant lesquelles chacun des deux Users accepte ou refuse le Duel, en voyant son adversaire et son rang. Si les deux acceptent, le Countdown part 1 seconde plus tard. Celui qui refuse ou laisse passer le temps quitte la Queue, et c'est un Dodge ; l'autre y revient avec son attente d'origine. Pendant ce temps, les deux Users restent en ligne. Un Challenge n'en a pas : il est déjà accepté.
+Les 10 secondes après un appariement de la Queue, pendant lesquelles chacun des deux Users accepte ou refuse le Duel, en voyant son adversaire et son rang. Si les deux acceptent, le Countdown part 1 seconde plus tard. Celui qui refuse ou laisse passer le temps quitte la Queue, et c'est un Dodge ; l'autre y revient avec son attente d'origine. Pendant ce temps, les deux Users restent en ligne. L'accepter pendant un Run abandonne ce Run, sans Result. Un Challenge n'en a pas : il est déjà accepté.
 _Avoid_ : ready check, match trouvé, confirmation, adversaire trouvé
 
 **Dodge** :
