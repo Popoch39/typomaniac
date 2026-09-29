@@ -1,10 +1,6 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
-
-import { meQueryOptions } from "@/api/me";
 import { useInDuel } from "@/components/duel/use-in-duel";
-import { useDuelSearchGesture } from "@/components/duel/use-duel-search-gesture";
+import { useChooseDuel } from "@/components/duel/use-choose-duel";
 import { type SettingOption, SettingGroup } from "@/components/settings/setting-group";
-import { useAuthStore } from "@/stores/auth-store";
 import { type Play, usePlayStore } from "@/stores/play-store";
 
 const plays: readonly SettingOption<Play>[] = [
@@ -14,23 +10,15 @@ const plays: readonly SettingOption<Play>[] = [
 
 // Solo or Duel. A Duel needs an account: a Visitor who picks it is asked to sign in instead.
 export const PlaySetting = () => {
-  const { data: me } = useSuspenseQuery(meQueryOptions);
   const inDuel = useInDuel();
   const setPlay = usePlayStore((state) => state.setPlay);
-  const setSignInOpen = useAuthStore((state) => state.setSignInOpen);
-  const searchGesture = useDuelSearchGesture();
+  const chooseDuel = useChooseDuel();
 
   const choose = (play: Play) => {
-    if (play === "duel" && me === null) {
-      setSignInOpen(true);
+    if (play === "duel") {
+      chooseDuel();
 
       return;
-    }
-
-    // The Queue is joined on the Duel screen: this click lets its Face-off sound and its Match
-    // proposal notify.
-    if (play === "duel") {
-      searchGesture();
     }
 
     setPlay(play);

@@ -1,14 +1,14 @@
-import { DIVISIONS, type Standing, type Tier, TIERS } from "ranked";
+import { DIVISIONS, isPlacement, type Rank, type Standing, type Tier, TIERS } from "ranked";
 
 // Where a Tier stands for the reader: climbed past, theirs, still ahead; or open to anyone without
 // a standing (in Placement, without a Rating, or a Visitor).
-export type LadderReach = "climbed" | "mine" | "ahead" | "open";
+export type TierReach = "climbed" | "mine" | "ahead" | "open";
 
-export type LadderRow = {
+export type TierRow = {
   tier: Tier;
-  // The Tier's step on the ladder, from "01" for Fer to "07" for Maniac.
+  // The Tier's step, from "01" for Fer to "07" for Maniac.
   number: string;
-  reach: LadderReach;
+  reach: TierReach;
   // The Tier's marks: one per Division, the one summit of Maniac.
   divisions: number;
   // Those the reader has climbed.
@@ -18,9 +18,10 @@ export type LadderRow = {
 const divisionsOf = (tier: Tier) => (tier === "maniac" ? 1 : DIVISIONS.length);
 
 // The Divisions of their own Tier the reader has reached: one for IV, four for I, Maniac's one.
-const litOf = (standing: Standing) => (standing.tier === "maniac" ? 1 : 5 - standing.division);
+const litOf = (standing: Standing) =>
+  standing.tier === "maniac" ? 1 : DIVISIONS.length + 1 - standing.division;
 
-const reachOf = (index: number, mine: number): LadderReach => {
+const reachOf = (index: number, mine: number): TierReach => {
   if (mine < 0) {
     return "open";
   }
@@ -32,7 +33,7 @@ const reachOf = (index: number, mine: number): LadderReach => {
   return index === mine ? "mine" : "ahead";
 };
 
-const rowOf = (tier: Tier, index: number, standing: Standing | null): LadderRow => {
+const rowOf = (tier: Tier, index: number, standing: Standing | null): TierRow => {
   const mine = standing === null ? -1 : TIERS.indexOf(standing.tier);
   const reach = reachOf(index, mine);
   const divisions = divisionsOf(tier);
@@ -47,12 +48,16 @@ const rowOf = (tier: Tier, index: number, standing: Standing | null): LadderRow 
   };
 };
 
-// The Tiers from Maniac at the top down to Fer, each with how far the reader has climbed it.
-export const tierLadder = (standing: Standing | null): LadderRow[] =>
-  TIERS.map((tier, index) => rowOf(tier, index, standing)).toReversed();
+// The Tiers from Maniac at the top down to Fer, each with how far the reader has climbed it. In
+// Placement or without a Rating, the reader has no Tier yet.
+export const tierRows = (rank: Rank | null): TierRow[] => {
+  const standing = rank === null || isPlacement(rank) ? null : rank;
 
-// The ladder in figures: its Tiers, the Divisions under Maniac, and Maniac, the one summit.
-export const LADDER_COUNTS = {
+  return TIERS.map((tier, index) => rowOf(tier, index, standing)).toReversed();
+};
+
+// The Tiers in figures: how many, the Divisions under Maniac, and Maniac, the one Tier without any.
+export const TIER_COUNTS = {
   tiers: TIERS.length,
   divisions: (TIERS.length - 1) * DIVISIONS.length,
   summits: 1,

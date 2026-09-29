@@ -17,6 +17,10 @@ export type TpProgress =
       tp: number;
       of: typeof DIVISION_TP;
       tier: Standing["tier"];
+      // The rank itself: "Or II".
+      name: string;
+      // The rank above: "Or I".
+      next: string;
       // "58 TP avant Or I".
       toNext: string;
     }
@@ -43,11 +47,15 @@ export const tpProgressOf = (rank: Rank | null): TpProgress | null => {
     return { kind: "maniac", tp: rank.tp };
   }
 
+  const nextName = standingName(next);
+
   return {
     kind: "division",
     tp: rank.tp,
     of: DIVISION_TP,
     tier: rank.tier,
-    toNext: `${DIVISION_TP - rank.tp} TP avant ${standingName(next)}`,
+    name: standingName(rank),
+    next: nextName,
+    toNext: `${DIVISION_TP - rank.tp} TP avant ${nextName}`,
   };
 };

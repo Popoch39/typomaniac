@@ -9,6 +9,8 @@ describe("tpProgressOf", () => {
       tp: 42,
       of: 100,
       tier: "or",
+      name: "Or II",
+      next: "Or I",
       toNext: "58 TP avant Or I",
     });
   });

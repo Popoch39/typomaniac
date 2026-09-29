@@ -4,7 +4,7 @@ import { PlayRankedLink } from "@/components/ranked/play-ranked-link";
 import { RankedPlace } from "@/components/ranked/ranked-place";
 import { RankedRules } from "@/components/ranked/ranked-rules";
 
-// The Ranked page's right column: where the reader stands, the rules of the ladder, then the way
+// The Ranked page's right column: where the reader stands, the rules of the Ranked, then the way
 // to the Queue at the bottom.
 export const RankedAside = ({ rank }: { rank: Rank | null }) => (
   <aside aria-label="Ta Ranked" className="flex w-80 shrink-0 flex-col gap-8 pt-9">

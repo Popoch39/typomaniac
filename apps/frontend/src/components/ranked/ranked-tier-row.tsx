@@ -1,13 +1,13 @@
 import { cn } from "cn";
 
 import { RankedDivisionTicks } from "@/components/ranked/ranked-division-ticks";
-import type { LadderReach, LadderRow } from "@/components/ranked/tier-ladder";
+import type { TierReach, TierRow } from "@/components/ranked/tier-rows";
 import { TierEmblem } from "@/components/tier/drawing/tier-emblem";
 import { TIER_COLORS, TIER_NAMES } from "@/components/tier/tier";
 
 // The name of a Tier: in its colour for the reader's, faint for those still ahead.
-const nameColor = (row: LadderRow) => {
-  const colors: Record<LadderReach, string> = {
+const nameColor = (row: TierRow) => {
+  const colors: Record<TierReach, string> = {
     mine: TIER_COLORS[row.tier],
     ahead: "text-faint",
     climbed: "text-foreground",
@@ -17,9 +17,9 @@ const nameColor = (row: LadderRow) => {
   return colors[row.reach];
 };
 
-// A Tier of the ladder: its step, its Emblem, its name in large, « ← toi » on the reader's, then
-// its Divisions, those climbed lit.
-export const RankedLadderRow = ({ row }: { row: LadderRow }) => {
+// A Tier of the Ranked page: its step, its Emblem, its name in large, « ← toi » on the reader's,
+// then its Divisions, those climbed lit.
+export const RankedTierRow = ({ row }: { row: TierRow }) => {
   const mine = row.reach === "mine";
   const ahead = row.reach === "ahead";
 
@@ -29,7 +29,7 @@ export const RankedLadderRow = ({ row }: { row: LadderRow }) => {
       data-ahead={ahead ? "" : undefined}
       className="flex flex-1 basis-0 items-center gap-6 border-t border-secondary"
     >
-      <span className="w-7 font-mono text-xs text-faint">{row.number}</span>
+      <span className="w-7 font-mono text-xs text-faint tabular-nums">{row.number}</span>
       <span className={cn("size-7.5 shrink-0", ahead ? "opacity-45" : null)}>
         <TierEmblem tier={row.tier} />
       </span>

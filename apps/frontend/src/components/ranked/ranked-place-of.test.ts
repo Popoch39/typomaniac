@@ -10,6 +10,8 @@ describe("rankedPlaceOf", () => {
       name: "Or II",
       tp: 42,
       of: 100,
+      next: "Or I",
+      toNext: "58 TP avant Or I",
       ahead: "58 avant Or I",
     });
   });

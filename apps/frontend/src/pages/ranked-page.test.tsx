@@ -77,7 +77,7 @@ afterEach(() => {
 });
 
 describe("RankedPage", () => {
-  test("lists the seven Tiers from Maniac down to Fer, with the ladder's figures", async () => {
+  test("lists the seven Tiers from Maniac down to Fer, with their figures", async () => {
     await renderPage(userWith(orII));
 
     expect(screen.getByText("7 Tiers · 24 Divisions · 1 sommet")).toBeTruthy();
@@ -135,7 +135,7 @@ describe("RankedPage", () => {
     expect(within(place()).getByText("5 Duels de Placement")).toBeTruthy();
   });
 
-  test("the rules of the ladder, from the ranked package", async () => {
+  test("the rules of the Ranked, from the ranked package", async () => {
     await renderPage(userWith(orII));
 
     const terms = screen.getAllByRole("term").map((term) => term.textContent);
@@ -166,7 +166,7 @@ describe("RankedPage", () => {
     expect(usePlayStore.getState().play).toBe("duel");
   });
 
-  test("a Visitor sees the ladder, and is asked to sign in to play", async () => {
+  test("a Visitor sees the Tiers, and is asked to sign in to play", async () => {
     await renderPage(null);
 
     expect(rows()).toHaveLength(7);

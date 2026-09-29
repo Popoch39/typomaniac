@@ -1,57 +1,30 @@
-import {
-  DIVISION_TP,
-  isPlacement,
-  nextStanding,
-  PLACEMENT_DUELS,
-  type Rank,
-  type Standing,
-} from "ranked";
+import type { Rank } from "ranked";
 
-import { standingName } from "@/components/tier/tier";
+import { type TpProgress, tpProgressOf } from "@/components/tier/rank/tp-progress-of";
 
-// « Ta place » on the Ranked page: the reader's rank and how far the next, their Placement, or
-// nothing yet.
-export type RankedPlace =
-  | {
-      kind: "division";
-      tier: Standing["tier"];
-      // "Or II".
-      name: string;
-      tp: number;
-      of: typeof DIVISION_TP;
+type DivisionProgress = Extract<TpProgress, { kind: "division" }>;
+
+// What « Ta place » shows on the Ranked page: the progress of the reader's rank, a Division's with
+// how far the next; or nothing yet.
+export type RankedPlaceView =
+  | (DivisionProgress & {
       // "58 avant Or I".
       ahead: string;
-    }
-  | { kind: "maniac"; tp: number }
-  | { kind: "placement"; played: number; of: typeof PLACEMENT_DUELS }
+    })
+  | Exclude<TpProgress, DivisionProgress>
   | { kind: "unranked" };
 
-// The reader's place from their rank, null without a Rating.
-export const rankedPlaceOf = (rank: Rank | null): RankedPlace => {
-  if (rank === null) {
+// The reader's place from their rank, by the same progress as the User card's bar.
+export const rankedPlaceOf = (rank: Rank | null): RankedPlaceView => {
+  const progress = tpProgressOf(rank);
+
+  if (progress === null) {
     return { kind: "unranked" };
   }
 
-  if (isPlacement(rank)) {
-    return {
-      kind: "placement",
-      played: PLACEMENT_DUELS - rank.placementsLeft,
-      of: PLACEMENT_DUELS,
-    };
+  if (progress.kind !== "division") {
+    return progress;
   }
 
-  const next = nextStanding(rank);
-
-  if (rank.tier === "maniac" || next === null) {
-    return { kind: "maniac", tp: rank.tp };
-  }
-
-  return {
-    kind: "division",
-    tier: rank.tier,
-    name: standingName(rank),
-    tp: rank.tp,
-    of: DIVISION_TP,
-    ahead: `${DIVISION_TP - rank.tp} avant ${standingName(next)}`,
-  };
+  return { ...progress, ahead: `${progress.of - progress.tp} avant ${progress.next}` };
 };

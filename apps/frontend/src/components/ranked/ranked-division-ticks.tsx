@@ -1,6 +1,6 @@
 import { cn } from "cn";
 
-import type { LadderRow } from "@/components/ranked/tier-ladder";
+import type { TierRow } from "@/components/ranked/tier-rows";
 import { TIER_COLORS } from "@/components/tier/tier";
 
 // One mark per Division, from IV, the lowest, up to I.
@@ -8,7 +8,7 @@ const MARKS = [1, 2, 3, 4];
 
 // A Tier's Divisions at the end of its row, Maniac's one summit: those climbed in the Tier's
 // colour, the others dark. Only seen: the reader's rank is written in « Ta place ».
-export const RankedDivisionTicks = ({ row }: { row: LadderRow }) => (
+export const RankedDivisionTicks = ({ row }: { row: TierRow }) => (
   <span aria-hidden className={cn("flex w-45 justify-end gap-1.5", TIER_COLORS[row.tier])}>
     {MARKS.slice(0, row.divisions).map((mark) => (
       <span

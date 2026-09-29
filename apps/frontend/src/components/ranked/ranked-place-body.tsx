@@ -2,13 +2,13 @@ import { PLACEMENT_DUELS } from "ranked";
 
 import { RankedPlaceBar } from "@/components/ranked/ranked-place-bar";
 import { RankedPlaceLine } from "@/components/ranked/ranked-place-line";
-import type { RankedPlace } from "@/components/ranked/ranked-place-of";
+import type { RankedPlaceView } from "@/components/ranked/ranked-place-of";
 import { RankedPlaceTitle } from "@/components/ranked/ranked-place-title";
 import { TIER_COLORS, TIER_NAMES } from "@/components/tier/tier";
 
 // What « Ta place » says for each place: the rank and its bar in a Division, the TP alone in
 // Maniac, the Placement Duels played, or what gets the reader in.
-export const RankedPlaceBody = ({ place }: { place: RankedPlace }) => {
+export const RankedPlaceBody = ({ place }: { place: RankedPlaceView }) => {
   switch (place.kind) {
     case "division": {
       return (
