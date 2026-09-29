@@ -47,9 +47,11 @@ const replayedPlayer = t.Composite([
 export type ReplayedPlayer = typeof replayedPlayer.static;
 
 // A finished Duel seen from the User who replays it: its Text (Seed, Language, Word list version),
-// its time, how it ended for them, their side (`me`) and the opponent's.
+// its time, how it ended for them, whether it was Ranked and the TP it moved for them (as in the
+// Duel history), their side (`me`) and the opponent's.
 const replayedDuel = t.Composite([
   DuelModel.duel,
+  t.Pick(duelHistoryEntry, ["tp", "ranked"]),
   t.Object({
     endedAt: t.Number(),
     outcome: t.UnionEnum(["win", "loss", "draw"]),

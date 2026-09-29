@@ -23,6 +23,7 @@ import {
 import type {
   DuelCursor,
   DuelHistoryPlayer,
+  DuelHistoryRow,
   DuelPlayerRecord,
   DuelRecord,
   DuelStore,
@@ -106,6 +107,16 @@ const historyPlayer = ({ userId, result, score }: DuelPlayerRecord): DuelHistory
   userId,
   wpm: result.wpm,
   score: score === null ? null : score.score,
+});
+
+// Whether the Duel was Ranked and the TP it moved for `player`, as the Drizzle store writes them:
+// a Ranked Duel rated both players.
+const rankingOf = (
+  record: DuelRecord,
+  player: DuelPlayerRecord,
+): Pick<DuelHistoryRow, "tp" | "ranked"> => ({
+  tp: player.rated?.tp ?? null,
+  ranked: record.players.every(({ rated }) => rated !== null),
 });
 
 // Most recent first, by end then by id, the way Postgres orders the Duel history.
@@ -285,8 +296,7 @@ export const memoryDuelStore = () => {
               winnerId: winnerOf(record),
               player: historyPlayer(player),
               opponent: opponent ? historyPlayer(opponent) : null,
-              tp: player.rated?.tp ?? null,
-              ranked: record.players.every(({ rated }) => rated !== null),
+              ...rankingOf(record, player),
             },
           ];
         })
@@ -312,6 +322,7 @@ export const memoryDuelStore = () => {
         winnerId: winnerOf(record),
         player,
         opponent: players.find((candidate) => candidate.userId !== userId) ?? null,
+        ...rankingOf(record, player),
       };
     },
     stats: async (userId) => {

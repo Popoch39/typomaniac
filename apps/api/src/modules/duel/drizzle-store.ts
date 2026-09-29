@@ -328,6 +328,8 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
       winnerId: played.winnerId,
       player: playerOf(own.duel_player),
       opponent: opponent ? playerOf(opponent.duel_player) : null,
+      tp: own.duel_player.tpDelta,
+      ranked: played.ranked,
     };
   },
   // The last Duels read newest first, then turned around.

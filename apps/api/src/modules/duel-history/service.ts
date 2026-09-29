@@ -118,6 +118,8 @@ export const replayedDuel = async (
     endedAt: played.endedAt,
     outcome: outcomeFor(userId, played),
     forfeit: played.outcome === "forfeit",
+    tp: played.tp,
+    ranked: played.ranked,
     me: replayedPlayer(own, played.player),
     opponent: played.opponent && opponent ? replayedPlayer(opponent, played.opponent) : null,
   };

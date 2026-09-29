@@ -2,6 +2,7 @@ import {
   computeScore,
   defaultPace,
   keystrokesUpTo,
+  liveWpm,
   type RunConfig,
   runAt,
   type RunState,
@@ -25,19 +26,24 @@ export const replayConfig = (duel: ReplayedDuel): RunConfig => ({
 export const replayDuration = (duel: ReplayedDuel) =>
   Math.max(0, Math.min(duel.seconds * 1000, duel.endedAt - duel.startsAt));
 
-// A side of the Duel at an instant of its Replay: their Run, and their Score (null for a Duel played
-// before the Score).
-export type ReplaySide = { run: RunState; score: ScoreState | null };
+// A side of the Duel at an instant of its Replay: their Run, their wpm so far, and their Score (null
+// for a Duel played before the Score).
+export type ReplaySide = { run: RunState; wpm: number; score: ScoreState | null };
 
 // A side at `t` ms into the Duel. Their Score goes at the Pace it was judged against; the Duels
 // written before the Pace came from the history go at the default one.
-const sideAt = (config: RunConfig, player: ReplayedPlayer, t: number): ReplaySide => ({
-  run: runAt(config, player.keystrokes, t),
-  score:
-    player.score === null
-      ? null
-      : computeScore(config, keystrokesUpTo(player.keystrokes, t), player.pace ?? defaultPace, t),
-});
+const sideAt = (config: RunConfig, player: ReplayedPlayer, t: number): ReplaySide => {
+  const run = runAt(config, player.keystrokes, t);
+
+  return {
+    run,
+    wpm: liveWpm(run, t),
+    score:
+      player.score === null
+        ? null
+        : computeScore(config, keystrokesUpTo(player.keystrokes, t), player.pace ?? defaultPace, t),
+  };
+};
 
 // Both sides at `t`; no opponent once their User is deleted.
 export const sidesAt = (duel: ReplayedDuel, t: number) => {

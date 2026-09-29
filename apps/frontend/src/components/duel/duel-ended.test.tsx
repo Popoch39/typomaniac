@@ -66,6 +66,8 @@ const written: ReplayedDuel = {
   endedAt: 30_000,
   outcome: "draw",
   forfeit: false,
+  ranked: false,
+  tp: null,
   me: player("ada"),
   opponent: player("alan"),
 };

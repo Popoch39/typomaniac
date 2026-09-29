@@ -69,11 +69,13 @@ export type DuelHistoryRow = {
 export type PlayedDuelPlayer = Omit<DuelPlayerRecord, "pace" | "rated"> & { pace: number | null };
 
 // A finished Duel read back for one of its two Users (`player`), to replay it. `opponent` is null
-// once their User is deleted: their player row goes with it.
-export type PlayedDuel = Omit<DuelRecord, "players"> & {
-  player: PlayedDuelPlayer;
-  opponent: PlayedDuelPlayer | null;
-};
+// once their User is deleted: their player row goes with it. `tp` and `ranked` as in the Duel
+// history.
+export type PlayedDuel = Omit<DuelRecord, "players"> &
+  Pick<DuelHistoryRow, "tp" | "ranked"> & {
+    player: PlayedDuelPlayer;
+    opponent: PlayedDuelPlayer | null;
+  };
 
 // The aggregates of a User's finished Duels, seen from them: their record (a Forfeit is a loss for
 // the one who did not win), their averages and their bests. The averages and the best wpm are null

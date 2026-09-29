@@ -53,6 +53,8 @@ const replayed = (overrides: Partial<ReplayedDuel> = {}): ReplayedDuel => ({
   endedAt: Date.UTC(2026, 8, 20, 12, 0, 30, 50),
   outcome: "win",
   forfeit: false,
+  ranked: true,
+  tp: 18,
   me: player("ada", adaTyped, 1234),
   opponent: player("alan", [{ kind: "char", char: "s", at: 150 }], 567),
   ...overrides,
@@ -106,7 +108,7 @@ const renderReplay = async (duel: ReplayedDuel) => {
     </QueryClientProvider>,
   );
 
-  await screen.findByRole("timer");
+  await screen.findByRole("heading", { level: 1 });
 
   expect(String(fetch.mock.calls[0]?.[0])).toContain(`/api/duels/${duel.id}`);
 
@@ -128,9 +130,11 @@ const statuses = (word: string) =>
     letter.getAttribute("data-status"),
   );
 
-const timer = () => screen.getByRole("timer");
+// The time of the Replay, at the left of the time bar.
+const timer = () => screen.getByRole("timer", { name: "Temps de lecture" });
 
-// The carets in the Text: `own` for the Run shown, `opponent` for the other side's.
+// The carets in the Text by player, `own` or `opponent`: the other side's first, then the one of
+// the Run shown.
 const carets = () =>
   Array.from(document.querySelectorAll("[data-caret]"), (caret) =>
     caret.getAttribute("data-caret"),
@@ -146,22 +150,56 @@ const seek = async (user: ReturnType<typeof userEvent.setup>, keys: string) => {
   await user.keyboard(keys);
 };
 
+// The line under the title: when, what kind of Duel, its time and its Language.
+const duelFormat = () => screen.getByText(/ · 30 s · anglais$/);
+
+// The Score card of a side: its Score, wpm and Combo, as they show.
+const scoreCard = (name: string) => {
+  const card = within(screen.getByRole("region", { name: `Score de ${name}` }));
+
+  return ["score", "wpm", "combo"].map(
+    (term) => card.getByText(term).nextElementSibling?.textContent,
+  );
+};
+
 describe("DuelReplay", () => {
-  test("shows against whom and how the Duel ended", async () => {
-    await renderReplay(replayed({ outcome: "loss", forfeit: true }));
+  test("titled by the opponent, a link to their Profile, then when and what kind of Duel it was", async () => {
+    await renderReplay(replayed());
 
-    const header = within(screen.getByRole("banner"));
+    const title = screen.getByRole("heading", { level: 1, name: "Replay contre @alan" });
 
-    expect(header.getByText("@alan")).toBeInTheDocument();
-    expect(header.getByText("Défaite par Forfeit")).toBeInTheDocument();
-    expect(header.getByText(/20 sept\. 2026/)).toBeInTheDocument();
+    expect(within(title).getByRole("link", { name: "@alan" })).toHaveAttribute("href", "/u/alan");
+    expect(duelFormat()).toHaveTextContent(
+      /^20 sept\. 2026, \d\d:\d\d · Duel classé · 30 s · anglais$/,
+    );
+  });
+
+  test("shows how the Duel ended and the TP it moved", async () => {
+    await renderReplay(replayed({ outcome: "loss", forfeit: true, tp: -15 }));
+
+    expect(screen.getByText("Défaite par Forfeit")).toBeInTheDocument();
+    expect(screen.getByText("−15 TP")).toBeInTheDocument();
+  });
+
+  test("a Challenge says so, without TP", async () => {
+    await renderReplay(replayed({ ranked: false, tp: null }));
+
+    expect(duelFormat()).toHaveTextContent("· Challenge ·");
+    expect(screen.queryByText(/TP$/)).not.toBeInTheDocument();
+  });
+
+  test("a Duel in Placement is a Duel classé that moved no TP", async () => {
+    await renderReplay(replayed({ tp: null }));
+
+    expect(duelFormat()).toHaveTextContent("· Duel classé ·");
+    expect(screen.queryByText(/TP$/)).not.toBeInTheDocument();
   });
 
   test("plays the Duel on at the pace of the clock, Keystroke by Keystroke", async () => {
     const { advance } = await renderReplay(replayed());
 
     expect(statuses("small")).toEqual(["pending", "pending", "pending", "pending", "pending"]);
-    expect(timer()).toHaveTextContent("30");
+    expect(timer()).toHaveTextContent("0 s");
     expect(carets()).toEqual(["opponent", "own"]);
 
     advance(250);
@@ -177,10 +215,37 @@ describe("DuelReplay", () => {
 
     expect(statuses("small")).toEqual(["correct", "correct", "correct", "correct", "correct"]);
 
-    // 3.05 s in: the clock of the Duel shows the seconds left.
+    // 3.05 s in, to the tenth.
     advance(2_200);
 
-    expect(timer()).toHaveTextContent("27");
+    expect(timer()).toHaveTextContent("3,1 s");
+  });
+
+  test("the Lecture card holds the time bar between the time and the length of the Replay, and its controls", async () => {
+    await renderReplay(replayed());
+
+    const lecture = within(screen.getByRole("region", { name: "Lecture" }));
+
+    expect(lecture.getByRole("timer", { name: "Temps de lecture" })).toHaveTextContent("0 s");
+    expect(lecture.getByLabelText("Temps du Replay", { selector: "input" })).toBeInTheDocument();
+    expect(lecture.getByText("30 s")).toBeInTheDocument();
+    expect(lecture.getByRole("button", { name: "Pause" })).toBeInTheDocument();
+    expect(lecture.getByRole("radiogroup", { name: "Vitesse de lecture" })).toBeInTheDocument();
+    expect(lecture.getByRole("radiogroup", { name: "Run affiché" })).toBeInTheDocument();
+  });
+
+  test("the Score cards follow the Replay: each side's Score, wpm and Combo at that instant", async () => {
+    const { advance } = await renderReplay(replayed());
+
+    expect(scoreCard("Toi")).toEqual(["0", "0", "0"]);
+    expect(scoreCard("@alan")).toEqual(["0", "0", "0"]);
+
+    // 0.85 s in, Ada has validated « small », corrected on the way: a Combo of 1, paid x1 its 5
+    // letters and its space, 6 right chars (85 wpm). Alan has typed his « s » (14 wpm).
+    advance(850);
+
+    expect(scoreCard("Toi")).toEqual(["6", "85", "1"]);
+    expect(scoreCard("@alan")).toEqual(["0", "14", "0"]);
   });
 
   test("a pause holds the Run until the Replay resumes", async () => {
@@ -191,9 +256,9 @@ describe("DuelReplay", () => {
     advance(5_000);
 
     expect(statuses("small")).toEqual(["correct", "correct", "incorrect", "pending", "pending"]);
-    expect(timer()).toHaveTextContent("30");
+    expect(timer()).toHaveTextContent("0,4 s");
 
-    await user.click(screen.getByRole("button", { name: "Reprendre" }));
+    await user.click(screen.getByRole("button", { name: "Lecture" }));
     advance(500);
 
     expect(statuses("small")).toEqual(["correct", "correct", "correct", "correct", "correct"]);
@@ -209,11 +274,12 @@ describe("DuelReplay", () => {
 
     expect(within(own).getByText("score").nextElementSibling).toHaveTextContent("1234");
     expect(within(opponent).getByText("score").nextElementSibling).toHaveTextContent("567");
-    expect(screen.queryByRole("timer")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Score de Toi" })).not.toBeInTheDocument();
+    expect(timer()).toHaveTextContent("30 s");
 
     await user.click(screen.getByRole("button", { name: "Revoir depuis le début" }));
 
-    expect(timer()).toHaveTextContent("30");
+    expect(timer()).toHaveTextContent("0 s");
     expect(statuses("small")).toEqual(["pending", "pending", "pending", "pending", "pending"]);
   });
 
@@ -242,7 +308,7 @@ describe("DuelReplay", () => {
 
     expect(statuses("small")).toEqual(["correct", "correct", "incorrect", "pending", "pending"]);
     expect(timeline()).toHaveAttribute("aria-valuenow", "300");
-    expect(screen.getByRole("button", { name: "Reprendre" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Lecture" })).toBeInTheDocument();
   });
 
   test("a seek while playing goes on playing from that instant", async () => {
@@ -299,19 +365,23 @@ describe("DuelReplay", () => {
       }),
     );
 
-    expect(screen.getByRole("radio", { name: "Toi" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Mon Run" })).toBeChecked();
+    expect(screen.getByRole("region", { name: "Mon Run" })).toBeInTheDocument();
 
     advance(300);
-    await user.click(screen.getByRole("radio", { name: "@alan" }));
+    await user.click(screen.getByRole("radio", { name: "Run de @alan" }));
 
+    expect(screen.getByRole("region", { name: "Run de @alan" })).toBeInTheDocument();
     expect(statuses("small")).toEqual(["correct", "incorrect", "pending", "pending", "pending"]);
+    // Each caret keeps its player's colour: the one of the Run shown is Alan's.
+    expect(carets()).toEqual(["own", "opponent"]);
 
     advance(400);
 
     expect(statuses("small")).toEqual(["correct", "pending", "pending", "pending", "pending"]);
     expect(timeline()).toHaveAttribute("aria-valuenow", "700");
 
-    await user.click(screen.getByRole("radio", { name: "Toi" }));
+    await user.click(screen.getByRole("radio", { name: "Mon Run" }));
 
     expect(statuses("small")).toEqual(["correct", "correct", "correct", "correct", "correct"]);
   });
@@ -351,7 +421,7 @@ describe("DuelReplay", () => {
     expect(screen.getByText("@alan : abandon à 0,6 s")).toBeInTheDocument();
 
     advance(540);
-    await user.click(screen.getByRole("radio", { name: "@alan" }));
+    await user.click(screen.getByRole("radio", { name: "Run de @alan" }));
 
     expect(statuses("small")).toEqual(["correct", "correct", "pending", "pending", "pending"]);
     expect(screen.getByText("@alan : abandon à 0,6 s")).toBeInTheDocument();
@@ -378,7 +448,11 @@ describe("DuelReplay", () => {
   test("once the opponent's User is deleted, only the User's side plays", async () => {
     const { advance } = await renderReplay(replayed({ opponent: null }));
 
-    expect(within(screen.getByRole("banner")).getByText("User supprimé")).toBeInTheDocument();
+    const title = screen.getByRole("heading", { level: 1, name: "Replay contre User supprimé" });
+
+    expect(within(title).queryByRole("link")).not.toBeInTheDocument();
+    expect(scoreCard("Toi")).toEqual(["0", "0", "0"]);
+    expect(screen.getAllByRole("region", { name: /^Score de / })).toHaveLength(1);
 
     advance(850);
 
@@ -393,7 +467,7 @@ describe("DuelReplay", () => {
     expect(screen.queryByRole("region", { name: "User supprimé" })).not.toBeInTheDocument();
   });
 
-  test("a Duel played before the Score shows « — » in place of the Score", async () => {
+  test("a Duel played before the Score shows « — » in place of the Score and the Combo", async () => {
     const { advance } = await renderReplay(
       replayed({
         me: player("ada", adaTyped, null),
@@ -401,7 +475,10 @@ describe("DuelReplay", () => {
       }),
     );
 
-    expect(screen.queryByRole("region", { name: "Score de Toi" })).not.toBeInTheDocument();
+    advance(850);
+
+    expect(scoreCard("Toi")).toEqual(["—", "85", "—"]);
+    expect(scoreCard("@alan")).toEqual(["—", "0", "—"]);
 
     advance(30_000);
 

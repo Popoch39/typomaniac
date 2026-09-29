@@ -13,7 +13,7 @@ export const ReplayForfeitMarker = ({ duel }: { duel: ReplayedDuel }) => {
   }
 
   return (
-    <p className="self-end text-sm text-muted-foreground">
+    <p className="-mt-2 self-end text-[13px] text-muted-foreground">
       {forfeit.side === "own" ? "Toi" : opponentName(duel.opponent)} : abandon à{" "}
       {replaySeconds(forfeit.at)}
     </p>

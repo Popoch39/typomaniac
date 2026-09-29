@@ -82,6 +82,8 @@ const replayed = (overrides: Partial<ReplayedDuel>): ReplayedDuel => ({
   endedAt: Date.UTC(2026, 8, 20, 18, 30),
   outcome: "win",
   forfeit: false,
+  ranked: false,
+  tp: null,
   me: player("ada", { score: 1234, wpm: 42, pace: 50 }),
   opponent: player("alan", { score: 567, wpm: 60, pace: 50 }),
   ...overrides,

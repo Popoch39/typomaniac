@@ -12,8 +12,23 @@ const thumbCount = (value: SliderValue | undefined) => {
   return value === undefined ? 2 : 1;
 };
 
+// `lg` for a slider alone in its card, like the time bar of the Replay: a thicker track, a thumb in
+// the accent ringed with the card's colour, 44 px to hit.
+const sizes = {
+  default: {
+    control: "",
+    track: "bg-muted data-horizontal:h-1",
+    thumb: "size-3 border border-ring bg-foreground",
+  },
+  lg: {
+    control: "h-11",
+    track: "bg-surface-2 data-horizontal:h-2",
+    thumb: "size-5.5 border-4 border-card bg-primary",
+  },
+};
+
 type SliderProps<Value extends SliderValue> = SliderPrimitive.Root.Props<Value> &
-  Pick<SliderPrimitive.Thumb.Props, "getAriaValueText">;
+  Pick<SliderPrimitive.Thumb.Props, "getAriaValueText"> & { size?: keyof typeof sizes };
 
 // Generic on the value, so a single-number slider hands a number to its callbacks.
 // `getAriaValueText` goes to each thumb: what a screen reader says of its value.
@@ -24,9 +39,11 @@ function Slider<Value extends SliderValue>({
   min = 0,
   max = 100,
   getAriaValueText,
+  size = "default",
   ...props
 }: SliderProps<Value>) {
   const thumbs = thumbCount(value ?? defaultValue);
+  const look = sizes[size];
 
   return (
     <SliderPrimitive.Root
@@ -39,10 +56,18 @@ function Slider<Value extends SliderValue>({
       thumbAlignment="edge"
       {...props}
     >
-      <SliderPrimitive.Control className="relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col">
+      <SliderPrimitive.Control
+        className={cn(
+          "relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col",
+          look.control,
+        )}
+      >
         <SliderPrimitive.Track
           data-slot="slider-track"
-          className="relative grow overflow-hidden rounded-full bg-muted select-none data-horizontal:h-1 data-horizontal:w-full data-vertical:h-full data-vertical:w-1"
+          className={cn(
+            "relative grow overflow-hidden rounded-full select-none data-horizontal:w-full data-vertical:h-full data-vertical:w-1",
+            look.track,
+          )}
         >
           <SliderPrimitive.Indicator
             data-slot="slider-range"
@@ -54,7 +79,10 @@ function Slider<Value extends SliderValue>({
             data-slot="slider-thumb"
             key={index}
             getAriaValueText={getAriaValueText}
-            className="relative block size-3 shrink-0 rounded-full border border-ring bg-foreground ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-1 focus-visible:ring-1 focus-visible:outline-hidden active:ring-1 disabled:pointer-events-none disabled:opacity-50"
+            className={cn(
+              "relative block shrink-0 rounded-full ring-ring/50 transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-1 focus-visible:ring-1 focus-visible:outline-hidden active:ring-1 disabled:pointer-events-none disabled:opacity-50",
+              look.thumb,
+            )}
           />
         ))}
       </SliderPrimitive.Control>

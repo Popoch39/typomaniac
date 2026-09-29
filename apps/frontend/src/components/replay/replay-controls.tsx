@@ -1,3 +1,5 @@
+import { PauseIcon, PlayIcon, RotateCcwIcon } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 
 type ReplayControlsProps = {
@@ -8,7 +10,7 @@ type ReplayControlsProps = {
   onRestart: () => void;
 };
 
-// Pause and resume while the Replay runs, play it again from the start once it is over.
+// Pause and play while the Replay runs, play it again from the start once it is over.
 export const ReplayControls = ({
   playing,
   ended,
@@ -19,6 +21,7 @@ export const ReplayControls = ({
   if (ended) {
     return (
       <Button variant="outline" onClick={onRestart}>
+        <RotateCcwIcon aria-hidden="true" />
         Revoir depuis le début
       </Button>
     );
@@ -26,7 +29,8 @@ export const ReplayControls = ({
 
   return (
     <Button variant="outline" onClick={playing ? onPause : onResume}>
-      {playing ? "Pause" : "Reprendre"}
+      {playing ? <PauseIcon aria-hidden="true" /> : <PlayIcon aria-hidden="true" />}
+      {playing ? "Pause" : "Lecture"}
     </Button>
   );
 };

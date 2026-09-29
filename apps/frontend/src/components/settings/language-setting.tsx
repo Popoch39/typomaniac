@@ -1,9 +1,10 @@
 import { type SettingOption, SettingGroup } from "@/components/settings/setting-group";
+import { languageNames } from "@/lib/language-names";
 import { type Settings, useSettingsStore } from "@/stores/settings-store";
 
 const languages: readonly SettingOption<Settings["language"]>[] = [
-  { value: "fr", label: "français" },
-  { value: "en", label: "anglais" },
+  { value: "fr", label: languageNames.fr },
+  { value: "en", label: languageNames.en },
 ];
 
 export const LanguageSetting = () => {

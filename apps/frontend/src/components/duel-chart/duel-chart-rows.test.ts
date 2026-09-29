@@ -29,6 +29,8 @@ const duel = (overrides: Partial<ReplayedDuel>): ReplayedDuel => ({
   endedAt: 12_000,
   outcome: "win",
   forfeit: false,
+  ranked: false,
+  tp: null,
   me: player([
     { kind: "char", char: "s", at: 100 },
     { kind: "char", char: "x", at: 1_100 },

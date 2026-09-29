@@ -1,13 +1,13 @@
 import { ReplayChoice } from "@/components/replay/replay-choice";
+import { replayRunName } from "@/components/replay/replay-run-name";
 import type { ReplayView } from "@/components/replay/replay-sides";
 import { RadioGroup } from "@/components/ui/radio-group";
 
-// Each choice keeps its player's colour: in its text, then filling its pill once chosen, under the
-// ink the Theme lays on it.
-const ownTone = "text-caret has-data-checked:bg-caret has-data-checked:text-on-brand";
+// Each choice is a little wider than a speed, and fills its pill with its player's colour once
+// chosen, under the ink the Theme lays on it.
+const ownChoice = "px-4 has-data-checked:bg-caret has-data-checked:text-on-brand";
 
-const opponentTone =
-  "text-opponent-caret has-data-checked:bg-opponent-caret has-data-checked:text-on-opponent";
+const opponentChoice = "px-4 has-data-checked:bg-opponent-caret has-data-checked:text-on-opponent";
 
 type ReplaySidePickerProps = {
   view: ReplayView;
@@ -21,9 +21,13 @@ export const ReplaySidePicker = ({ view, opponentName, onChange }: ReplaySidePic
     aria-label="Run affiché"
     value={view}
     onValueChange={onChange}
-    className="flex w-auto gap-1 rounded-full bg-card p-1"
+    className="ml-auto flex w-auto gap-1 rounded-full bg-surface-2 p-1"
   >
-    <ReplayChoice value="own" label="Toi" className={ownTone} />
-    <ReplayChoice value="opponent" label={opponentName} className={opponentTone} />
+    <ReplayChoice value="own" label={replayRunName("own", opponentName)} className={ownChoice} />
+    <ReplayChoice
+      value="opponent"
+      label={replayRunName("opponent", opponentName)}
+      className={opponentChoice}
+    />
   </RadioGroup>
 );

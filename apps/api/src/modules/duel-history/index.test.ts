@@ -585,6 +585,8 @@ describe("GET /api/duels/:duelId", () => {
       endedAt: 1_030_000,
       outcome: "win",
       forfeit: false,
+      ranked: false,
+      tp: null,
       me: { ...player(ada.image, "ada", 90, 1200), keystrokes: adaTyped },
       opponent: { ...player(alan.image, "alan", 70, 800), keystrokes: alanTyped },
     });
@@ -595,6 +597,51 @@ describe("GET /api/duels/:duelId", () => {
     expect(fromAlan.me.keystrokes).toEqual(alanTyped);
     expect(fromAlan.opponent?.handle).toBe("ada");
     expect(fromAlan.opponent?.keystrokes).toEqual(adaTyped);
+  });
+
+  test("a Ranked Duel says so with the TP it moved for the reader, none in Placement nor for a Challenge", async () => {
+    const { duels, ada, alan } = await withDuels();
+
+    duels.saved.push(
+      finishedDuel({
+        id: "ranked",
+        endedAt: 3000,
+        winnerId: ada.id,
+        players: [
+          { userId: ada.id, wpm: 90, score: 1200, rated: { tp: 18 } },
+          { userId: alan.id, wpm: 70, score: 800, rated: { tp: -15 } },
+        ],
+      }),
+      finishedDuel({
+        id: "placement",
+        endedAt: 2000,
+        winnerId: ada.id,
+        players: [
+          { userId: ada.id, wpm: 90, score: 1200, rated: { tp: null } },
+          { userId: alan.id, wpm: 70, score: 800, rated: { tp: -12 } },
+        ],
+      }),
+    );
+
+    const kinds = async (user: typeof ada) =>
+      Promise.all(
+        ["ranked", "placement", "ada-alan"].map(async (duelId) => {
+          const { id, ranked, tp } = await user.replay(duelId);
+
+          return { id, ranked, tp };
+        }),
+      );
+
+    expect(await kinds(ada)).toEqual([
+      { id: "ranked", ranked: true, tp: 18 },
+      { id: "placement", ranked: true, tp: null },
+      { id: "ada-alan", ranked: false, tp: null },
+    ]);
+    expect(await kinds(alan)).toEqual([
+      { id: "ranked", ranked: true, tp: -15 },
+      { id: "placement", ranked: true, tp: -12 },
+      { id: "ada-alan", ranked: false, tp: null },
+    ]);
   });
 
   test("a Duel played before the Score has no Score", async () => {
