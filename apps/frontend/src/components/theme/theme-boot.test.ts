@@ -5,6 +5,8 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import page from "@/../index.html?raw";
+import { LOGO_DRAWINGS } from "@/components/brand/logo-drawings";
+import { themeFavicon } from "@/components/theme/theme-favicon";
 import { THEMES } from "@/components/theme/themes";
 import stylesheet from "@/index.css?raw";
 import { useThemeStore } from "@/stores/theme-store";
@@ -28,37 +30,54 @@ const boot = () => {
 
 const pageTheme = () => document.documentElement.dataset.theme;
 
-// The Theme's ink in the stylesheet, and the one index.html paints first (Corail's on :root).
-const inkIn = (css: string, rule: RegExp) => css.match(rule)?.[1];
+// The body of a Theme's rule in the stylesheet: Corail's is the base, on :root.
+const cssRule = (id: string) =>
+  stylesheet.match(
+    id === "corail"
+      ? /:root,\s*\[data-theme\]\s*\{([^}]*)\}/
+      : new RegExp(`\\[data-theme="${id}"\\]\\s*\\{([^}]*)\\}`),
+  )?.[1] ?? "";
 
-const cssInk = (id: string) =>
-  id === "corail"
-    ? inkIn(stylesheet, /:root,\s*\[data-theme\]\s*\{[^}]*--ink:\s*(#[0-9a-f]{6})/)
-    : inkIn(stylesheet, new RegExp(`\\[data-theme="${id}"\\]\\s*\\{[^}]*--ink:\\s*(#[0-9a-f]{6})`));
+const declared = (rule: string, property: string) =>
+  rule.match(new RegExp(`\\s${property}:\\s*([^;]+);`))?.[1];
 
+// What the stylesheet gives a Theme (`--ink`, `--text`, `--brand`, `color-scheme`): its own rule's,
+// else the base's.
+const cssToken = (id: string, property: string) =>
+  declared(cssRule(id), property) ?? declared(cssRule("corail"), property);
+
+// The ink index.html paints first.
 const paintedInk = (id: string) =>
-  id === "corail"
-    ? inkIn(bootStyle, /html\s*\{\s*background:\s*(#[0-9a-f]{6})/)
-    : inkIn(
-        bootStyle,
-        new RegExp(`html\\[data-theme="${id}"\\]\\s*\\{\\s*background:\\s*(#[0-9a-f]{6})`),
-      );
+  bootStyle.match(
+    id === "corail"
+      ? /html\s*\{\s*background:\s*(#[0-9a-f]{6})/
+      : new RegExp(`html\\[data-theme="${id}"\\]\\s*\\{\\s*background:\\s*(#[0-9a-f]{6})`),
+  )?.[1];
 
 // Whether the browser's native controls are dark or light: the meta, then the stylesheet.
 const pageScheme = () =>
   document.querySelector('meta[name="color-scheme"]')?.getAttribute("content");
 
-// A Theme without a scheme of its own keeps the base's, Corail's on :root.
-const baseScheme = inkIn(stylesheet, /:root,\s*\[data-theme\]\s*\{[^}]*color-scheme:\s*(\w+)/);
+// The tab's icon: index.html's own link, Corail's until the script says otherwise.
+const iconLink = parsed.querySelector('link[rel="icon"]')?.outerHTML ?? "";
 
-const cssScheme = (id: string) =>
-  inkIn(stylesheet, new RegExp(`\\[data-theme="${id}"\\]\\s*\\{[^}]*color-scheme:\\s*(\\w+)`)) ??
-  baseScheme;
+const pageIcon = () => document.querySelector('link[rel="icon"]')?.getAttribute("href");
+
+// The icons themselves, public/favicons/, each by the URL the tab loads it from.
+const favicons = Object.fromEntries(
+  Object.entries(
+    import.meta.glob<string>("/public/favicons/*.svg", {
+      query: "?raw",
+      import: "default",
+      eager: true,
+    }),
+  ).map(([file, svg]) => [file.replace(/^\/public/, ""), svg]),
+);
 
 beforeEach(() => {
   localStorage.clear();
   delete document.documentElement.dataset.theme;
-  document.head.innerHTML = '<meta name="color-scheme" content="dark" />';
+  document.head.innerHTML = `${iconLink}<meta name="color-scheme" content="dark" />`;
 });
 
 afterEach(() => {
@@ -99,8 +118,8 @@ describe("the Theme set before the first paint", () => {
   });
 
   test.each(THEMES.map((theme) => theme.id))("%s is painted in its own ink", (id) => {
-    expect(cssInk(id)).toMatch(/^#/);
-    expect(paintedInk(id)).toBe(cssInk(id));
+    expect(cssToken(id, "--ink")).toMatch(/^#[0-9a-f]{6}$/);
+    expect(paintedInk(id)).toBe(cssToken(id, "--ink"));
   });
 
   test.each(THEMES.map((theme) => [theme.id, theme.scheme]))(
@@ -110,7 +129,76 @@ describe("the Theme set before the first paint", () => {
       boot();
 
       expect(pageScheme()).toBe(scheme);
-      expect(cssScheme(id)).toBe(scheme);
+      expect(cssToken(id, "color-scheme")).toBe(scheme);
+    },
+  );
+
+  test("the tab's icon is Corail's until a Theme is stored", () => {
+    expect(pageIcon()).toBe("/favicons/corail.svg");
+  });
+
+  test.each(THEMES.map((theme) => theme.id))("%s, stored, puts its own icon in the tab", (id) => {
+    useThemeStore.getState().setTheme(id);
+    boot();
+
+    expect(pageIcon()).toBe(themeFavicon(id));
+  });
+
+  test.each([
+    ["nothing stored", null],
+    ["unreadable JSON", "{not json"],
+    ["another version", JSON.stringify({ state: { theme: "lagon" }, version: 2 })],
+    ["no Theme", JSON.stringify({ state: {}, version: 1 })],
+    ["an unknown Theme", JSON.stringify({ state: { theme: "neon" }, version: 1 })],
+  ])("%s keeps Corail's icon", (_, value) => {
+    if (value !== null) {
+      localStorage.setItem("typomaniac-theme", value);
+    }
+
+    boot();
+
+    expect(pageIcon()).toBe(themeFavicon("corail"));
+  });
+
+  test("a storage that throws keeps Corail's icon", () => {
+    vi.spyOn(localStorage, "getItem").mockImplementationOnce(() => {
+      throw new DOMException("Blocked", "SecurityError");
+    });
+    boot();
+
+    expect(pageIcon()).toBe(themeFavicon("corail"));
+  });
+
+  test("there is one icon per Theme, and no other", () => {
+    expect(Object.keys(favicons).toSorted()).toEqual(
+      THEMES.map((theme) => themeFavicon(theme.id)).toSorted(),
+    );
+  });
+
+  test.each(THEMES.map((theme) => theme.id))(
+    "%s's icon is the simplified Logo on a tile of its ink, in its text and accent",
+    (id) => {
+      const icon = new DOMParser().parseFromString(
+        favicons[themeFavicon(id)] ?? "",
+        "image/svg+xml",
+      );
+
+      const text = cssToken(id, "--text");
+      const accent = cssToken(id, "--brand");
+      const { stem, bar, wave } = LOGO_DRAWINGS.simplified;
+
+      expect(icon.querySelector("rect")?.getAttribute("fill")).toBe(cssToken(id, "--ink"));
+      expect(
+        Array.from(icon.querySelectorAll("path"), (path) => ({
+          d: path.getAttribute("d"),
+          width: Number(path.getAttribute("stroke-width")),
+          colour: path.getAttribute("stroke"),
+        })),
+      ).toEqual([
+        { ...stem, colour: text },
+        { ...bar, colour: text },
+        { ...wave, colour: accent },
+      ]);
     },
   );
 

@@ -1,7 +1,8 @@
 // The Themes to choose from, in the order of their page, with the words of the "Thèmes" board, and
 // whether they are dark or light: the scheme of the browser's native controls (scrollbars, fields).
-// Their colours live in the stylesheet (src/index.css), one rule per `[data-theme]`, and their inks
-// and schemes in index.html too, set before the CSS loads (theme-boot.test.ts keeps them in step).
+// Their colours live in the stylesheet (src/index.css), one rule per `[data-theme]`, their inks,
+// schemes and ids in index.html too, set before the CSS loads, and their ink, text and accent in
+// their tab's icon, public/favicons/ (theme-boot.test.ts keeps them all in step).
 export const THEMES = [
   {
     id: "corail",

@@ -19,13 +19,20 @@ const schemeMeta = () => {
   return meta;
 };
 
-// Every test starts on a first visit: nothing stored, no Theme on the page yet, the page's meta
+// The tab's icon of index.html.
+const pageIcon = () => document.querySelector('link[rel="icon"]')?.getAttribute("href");
+
+// The head as index.html writes it: Corail's icon, dark native controls.
+const firstHead =
+  '<link rel="icon" type="image/svg+xml" href="/favicons/corail.svg" /><meta name="color-scheme" content="dark" />';
+
+// Every test starts on a first visit: nothing stored, no Theme on the page yet, the page's head
 // as index.html writes it.
 beforeEach(() => {
   localStorage.clear();
   useThemeStore.setState(useThemeStore.getInitialState());
   delete document.documentElement.dataset.theme;
-  document.head.innerHTML = '<meta name="color-scheme" content="dark" />';
+  document.head.innerHTML = firstHead;
 });
 
 afterEach(() => {
@@ -164,12 +171,26 @@ describe("the Themes page", () => {
       version: 1,
     });
 
-    document.head.innerHTML = '<meta name="color-scheme" content="dark" />';
+    document.head.innerHTML = firstHead;
     await reload();
 
     expect(screen.getByRole("radio", { name: "Papier" })).toBeChecked();
     expect(pageTheme()).toBe("papier");
     expect(schemeMeta()).toHaveAttribute("content", "light");
+  });
+
+  test("a Theme chosen puts its own icon in the tab", async () => {
+    const user = renderPage();
+
+    expect(pageIcon()).toBe("/favicons/corail.svg");
+
+    await user.click(screen.getByRole("radio", { name: "Papier" }));
+
+    expect(pageIcon()).toBe("/favicons/papier.svg");
+
+    await user.click(screen.getByRole("radio", { name: "Sakura" }));
+
+    expect(pageIcon()).toBe("/favicons/sakura.svg");
   });
 
   test("the Theme chosen comes back on this browser", async () => {

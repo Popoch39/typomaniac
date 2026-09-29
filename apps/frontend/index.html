@@ -2,21 +2,38 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicons/corail.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
     <title>typomaniac</title>
     <!-- The Theme stored by src/stores/theme-store.ts (same key, same JSON), set on <html> before
          the CSS loads: the page is painted in it from the start. An unknown one paints as Corail.
          Papier, the only light one (`scheme` in src/components/theme/themes.ts), turns the
-         browser's native controls light. -->
+         browser's native controls light. A known one puts its icon in the tab
+         (src/components/theme/theme-favicon.ts); any other keeps Corail's, the link's own. -->
     <script>
       try {
+        const themeIds = [
+          "corail",
+          "lagon",
+          "matcha",
+          "lilas",
+          "sakura",
+          "arcade",
+          "craie",
+          "papier",
+        ];
         const stored = JSON.parse(localStorage.getItem("typomaniac-theme"));
         const theme = stored?.version === 1 ? stored.state?.theme : undefined;
 
         if (theme) {
           document.documentElement.dataset.theme = theme;
+        }
+
+        if (themeIds.includes(theme)) {
+          document
+            .querySelector('link[rel="icon"]')
+            ?.setAttribute("href", `/favicons/${theme}.svg`);
         }
 
         if (theme === "papier") {
