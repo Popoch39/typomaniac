@@ -6,13 +6,13 @@
 // public/favicons/ (theme-boot.test.ts keeps them all in step).
 export const THEMES = [
   {
-    id: "corail",
+    id: "coral",
     name: "Corail",
     description: "L'original : corail chaud sur encre, adversaire bleu ciel.",
     scheme: "dark",
   },
   {
-    id: "lagon",
+    id: "lagoon",
     name: "Lagon",
     description: "Bleu du large. Les rôles s'inversent : l'adversaire passe au corail.",
     scheme: "dark",
@@ -24,7 +24,7 @@ export const THEMES = [
     scheme: "dark",
   },
   {
-    id: "lilas",
+    id: "lilac",
     name: "Lilas",
     description: "Violet doux sur nuit, adversaire ambre.",
     scheme: "dark",
@@ -42,13 +42,13 @@ export const THEMES = [
     scheme: "dark",
   },
   {
-    id: "craie",
+    id: "chalk",
     name: "Craie",
     description: "Noir et blanc, rien d'autre. L'adversaire en ambre.",
     scheme: "dark",
   },
   {
-    id: "papier",
+    id: "paper",
     name: "Papier",
     description: "Le seul clair : encre sur papier, pour taper en plein jour.",
     scheme: "light",

@@ -376,11 +376,11 @@ describe("the Tier-up", () => {
     expect(screen.queryByRole("region", { name: "Rang" })).toBeNull();
   });
 
-  test("stays in the dark of its metal under Papier, the light Theme", async () => {
-    document.documentElement.dataset.theme = "papier";
+  test("stays in the dark of its metal under Paper, the light Theme", async () => {
+    document.documentElement.dataset.theme = "paper";
     await renderEnded({ ranked: intoGold });
 
-    expect(screen.getByRole("dialog", { name: "Gold" })).toHaveAttribute("data-theme", "corail");
+    expect(screen.getByRole("dialog", { name: "Gold" })).toHaveAttribute("data-theme", "coral");
     delete document.documentElement.dataset.theme;
   });
 

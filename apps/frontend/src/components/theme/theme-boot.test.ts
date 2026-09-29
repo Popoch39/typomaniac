@@ -7,9 +7,9 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import page from "@/../index.html?raw";
 import { LOGO_DRAWINGS } from "@/components/brand/logo-drawings";
 import { themeFavicon } from "@/components/theme/theme-favicon";
-import { THEMES } from "@/components/theme/themes";
+import { THEMES, themeOf } from "@/components/theme/themes";
 import stylesheet from "@/index.css?raw";
-import { useThemeStore } from "@/stores/theme-store";
+import { FORMER_THEME_IDS, useThemeStore } from "@/stores/theme-store";
 
 // index.html sets the stored Theme before the app and its CSS load, reading the theme store's
 // entry by itself: these tests keep the two, and the stylesheet, in step.
@@ -30,10 +30,10 @@ const boot = () => {
 
 const pageTheme = () => document.documentElement.dataset.theme;
 
-// The body of a Theme's rule in the stylesheet: Corail's is the base, on :root.
+// The body of a Theme's rule in the stylesheet: Coral's is the base, on :root.
 const cssRule = (id: string) =>
   stylesheet.match(
-    id === "corail"
+    id === "coral"
       ? /:root,\s*\[data-theme\]\s*\{([^}]*)\}/
       : new RegExp(`\\[data-theme="${id}"\\]\\s*\\{([^}]*)\\}`),
   )?.[1] ?? "";
@@ -44,12 +44,12 @@ const declared = (rule: string, property: string) =>
 // What the stylesheet gives a Theme (`--ink`, `--text`, `--brand`, `color-scheme`): its own rule's,
 // else the base's.
 const cssToken = (id: string, property: string) =>
-  declared(cssRule(id), property) ?? declared(cssRule("corail"), property);
+  declared(cssRule(id), property) ?? declared(cssRule("coral"), property);
 
 // The ink index.html paints first.
 const paintedInk = (id: string) =>
   bootStyle.match(
-    id === "corail"
+    id === "coral"
       ? /html\s*\{[^}]*\sbackground:\s*(#[0-9a-f]{6})/
       : new RegExp(`html\\[data-theme="${id}"\\]\\s*\\{[^}]*\\sbackground:\\s*(#[0-9a-f]{6})`),
   )?.[1];
@@ -58,7 +58,7 @@ const paintedInk = (id: string) =>
 const pageScheme = () =>
   document.querySelector('meta[name="color-scheme"]')?.getAttribute("content");
 
-// The tab's icon: index.html's own link, Corail's until the script says otherwise.
+// The tab's icon: index.html's own link, Coral's until the script says otherwise.
 const iconLink = parsed.querySelector('link[rel="icon"]')?.outerHTML ?? "";
 
 const pageIcon = () => document.querySelector('link[rel="icon"]')?.getAttribute("href");
@@ -129,9 +129,9 @@ describe("the Theme set before the first paint", () => {
   test.each([
     ["nothing stored", null],
     ["unreadable JSON", "{not json"],
-    ["another version", JSON.stringify({ state: { theme: "lagon" }, version: 2 })],
+    ["another version", JSON.stringify({ state: { theme: "lagoon" }, version: 3 })],
     ["no Theme", JSON.stringify({ state: {}, version: 1 })],
-  ])("%s sets none: Corail", (_, value) => {
+  ])("%s sets none: Coral", (_, value) => {
     if (value !== null) {
       localStorage.setItem("typomaniac-theme", value);
     }
@@ -139,6 +139,39 @@ describe("the Theme set before the first paint", () => {
     boot();
 
     expect(pageTheme()).toBeUndefined();
+  });
+
+  // What version 1 of the store kept, before the Themes had English ids: still stored on the first
+  // load after they changed, until the store moves it. The script reads them as the store does.
+  test.each([...FORMER_THEME_IDS])(
+    "%s, kept before, sets %s, its icon and its scheme",
+    (before, after) => {
+      localStorage.setItem(
+        "typomaniac-theme",
+        JSON.stringify({ state: { theme: before }, version: 1 }),
+      );
+      boot();
+      showBootPage();
+
+      expect(pageTheme()).toBe(after);
+      expect(pageIcon()).toBe(themeFavicon(after));
+      expect(pageScheme()).toBe(themeOf(after).scheme);
+      expect(logoStrokeColours()).toEqual(cssLogoStrokeColours(after));
+    },
+  );
+
+  test.each([
+    ["an unknown Theme", JSON.stringify({ state: { theme: "neon" }, version: 2 })],
+    ["an unknown Theme, kept before", JSON.stringify({ state: { theme: "neon" }, version: 1 })],
+    ["a former id, stored now", JSON.stringify({ state: { theme: "corail" }, version: 2 })],
+  ])("%s sets none, and paints as Coral with its icon", (_, value) => {
+    localStorage.setItem("typomaniac-theme", value);
+    boot();
+    showBootPage();
+
+    expect(pageTheme()).toBeUndefined();
+    expect(pageIcon()).toBe(themeFavicon("coral"));
+    expect(logoStrokeColours()).toEqual(cssLogoStrokeColours("coral"));
   });
 
   test("a storage that throws sets none, without breaking the page", () => {
@@ -167,8 +200,8 @@ describe("the Theme set before the first paint", () => {
     },
   );
 
-  test("the tab's icon is Corail's until a Theme is stored", () => {
-    expect(pageIcon()).toBe("/favicons/corail.svg");
+  test("the tab's icon is Coral's until a Theme is stored", () => {
+    expect(pageIcon()).toBe("/favicons/coral.svg");
   });
 
   test.each(THEMES.map((theme) => theme.id))("%s, stored, puts its own icon in the tab", (id) => {
@@ -181,26 +214,26 @@ describe("the Theme set before the first paint", () => {
   test.each([
     ["nothing stored", null],
     ["unreadable JSON", "{not json"],
-    ["another version", JSON.stringify({ state: { theme: "lagon" }, version: 2 })],
+    ["another version", JSON.stringify({ state: { theme: "lagoon" }, version: 3 })],
     ["no Theme", JSON.stringify({ state: {}, version: 1 })],
     ["an unknown Theme", JSON.stringify({ state: { theme: "neon" }, version: 1 })],
-  ])("%s keeps Corail's icon", (_, value) => {
+  ])("%s keeps Coral's icon", (_, value) => {
     if (value !== null) {
       localStorage.setItem("typomaniac-theme", value);
     }
 
     boot();
 
-    expect(pageIcon()).toBe(themeFavicon("corail"));
+    expect(pageIcon()).toBe(themeFavicon("coral"));
   });
 
-  test("a storage that throws keeps Corail's icon", () => {
+  test("a storage that throws keeps Coral's icon", () => {
     vi.spyOn(localStorage, "getItem").mockImplementationOnce(() => {
       throw new DOMException("Blocked", "SecurityError");
     });
     boot();
 
-    expect(pageIcon()).toBe(themeFavicon("corail"));
+    expect(pageIcon()).toBe(themeFavicon("coral"));
   });
 
   test("there is one icon per Theme, and no other", () => {
@@ -254,10 +287,10 @@ describe("the Theme set before the first paint", () => {
   test.each([
     ["nothing stored", null],
     ["unreadable JSON", "{not json"],
-    ["another version", JSON.stringify({ state: { theme: "lagon" }, version: 2 })],
+    ["another version", JSON.stringify({ state: { theme: "lagoon" }, version: 3 })],
     ["no Theme", JSON.stringify({ state: {}, version: 1 })],
     ["an unknown Theme", JSON.stringify({ state: { theme: "neon" }, version: 1 })],
-  ])("%s paints the waiting Logo as Corail", (_, value) => {
+  ])("%s paints the waiting Logo as Coral", (_, value) => {
     if (value !== null) {
       localStorage.setItem("typomaniac-theme", value);
     }
@@ -265,7 +298,7 @@ describe("the Theme set before the first paint", () => {
     boot();
     showBootPage();
 
-    expect(logoStrokeColours()).toEqual(cssLogoStrokeColours("corail"));
+    expect(logoStrokeColours()).toEqual(cssLogoStrokeColours("coral"));
   });
 
   test("index.html keeps one inline script and one inline style, the ones read here", () => {
@@ -273,9 +306,9 @@ describe("the Theme set before the first paint", () => {
     expect(parsed.querySelectorAll("style")).toHaveLength(1);
   });
 
-  test("Papier is the only light one", () => {
+  test("Paper is the only light one", () => {
     expect(THEMES.flatMap((theme) => (theme.scheme === "light" ? [theme.id] : []))).toEqual([
-      "papier",
+      "paper",
     ]);
   });
 });

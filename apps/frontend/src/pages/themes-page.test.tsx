@@ -22,9 +22,9 @@ const schemeMeta = () => {
 // The tab's icon of index.html.
 const pageIcon = () => document.querySelector('link[rel="icon"]')?.getAttribute("href");
 
-// The head as index.html writes it: Corail's icon, dark native controls.
+// The head as index.html writes it: Coral's icon, dark native controls.
 const firstHead =
-  '<link rel="icon" type="image/svg+xml" href="/favicons/corail.svg" /><meta name="color-scheme" content="dark" />';
+  '<link rel="icon" type="image/svg+xml" href="/favicons/coral.svg" /><meta name="color-scheme" content="dark" />';
 
 // Every test starts on a first visit: nothing stored, no Theme on the page yet, the page's head
 // as index.html writes it.
@@ -86,7 +86,7 @@ const activeChip = () =>
   });
 
 describe("the Themes page", () => {
-  test("offers the eight Themes, Corail on a first visit", () => {
+  test("offers the eight Themes, Coral on a first visit", () => {
     renderPage();
 
     const picker = screen.getByRole("group", { name: "Theme" });
@@ -107,7 +107,7 @@ describe("the Themes page", () => {
     }
 
     expect(screen.getByRole("radio", { name: "Corail" })).toBeChecked();
-    expect(pageTheme()).toBe("corail");
+    expect(pageTheme()).toBe("coral");
     expect(activeChip()).toHaveTextContent("Actif Corail");
   });
 
@@ -125,11 +125,11 @@ describe("the Themes page", () => {
     await user.click(screen.getByRole("radio", { name: "Lagon" }));
 
     expect(screen.getByRole("radio", { name: "Lagon" })).toBeChecked();
-    expect(pageTheme()).toBe("lagon");
+    expect(pageTheme()).toBe("lagoon");
     expect(activeChip()).toHaveTextContent("Actif Lagon");
     expect(JSON.parse(localStorage.getItem(storageKey) ?? "null")).toEqual({
-      state: { theme: "lagon" },
-      version: 1,
+      state: { theme: "lagoon" },
+      version: 2,
     });
   });
 
@@ -140,10 +140,10 @@ describe("the Themes page", () => {
     await user.keyboard("{ArrowRight}");
 
     expect(screen.getByRole("radio", { name: "Lagon" })).toBeChecked();
-    expect(pageTheme()).toBe("lagon");
+    expect(pageTheme()).toBe("lagoon");
   });
 
-  test("Papier, the light one, turns the browser's native controls light, and back", async () => {
+  test("Paper, the light one, turns the browser's native controls light, and back", async () => {
     const user = renderPage();
 
     expect(screen.getByRole("radio", { name: "Papier" })).toHaveAccessibleDescription(
@@ -153,7 +153,7 @@ describe("the Themes page", () => {
 
     await user.click(screen.getByRole("radio", { name: "Papier" }));
 
-    expect(pageTheme()).toBe("papier");
+    expect(pageTheme()).toBe("paper");
     expect(activeChip()).toHaveTextContent("Actif Papier");
     expect(schemeMeta()).toHaveAttribute("content", "light");
 
@@ -162,31 +162,31 @@ describe("the Themes page", () => {
     expect(schemeMeta()).toHaveAttribute("content", "dark");
   });
 
-  test("Papier chosen comes back on this browser, light from the start", async () => {
+  test("Paper chosen comes back on this browser, light from the start", async () => {
     const user = renderPage();
 
     await user.click(screen.getByRole("radio", { name: "Papier" }));
     expect(JSON.parse(localStorage.getItem(storageKey) ?? "null")).toEqual({
-      state: { theme: "papier" },
-      version: 1,
+      state: { theme: "paper" },
+      version: 2,
     });
 
     document.head.innerHTML = firstHead;
     await reload();
 
     expect(screen.getByRole("radio", { name: "Papier" })).toBeChecked();
-    expect(pageTheme()).toBe("papier");
+    expect(pageTheme()).toBe("paper");
     expect(schemeMeta()).toHaveAttribute("content", "light");
   });
 
   test("a Theme chosen puts its own icon in the tab", async () => {
     const user = renderPage();
 
-    expect(pageIcon()).toBe("/favicons/corail.svg");
+    expect(pageIcon()).toBe("/favicons/coral.svg");
 
     await user.click(screen.getByRole("radio", { name: "Papier" }));
 
-    expect(pageIcon()).toBe("/favicons/papier.svg");
+    expect(pageIcon()).toBe("/favicons/paper.svg");
 
     await user.click(screen.getByRole("radio", { name: "Sakura" }));
 
@@ -200,30 +200,43 @@ describe("the Themes page", () => {
     await reload();
 
     expect(screen.getByRole("radio", { name: "Craie" })).toBeChecked();
-    expect(pageTheme()).toBe("craie");
+    expect(pageTheme()).toBe("chalk");
   });
 
   test("a stored Theme is the one on the page from the start", async () => {
-    store(JSON.stringify({ state: { theme: "matcha" }, version: 1 }));
+    store(JSON.stringify({ state: { theme: "matcha" }, version: 2 }));
     await reload();
 
     expect(screen.getByRole("radio", { name: "Matcha" })).toBeChecked();
     expect(pageTheme()).toBe("matcha");
   });
 
+  test("a Theme kept under its former id comes back under its new one", async () => {
+    store(JSON.stringify({ state: { theme: "lagon" }, version: 1 }));
+    await reload();
+
+    expect(screen.getByRole("radio", { name: "Lagon" })).toBeChecked();
+    expect(pageTheme()).toBe("lagoon");
+    expect(pageIcon()).toBe("/favicons/lagoon.svg");
+    expect(JSON.parse(localStorage.getItem(storageKey) ?? "null")).toEqual({
+      state: { theme: "lagoon" },
+      version: 2,
+    });
+  });
+
   test.each([
-    ["an unknown Theme", JSON.stringify({ state: { theme: "neon" }, version: 1 })],
-    ["a missing Theme", JSON.stringify({ state: {}, version: 1 })],
+    ["an unknown Theme", JSON.stringify({ state: { theme: "neon" }, version: 2 })],
+    ["a missing Theme", JSON.stringify({ state: {}, version: 2 })],
     ["unreadable JSON", "{not json"],
-  ])("%s stored gives Corail back", async (_, value) => {
+  ])("%s stored gives Coral back", async (_, value) => {
     store(value);
     await reload();
 
     expect(screen.getByRole("radio", { name: "Corail" })).toBeChecked();
-    expect(pageTheme()).toBe("corail");
+    expect(pageTheme()).toBe("coral");
   });
 
-  test("without a storage, Corail, and a Theme chosen still applies for the visit", async () => {
+  test("without a storage, Coral, and a Theme chosen still applies for the visit", async () => {
     vi.spyOn(localStorage, "getItem").mockImplementation(unavailable);
     vi.spyOn(localStorage, "setItem").mockImplementation(unavailable);
     await useThemeStore.persist.rehydrate();

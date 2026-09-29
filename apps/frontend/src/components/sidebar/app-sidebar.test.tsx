@@ -380,7 +380,7 @@ describe("the Theme button", () => {
   });
 
   test("names the Theme chosen", async () => {
-    useThemeStore.getState().setTheme("lagon");
+    useThemeStore.getState().setTheme("lagoon");
     await renderApp(null);
 
     expect(within(sidebar()).getByRole("link", { name: "Thème Lagon" })).toBeInTheDocument();

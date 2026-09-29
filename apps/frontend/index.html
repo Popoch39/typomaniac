@@ -2,15 +2,17 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicons/corail.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicons/coral.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
     <title>typomaniac</title>
     <!-- The Theme stored by src/stores/theme-store.ts (same key, same JSON), set on <html> before
-         the CSS loads: the page is painted in it from the start. An unknown one paints as Corail.
-         Papier, the only light one (`scheme` in src/components/theme/themes.ts), turns the
+         the CSS loads: the page is painted in it from the start. A former id, kept by version 1
+         before the store moves it, is read as the Theme it is now; an unknown one is not set, and
+         paints as Coral.
+         Paper, the only light one (`scheme` in src/components/theme/themes.ts), turns the
          browser's native controls light. A known one puts its icon in the tab
-         (src/components/theme/theme-favicon.ts); any other keeps Corail's, the link's own.
+         (src/components/theme/theme-favicon.ts); any other keeps Coral's, the link's own.
          Then <html lang>, the Locale the router will show (src/app-router.ts): the URL's prefix,
          else the one kept by src/stores/locale-store.ts (same key, same JSON), else the browser's
          languages (src/locale/browser-locale.ts). French for all until English opens
@@ -18,29 +20,44 @@
     <script>
       try {
         const themeIds = [
-          "corail",
-          "lagon",
+          "coral",
+          "lagoon",
           "matcha",
-          "lilas",
+          "lilac",
           "sakura",
           "arcade",
-          "craie",
-          "papier",
+          "chalk",
+          "paper",
         ];
+        const formerThemeIds = new Map([
+          ["corail", "coral"],
+          ["lagon", "lagoon"],
+          ["matcha", "matcha"],
+          ["lilas", "lilac"],
+          ["sakura", "sakura"],
+          ["arcade", "arcade"],
+          ["craie", "chalk"],
+          ["papier", "paper"],
+        ]);
         const stored = JSON.parse(localStorage.getItem("typomaniac-theme"));
-        const theme = stored?.version === 1 ? stored.state?.theme : undefined;
+        let theme;
 
-        if (theme) {
-          document.documentElement.dataset.theme = theme;
+        if (stored?.version === 2) {
+          theme = stored.state?.theme;
+        }
+
+        if (stored?.version === 1) {
+          theme = formerThemeIds.get(stored.state?.theme);
         }
 
         if (themeIds.includes(theme)) {
+          document.documentElement.dataset.theme = theme;
           document
             .querySelector('link[rel="icon"]')
             ?.setAttribute("href", `/favicons/${theme}.svg`);
         }
 
-        if (theme === "papier") {
+        if (theme === "paper") {
           document.querySelector('meta[name="color-scheme"]')?.setAttribute("content", "light");
         }
       } catch {}
@@ -83,7 +100,7 @@
         --boot-text: #ecebf3;
         --boot-brand: #ff8a65;
       }
-      html[data-theme="lagon"] {
+      html[data-theme="lagoon"] {
         background: #0d1720;
         --boot-text: #e3eef5;
         --boot-brand: #5cc8ff;
@@ -93,7 +110,7 @@
         --boot-text: #e9f0e3;
         --boot-brand: #b8f36b;
       }
-      html[data-theme="lilas"] {
+      html[data-theme="lilac"] {
         background: #15121d;
         --boot-text: #eee9f7;
         --boot-brand: #c9a7ff;
@@ -108,12 +125,12 @@
         --boot-text: #f1f1ff;
         --boot-brand: #ff4fa0;
       }
-      html[data-theme="craie"] {
+      html[data-theme="chalk"] {
         background: #111111;
         --boot-text: #f0f0f0;
         --boot-brand: #f0f0f0;
       }
-      html[data-theme="papier"] {
+      html[data-theme="paper"] {
         background: #f3eee4;
         color-scheme: light;
         --boot-text: #1f1c17;
