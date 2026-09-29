@@ -43,9 +43,9 @@ const ELO_SCALE = 400;
 // The TP of a win or a loss between equal MMRs.
 const BASE_TP = 20;
 
-const MIN_TP = 8;
+export const MIN_TP = 8;
 
-const MAX_TP = 35;
+export const MAX_TP = 35;
 
 // TP gained or saved per MMR point above the MMR the displayed rank expects.
 const CATCH_UP_TP_PER_MMR = 0.1;
@@ -56,7 +56,8 @@ const MMR_PER_DIVISION = 50;
 
 export const DIVISION_TP = 100;
 
-const DEMOTED_TP = 75;
+// The TP a User lands on in the Division below, when a loss takes them under 0.
+export const DEMOTED_TP = 75;
 
 const DIVISIONS_PER_TIER = 4;
 

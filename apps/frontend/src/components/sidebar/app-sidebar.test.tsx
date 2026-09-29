@@ -71,6 +71,7 @@ afterEach(() => {
 
 // The app's pages but the play page: only their heading, the sidebar is what is looked at.
 const PAGES = [
+  ["/ranked", "Ranked"],
   ["/leaderboard", "Classement"],
   ["/duels", "Duels"],
   ["/friends", "Friends"],
@@ -143,16 +144,16 @@ const navLinks = () =>
 const withRank = (rank: Rank | null): Me => ({ ...ada, rank });
 
 describe("the sidebar's nav", () => {
-  test("a Visitor has Jouer and Classement only", async () => {
+  test("a Visitor has Jouer, Ranked and Classement only", async () => {
     await renderApp(null);
 
-    expect(navLinks()).toEqual(["Jouer", "Classement"]);
+    expect(navLinks()).toEqual(["Jouer", "Ranked", "Classement"]);
   });
 
   test("a User also has Duels, Friends and Profil, and Thèmes is no longer in it", async () => {
     await renderApp(ada);
 
-    expect(navLinks()).toEqual(["Jouer", "Classement", "Duels", "Friends", "Profil"]);
+    expect(navLinks()).toEqual(["Jouer", "Ranked", "Classement", "Duels", "Friends", "Profil"]);
     expect(within(nav()).queryByRole("link", { name: /Thème/ })).not.toBeInTheDocument();
   });
 
@@ -509,7 +510,7 @@ describe("the User's menu", () => {
 
     expect(await within(sidebar()).findByRole("button", { name: "Se connecter" })).toBeVisible();
     expect(String(fetch.mock.calls[0]?.at(0))).toMatch(/\/api\/auth\/sign-out$/);
-    expect(navLinks()).toEqual(["Jouer", "Classement"]);
+    expect(navLinks()).toEqual(["Jouer", "Ranked", "Classement"]);
     expect(await screen.findByText("Déconnecté")).toBeInTheDocument();
   });
 
