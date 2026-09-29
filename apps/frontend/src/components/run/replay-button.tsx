@@ -8,7 +8,7 @@ export const ReplayButton = () => {
   const replay = useRunStore((state) => state.replay);
 
   return (
-    <Button variant="ghost" onClick={replay}>
+    <Button variant="ghost" onClick={replay} className="text-muted-foreground">
       <RotateCcwIcon data-icon="inline-start" />
       Rejouer
     </Button>

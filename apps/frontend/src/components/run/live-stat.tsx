@@ -16,11 +16,16 @@ type LiveStatProps = {
   tone?: keyof typeof toneClassNames;
 };
 
-// One statistic shown while typing: its name, then its value.
+// One statistic shown while typing: its name, then its value under it, both flush right.
 export const LiveStat = ({ term, children, tone = "own" }: LiveStatProps) => (
-  <div className="flex items-baseline gap-2">
-    <dt className="text-sm text-muted-foreground">{term}</dt>
-    <dd className={cn("text-xl font-mono tabular-nums transition-colors", toneClassNames[tone])}>
+  <div className="flex flex-col items-end gap-0.5">
+    <dt className="text-xs text-muted-foreground">{term}</dt>
+    <dd
+      className={cn(
+        "font-mono text-xl font-semibold tabular-nums transition-colors",
+        toneClassNames[tone],
+      )}
+    >
       {children}
     </dd>
   </div>

@@ -124,6 +124,8 @@ describe("HomePage", () => {
   test("shows the Text to type and the word counter", () => {
     renderRun();
 
+    expect(screen.getByRole("heading", { level: 1, name: "Jouer" })).toBeInTheDocument();
+
     for (const word of text.split(" ")) {
       expect(screen.getByText(isWord(word))).toBeInTheDocument();
     }
@@ -302,6 +304,12 @@ describe("HomePage", () => {
   });
 });
 
+// The line that tells the keys to Suivant, its keys in their own elements.
+const keysHint = () =>
+  screen.getByText(
+    (_, element) => element?.tagName === "P" && element.textContent === "tab puis entrée : Suivant",
+  );
+
 describe("HomePage between Runs", () => {
   test("Rejouer starts the same Text again", async () => {
     const { user } = renderRun();
@@ -348,6 +356,17 @@ describe("HomePage between Runs", () => {
     expect(screen.getByText("0/10")).toBeInTheDocument();
     expect(typingInput()).toHaveFocus();
     expect(resumePrompt()).not.toBeInTheDocument();
+  });
+
+  test("the keys to Suivant are told at the foot of the page, during the Run and on its Result", async () => {
+    const { user } = renderRun();
+
+    expect(keysHint()).toBeInTheDocument();
+
+    await user.keyboard(text);
+
+    expect(screen.getByText("wpm")).toBeInTheDocument();
+    expect(keysHint()).toBeInTheDocument();
   });
 });
 

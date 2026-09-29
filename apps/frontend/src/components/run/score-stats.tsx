@@ -11,7 +11,7 @@ export const ScoreStats = ({ score, tone = "own" }: ScoreStatsProps) => {
   const broken = score.combo === 0 && score.bestCombo > 0;
 
   return (
-    <dl className="flex gap-6">
+    <dl className="flex gap-7">
       <LiveStat term="score" tone={tone}>
         {score.score}
       </LiveStat>

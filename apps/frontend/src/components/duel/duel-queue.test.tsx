@@ -5,7 +5,7 @@ import {
   createRouter,
   RouterProvider,
 } from "@tanstack/react-router";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import type { ServerMessage } from "api";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
@@ -80,6 +80,60 @@ const renderDuel = async () => {
     </QueryClientProvider>,
   );
 };
+
+const TIP = "En attendant, défie un Friend en ligne : le premier Duel qui aboutit l'emporte.";
+
+describe("the Queue screen", () => {
+  test("one card: the search, its format, the wait and Annuler; the Friends to challenge are left to the sidebar", async () => {
+    await renderDuel();
+    receive({ type: "queued" });
+
+    // The server's clock runs 12 s ahead of this tab's: Ada has waited 12 s.
+    receive({
+      type: "queue-status",
+      joinedAt: 0,
+      serverTime: 12_000,
+      size: 14,
+      estimatedWait: 8000,
+    });
+
+    const card = screen.getByRole("region", { name: "On te trouve un adversaire…" });
+
+    expect(within(card).getByText("Duel classé · 30 s · anglais")).toBeInTheDocument();
+    expect(within(card).getByLabelText("Temps d'attente")).toHaveTextContent("0:12");
+    expect(within(card).getByText("≈ 8 s d'attente · 14 joueurs en file")).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Annuler" })).toBeInTheDocument();
+
+    expect(screen.getByText(TIP)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Ou défie un ami" })).not.toBeInTheDocument();
+  });
+
+  test("the wait counts on, second by second", async () => {
+    await renderDuel();
+    receive({ type: "queued" });
+    receive({ type: "queue-status", joinedAt: 0, serverTime: 0, size: 1, estimatedWait: null });
+
+    expect(screen.getByLabelText("Temps d'attente")).toHaveTextContent("0:00");
+    expect(screen.getByText("1 joueur en file")).toBeInTheDocument();
+
+    await at(65_000);
+    expect(screen.getByLabelText("Temps d'attente")).toHaveTextContent("1:05");
+  });
+
+  test("a Queue lock takes the card's place: Queue bloquée and its buttons, without the tip", async () => {
+    await renderDuel();
+    receive({ type: "queue-locked", until: 60_000, serverTime: 0 });
+
+    const card = await screen.findByRole("region", { name: "Queue bloquée" });
+
+    expect(within(card).getByRole("button", { name: "Retour au Solo" })).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: /Chercher un Duel/ })).toBeDisabled();
+    expect(
+      screen.queryByRole("region", { name: "On te trouve un adversaire…" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(TIP)).not.toBeInTheDocument();
+  });
+});
 
 describe("the Queue screen during a Queue lock", () => {
   test("Chercher un Duel waits for the end of the lock, on the server's clock, then joins the Queue", async () => {

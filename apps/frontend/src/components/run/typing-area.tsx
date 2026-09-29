@@ -20,11 +20,11 @@ export const TypingArea = () => {
         onFocusChange={setFocused}
         onPress={(key, now) => press(key, now, pace)}
       />
-      <div className="flex flex-wrap items-baseline justify-between gap-4">
+      <div className="flex items-end justify-between gap-4 px-2">
         <RunProgress />
         <LiveScore />
       </div>
-      <div className="relative rounded-card bg-card px-8 py-6">
+      <div className="relative rounded-card bg-card px-10 py-7.5">
         <SoloText />
         {focused ? null : <FocusOverlay onResume={focus} />}
       </div>

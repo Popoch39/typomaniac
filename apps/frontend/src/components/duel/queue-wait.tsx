@@ -13,7 +13,7 @@ export const QueueWait = ({ queue }: QueueWaitProps) => {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="font-mono text-2xl tabular-nums" aria-label="Temps d'attente">
+      <span className="font-mono text-2xl font-medium tabular-nums" aria-label="Temps d'attente">
         {formatElapsed(elapsed)}
       </span>
       <span aria-hidden className="text-faint">

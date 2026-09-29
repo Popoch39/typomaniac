@@ -3,15 +3,53 @@ import { useQuery } from "@tanstack/react-query";
 import { meQueryOptions } from "@/api/me";
 import { UserAvatar } from "@/components/user-avatar/user-avatar";
 
-// The User's avatar, with their Ornament, in the middle of the search: an accent arc turns around
-// it, a dashed halo turns slowly the other way. Still under reduced motion. The avatar never holds up the page.
+// The User's avatar, with their Ornament, in the middle of the search, 156 px: an accent arc turns
+// around it on its track, a dotted halo turns slowly the other way. Still under reduced motion.
+// The avatar never holds up the page.
 export const QueueRing = () => {
   const { data: me } = useQuery(meQueryOptions);
 
   return (
-    <div aria-hidden className="relative flex size-56 items-center justify-center">
-      <div className="absolute inset-0 rounded-full border-2 border-dashed border-surface-2 motion-safe:animate-queue-halo" />
-      <div className="absolute size-40 rounded-full border-6 border-surface-2 border-t-primary motion-safe:animate-queue-arc" />
+    <div aria-hidden className="relative flex size-39 items-center justify-center">
+      {/* The wrappers turn, not the SVGs: a transformed div stays on the compositor. */}
+      <div className="absolute inset-0 motion-safe:animate-queue-halo">
+        <svg viewBox="0 0 156 156" className="size-full">
+          <circle
+            cx="78"
+            cy="78"
+            r="75"
+            fill="none"
+            strokeWidth="1.5"
+            strokeDasharray="2 8"
+            className="stroke-faint"
+          />
+        </svg>
+      </div>
+      <svg viewBox="0 0 156 156" className="absolute inset-0 size-full">
+        <circle
+          cx="78"
+          cy="78"
+          r="60"
+          fill="none"
+          strokeWidth="5"
+          className="stroke-foreground/10"
+        />
+      </svg>
+      <div className="absolute inset-0 motion-safe:animate-queue-arc">
+        <svg viewBox="0 0 156 156" className="size-full">
+          <circle
+            cx="78"
+            cy="78"
+            r="60"
+            fill="none"
+            strokeWidth="5"
+            strokeLinecap="round"
+            strokeDasharray="96 281"
+            transform="rotate(-70 78 78)"
+            className="stroke-primary"
+          />
+        </svg>
+      </div>
       <UserAvatar
         handle={me?.handle ?? ""}
         image={me?.image ?? null}

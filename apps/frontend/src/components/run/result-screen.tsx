@@ -7,7 +7,7 @@ import { ScoreResult } from "@/components/run/score-result";
 import { useRunStore } from "@/stores/run-store";
 
 // Called once with the node on mount. The typing input is gone with the Run, and the focus would
-// fall back to the page, where Tab reaches the header first.
+// fall back to the page, where Tab reaches the sidebar first.
 const focusOnMount = (node: HTMLElement | null) => node?.focus();
 
 // The Result of the finished Run, then what to play next. It takes the focus so that Tab reaches

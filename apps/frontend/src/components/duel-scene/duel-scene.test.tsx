@@ -134,7 +134,7 @@ const renderPlayPage = async () => {
       </QueryClientProvider>
     </StrictMode>,
   );
-  await screen.findByRole("heading", { name: "Ou défie un ami" });
+  await screen.findByRole("heading", { name: "On te trouve un adversaire…" });
   receive({ type: "queued" });
 };
 

@@ -1,3 +1,4 @@
+import { RunCounter } from "@/components/run/run-counter";
 import { useRunStore } from "@/stores/run-store";
 
 // Validated words out of the Run's words, e.g. `3/10`.
@@ -6,8 +7,8 @@ export const WordCounter = () => {
   const total = useRunStore((state) => state.run.words.length);
 
   return (
-    <p className="text-xl text-caret font-mono tabular-nums">
+    <RunCounter>
       {validated}/{total}
-    </p>
+    </RunCounter>
   );
 };

@@ -9,7 +9,7 @@ export const NextRunButton = () => {
   const next = useRunStore((state) => state.next);
 
   return (
-    <Button variant="ghost" onClick={next}>
+    <Button variant="ghost" onClick={next} className="text-muted-foreground">
       <ChevronRightIcon data-icon="inline-start" />
       Suivant
     </Button>
