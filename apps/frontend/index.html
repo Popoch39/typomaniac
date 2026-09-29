@@ -41,37 +41,88 @@
         }
       } catch {}
     </script>
-    <!-- The ink of each Theme (src/index.css), painted before the CSS loads: no flash. -->
+    <!-- The ink, text and accent of each Theme (src/index.css), painted before the CSS loads: no
+         flash. The text and the accent paint the Logo waiting in #root, by class: var() does not
+         work in an SVG presentation attribute. -->
     <style>
       html {
         background: #15141c;
+        --boot-text: #ecebf3;
+        --boot-brand: #ff8a65;
       }
       html[data-theme="lagon"] {
         background: #0d1720;
+        --boot-text: #e3eef5;
+        --boot-brand: #5cc8ff;
       }
       html[data-theme="matcha"] {
         background: #121611;
+        --boot-text: #e9f0e3;
+        --boot-brand: #b8f36b;
       }
       html[data-theme="lilas"] {
         background: #15121d;
+        --boot-text: #eee9f7;
+        --boot-brand: #c9a7ff;
       }
       html[data-theme="sakura"] {
         background: #1a1318;
+        --boot-text: #f6e9ef;
+        --boot-brand: #f7a1d0;
       }
       html[data-theme="arcade"] {
         background: #0a0a12;
+        --boot-text: #f1f1ff;
+        --boot-brand: #ff4fa0;
       }
       html[data-theme="craie"] {
         background: #111111;
+        --boot-text: #f0f0f0;
+        --boot-brand: #f0f0f0;
       }
       html[data-theme="papier"] {
         background: #f3eee4;
         color-scheme: light;
+        --boot-text: #1f1c17;
+        --boot-brand: #ba431d;
+      }
+      .boot-logo {
+        position: fixed;
+        inset: 0;
+        width: 84px;
+        height: 84px;
+        margin: auto;
+      }
+      .boot-logo-t {
+        stroke: var(--boot-text);
+      }
+      .boot-logo-wave {
+        stroke: var(--boot-brand);
       }
     </style>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- The Logo, full drawing of src/components/brand/logo-drawings.ts, still at the centre of the
+         Theme's ink until React's first render replaces it. -->
+    <div id="root">
+      <svg
+        class="boot-logo"
+        viewBox="0 0 100 100"
+        role="img"
+        aria-label="typomaniac"
+        fill="none"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path class="boot-logo-t" d="M46 12 V50 Q46 60 56 60 H66" stroke-width="12" />
+        <path class="boot-logo-t" d="M30 30 H64" stroke-width="12" />
+        <path
+          class="boot-logo-wave"
+          d="M16 82 Q24 72 32 82 T48 82 T64 82 T80 82"
+          stroke-width="7"
+        />
+      </svg>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -50,8 +50,8 @@ const cssToken = (id: string, property: string) =>
 const paintedInk = (id: string) =>
   bootStyle.match(
     id === "corail"
-      ? /html\s*\{\s*background:\s*(#[0-9a-f]{6})/
-      : new RegExp(`html\\[data-theme="${id}"\\]\\s*\\{\\s*background:\\s*(#[0-9a-f]{6})`),
+      ? /html\s*\{[^}]*\sbackground:\s*(#[0-9a-f]{6})/
+      : new RegExp(`html\\[data-theme="${id}"\\]\\s*\\{[^}]*\\sbackground:\\s*(#[0-9a-f]{6})`),
   )?.[1];
 
 // Whether the browser's native controls are dark or light: the meta, then the stylesheet.
@@ -74,10 +74,44 @@ const favicons = Object.fromEntries(
   ).map(([file, svg]) => [file.replace(/^\/public/, ""), svg]),
 );
 
+// The Logo shown in #root until React's first render replaces it.
+const bootRoot = parsed.querySelector("#root")?.outerHTML ?? "";
+
+const bootLogo = parsed.querySelector("#root svg");
+
+// The page as the browser paints it before the app's CSS: the boot's style, then #root.
+const showBootPage = () => {
+  const style = document.createElement("style");
+
+  style.textContent = bootStyle;
+  document.head.append(style);
+  document.body.innerHTML = bootRoot;
+};
+
+// The strokes a drawing of the Logo traces, as LOGO_DRAWINGS writes them: the t's stem, its bar,
+// the wave.
+const drawnStrokes = (drawing: ParentNode | null) =>
+  Array.from(drawing?.querySelectorAll("path") ?? [], (path) => ({
+    d: path.getAttribute("d"),
+    width: Number(path.getAttribute("stroke-width")),
+  }));
+
+// The colour each stroke of the waiting Logo is painted in.
+const logoStrokeColours = () =>
+  Array.from(document.querySelectorAll("#root path"), (path) => getComputedStyle(path).stroke);
+
+// The colours the stylesheet gives those strokes, for a Theme: its text, its text, its accent.
+const cssLogoStrokeColours = (id: string) => [
+  cssToken(id, "--text"),
+  cssToken(id, "--text"),
+  cssToken(id, "--brand"),
+];
+
 beforeEach(() => {
   localStorage.clear();
   delete document.documentElement.dataset.theme;
   document.head.innerHTML = `${iconLink}<meta name="color-scheme" content="dark" />`;
+  document.body.innerHTML = "";
 });
 
 afterEach(() => {
@@ -183,24 +217,61 @@ describe("the Theme set before the first paint", () => {
         "image/svg+xml",
       );
 
-      const text = cssToken(id, "--text");
-      const accent = cssToken(id, "--brand");
       const { stem, bar, wave } = LOGO_DRAWINGS.simplified;
 
       expect(icon.querySelector("rect")?.getAttribute("fill")).toBe(cssToken(id, "--ink"));
+      expect(drawnStrokes(icon)).toEqual([stem, bar, wave]);
       expect(
-        Array.from(icon.querySelectorAll("path"), (path) => ({
-          d: path.getAttribute("d"),
-          width: Number(path.getAttribute("stroke-width")),
-          colour: path.getAttribute("stroke"),
-        })),
-      ).toEqual([
-        { ...stem, colour: text },
-        { ...bar, colour: text },
-        { ...wave, colour: accent },
-      ]);
+        Array.from(icon.querySelectorAll("path"), (path) => path.getAttribute("stroke")),
+      ).toEqual(cssLogoStrokeColours(id));
     },
   );
+
+  test("the Logo waits in #root, the full drawing, named typomaniac", () => {
+    const { stem, bar, wave } = LOGO_DRAWINGS.full;
+
+    expect(bootLogo?.getAttribute("role")).toBe("img");
+    expect(bootLogo?.getAttribute("aria-label")).toBe("typomaniac");
+    // Like every drawing of the Logo: a 100 × 100 viewBox, round strokes, no fill.
+    expect(bootLogo?.getAttribute("viewBox")).toBe("0 0 100 100");
+    expect(bootLogo?.getAttribute("fill")).toBe("none");
+    expect(bootLogo?.getAttribute("stroke-linecap")).toBe("round");
+    expect(bootLogo?.getAttribute("stroke-linejoin")).toBe("round");
+    expect(drawnStrokes(bootLogo)).toEqual([stem, bar, wave]);
+  });
+
+  test.each(THEMES.map((theme) => theme.id))(
+    "%s, stored, paints the waiting Logo in its text and accent",
+    (id) => {
+      useThemeStore.getState().setTheme(id);
+      boot();
+      showBootPage();
+
+      expect(logoStrokeColours()).toEqual(cssLogoStrokeColours(id));
+    },
+  );
+
+  test.each([
+    ["nothing stored", null],
+    ["unreadable JSON", "{not json"],
+    ["another version", JSON.stringify({ state: { theme: "lagon" }, version: 2 })],
+    ["no Theme", JSON.stringify({ state: {}, version: 1 })],
+    ["an unknown Theme", JSON.stringify({ state: { theme: "neon" }, version: 1 })],
+  ])("%s paints the waiting Logo as Corail", (_, value) => {
+    if (value !== null) {
+      localStorage.setItem("typomaniac-theme", value);
+    }
+
+    boot();
+    showBootPage();
+
+    expect(logoStrokeColours()).toEqual(cssLogoStrokeColours("corail"));
+  });
+
+  test("index.html keeps one inline script and one inline style, the ones read here", () => {
+    expect(parsed.querySelectorAll("script:not([src])")).toHaveLength(1);
+    expect(parsed.querySelectorAll("style")).toHaveLength(1);
+  });
 
   test("Papier is the only light one", () => {
     expect(THEMES.flatMap((theme) => (theme.scheme === "light" ? [theme.id] : []))).toEqual([
