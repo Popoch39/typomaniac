@@ -726,7 +726,6 @@ const tabTo = async (
 describe("the Locale switch", () => {
   afterEach(() => {
     useDuelStore.setState(useDuelStore.getInitialState());
-    vi.unstubAllEnvs();
   });
 
   test("says the Locale shown and the one it proposes, each in its own language", async () => {
@@ -768,13 +767,6 @@ describe("the Locale switch", () => {
     act(() => useDuelStore.getState().tick(3_000));
     expect(useDuelStore.getState().state.phase).toBe("running");
     expect(localeSwitch()).toBeDisabled();
-  });
-
-  test("is not there until English opens, in a production build", async () => {
-    vi.stubEnv("DEV", false);
-    await renderApp(null);
-
-    expect(screen.queryByRole("button", { name: /^Langue/ })).not.toBeInTheDocument();
   });
 });
 

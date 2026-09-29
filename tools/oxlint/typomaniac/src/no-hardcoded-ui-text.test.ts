@@ -2,8 +2,6 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { untranslatedFiles } from "./ui-text-scope.ts";
-
 const repoRoot = new URL("../../../../", import.meta.url).pathname;
 
 const config = new URL("../test/rule-only.json", import.meta.url).pathname;
@@ -76,12 +74,5 @@ describe("no-hardcoded-ui-text", () => {
 
   test("lets through punctuation, numbers, proper names and expressions", () => {
     expect(flaggedTexts([fixture("compliant.tsx")]).size).toBe(0);
-  });
-
-  test("each exception still has hardcoded text, or it leaves the list", () => {
-    const files = untranslatedFiles.map((file) => resolve(repoRoot, file));
-    const hits = flaggedTexts(files);
-
-    expect(files.filter((file) => !hits.has(file))).toEqual([]);
   });
 });

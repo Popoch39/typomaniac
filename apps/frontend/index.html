@@ -15,8 +15,7 @@
          (src/components/theme/theme-favicon.ts); any other keeps Coral's, the link's own.
          Then <html lang>, the Locale the router will show (src/app-router.ts): the URL's prefix,
          else the one kept by src/stores/locale-store.ts (same key, same JSON), else the browser's
-         languages (src/locale/browser-locale.ts). French for all until English opens
-         (src/locale/english-open.ts), which Vite writes in place of the DEV placeholder. -->
+         languages (src/locale/browser-locale.ts). -->
     <script>
       try {
         const themeIds = [
@@ -81,14 +80,11 @@
         const prefix = location.pathname.split("/")[1];
         const kept = keptLocale();
 
-        document.documentElement.lang =
-          "%DEV%" !== "true"
-            ? "fr"
-            : locales.includes(prefix)
-              ? prefix
-              : locales.includes(kept)
-                ? kept
-                : browserLocale();
+        document.documentElement.lang = locales.includes(prefix)
+          ? prefix
+          : locales.includes(kept)
+            ? kept
+            : browserLocale();
       }
     </script>
     <!-- The ink, text and accent of each Theme (src/index.css), painted before the CSS loads: no

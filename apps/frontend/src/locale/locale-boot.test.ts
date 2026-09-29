@@ -12,13 +12,12 @@ const bootScript =
   new DOMParser().parseFromString(page, "text/html").querySelector("script:not([src])")
     ?.textContent ?? "";
 
-// Loads the page at `path`: runs the inline script, as the browser does before anything else,
-// with Vite's DEV placeholder written as a dev build (English open) or a production one.
-const boot = (path: string, build: "dev" | "production" = "dev") => {
+// Loads the page at `path`: runs the inline script, as the browser does before anything else.
+const boot = (path: string) => {
   const script = document.createElement("script");
 
   history.replaceState(null, "", path);
-  script.textContent = bootScript.replaceAll("%DEV%", String(build === "dev"));
+  script.textContent = bootScript;
   document.head.append(script);
   script.remove();
 
@@ -84,12 +83,5 @@ describe("<html lang> before the app loads", () => {
     });
 
     expect(boot("/")).toBe("fr");
-  });
-
-  test("is French for all in a production build, until English opens", () => {
-    speaks(["en"]);
-    keep("en");
-
-    expect(boot("/en/leaderboard", "production")).toBe("fr");
   });
 });

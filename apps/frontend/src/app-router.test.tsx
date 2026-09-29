@@ -92,7 +92,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
 
@@ -162,24 +161,6 @@ describe("a storage the browser cannot read", () => {
   test("…else the browser's", () => {
     expect(visit("/", { storage: blocked, languages: ["fr"] }).url()).toBe("/fr");
     expect(shown()).toBe("fr");
-  });
-});
-
-describe("until English opens, in a production build", () => {
-  beforeEach(() => {
-    vi.stubEnv("DEV", false);
-  });
-
-  test("every URL leads to French, English ones included", () => {
-    expect(visit("/en/leaderboard", { languages: ["en"] }).url()).toBe("/fr/leaderboard");
-    expect(visit("/", { languages: ["en"] }).url()).toBe("/fr");
-    expect(shown()).toBe("fr");
-  });
-
-  test("nothing is kept, for the browser's language to count once English opens", () => {
-    visit("/", { languages: ["en"] });
-
-    expect(kept()).toBeNull();
   });
 });
 

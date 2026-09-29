@@ -1,10 +1,6 @@
 import { defineConfig } from "oxlint";
 
-import {
-  outOfScopeFiles,
-  uiTextFiles,
-  untranslatedFiles,
-} from "./tools/oxlint/typomaniac/src/ui-text-scope.ts";
+import { outOfScopeFiles, uiTextFiles } from "./tools/oxlint/typomaniac/src/ui-text-scope.ts";
 
 export default defineConfig({
   plugins: ["typescript", "unicorn", "oxc", "import", "react", "jsx-a11y"],
@@ -45,7 +41,7 @@ export default defineConfig({
   overrides: [
     {
       files: uiTextFiles,
-      excludeFiles: [...outOfScopeFiles, ...untranslatedFiles],
+      excludeFiles: outOfScopeFiles,
       rules: { "typomaniac/no-hardcoded-ui-text": "error" },
     },
   ],

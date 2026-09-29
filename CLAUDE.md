@@ -47,7 +47,7 @@ Dans le front livré (`apps/frontend/src/**/*.tsx`), la règle refuse le texte l
 
 - **Autorisé** : un texte dont aucun mot n'est hors liste blanche, donc la ponctuation, les nombres, les symboles et les noms propres de `properNames` (`src/no-hardcoded-ui-text.ts` : typomaniac, GitHub, Google, Discord, TP, wpm). N'y ajouter qu'un mot identique dans toutes les Locales.
 - **Hors règle** (`outOfScopeFiles`, `src/ui-text-scope.ts`) : les tests et le code réservé au build de dev (pages `/dev/*`, labo du Face-off, galerie d'Auras, connexion email de dev). Un nouveau fichier de dev s'y ajoute.
-- **Liste d'exceptions à vider** (`untranslatedFiles`, même fichier) : les fichiers qui ont encore du texte en dur. Chaque ticket d'extraction retire ceux qu'il traduit ; elle est vide à l'ouverture de l'anglais. Le test échoue si un fichier listé n'a plus de texte en dur : le retirer. Ne jamais y ajouter un fichier pour faire passer le lint.
+- **Aucune exception** : un fichier livré qui a du texte en dur se traduit, il ne sort jamais de la règle pour faire passer le lint.
 - Les fichiers témoins sont dans `fixtures/ui-text/` : un cas nouveau se couvre là, avec les diagnostics attendus dans `src/no-hardcoded-ui-text.test.ts`.
 
 `oxlint` et `@oxlint/plugins` sont épinglés à la même version exacte : les monter ensemble. De même, `oxc-transform-react` (React Compiler Rust, dans `apps/frontend`) est épinglé exact sur la plage peer de `@vitejs/plugin-react` : les monter ensemble.

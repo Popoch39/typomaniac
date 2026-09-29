@@ -6,7 +6,7 @@ typomaniac existe en deux Locales, `fr` et `en`. Chaque URL de l'app commence pa
 2. à défaut, vers celle de `navigator.languages` ;
 3. à défaut, vers `en`.
 
-Le choix est retenu par navigateur, comme le Theme, et seul le sélecteur le modifie. Les messages passent par Paraglide JS 2 : ils sont compilés en fonctions typées, et `en` est la Locale de base.
+Le choix est retenu par navigateur, comme le Theme, et seul le sélecteur le modifie. Tant que rien n'est retenu, la première visite retient la Locale de son URL. Les messages passent par Paraglide JS 2 : ils sont compilés en fonctions typées, et `en` est la Locale de base.
 
 Les identifiants qui sortent du code (Tiers, Themes, favicons) sont en anglais, parce qu'un joueur les voit dans le DOM et sur le réseau. Un anglophone ne doit trouver aucune trace du français dans l'app livrée.
 

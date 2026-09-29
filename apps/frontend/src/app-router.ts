@@ -3,7 +3,6 @@ import { type AnyRouter, createRouter, type RouterHistory } from "@tanstack/reac
 
 import { withDevRoutes } from "@/dev-routes";
 import { browserLocale } from "@/locale/browser-locale";
-import { deliveredLocale, englishOpen } from "@/locale/english-open";
 import { replaceLocale } from "@/locale/locale-history";
 import { localeOfPath, withLocale, withoutLocale } from "@/locale/locale-url";
 import { ErrorPage } from "@/pages/error-page";
@@ -23,19 +22,17 @@ type AppRouterOptions = {
 };
 
 // The Locale a visit starts in (ADR 0011): the URL's, else the one kept by this browser, else the
-// browser's languages'. French for all until English opens.
+// browser's languages'.
 const startLocale = (history: RouterHistory, languages: readonly string[]) =>
-  deliveredLocale(
-    localeOfPath(history.location.pathname) ??
-      useLocaleStore.getState().chosen ??
-      browserLocale(languages),
-  );
+  localeOfPath(history.location.pathname) ??
+  useLocaleStore.getState().chosen ??
+  browserLocale(languages);
 
 // The app's router, for the browser (src/router.ts) and for tests (a memory history, their own
 // storage and languages). Every URL starts with the Locale, "/fr/leaderboard": the router's rewrite
 // takes it off before matching and puts the Locale shown back on every URL it writes, so the route
 // tree never sees it. A URL without it (the root, an old link) is sent to the Locale the visit
-// starts in; so is an English one until English opens. A first visit keeps its Locale.
+// starts in. A first visit keeps its Locale.
 export const createAppRouter = ({ history, storage, languages, queryClient }: AppRouterOptions) => {
   readLocaleFrom(storage);
 
@@ -48,7 +45,7 @@ export const createAppRouter = ({ history, storage, languages, queryClient }: Ap
 
   store.show(locale);
 
-  if (englishOpen() && store.chosen === null) {
+  if (store.chosen === null) {
     store.choose(locale);
   }
 
@@ -75,8 +72,8 @@ export const createAppRouter = ({ history, storage, languages, queryClient }: Ap
         // The router keeps each Link's location once built, prefix included, as if it depended
         // on its route tree only: a new Locale makes it build them again. `setRoutes` is where it
         // forgets them.
-        if (pathLocale !== null && deliveredLocale(pathLocale) !== current.locale) {
-          current.show(deliveredLocale(pathLocale));
+        if (pathLocale !== null && pathLocale !== current.locale) {
+          current.show(pathLocale);
           builtRouter?.setRoutes(builtRouter.buildRouteTree());
         }
 

@@ -25,8 +25,3 @@ export const outOfScopeFiles = [
   "components/tier-up-dev/**",
   "components/auth/dev-email-sign-in.tsx",
 ].map(front);
-
-// The files that still have hardcoded text. Each extraction ticket removes the ones it
-// translates, and the list is empty once English opens. The test fails on a file that no
-// longer has any, so it cannot stay here.
-export const untranslatedFiles: string[] = [];
