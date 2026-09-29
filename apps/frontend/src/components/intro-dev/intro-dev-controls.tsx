@@ -3,6 +3,7 @@ import { RotateCcwIcon } from "lucide-react";
 
 import { IntroDevSetting } from "@/components/intro-dev/intro-dev-setting";
 import { replayIntro } from "@/components/intro-dev/intro-replay";
+import { themeName } from "@/components/theme/theme-text";
 import { THEMES } from "@/components/theme/themes";
 import { Button } from "@/components/ui/button";
 import { INTRO_SPEEDS, SHELL_DELAYS, useIntroReplayStore } from "@/stores/intro-replay-store";
@@ -15,7 +16,11 @@ const SPEED_OPTIONS = INTRO_SPEEDS.map((speed) => ({
 
 const SHELL_DELAY_OPTIONS = SHELL_DELAYS.map((delay) => ({ value: delay, label: `${delay} s` }));
 
-const THEME_OPTIONS = THEMES.map((theme) => ({ value: theme.id, label: theme.name }));
+// A dev page, in French only.
+const THEME_OPTIONS = THEMES.map((theme) => ({
+  value: theme.id,
+  label: themeName(theme.id, "fr"),
+}));
 
 // The replay's options, then Rejouer: the Intro plays again with them, over the home page it leads
 // to. The Theme is the app's own, applied at once.

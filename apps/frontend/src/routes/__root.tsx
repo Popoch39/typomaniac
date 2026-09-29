@@ -5,6 +5,7 @@ import { createRootRouteWithContext } from "@tanstack/react-router";
 
 import { meQueryOptions } from "@/api/me";
 import { paceQueryOptions } from "@/api/pace";
+import { NotFoundPage } from "@/pages/not-found-page";
 import { RootLayout } from "@/pages/root-layout";
 
 type RouterContext = {
@@ -27,4 +28,6 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     await context.queryClient.ensureQueryData(paceQueryOptions(me));
   },
   component: RootLayout,
+  // An address no route answers, in the shell like any page.
+  notFoundComponent: NotFoundPage,
 });

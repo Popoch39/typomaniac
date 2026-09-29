@@ -29,24 +29,4 @@ export const outOfScopeFiles = [
 // The files that still have hardcoded text. Each extraction ticket removes the ones it
 // translates, and the list is empty once English opens. The test fails on a file that no
 // longer has any, so it cannot stay here.
-export const untranslatedFiles = [
-  "components/desktop-only.tsx",
-  "components/leaderboard/leaderboard-empty.tsx",
-  "components/leaderboard/leaderboard-header.tsx",
-  "components/leaderboard/leaderboard-list.tsx",
-  "components/leaderboard/leaderboard-place-pending.tsx",
-  "components/leaderboard/leaderboard-place-ranked.tsx",
-  "components/leaderboard/leaderboard-place.tsx",
-  "components/leaderboard/leaderboard-podium.tsx",
-  "components/leaderboard/leaderboard-you.tsx",
-  "components/leaderboard/tier-legend-row.tsx",
-  "components/leaderboard/tier-legend.tsx",
-  "components/theme/active-theme.tsx",
-  "components/theme/theme-effects.tsx",
-  "components/theme/theme-option.tsx",
-  "components/theme/theme-picker.tsx",
-  "components/theme/theme-preview.tsx",
-  "components/theme/theme-roles.tsx",
-  "pages/health-page.tsx",
-  "pages/themes-page.tsx",
-].map(front);
+export const untranslatedFiles: string[] = [];

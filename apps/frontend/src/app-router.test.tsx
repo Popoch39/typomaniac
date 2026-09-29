@@ -68,12 +68,32 @@ const renderApp = async (path: string) => {
   return { ...opened, user: userEvent.setup() };
 };
 
+// The whole app at `path` with nothing read yet: the root route asks the API for `/me` itself.
+const renderAppWithoutCache = async (path: string) => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+  const router = createAppRouter({
+    history: createMemoryHistory({ initialEntries: [path] }),
+    storage: () => localStorage,
+    languages: [],
+    queryClient,
+  });
+
+  await act(() => router.load());
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+};
+
 beforeEach(() => {
   localStorage.clear();
 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 describe("a URL without a Locale", () => {
@@ -239,5 +259,106 @@ describe("switching the Locale", () => {
     expect(await screen.findByRole("complementary", { name: "Barre latérale" })).toBeVisible();
     expect(url()).toBe("/fr/leaderboard");
     expect(kept()).toBe("fr");
+  });
+});
+
+describe("the screens around every page", () => {
+  test("an unknown address says there is no page there, with a way home", async () => {
+    await renderApp("/fr/nowhere");
+
+    const main = screen.getByRole("main");
+
+    expect(
+      within(main).getByRole("heading", { level: 1, name: "Page introuvable" }),
+    ).toBeInTheDocument();
+    expect(within(main).getByRole("button", { name: "Retour à l'accueil" })).toHaveAttribute(
+      "href",
+      "/fr",
+    );
+  });
+
+  test("an unknown address, in English", async () => {
+    await renderApp("/en/nowhere");
+
+    const main = screen.getByRole("main");
+
+    expect(
+      within(main).getByRole("heading", { level: 1, name: "Page not found" }),
+    ).toBeInTheDocument();
+    expect(
+      within(main).getByText("This page doesn't exist. The link may be outdated or mistyped."),
+    ).toBeInTheDocument();
+    expect(within(main).getByRole("button", { name: "Back to home" })).toHaveAttribute(
+      "href",
+      "/en",
+    );
+  });
+
+  test("a page that cannot load says so, and loads again on Réessayer", async () => {
+    // The API out of reach at first, then answering: nobody is signed in.
+    const fetchApi = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValue(
+        Response.json(
+          { error: { code: "UNAUTHORIZED", message: "No Session", requestId: "req-1" } },
+          { status: 401 },
+        ),
+      );
+
+    vi.stubGlobal("fetch", fetchApi);
+    await renderAppWithoutCache("/fr/ranked");
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Impossible de charger la page" }),
+    ).toBeInTheDocument();
+
+    await userEvent.setup().click(screen.getByRole("button", { name: "Réessayer" }));
+
+    expect(
+      await screen.findByRole("complementary", { name: "Barre latérale" }),
+    ).toBeInTheDocument();
+  });
+
+  test("a page that cannot load, in English", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockRejectedValue(new TypeError("Failed to fetch")),
+    );
+    await renderAppWithoutCache("/en/ranked");
+
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Couldn't load this page" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("The server can't be reached, or it isn't responding."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  test("below 1024 px, asks to switch to a computer", async () => {
+    await renderApp("/fr/ranked");
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Passe sur ordinateur" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "typomaniac se joue au clavier, sur un écran d'au moins 1024 px de large. Ouvre-le sur ton ordinateur pour taper.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  test("below 1024 px, in English", async () => {
+    await renderApp("/en/ranked");
+
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Switch to a computer" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "typomaniac is played on a keyboard, on a screen at least 1024 px wide. Open it on your computer to type.",
+      ),
+    ).toBeInTheDocument();
   });
 });

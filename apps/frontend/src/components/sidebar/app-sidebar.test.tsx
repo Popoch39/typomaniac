@@ -579,6 +579,17 @@ describe("the sidebar in English", () => {
     expect(within(englishSidebar).getByRole("link", { name: /^Theme / })).toBeInTheDocument();
   });
 
+  test("names the Theme chosen in English", async () => {
+    useThemeStore.getState().setTheme("lagoon");
+    await renderApp(null);
+
+    expect(
+      within(screen.getByRole("complementary", { name: "Sidebar" })).getByRole("link", {
+        name: "Theme Lagoon",
+      }),
+    ).toBeInTheDocument();
+  });
+
   test("says the User is signed out", async () => {
     vi.stubGlobal(
       "fetch",

@@ -6,6 +6,7 @@ import { browserLocale } from "@/locale/browser-locale";
 import { deliveredLocale, englishOpen } from "@/locale/english-open";
 import { replaceLocale } from "@/locale/locale-history";
 import { localeOfPath, withLocale, withoutLocale } from "@/locale/locale-url";
+import { ErrorPage } from "@/pages/error-page";
 import { routeTree } from "@/routeTree.gen";
 import { readLocaleFrom, useLocaleStore } from "@/stores/locale-store";
 
@@ -62,6 +63,8 @@ export const createAppRouter = ({ history, storage, languages, queryClient }: Ap
     defaultPreload: "intent",
     // React Query owns caching: always let loaders call ensureQueryData on preload.
     defaultPreloadStaleTime: 0,
+    // A page that fails to load, where its route has no error screen of its own.
+    defaultErrorComponent: ErrorPage,
     rewrite: {
       // Each URL read sets the Locale shown, before its page renders: the switch, and going back
       // and forth between Locales, change the URL only.

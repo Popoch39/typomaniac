@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { DocumentTheme } from "@/components/theme/document-theme";
 import { ThemesPage } from "@/pages/themes-page";
+import { useLocaleStore } from "@/stores/locale-store";
 import { useThemeStore } from "@/stores/theme-store";
 
 const storageKey = "typomaniac-theme";
@@ -80,8 +81,8 @@ const store = (value: string) => localStorage.setItem(storageKey, value);
 const pageTheme = () => document.documentElement.dataset.theme;
 
 // The header's reminder of the Theme in use, not the badge on its card.
-const activeChip = () =>
-  screen.getByText((_, element) => element?.textContent?.startsWith("Actif ") ?? false, {
+const activeChip = (start = "Actif ") =>
+  screen.getByText((_, element) => element?.textContent?.startsWith(start) ?? false, {
     selector: "p",
   });
 
@@ -258,5 +259,72 @@ describe("the Themes page", () => {
     expect(section).toHaveTextContent("Adversaire");
     expect(section).toHaveTextContent("Tiers");
     expect(section).toHaveTextContent("sur Papier, elle est assombrie pour rester lisible");
+  });
+
+  describe("in English", () => {
+    beforeEach(() => {
+      useLocaleStore.setState({ locale: "en" });
+    });
+
+    test("titles the page and names the eight Themes", () => {
+      renderPage();
+
+      expect(screen.getByRole("heading", { level: 1, name: "Themes" })).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Pick your colors. A Theme changes the background, the accent and the opponent's color, never where things are.",
+        ),
+      ).toBeInTheDocument();
+
+      const picker = screen.getByRole("group", { name: "Theme" });
+
+      expect(within(picker).getAllByRole("radio")).toHaveLength(8);
+
+      for (const name of [
+        "Coral",
+        "Lagoon",
+        "Matcha",
+        "Lilac",
+        "Sakura",
+        "Arcade",
+        "Chalk",
+        "Paper",
+      ]) {
+        expect(within(picker).getByRole("radio", { name })).toBeInTheDocument();
+      }
+
+      expect(activeChip("Using ")).toHaveTextContent("Using Coral");
+    });
+
+    test("describes each Theme, its two colors and the one in use", async () => {
+      const user = renderPage();
+
+      expect(screen.getByRole("radio", { name: "Lagoon" })).toHaveAccessibleDescription(
+        "Open-sea blue. The roles swap: the opponent turns coral.",
+      );
+      expect(screen.getByRole("radio", { name: "Paper" })).toHaveAccessibleDescription(
+        "The only light one: ink on paper, for typing in broad daylight.",
+      );
+
+      await user.click(screen.getByRole("radio", { name: "Chalk" }));
+
+      const card = screen.getByRole("radio", { name: "Chalk" }).closest("label");
+
+      expect(card).toHaveTextContent("time flies when you type without looking at the keyboard");
+      expect(card).toHaveTextContent("Active");
+      expect(card).toHaveTextContent("YouOpponent");
+      expect(activeChip("Using ")).toHaveTextContent("Using Chalk");
+    });
+
+    test("says what a Theme changes", () => {
+      renderPage();
+
+      const section = screen.getByRole("region", { name: "What a Theme changes" });
+
+      expect(section).toHaveTextContent("Background and surfaces");
+      expect(section).toHaveTextContent("Accent");
+      expect(section).toHaveTextContent("Opponent");
+      expect(section).toHaveTextContent("on Paper, they're darkened to stay readable");
+    });
   });
 });

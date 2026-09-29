@@ -2,7 +2,10 @@ import { useId } from "react";
 
 import { ThemePreview } from "@/components/theme/theme-preview";
 import { ThemeRoles } from "@/components/theme/theme-roles";
+import { themeDescription, themeName } from "@/components/theme/theme-text";
 import type { Theme } from "@/components/theme/themes";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 type ThemeOptionProps = {
   name: string;
@@ -17,6 +20,7 @@ type ThemeOptionProps = {
 export const ThemeOption = ({ name, theme, checked, onChoose }: ThemeOptionProps) => {
   const nameId = useId();
   const descriptionId = useId();
+  const locale = useLocale();
 
   return (
     <label className="cursor-pointer">
@@ -38,11 +42,11 @@ export const ThemeOption = ({ name, theme, checked, onChoose }: ThemeOptionProps
         <span className="flex flex-col gap-1.5 px-1.5">
           <span className="flex min-h-5.5 items-center gap-2">
             <span id={nameId} className="text-base font-bold">
-              {theme.name}
+              {themeName(theme.id, locale)}
             </span>
             {checked ? (
               <span className="rounded-full bg-primary px-2.25 py-0.75 text-[11px] font-bold text-primary-foreground">
-                Actif
+                {m.themes_option_active({}, { locale })}
               </span>
             ) : null}
           </span>
@@ -50,7 +54,7 @@ export const ThemeOption = ({ name, theme, checked, onChoose }: ThemeOptionProps
             id={descriptionId}
             className="min-h-9 text-[12.5px] leading-[1.4] text-muted-foreground"
           >
-            {theme.description}
+            {themeDescription(theme.id, locale)}
           </span>
           <ThemeRoles />
         </span>

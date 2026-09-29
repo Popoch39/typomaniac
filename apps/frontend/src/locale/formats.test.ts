@@ -4,6 +4,7 @@ import {
   dateFormat,
   numberFormat,
   ordinal,
+  ordinalParts,
   pluralRules,
   relativeTimeFormat,
 } from "@/locale/formats";
@@ -90,5 +91,14 @@ describe("ordinal", () => {
 
   test("groups a large rank's thousands", () => {
     expect(ordinal("en", 1284)).toBe("1,284th");
+  });
+});
+
+describe("ordinalParts", () => {
+  test("gives the figure and what follows it apart, to be set in two sizes", () => {
+    expect(ordinalParts("en", 23)).toEqual({ figure: "23", suffix: "rd" });
+    expect(ordinalParts("en", 1284)).toEqual({ figure: "1,284", suffix: "th" });
+    expect(ordinalParts("fr", 1)).toEqual({ figure: "1", suffix: "er" });
+    expect(ordinalParts("fr", 128)).toEqual({ figure: "128", suffix: "e" });
   });
 });

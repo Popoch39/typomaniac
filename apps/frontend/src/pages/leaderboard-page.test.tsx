@@ -7,7 +7,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { render, screen, within } from "@testing-library/react";
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 
 import {
   type Leaderboard,
@@ -16,6 +16,8 @@ import {
 } from "@/api/leaderboard";
 import { type Me, meQueryOptions } from "@/api/me";
 import { LeaderboardPage } from "@/pages/leaderboard-page";
+import { LeaderboardPendingPage } from "@/pages/leaderboard-pending-page";
+import { useLocaleStore } from "@/stores/locale-store";
 
 const me: Me = {
   id: "ada-id",
@@ -51,6 +53,8 @@ const listed = () =>
 const place = () => screen.getByRole("region", { name: "Ta place" });
 
 const legend = () => within(screen.getByRole("region", { name: "Tiers" })).getAllByRole("listitem");
+
+const placeIn = () => screen.getByRole("region", { name: "Where you stand" });
 
 // The Tier of the Ornament the row's avatar wears, none without one.
 const ornamentOf = (row: HTMLElement) =>
@@ -239,5 +243,121 @@ describe("LeaderboardPage", () => {
     await renderPage({ ...me, rank: { placementsLeft: 3 } }, { entries: entries(1, 4), me: null });
 
     expect(legend().filter((tier) => tier.hasAttribute("aria-current"))).toHaveLength(0);
+  });
+
+  test("names its loading for screen readers", () => {
+    render(<LeaderboardPendingPage />);
+
+    expect(screen.getByRole("status", { name: "Chargement du Classement" })).toBeInTheDocument();
+  });
+
+  describe("in English", () => {
+    beforeEach(() => {
+      useLocaleStore.setState({ locale: "en" });
+    });
+
+    test("invites a Visitor to sign in", async () => {
+      await renderPage(null, { entries: [], me: null });
+
+      expect(screen.getByRole("heading", { level: 1, name: "Leaderboard" })).toBeInTheDocument();
+      expect(
+        screen.getByText("Ranked Users past Placement, by Tier, Division, then TP."),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Sign in to see the Leaderboard.")).toBeInTheDocument();
+    });
+
+    test("says nobody is ranked yet, with a way to play", async () => {
+      await renderPage(me, { entries: [], me: null });
+
+      expect(screen.getByText("Nobody's ranked yet")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "A User joins the Leaderboard after their 5 Placement Duels. Start a Duel to get on it.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Play" })).toBeInTheDocument();
+    });
+
+    test("names the podium and the list, the reader's line marked You", async () => {
+      await renderPage(me, { entries: [...entries(1, 4), entry(5, "ada")], me: entry(5, "ada") });
+
+      expect(screen.getByRole("list", { name: "Podium" })).toBeInTheDocument();
+      expect(
+        within(screen.getByRole("list", { name: "Leaderboard" })).getAllByRole("listitem")[1]
+          ?.textContent,
+      ).toBe("5A@adaYouGold II · 42 TP");
+    });
+
+    test("groups the thousands of a reader's place far down", async () => {
+      await renderPage(me, { entries: entries(1, 4), me: entry(1284, "ada") });
+
+      const rows = within(screen.getByRole("list", { name: "Leaderboard" })).getAllByRole(
+        "listitem",
+      );
+
+      expect(rows.at(-1)?.textContent).toContain("1,284");
+    });
+
+    test.each([
+      [1, "1st"],
+      [2, "2nd"],
+      [23, "23rd"],
+      [128, "128th"],
+    ])("tells a ranked reader at place %i they are %s", async (position, words) => {
+      await renderPage(
+        { ...me, rank: goldII },
+        { entries: entries(1, 4), me: entry(position, "ada", "gold", goldII) },
+      );
+
+      expect(placeIn().textContent).toContain(words);
+      expect(placeIn().textContent).toContain("Gold II");
+      expect(within(placeIn()).getByText("58 TP to Gold I")).toBeInTheDocument();
+    });
+
+    test("groups a Maniac's TP", async () => {
+      const maniac = { tier: "maniac", tp: 1284, shielded: false } as const;
+
+      await renderPage(
+        { ...me, rank: maniac },
+        { entries: entries(1, 4), me: entry(1, "ada", "maniac", maniac) },
+      );
+
+      expect(placeIn().textContent).toContain("1,284 TP");
+    });
+
+    test("asks a reader in Placement to finish it", async () => {
+      await renderPage(
+        { ...me, rank: { placementsLeft: 3 } },
+        { entries: entries(1, 4), me: null },
+      );
+
+      expect(within(placeIn()).getByText("Finish your Placement")).toBeInTheDocument();
+      expect(
+        within(placeIn()).getByText("Your 5 Placement Duels get you on the Leaderboard."),
+      ).toBeInTheDocument();
+    });
+
+    test("lays out the Tiers, their Divisions and the reader's", async () => {
+      await renderPage(
+        { ...me, rank: goldII },
+        { entries: entries(1, 4), me: entry(128, "ada", "gold", goldII) },
+      );
+
+      expect(legend().map((tier) => tier.textContent)).toEqual([
+        "Maniacno Division",
+        "DiamondIV to I",
+        "PlatinumIV to I",
+        "Goldyour Tier",
+        "SilverIV to I",
+        "BronzeIV to I",
+        "IronIV to I",
+      ]);
+    });
+
+    test("names its loading for screen readers", () => {
+      render(<LeaderboardPendingPage />);
+
+      expect(screen.getByRole("status", { name: "Loading the Leaderboard" })).toBeInTheDocument();
+    });
   });
 });

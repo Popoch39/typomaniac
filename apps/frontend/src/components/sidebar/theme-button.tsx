@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { PaletteIcon } from "lucide-react";
 
+import { themeName } from "@/components/theme/theme-text";
 import { useActiveTheme } from "@/components/theme/use-active-theme";
 import { SidebarMenuButton } from "@/components/ui/sidebar";
 import { useLocale } from "@/locale/use-locale";
@@ -21,7 +22,7 @@ export const ThemeButton = () => {
       <PaletteIcon aria-hidden="true" />
       {m.sidebar_theme({}, { locale })}
       <span className="ml-auto flex items-center gap-2 text-foreground">
-        {theme.name}
+        {themeName(theme.id, locale)}
         <span aria-hidden="true" className="flex">
           <span className="size-3 rounded-full bg-brand ring-2 ring-sidebar" />
           <span className="-ml-0.75 size-3 rounded-full bg-opponent ring-2 ring-sidebar" />

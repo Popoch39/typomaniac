@@ -2,7 +2,9 @@ import { isPlacement, PLACEMENT_DUELS, type Rank } from "ranked";
 
 import { rankLabel } from "@/components/tier/rank/rank-label";
 import { TpProgress } from "@/components/tier/rank/tp-progress";
+import { numberFormat } from "@/locale/formats";
 import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 // A reader not in the Classement yet, in Placement or without a Rating: what gets them in, and the
 // Placement Duels they have played.
@@ -12,9 +14,12 @@ export const LeaderboardPlacePending = ({ rank }: { rank: Rank | null }) => {
   return (
     <>
       <div className="flex flex-col gap-1.5">
-        <p className="text-xl font-bold">Termine ton Placement</p>
+        <p className="text-xl font-bold">{m.leaderboard_place_pending_title({}, { locale })}</p>
         <p className="text-[13px] text-muted-foreground">
-          Tes {PLACEMENT_DUELS} Duels de Placement te font entrer au Classement.
+          {m.leaderboard_place_pending_reason(
+            { duels: numberFormat(locale).format(PLACEMENT_DUELS) },
+            { locale },
+          )}
         </p>
       </div>
       {rank !== null && isPlacement(rank) ? (

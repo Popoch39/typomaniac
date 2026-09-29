@@ -43,10 +43,20 @@ const ORDINAL_SUFFIXES: Record<Locale, Partial<Record<Intl.LDMLPluralRule, strin
 
 const ORDINAL = { type: "ordinal" } as const;
 
+// A rank's figure and what follows it, apart, to be set in two sizes: "23" and "rd" in English,
+// "23" and "e" in French.
+export const ordinalParts = (locale: Locale, rank: number) => {
+  const suffixes = ORDINAL_SUFFIXES[locale];
+
+  return {
+    figure: numberFormat(locale).format(rank),
+    suffix: suffixes[pluralRules(locale, ORDINAL).select(rank)] ?? suffixes.other ?? "",
+  };
+};
+
 // A rank in words: "1st", "23rd" in English; "1er", "23e" in French.
 export const ordinal = (locale: Locale, rank: number) => {
-  const suffixes = ORDINAL_SUFFIXES[locale];
-  const suffix = suffixes[pluralRules(locale, ORDINAL).select(rank)] ?? suffixes.other ?? "";
+  const { figure, suffix } = ordinalParts(locale, rank);
 
-  return `${numberFormat(locale).format(rank)}${suffix}`;
+  return `${figure}${suffix}`;
 };
