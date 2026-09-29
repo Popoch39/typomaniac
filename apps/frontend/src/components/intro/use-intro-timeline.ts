@@ -2,6 +2,7 @@ import { useGSAP } from "@gsap/react";
 import { gsap } from "gsap";
 import type { RefObject } from "react";
 
+import { atReplaySpeed } from "@/components/intro-dev/intro-replay";
 import {
   fadeOutTimeline,
   type IntroTargets,
@@ -66,12 +67,15 @@ const logoShift = ({ letters }: IntroTargets) => {
 
 const end = () => useIntroStore.getState().end();
 
+// In a dev build, an Intro replayed from /dev/intro plays at its chosen speed (see intro-replay).
+const atSpeed = import.meta.env.DEV ? atReplaySpeed : (timeline: gsap.core.Timeline) => timeline;
+
 // The three phases, built at once so that the context reverts them all: the typing, then a blink
 // of the caret as long as the shell is awaited, then the end.
 const play = (targets: IntroTargets) => {
-  const typing = typingTimeline(targets, { shift: logoShift(targets) });
-  const blink = waitingBlinkTimeline(targets);
-  const fadeOut = fadeOutTimeline(targets).pause().eventCallback("onComplete", end);
+  const typing = atSpeed(typingTimeline(targets, { shift: logoShift(targets) }));
+  const blink = atSpeed(waitingBlinkTimeline(targets));
+  const fadeOut = atSpeed(fadeOutTimeline(targets)).pause().eventCallback("onComplete", end);
 
   // At the waiting point, and at the end of each blink: on to the end once the shell is there,
   // else one more blink.

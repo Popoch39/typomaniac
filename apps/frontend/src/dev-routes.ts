@@ -31,6 +31,12 @@ export const withDevRoutes = (tree: typeof routeTree) => {
     component: lazyRouteComponent(() => import("@/pages/face-off-dev-page"), "FaceOffDevPage"),
   });
 
+  const intro = createRoute({
+    getParentRoute: () => tree,
+    path: "/dev/intro",
+    component: lazyRouteComponent(() => import("@/pages/intro-dev-page"), "IntroDevPage"),
+  });
+
   // PROTOTYPE, throwaway: the Maniac's keystroke waves, tuned live.
   const auraManiacPrototype = createRoute({
     getParentRoute: () => tree,
@@ -47,6 +53,7 @@ export const withDevRoutes = (tree: typeof routeTree) => {
     tierUp,
     duelHud,
     faceOff,
+    intro,
     auraManiacPrototype,
   ]);
 

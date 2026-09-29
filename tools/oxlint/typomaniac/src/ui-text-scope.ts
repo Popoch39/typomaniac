@@ -15,11 +15,13 @@ export const outOfScopeFiles = [
   "pages/aura-maniac-prototype-page.tsx",
   "pages/duel-hud-dev-page.tsx",
   "pages/face-off-dev-page.tsx",
+  "pages/intro-dev-page.tsx",
   "pages/tier-up-dev-page.tsx",
   "components/aura-gallery/**",
   "components/aura-maniac-prototype/**",
   "components/duel-hud-dev/**",
   "components/face-off-lab/**",
+  "components/intro-dev/**",
   "components/tier-up-dev/**",
   "components/auth/dev-email-sign-in.tsx",
 ].map(front);
