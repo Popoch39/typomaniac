@@ -15,7 +15,6 @@ import { create } from "zustand";
 
 import type { Clock } from "@/components/run/clock-context";
 import { emitCues, emitOpponentCues, type KeystrokeCues, NO_CUES } from "@/lib/cue-bus";
-import { markDuelInProgress } from "@/lib/duel-in-progress";
 import { onServerMessage, sendToServer, useConnectionStore } from "@/stores/connection-store";
 
 type DuelFound = Extract<ServerMessage, { type: "duel-found" }>;
@@ -135,6 +134,10 @@ export type DuelState =
   // The Duel played here is gone while the connection was lost.
   | { phase: "disconnected" };
 
+// The screen that takes the User's place in this tab: the Queue's, on the play page, or the Duel's
+// own URL, which only resumes a Duel and never joins the Queue.
+export type DuelSeat = "queue" | "duel";
+
 type DuelStore = {
   state: DuelState;
   // What the User's last Keystroke caused, stamped at it (ADR 0006).
@@ -142,9 +145,12 @@ type DuelStore = {
   // What each of the opponent's last relayed Keystrokes caused, stamped at their reception, for
   // the visual reactors only (ADR 0010). A resync or a resume leaves them as they are.
   opponentCues: readonly KeystrokeCues[];
-  // Duel is shown in this tab: it takes the User's place, resuming their Duel or joining the
-  // Queue. `clock` stamps the Keystrokes and the Countdown.
-  enter: (clock: Clock) => void;
+  // A screen of the Duel is shown in this tab (`seat`): it takes the User's place, resuming their
+  // Duel or, from the Queue's, joining the Queue. `clock` stamps the Keystrokes and the Countdown.
+  enter: (clock: Clock, seat?: DuelSeat) => void;
+  // The place is held on another screen from now on: the Duel found in the Queue goes to its own
+  // URL, and back from its end or its loss to the Queue's, the Queue is joined again.
+  moveTo: (seat: DuelSeat) => void;
   // Duel is left: out of the Queue, and leaving a Duel in play is a Forfeit. The connection stays.
   exit: () => void;
   // Takes the place back here, from another tab or after losing the Duel.
@@ -184,6 +190,9 @@ let proposalOffset = 0;
 // Duel is shown in this tab: only then does it take the User's place.
 let entered = false;
 
+// Where it is shown, while it is.
+let seat: DuelSeat = "queue";
+
 // The place was asked for since the last `connecting`: told it is held elsewhere afterwards,
 // another tab took it, and this one does not take it back on its own.
 let placeAsked = false;
@@ -195,12 +204,13 @@ let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
 const send = (message: ClientMessage) => sendToServer(message);
 
-// Resumes the User's Duel here if they are in one, otherwise joins the Queue. The place unknown
-// yet, the server's next message tells it.
+// Resumes the User's Duel here if they are in one, otherwise joins the Queue, from the Queue's
+// screen only: the Duel's asks for nothing, it has no Duel to resume. The place unknown yet, the
+// server's next message tells it.
 const claimPlace = () => {
   const { place } = useConnectionStore.getState();
 
-  if (place === null) {
+  if (place === null || (place.at !== "duel" && seat === "duel")) {
     return;
   }
 
@@ -530,16 +540,21 @@ const lockedOf = ({ queueLockedUntil, serverTime }: Idle): DuelState | null =>
 
 // The User has no place. Waiting for it here: into the Queue, the search waiting at once for the
 // end of their Queue lock if any (the server answers `queue-locked`, or tells the Match proposal
-// missed meanwhile, whose Dodge locked it). Held elsewhere until now, or locked here already: a
-// Dodge on another tab shows its Queue lock here too, without asking the Queue. The Duel played
-// here is gone (it ended while the connection was lost, and another tab was told the end), unless
-// its end was told here already: its HUD holds it, then the end screen shows it.
+// missed meanwhile, whose Dodge locked it); on the Duel's screen, nothing to resume. Held elsewhere
+// until now, or locked here already: a Dodge on another tab shows its Queue lock here too, without
+// asking the Queue. The Duel played here is gone (it ended while the connection was lost, and
+// another tab was told the end), unless its end was told here already: its HUD holds it, then the
+// end screen shows it.
 const idle = (state: DuelState, message: Idle): DuelState => {
   if (!entered || (state.phase === "finishing" && state.ending !== null)) {
     return state;
   }
 
   const locked = lockedOf(message);
+
+  if (state.phase === "connecting" && seat === "duel") {
+    return state;
+  }
 
   if (state.phase === "connecting") {
     placeAsked = true;
@@ -744,13 +759,23 @@ export const useDuelStore = create<DuelStore>()((set, get) => ({
   state: { phase: "connecting" },
   cues: NO_CUES,
   opponentCues: [],
-  enter: (tabClock) => {
+  enter: (tabClock, at = "queue") => {
     clock = tabClock;
     entered = true;
+    seat = at;
     placeAsked = false;
     clearOutbox();
     set({ state: { phase: "connecting" }, cues: NO_CUES, opponentCues: [] });
     claimPlace();
+  },
+  moveTo: (at) => {
+    const { phase } = get().state;
+
+    seat = at;
+
+    if (at === "queue" && (phase === "ended" || phase === "disconnected")) {
+      get().claim();
+    }
   },
   exit: () => {
     const { state } = get();
@@ -758,13 +783,12 @@ export const useDuelStore = create<DuelStore>()((set, get) => ({
     // Leaving on purpose once the time is up would forfeit a Duel whose verdict is on its way.
     if (state.phase === "countdown" || state.phase === "running") {
       send({ type: "leave-duel" });
-    } else if (inQueuePlace(state)) {
+    } else if (seat === "queue" && inQueuePlace(state)) {
       send({ type: "leave-queue" });
     }
 
     entered = false;
     clearOutbox();
-    markDuelInProgress(false);
     set({ state: { phase: "connecting" }, cues: NO_CUES, opponentCues: [] });
   },
   claim: () => {
@@ -824,12 +848,5 @@ useDuelStore.subscribe((store, previous) => {
     for (const keystroke of store.opponentCues) {
       emitOpponentCues(keystroke);
     }
-  }
-});
-
-// A reload in the middle of a Duel reopens Duel, to resume it (play-store).
-useDuelStore.subscribe(({ state }) => {
-  if (state.phase !== "connecting") {
-    markDuelInProgress(duelOf(state) !== null);
   }
 });

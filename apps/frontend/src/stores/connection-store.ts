@@ -65,9 +65,9 @@ export type LiveSocket = {
   close: () => void;
 };
 
-type OpenLiveSocket = () => LiveSocket;
+export type OpenLiveSocket = () => LiveSocket;
 
-const openApiSocket: OpenLiveSocket = () => api.duel.subscribe();
+export const openApiSocket: OpenLiveSocket = () => api.duel.subscribe();
 
 // The place after a message: the connection that plays it learns it from its own messages, the
 // others from `idle` and `elsewhere`.

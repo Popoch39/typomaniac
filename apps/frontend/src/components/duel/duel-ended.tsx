@@ -6,8 +6,8 @@ import { DuelTierUp } from "@/components/duel/duel-tier-up";
 import { NothingOnError } from "@/components/duel/nothing-on-error";
 import { PlayerResult } from "@/components/duel/player-result";
 import { ReplayDuelLink } from "@/components/duel/replay-duel-link";
-import { useSearchDuel } from "@/components/duel/use-search-duel";
-import { Button } from "@/components/ui/button";
+import { SearchDuelLink } from "@/components/duel/search-duel-link";
+import { SoloLink } from "@/components/duel/solo-link";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { DuelChartSkeleton } from "@/components/duel-chart/duel-chart-skeleton";
 import { atHandle } from "@/lib/at-handle";
@@ -23,11 +23,11 @@ const WrittenDuelChart = lazy(async () => {
 });
 
 // The server ended the Duel: its outcome, what it did to the rank when ranked, and both Scores and
-// Results, the same on both screens, then Nouveau Duel to join the Queue again. Once written, its Duel chart and Revoir to replay it.
+// Results, the same on both screens. Once written, its Duel chart and Revoir to replay it. Then
+// back to the play page: Nouveau Duel joins the Queue again, Retour au Solo does not.
 // A move up into a new Tier or Maniac opens its Tier-up over it first; the focus comes back here
 // once it is closed.
 export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
-  const searchDuel = useSearchDuel();
   const locale = useLocale();
   const opponent = atHandle(ending.opponent.handle);
   const screen = useRef<HTMLDivElement | null>(null);
@@ -75,10 +75,9 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
         </NothingOnError>
       )}
       <div className="flex gap-2">
-        <Button variant="outline" onClick={searchDuel}>
-          {m.duel_ended_new_duel({}, { locale })}
-        </Button>
+        <SearchDuelLink label={m.duel_ended_new_duel({}, { locale })} />
         {ending.duelId === null ? null : <ReplayDuelLink duelId={ending.duelId} />}
+        <SoloLink />
       </div>
     </div>
   );

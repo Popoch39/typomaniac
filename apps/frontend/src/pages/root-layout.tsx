@@ -7,7 +7,8 @@ import { AppFrame } from "@/components/app-frame";
 import { OAuthErrorToast } from "@/components/auth/oauth-error-toast";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { ChallengeNotices } from "@/components/challenge/challenge-notices";
-import { DuelOnChallenge } from "@/components/challenge/duel-on-challenge";
+import { DuelOnItsUrl } from "@/components/duel/duel-on-its-url";
+import { DuelPlace } from "@/components/duel/duel-place";
 import { DesktopOnly } from "@/components/desktop-only";
 import { WaitingChallenges } from "@/components/challenge/waiting-challenges";
 import { LiveFriendLists } from "@/components/friends/live-friend-lists";
@@ -35,7 +36,8 @@ export const RootLayout = () => (
     <LiveRank />
     <WaitingChallenges />
     <ChallengeNotices />
-    <DuelOnChallenge />
+    <DuelPlace />
+    <DuelOnItsUrl />
     <SignInDialog />
     <HandleChoiceDialog />
     <OAuthErrorToast />

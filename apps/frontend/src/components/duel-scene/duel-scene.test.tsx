@@ -2,7 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
   createRootRoute,
+  createRoute,
   createRouter,
+  Outlet,
   RouterProvider,
 } from "@tanstack/react-router";
 import { act, render, screen, within } from "@testing-library/react";
@@ -15,7 +17,10 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { friendsQueryOptions } from "@/api/friends";
 import { type Me, meQueryOptions } from "@/api/me";
 import { AppFrame } from "@/components/app-frame";
+import { DuelOnItsUrl } from "@/components/duel/duel-on-its-url";
+import { DuelPlace } from "@/components/duel/duel-place";
 import { ClockContext } from "@/components/run/clock-context";
+import { DuelPage } from "@/pages/duel-page";
 import { HomePage } from "@/pages/home-page";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useLocaleStore } from "@/stores/locale-store";
@@ -94,6 +99,12 @@ const server = () => sockets.server();
 // The server's messages reach the store outside of React.
 const receive = (message: ServerMessage) => act(() => server().receive(message));
 
+// Paired: the Duel found is played on its own URL.
+const pair = async (message: ServerMessage) => {
+  receive(message);
+  await screen.findByRole("heading", { level: 1, name: "Duel" });
+};
+
 beforeEach(() => {
   usePlayStore.setState({ play: "duel" });
   sockets = fakeServer();
@@ -118,14 +129,25 @@ const renderPlayPage = async () => {
   queryClient.setQueryData(meQueryOptions.queryKey, me);
   queryClient.setQueryData(friendsQueryOptions.queryKey, []);
 
-  const router = createRouter({
-    routeTree: createRootRoute({
-      component: () => (
+  // The play page and the Duel's, in the app's frame, with what holds the User's place and takes a
+  // Duel found to its URL.
+  const root = createRootRoute({
+    component: () => (
+      <>
         <AppFrame>
-          <HomePage />
+          <Outlet />
         </AppFrame>
-      ),
-    }),
+        <DuelPlace />
+        <DuelOnItsUrl />
+      </>
+    ),
+  });
+
+  const router = createRouter({
+    routeTree: root.addChildren([
+      createRoute({ getParentRoute: () => root, path: "/", component: HomePage }),
+      createRoute({ getParentRoute: () => root, path: "/duel", component: DuelPage }),
+    ]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
 
@@ -184,7 +206,7 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
 
     const before = sidebar();
 
-    receive(duelFound(placement));
+    await pair(duelFound(placement));
 
     expect(sidebar()).toBe(before);
     expect(sidebar()).not.toBeVisible();
@@ -196,7 +218,7 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
 
   test("once paired, the scene has its own header, inert: the brand and the Duel's format", async () => {
     await renderPlayPage();
-    receive(duelFound(placement));
+    await pair(duelFound(placement));
 
     const header = screen.getByRole("banner");
 
@@ -206,7 +228,7 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
 
   test("a Duel of the Queue says it is ranked, at the right of the header", async () => {
     await renderPlayPage();
-    receive(duelFound(placement));
+    await pair(duelFound(placement));
 
     expect(
       within(screen.getByRole("banner")).getByText("Duel classé · 30 s · anglais"),
@@ -215,7 +237,7 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
 
   test("a Challenge says so, never ranked", async () => {
     await renderPlayPage();
-    receive(duelFound(null));
+    await pair(duelFound(null));
 
     const header = screen.getByRole("banner");
 
@@ -225,7 +247,7 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
 
   test("Quitter le Duel stays the way out, by a Forfeit", async () => {
     await renderPlayPage();
-    receive(duelFound(placement));
+    await pair(duelFound(placement));
 
     await userEvent.click(screen.getByRole("button", { name: "Quitter le Duel" }));
 
@@ -237,7 +259,7 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
 
     const before = sidebar();
 
-    receive(duelFound(placement));
+    await pair(duelFound(placement));
     receive(duelEnded);
 
     await screen.findByRole("button", { name: "Nouveau Duel" });
@@ -259,7 +281,7 @@ const renderInEnglish = async () => {
 describe("the Duel's scene in English", () => {
   test("the header says the kind of Duel, its time and its Language", async () => {
     await renderInEnglish();
-    receive(duelFound(placement));
+    await pair(duelFound(placement));
 
     expect(
       within(screen.getByRole("banner")).getByText("Ranked Duel · 30 s · English"),
@@ -268,7 +290,7 @@ describe("the Duel's scene in English", () => {
 
   test("the format is the Duel's own: a Challenge of another time and Language says so", async () => {
     await renderInEnglish();
-    receive(duelFound(null, { language: "fr", seconds: 60 }));
+    await pair(duelFound(null, { language: "fr", seconds: 60 }));
 
     expect(
       within(screen.getByRole("banner")).getByText("Challenge · 60 s · French"),

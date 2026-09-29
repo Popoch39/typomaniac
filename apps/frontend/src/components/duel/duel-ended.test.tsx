@@ -12,6 +12,7 @@ import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { type ReplayedDuel, replayedDuelQueryOptions } from "@/api/duel-history";
+import { type Me, meQueryOptions } from "@/api/me";
 import type { FaceOffSound, FaceOffSounds } from "@/audio/face-off-sounds";
 import { AuraRuntimeContext } from "@/components/aura/aura-runtime-context";
 import { DuelEnded } from "@/components/duel/duel-ended";
@@ -116,7 +117,19 @@ type RenderOptions = {
   newDuel?: string;
 };
 
-// The end screen on a router of its own (Revoir is a link), the written Duel in the cache if given.
+const ada: Me = {
+  id: "ada-id",
+  name: "Ada",
+  email: "ada@example.com",
+  image: null,
+  handle: "ada",
+  rank: null,
+  ornament: null,
+  ornamentChoice: null,
+};
+
+// The end screen on a router of its own (its ways out are links), the written Duel in the cache if
+// given.
 const renderEnded = async ({
   duelId = null,
   cached = null,
@@ -126,6 +139,9 @@ const renderEnded = async ({
   newDuel = "Nouveau Duel",
 }: RenderOptions = {}) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+  // Read by the root route before any page: Nouveau Duel chooses the Duel for her.
+  queryClient.setQueryData(meQueryOptions.queryKey, ada);
 
   if (cached !== null) {
     queryClient.setQueryData(replayedDuelQueryOptions(cached.id).queryKey, cached);

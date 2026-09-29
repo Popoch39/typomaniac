@@ -13,9 +13,11 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { friendsQueryOptions } from "@/api/friends";
 import { type Me, meQueryOptions } from "@/api/me";
 import { DuelArea } from "@/components/duel/duel-area";
+import { DuelPlace } from "@/components/duel/duel-place";
 import { ClockContext } from "@/components/run/clock-context";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useLocaleStore } from "@/stores/locale-store";
+import { usePlayStore } from "@/stores/play-store";
 import { fakeServer, idle } from "@/test/fake-socket";
 
 const me: Me = {
@@ -48,6 +50,7 @@ const at = async (ms: number) => {
 beforeEach(() => {
   now = 0;
   vi.useFakeTimers({ shouldAdvanceTime: true });
+  usePlayStore.setState({ play: "duel" });
   sockets = fakeServer();
   useConnectionStore.getState().open(sockets.open);
   server().receive(idle());
@@ -55,10 +58,19 @@ beforeEach(() => {
 
 afterEach(() => {
   useConnectionStore.getState().close();
+  usePlayStore.setState(usePlayStore.getInitialState());
   vi.useRealTimers();
 });
 
-// DuelArea shown for Ada: it joins the Queue.
+// The play page's Duel, with what holds the User's place above it.
+const PlayPageDuel = () => (
+  <>
+    <DuelPlace />
+    <DuelArea />
+  </>
+);
+
+// Duel chosen by Ada on the play page: it joins the Queue.
 const renderDuel = async () => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
@@ -68,7 +80,7 @@ const renderDuel = async () => {
   queryClient.setQueryData(friendsQueryOptions.queryKey, []);
 
   const router = createRouter({
-    routeTree: createRootRoute({ component: DuelArea }),
+    routeTree: createRootRoute({ component: PlayPageDuel }),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
 

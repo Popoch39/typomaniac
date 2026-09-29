@@ -1,5 +1,4 @@
 import { playsIntro } from "@/components/intro/plays-intro";
-import { hasDuelInProgress } from "@/lib/duel-in-progress";
 import { consumeOAuthReturn } from "@/lib/oauth-round-trip";
 
 // Whether this page plays the Intro, read from the browser once, synchronously, before React's
@@ -10,6 +9,5 @@ export const introAtStartup = () =>
     reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
     // The breakpoint of « Passe sur ordinateur » (`lg`).
     wide: window.matchMedia("(min-width: 64rem)").matches,
-    duelInProgress: hasDuelInProgress(),
     oauthReturn: consumeOAuthReturn(),
   });

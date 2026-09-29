@@ -1,30 +1,14 @@
-import { useEffect } from "react";
-
-import { DuelEnded } from "@/components/duel/duel-ended";
+import { DuelElsewhere } from "@/components/duel/duel-elsewhere";
 import { DuelHandleRequired } from "@/components/duel/duel-handle-required";
-import { DuelInterrupted } from "@/components/duel/duel-interrupted";
 import { DuelQueue } from "@/components/duel/duel-queue";
-import { DuelTypingArea } from "@/components/duel/duel-typing-area";
 import { MatchProposal } from "@/components/match-proposal/match-proposal";
-import { useClock } from "@/components/run/clock-context";
-import { useLocale } from "@/locale/use-locale";
-import { m } from "@/paraglide/messages";
 import { useDuelStore } from "@/stores/duel-store";
 
-// In Duel, in place of the typing area: takes the User's place while shown, so leaving Duel
-// (Annuler, Solo) takes the User out of the Queue. The connection stays open (RealtimeConnection).
+// In Duel, on the play page in place of the typing area: the Queue and its Match proposal. The
+// place is held above the pages (DuelPlace); a Duel found goes to its own URL (DuelOnItsUrl), so
+// nothing is shown here from its Countdown on.
 export const DuelArea = () => {
-  const clock = useClock();
-  const locale = useLocale();
   const state = useDuelStore((store) => store.state);
-  const enter = useDuelStore((store) => store.enter);
-  const exit = useDuelStore((store) => store.exit);
-
-  useEffect(() => {
-    enter(clock);
-
-    return exit;
-  }, [clock, enter, exit]);
 
   switch (state.phase) {
     case "connecting":
@@ -40,26 +24,13 @@ export const DuelArea = () => {
       );
     case "handle-required":
       return <DuelHandleRequired />;
+    case "elsewhere":
+      return <DuelElsewhere />;
     case "countdown":
     case "running":
-      return <DuelTypingArea duel={state.duel} ending={null} />;
     case "finishing":
-      return <DuelTypingArea duel={state.duel} ending={state.ending} />;
     case "ended":
-      return <DuelEnded ending={state.ending} />;
-    case "elsewhere":
-      return (
-        <DuelInterrupted
-          message={m.duel_elsewhere({}, { locale })}
-          action={m.duel_play_here({}, { locale })}
-        />
-      );
     case "disconnected":
-      return (
-        <DuelInterrupted
-          message={m.duel_disconnected({}, { locale })}
-          action={m.queue_search_duel({}, { locale })}
-        />
-      );
+      return null;
   }
 };

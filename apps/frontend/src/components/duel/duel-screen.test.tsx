@@ -14,7 +14,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { friendsQueryOptions } from "@/api/friends";
 import { type Me, meQueryOptions } from "@/api/me";
-import { DuelArea } from "@/components/duel/duel-area";
+import { DuelPlace } from "@/components/duel/duel-place";
+import { DuelScreen } from "@/components/duel/duel-screen";
 import { ClockContext } from "@/components/run/clock-context";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
@@ -84,7 +85,8 @@ beforeEach(() => {
   sockets = fakeServer();
   gsapClock = holdGsapClock();
   useConnectionStore.getState().open(sockets.open);
-  server().receive(idle());
+  // A Duel to resume, played by no tab: this page takes it.
+  server().receive({ type: "elsewhere", place: "duel" });
 });
 
 afterEach(() => {
@@ -92,7 +94,15 @@ afterEach(() => {
   useConnectionStore.getState().close();
 });
 
-// DuelArea on the Duel of Seed 42 against @kzr_, its Countdown over: typing counts.
+// The Duel's URL, with what holds the User's place above it.
+const DuelUrl = () => (
+  <>
+    <DuelPlace />
+    <DuelScreen />
+  </>
+);
+
+// The Duel's screen on the Duel of Seed 42 against @kzr_, its Countdown over: typing counts.
 const renderStartedDuel = async () => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
@@ -102,8 +112,8 @@ const renderStartedDuel = async () => {
   queryClient.setQueryData(friendsQueryOptions.queryKey, []);
 
   const router = createRouter({
-    routeTree: createRootRoute({ component: DuelArea }),
-    history: createMemoryHistory({ initialEntries: ["/"] }),
+    routeTree: createRootRoute({ component: DuelUrl }),
+    history: createMemoryHistory({ initialEntries: ["/duel"] }),
   });
 
   await router.load();
@@ -116,7 +126,6 @@ const renderStartedDuel = async () => {
       </QueryClientProvider>
     </StrictMode>,
   );
-  receive({ type: "queued" });
   receive(duelFound);
   now = STARTS_AT;
   act(() => useDuelStore.getState().tick(now));

@@ -2,7 +2,8 @@ const KEY = "typomaniac-oauth-round-trip";
 
 // For this tab only, from the redirect to the OAuth provider until the page it sends the User back
 // to starts: that page knows it is a return, and plays no Intro. Storage can be unavailable (see
-// duel-in-progress): the return then plays the Intro again.
+// safe-storage, whose async-capable StateStorage does not fit a synchronous read at startup): the
+// return then plays the Intro again.
 export const markOAuthRoundTrip = (leaving: boolean) => {
   try {
     if (leaving) {

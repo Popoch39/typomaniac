@@ -7,7 +7,6 @@ const home: StartupConditions = {
   pathname: "/fr",
   reducedMotion: false,
   wide: true,
-  duelInProgress: false,
   oauthReturn: false,
 };
 
@@ -38,9 +37,12 @@ describe("whether the page plays the Intro as it starts", () => {
     expect(playsIntro({ ...home, wide: false })).toBe(false);
   });
 
-  test("never while this tab plays a Duel", () => {
-    expect(playsIntro({ ...home, duelInProgress: true })).toBe(false);
-  });
+  test.each(["/duel", "/fr/duel", "/en/duel"])(
+    "never on the Duel's page, which a reload in the middle of a Duel opens: %s",
+    (pathname) => {
+      expect(playsIntro({ ...home, pathname })).toBe(false);
+    },
+  );
 
   test("never back from an OAuth sign-in", () => {
     expect(playsIntro({ ...home, oauthReturn: true })).toBe(false);

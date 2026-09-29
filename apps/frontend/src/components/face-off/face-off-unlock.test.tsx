@@ -1,4 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -37,9 +43,9 @@ beforeEach(() => {
   usePlayStore.setState(usePlayStore.getInitialState());
 });
 
-// Renders `ui` for Ada, on sounds that count their unlocks: browsers only let audio start from a
-// click, and a Duel found is not one.
-const renderWithSounds = (ui: ReactNode) => {
+// Renders `ui` for Ada, in a router (its links need one), on sounds that count their unlocks:
+// browsers only let audio start from a click, and a Duel found is not one.
+const renderWithSounds = async (ui: ReactNode) => {
   const unlocks = { count: 0 };
 
   const sounds: FaceOffSounds = {
@@ -52,9 +58,18 @@ const renderWithSounds = (ui: ReactNode) => {
   const queryClient = new QueryClient();
 
   queryClient.setQueryData(meQueryOptions.queryKey, me);
+
+  const router = createRouter({
+    routeTree: createRootRoute({ component: () => ui }),
+    history: createMemoryHistory({ initialEntries: ["/duel"] }),
+  });
+
+  await router.load();
   render(
     <QueryClientProvider client={queryClient}>
-      <FaceOffSoundsContext value={sounds}>{ui}</FaceOffSoundsContext>
+      <FaceOffSoundsContext value={sounds}>
+        <RouterProvider router={router} />
+      </FaceOffSoundsContext>
     </QueryClientProvider>,
   );
 
@@ -63,7 +78,7 @@ const renderWithSounds = (ui: ReactNode) => {
 
 describe("the Face-off's sound, unlocked by the click that leads to it", () => {
   test("choosing Duel, which searches for an opponent", async () => {
-    const unlocks = renderWithSounds(<PlaySetting />);
+    const unlocks = await renderWithSounds(<PlaySetting />);
 
     await userEvent.click(screen.getByRole("button", { name: "duel" }));
 
@@ -71,7 +86,7 @@ describe("the Face-off's sound, unlocked by the click that leads to it", () => {
   });
 
   test("Nouveau Duel, after a Duel", async () => {
-    const unlocks = renderWithSounds(
+    const unlocks = await renderWithSounds(
       <DuelEnded
         ending={{
           ranked: null,
@@ -93,7 +108,7 @@ describe("the Face-off's sound, unlocked by the click that leads to it", () => {
   });
 
   test("accepting a Challenge", async () => {
-    const unlocks = renderWithSounds(
+    const unlocks = await renderWithSounds(
       <ul>
         <ReceivedChallengeCard
           challenge={{
