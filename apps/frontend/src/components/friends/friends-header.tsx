@@ -1,9 +1,15 @@
 import { PageHeader } from "@/components/page-header";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 // The top of the Friends page, loaded or not.
-export const FriendsHeader = () => (
-  <PageHeader
-    title="Friends"
-    subtitle="Trouve un User par son Handle, réponds à ses Friend requests, défie tes Friends en ligne."
-  />
-);
+export const FriendsHeader = () => {
+  const locale = useLocale();
+
+  return (
+    <PageHeader
+      title={m.friends_title({}, { locale })}
+      subtitle={m.friends_subtitle({}, { locale })}
+    />
+  );
+};

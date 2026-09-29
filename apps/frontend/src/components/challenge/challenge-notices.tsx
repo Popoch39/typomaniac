@@ -6,6 +6,7 @@ import {
   sentChallengeEndingMessage,
 } from "@/components/challenge/challenge-messages";
 import { onServerMessage } from "@/stores/connection-store";
+import { useLocaleStore } from "@/stores/locale-store";
 
 // Says why a Challenge was not sent, and how the User's Challenge ended without a Duel (declined,
 // not answered, or its recipient no longer free), on any page.
@@ -15,6 +16,9 @@ export const ChallengeNotices = () => {
     let sent: { id: string; handle: string } | null = null;
 
     return onServerMessage((message) => {
+      // In the Locale shown when the message comes, not when the page opened.
+      const { locale } = useLocaleStore.getState();
+
       switch (message.type) {
         case "challenges-snapshot":
           sent =
@@ -24,14 +28,14 @@ export const ChallengeNotices = () => {
           sent = { id: message.challenge.id, handle: message.challenge.to.handle };
           break;
         case "challenge-refused":
-          toast.error(challengeRefusalMessage(message.reason));
+          toast.error(challengeRefusalMessage(message.reason, locale));
           break;
         case "challenge-ended": {
           if (sent?.id !== message.challengeId) {
             break;
           }
 
-          const notice = sentChallengeEndingMessage(sent.handle, message.reason);
+          const notice = sentChallengeEndingMessage(sent.handle, message.reason, locale);
 
           sent = null;
 

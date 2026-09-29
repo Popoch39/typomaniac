@@ -5,6 +5,8 @@ import { challengeBlocker } from "@/components/challenge/challenge-blocker";
 import { useFaceOffSounds } from "@/components/face-off/face-off-sounds-context";
 import { Button } from "@/components/ui/button";
 import { atHandle } from "@/lib/at-handle";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 import { sendToServer, useConnectionStore } from "@/stores/connection-store";
 
 type ChallengeButtonProps = {
@@ -15,9 +17,10 @@ type ChallengeButtonProps = {
 
 // Défier: sends a Challenge to a Friend online. Disabled, with the reason, while it cannot.
 export const ChallengeButton = ({ friend, iconOnly = false }: ChallengeButtonProps) => {
-  const blocker = useConnectionStore((store) => challengeBlocker(store, friend.id));
+  const locale = useLocale();
+  const blocker = useConnectionStore((store) => challengeBlocker(store, friend.id, locale));
   const { unlock: unlockSounds } = useFaceOffSounds();
-  const label = `Défier ${atHandle(friend.handle)}`;
+  const handle = atHandle(friend.handle);
 
   // The Duel of an accepted Challenge opens on the Face-off here too: this click lets it sound.
   const challenge = () => {
@@ -31,7 +34,11 @@ export const ChallengeButton = ({ friend, iconOnly = false }: ChallengeButtonPro
       <Button
         size={iconOnly ? "icon" : "default"}
         variant={iconOnly ? "ghost" : "secondary"}
-        aria-label={blocker === null ? label : `${label} : ${blocker}`}
+        aria-label={
+          blocker === null
+            ? m.challenge_send_label({ handle }, { locale })
+            : m.challenge_send_label_blocked({ handle, reason: blocker }, { locale })
+        }
         disabled={blocker !== null}
         onClick={challenge}
         className={cn(
@@ -40,7 +47,7 @@ export const ChallengeButton = ({ friend, iconOnly = false }: ChallengeButtonPro
         )}
       >
         <SwordsIcon aria-hidden />
-        {iconOnly ? null : "Défier"}
+        {iconOnly ? null : m.challenge_send({}, { locale })}
       </Button>
     </span>
   );

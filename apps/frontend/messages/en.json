@@ -497,5 +497,124 @@
   "profile_not_found_happened": "No User has this Handle: it was never taken, or its owner has since changed it.",
   "profile_not_found_cost": "There's no Profile to show here. Look the User up by their current Handle.",
   "profile_not_found_action": "Find a User",
-  "profile_sign_in": "Sign in"
+  "profile_sign_in": "Sign in",
+  "friends_title": "Friends",
+  "friends_subtitle": "Find a User by their Handle, answer their Friend requests, challenge your Friends who are online.",
+  "friends_search_label": "Find a User",
+  "friends_search_placeholder": "@handle",
+  "friends_search_min_length": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Type at least {shown} character of the Handle.",
+        "countPlural=*": "Type at least {shown} characters of the Handle."
+      }
+    }
+  ],
+  "friends_search_loading": "Looking for Users",
+  "friends_search_too_many": "Too many searches in a row. Give it a moment.",
+  "friends_search_failed": "The search failed. Try again.",
+  "friends_search_none": "No User's Handle starts with that.",
+  "friends_received_title": "Received Friend requests",
+  "friends_received_none": "No Friend requests waiting for you.",
+  "friends_received_loading": "Loading received Friend requests",
+  "friends_sent_title": "Sent Friend requests · {count}",
+  "friends_sent_none": "You have no Friend requests pending.",
+  "friends_sent_loading": "Loading sent Friend requests",
+  "friends_sent_pending": "pending",
+  "friends_list_title": "Friends · {count}",
+  "friends_list_loading": "Loading Friends",
+  "friends_empty_title": "No Friends yet",
+  "friends_empty_reason": "Look up a User by their Handle and send them a Friend request.",
+  "friends_empty_action": "Find a User",
+  "friends_handle_required": "Friends find each other by Handle. Choose yours to look for others.",
+  "friends_handle_choose": "Choose my Handle",
+  "friends_accept": "Accept",
+  "friends_accept_label": "Accept {handle}'s Friend request",
+  "friends_decline": "Decline",
+  "friends_decline_label": "Decline {handle}'s Friend request",
+  "friends_cancel": "Cancel",
+  "friends_cancel_label": "Cancel your Friend request to {handle}",
+  "friends_send": "Add",
+  "friends_send_label": "Send {handle} a Friend request",
+  "friends_remove": "Remove",
+  "friends_remove_label": "Remove {handle} from your Friends",
+  "friends_relation_friend": "Friend",
+  "friends_refusal_self": "You can't be your own Friend.",
+  "friends_refusal_user_not_found": "This User no longer exists or has no Handle.",
+  "friends_refusal_already_friends": "You're already Friends.",
+  "friends_refusal_already_requested": "A Friend request is already waiting for an answer.",
+  "friends_refusal_request_limit": "Too many of your Friend requests are waiting. Cancel some or wait for answers.",
+  "friends_refusal_friend_limit": "You've reached the maximum number of Friends.",
+  "friends_refusal_their_friend_limit": "This User has reached the maximum number of Friends.",
+  "friends_refusal_request_not_found": "This Friend request no longer exists.",
+  "friends_refusal_not_friends": "You're no longer Friends.",
+  "friends_refusal_too_many": "Too many Friend requests in a row. Give it a moment.",
+  "friends_action_failed": "That didn't work. Try again.",
+  "challenge_send": "Challenge",
+  "challenge_send_label": "Challenge {handle}",
+  "challenge_send_label_blocked": "Challenge {handle}: {reason}",
+  "challenge_blocker_connecting": "Connecting to the server…",
+  "challenge_blocker_self_in_duel": "You're in a Duel",
+  "challenge_blocker_sent_to_them": "Challenge sent, waiting for their answer",
+  "challenge_blocker_sent_to_other": "Another Challenge is already waiting for an answer",
+  "challenge_blocker_offline": "Offline",
+  "challenge_blocker_in_duel": "In a Duel",
+  "challenge_list": "Challenges",
+  "challenge_received": "{handle} challenges you to a Duel",
+  "challenge_sent": "Challenge sent to {handle}",
+  "challenge_accept": "Accept",
+  "challenge_decline": "Decline",
+  "challenge_cancel": "Cancel",
+  "challenge_refusal_handle_required": "Choose your Handle first: a Duel shows each player's.",
+  "challenge_refusal_self": "You can't challenge yourself.",
+  "challenge_refusal_not_friends": "You're not Friends.",
+  "challenge_refusal_offline": "This Friend is offline.",
+  "challenge_refusal_in_duel": "You can't do that during a Duel.",
+  "challenge_refusal_already_challenging": "Your last Challenge is still waiting for an answer.",
+  "challenge_ended_declined": "{handle} declined your Challenge.",
+  "challenge_ended_expired": "{handle} didn't answer your Challenge.",
+  "challenge_ended_unavailable": "{handle} is no longer available for your Challenge.",
+  "activity_title": "Activity",
+  "activity_loading": "Loading Activity",
+  "activity_empty_title": "No Activity yet",
+  "activity_empty_reason": "Your Friends' Duels and new friendships will show up here.",
+  "activity_empty_action": "Find a Friend",
+  "activity_arrival": "{friend} is online",
+  "activity_friendship": "{friend} and {other} are now Friends",
+  "activity_duel_win": [
+    {
+      "declarations": ["input friend", "input opponent", "input forfeit"],
+      "selectors": ["forfeit"],
+      "match": {
+        "forfeit=yes": "{friend} beat {opponent} by Forfeit",
+        "forfeit=*": "{friend} beat {opponent}"
+      }
+    }
+  ],
+  "activity_duel_loss": [
+    {
+      "declarations": ["input friend", "input opponent", "input forfeit"],
+      "selectors": ["forfeit"],
+      "match": {
+        "forfeit=yes": "{friend} lost to {opponent} by Forfeit",
+        "forfeit=*": "{friend} lost to {opponent}"
+      }
+    }
+  ],
+  "activity_duel_draw": [
+    {
+      "declarations": ["input friend", "input opponent", "input forfeit"],
+      "selectors": ["forfeit"],
+      "match": {
+        "forfeit=yes": "{friend} drew with {opponent} by Forfeit",
+        "forfeit=*": "{friend} drew with {opponent}"
+      }
+    }
+  ],
+  "activity_wpm": "{wpm} wpm",
+  "activity_wpm_both": "{wpm} wpm · {opponentWpm} wpm",
+  "activity_just_now": "just now",
+  "opponent_deleted": "Deleted User"
 }

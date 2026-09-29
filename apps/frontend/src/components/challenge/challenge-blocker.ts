@@ -1,7 +1,9 @@
+import type { Locale } from "@/locale/locales";
+import { m } from "@/paraglide/messages";
 import type { LiveChallenges, LiveFriends, Place } from "@/stores/connection-store";
 
-// Why the User cannot challenge this Friend right now, or null when they can: what the Défier
-// button says while disabled.
+// Why the User cannot challenge this Friend right now, in the Locale, or null when they can: what
+// the Challenge button says while disabled.
 export const challengeBlocker = (
   {
     place,
@@ -9,28 +11,29 @@ export const challengeBlocker = (
     challenges,
   }: { place: Place | null; friends: LiveFriends | null; challenges: LiveChallenges | null },
   friendId: string,
+  locale: Locale,
 ) => {
   if (friends === null || challenges === null) {
-    return "Connexion au serveur…";
+    return m.challenge_blocker_connecting({}, { locale });
   }
 
   if (place?.at === "duel") {
-    return "Tu es en Duel";
+    return m.challenge_blocker_self_in_duel({}, { locale });
   }
 
   if (challenges.sent?.to.id === friendId) {
-    return "Challenge envoyé, en attente de sa réponse";
+    return m.challenge_blocker_sent_to_them({}, { locale });
   }
 
   if (challenges.sent !== null) {
-    return "Un Challenge attend déjà sa réponse";
+    return m.challenge_blocker_sent_to_other({}, { locale });
   }
 
   switch (friends.presences.get(friendId) ?? "offline") {
     case "offline":
-      return "Hors ligne";
+      return m.challenge_blocker_offline({}, { locale });
     case "in-duel":
-      return "En Duel";
+      return m.challenge_blocker_in_duel({}, { locale });
     case "online":
       return null;
   }

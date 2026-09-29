@@ -3,6 +3,7 @@ import type { Tier } from "ranked";
 
 import { UserAvatar } from "@/components/user-avatar/user-avatar";
 import { relativeTime } from "@/lib/relative-time";
+import { useLocale } from "@/locale/use-locale";
 
 type ActivityRowProps = {
   // The Friend it is about: their avatar, with their Ornament, leads the row.
@@ -12,22 +13,26 @@ type ActivityRowProps = {
   children: ReactNode;
 };
 
-// One Activity: the Friend's avatar, what happened, and how long ago.
-export const ActivityRow = ({ friend, at, now, children }: ActivityRowProps) => (
-  <li className="flex items-start gap-3 p-3">
-    <UserAvatar
-      handle={friend.handle}
-      image={friend.image}
-      ornament={friend.ornament}
-      className="size-9"
-      fallbackClassName="bg-surface-2 text-[13px] font-bold text-foreground"
-    />
-    {/* Positioned after the avatar: drawn over the Ornament's overflow, never under it. */}
-    <div className="relative flex min-w-0 flex-1 flex-col gap-1">
-      <p className="text-sm leading-[1.4]">{children}</p>
-      <time dateTime={new Date(at).toISOString()} className="text-xs text-muted-foreground">
-        {relativeTime(at, now)}
-      </time>
-    </div>
-  </li>
-);
+// One Activity: the Friend's avatar, what happened, and how long ago, in the Locale.
+export const ActivityRow = ({ friend, at, now, children }: ActivityRowProps) => {
+  const locale = useLocale();
+
+  return (
+    <li className="flex items-start gap-3 p-3">
+      <UserAvatar
+        handle={friend.handle}
+        image={friend.image}
+        ornament={friend.ornament}
+        className="size-9"
+        fallbackClassName="bg-surface-2 text-[13px] font-bold text-foreground"
+      />
+      {/* Positioned after the avatar: drawn over the Ornament's overflow, never under it. */}
+      <div className="relative flex min-w-0 flex-1 flex-col gap-1">
+        <p className="text-sm leading-[1.4]">{children}</p>
+        <time dateTime={new Date(at).toISOString()} className="text-xs text-muted-foreground">
+          {relativeTime(at, now, locale)}
+        </time>
+      </div>
+    </li>
+  );
+};

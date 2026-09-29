@@ -1,6 +1,8 @@
 import type { UserFound } from "@/api/user-search";
 import { FriendActionButton } from "@/components/friends/friend-action-button";
 import { atHandle } from "@/lib/at-handle";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 type RelationActionsProps = {
   user: UserFound;
@@ -8,6 +10,7 @@ type RelationActionsProps = {
 
 // What the searcher can do with a User found, given where they stand with them.
 export const RelationActions = ({ user }: RelationActionsProps) => {
+  const locale = useLocale();
   const handle = atHandle(user.handle);
 
   switch (user.relation) {
@@ -16,9 +19,9 @@ export const RelationActions = ({ user }: RelationActionsProps) => {
         <FriendActionButton
           action="send"
           userId={user.id}
-          label={`Envoyer une Friend request à ${handle}`}
+          label={m.friends_send_label({ handle }, { locale })}
         >
-          Ajouter
+          {m.friends_send({}, { locale })}
         </FriendActionButton>
       );
     }
@@ -29,9 +32,9 @@ export const RelationActions = ({ user }: RelationActionsProps) => {
           action="cancel"
           userId={user.id}
           variant="ghost"
-          label={`Annuler la Friend request à ${handle}`}
+          label={m.friends_cancel_label({ handle }, { locale })}
         >
-          Annuler
+          {m.friends_cancel({}, { locale })}
         </FriendActionButton>
       );
     }
@@ -42,9 +45,9 @@ export const RelationActions = ({ user }: RelationActionsProps) => {
           action="accept"
           userId={user.id}
           variant="default"
-          label={`Accepter la Friend request de ${handle}`}
+          label={m.friends_accept_label({ handle }, { locale })}
         >
-          Accepter
+          {m.friends_accept({}, { locale })}
         </FriendActionButton>
       );
     }
@@ -52,7 +55,7 @@ export const RelationActions = ({ user }: RelationActionsProps) => {
     case "friend": {
       return (
         <span className="rounded-full bg-secondary px-2.5 py-1 text-[0.7rem] text-muted-foreground uppercase">
-          Friend
+          {m.friends_relation_friend({}, { locale })}
         </span>
       );
     }

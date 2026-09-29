@@ -6,6 +6,10 @@ import { userSearchQueryOptions } from "@/api/user-search";
 import { FRIENDS_CARD_PAINT } from "@/components/friends/friends-paint";
 import { UserFoundItem } from "@/components/friends/user-found-item";
 import { UserRowsSkeleton } from "@/components/friends/user-rows-skeleton";
+import { numberFormat } from "@/locale/formats";
+import type { Locale } from "@/locale/locales";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 
 type UserSearchResultsProps = {
   // The start of a Handle, as typed right now.
@@ -14,14 +18,15 @@ type UserSearchResultsProps = {
   handle: string;
 };
 
-const errorMessage = (error: Error) =>
+const errorMessage = (error: Error, locale: Locale) =>
   error instanceof ApiError && error.code === "TOO_MANY_REQUESTS"
-    ? "Trop de recherches d'affilée : patiente un instant."
-    : "La recherche a échoué. Réessaie.";
+    ? m.friends_search_too_many({}, { locale })
+    : m.friends_search_failed({}, { locale });
 
 // The Users found for what was typed. Skeletons stand in from the first key until the Users of that
 // Handle are there.
 export const UserSearchResults = ({ typed, handle }: UserSearchResultsProps) => {
+  const locale = useLocale();
   const searchable = typed.length >= HANDLE_SEARCH_MIN_LENGTH;
 
   const search = useQuery({
@@ -32,28 +37,32 @@ export const UserSearchResults = ({ typed, handle }: UserSearchResultsProps) => 
   if (!searchable) {
     return (
       <p className="px-1 text-sm text-muted-foreground">
-        Tape au moins {HANDLE_SEARCH_MIN_LENGTH} caractères du Handle.
+        {m.friends_search_min_length(
+          {
+            count: HANDLE_SEARCH_MIN_LENGTH,
+            shown: numberFormat(locale).format(HANDLE_SEARCH_MIN_LENGTH),
+          },
+          { locale },
+        )}
       </p>
     );
   }
 
   if (typed !== handle || search.isPending) {
-    return <UserRowsSkeleton label="Recherche des Users" rows={2} />;
+    return <UserRowsSkeleton label={m.friends_search_loading({}, { locale })} rows={2} />;
   }
 
   if (search.isError) {
     return (
       <p role="alert" className="px-1 text-sm text-destructive">
-        {errorMessage(search.error)}
+        {errorMessage(search.error, locale)}
       </p>
     );
   }
 
   if (search.data.length === 0) {
     return (
-      <p className="px-1 text-sm text-muted-foreground">
-        Aucun User dont le Handle commence ainsi.
-      </p>
+      <p className="px-1 text-sm text-muted-foreground">{m.friends_search_none({}, { locale })}</p>
     );
   }
 

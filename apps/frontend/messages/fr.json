@@ -497,5 +497,124 @@
   "profile_not_found_happened": "Aucun User ne porte ce Handle : il n'a jamais été pris, ou il a été changé.",
   "profile_not_found_cost": "Pas de Profile à montrer ici ; cherche le User par son Handle actuel.",
   "profile_not_found_action": "Chercher un User",
-  "profile_sign_in": "Se connecter"
+  "profile_sign_in": "Se connecter",
+  "friends_title": "Friends",
+  "friends_subtitle": "Trouve un User par son Handle, réponds à ses Friend requests, défie tes Friends en ligne.",
+  "friends_search_label": "Chercher un User",
+  "friends_search_placeholder": "@handle",
+  "friends_search_min_length": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "Tape au moins {shown} caractère du Handle.",
+        "countPlural=*": "Tape au moins {shown} caractères du Handle."
+      }
+    }
+  ],
+  "friends_search_loading": "Recherche des Users",
+  "friends_search_too_many": "Trop de recherches d'affilée : patiente un instant.",
+  "friends_search_failed": "La recherche a échoué. Réessaie.",
+  "friends_search_none": "Aucun User dont le Handle commence ainsi.",
+  "friends_received_title": "Friend requests reçues",
+  "friends_received_none": "Aucune Friend request en attente.",
+  "friends_received_loading": "Chargement des Friend requests reçues",
+  "friends_sent_title": "Friend requests envoyées · {count}",
+  "friends_sent_none": "Aucune Friend request envoyée en attente.",
+  "friends_sent_loading": "Chargement des Friend requests envoyées",
+  "friends_sent_pending": "en attente",
+  "friends_list_title": "Friends · {count}",
+  "friends_list_loading": "Chargement des Friends",
+  "friends_empty_title": "Pas encore de Friends",
+  "friends_empty_reason": "Cherche un User par son Handle et envoie-lui une Friend request.",
+  "friends_empty_action": "Chercher un User",
+  "friends_handle_required": "Les Friends se trouvent par leur Handle : choisis le tien pour chercher les autres.",
+  "friends_handle_choose": "Choisir mon Handle",
+  "friends_accept": "Accepter",
+  "friends_accept_label": "Accepter la Friend request de {handle}",
+  "friends_decline": "Refuser",
+  "friends_decline_label": "Refuser la Friend request de {handle}",
+  "friends_cancel": "Annuler",
+  "friends_cancel_label": "Annuler la Friend request à {handle}",
+  "friends_send": "Ajouter",
+  "friends_send_label": "Envoyer une Friend request à {handle}",
+  "friends_remove": "Retirer",
+  "friends_remove_label": "Retirer {handle} de tes Friends",
+  "friends_relation_friend": "Friend",
+  "friends_refusal_self": "Tu ne peux pas être ton propre Friend.",
+  "friends_refusal_user_not_found": "Ce User n'existe plus ou n'a pas de Handle.",
+  "friends_refusal_already_friends": "Vous êtes déjà Friends.",
+  "friends_refusal_already_requested": "Une Friend request attend déjà sa réponse.",
+  "friends_refusal_request_limit": "Trop de Friend requests envoyées en attente : annules-en ou attends leurs réponses.",
+  "friends_refusal_friend_limit": "Tu as atteint le nombre maximum de Friends.",
+  "friends_refusal_their_friend_limit": "Ce User a atteint le nombre maximum de Friends.",
+  "friends_refusal_request_not_found": "Cette Friend request n'existe plus.",
+  "friends_refusal_not_friends": "Vous n'êtes plus Friends.",
+  "friends_refusal_too_many": "Trop de Friend requests d'affilée : patiente un instant.",
+  "friends_action_failed": "L'action a échoué. Réessaie.",
+  "challenge_send": "Défier",
+  "challenge_send_label": "Défier {handle}",
+  "challenge_send_label_blocked": "Défier {handle} : {reason}",
+  "challenge_blocker_connecting": "Connexion au serveur…",
+  "challenge_blocker_self_in_duel": "Tu es en Duel",
+  "challenge_blocker_sent_to_them": "Challenge envoyé, en attente de sa réponse",
+  "challenge_blocker_sent_to_other": "Un Challenge attend déjà sa réponse",
+  "challenge_blocker_offline": "Hors ligne",
+  "challenge_blocker_in_duel": "En Duel",
+  "challenge_list": "Challenges",
+  "challenge_received": "{handle} te défie en Duel",
+  "challenge_sent": "Challenge envoyé à {handle}",
+  "challenge_accept": "Accepter",
+  "challenge_decline": "Refuser",
+  "challenge_cancel": "Annuler",
+  "challenge_refusal_handle_required": "Choisis d'abord ton Handle : un Duel montre celui de chaque joueur.",
+  "challenge_refusal_self": "Tu ne peux pas te défier toi-même.",
+  "challenge_refusal_not_friends": "Vous n'êtes pas Friends.",
+  "challenge_refusal_offline": "Ce Friend est hors ligne.",
+  "challenge_refusal_in_duel": "Impossible pendant un Duel.",
+  "challenge_refusal_already_challenging": "Ton Challenge précédent attend encore sa réponse.",
+  "challenge_ended_declined": "{handle} a refusé ton Challenge.",
+  "challenge_ended_expired": "{handle} n'a pas répondu à ton Challenge.",
+  "challenge_ended_unavailable": "{handle} n'est plus disponible pour ton Challenge.",
+  "activity_title": "Activity",
+  "activity_loading": "Chargement de l'Activity",
+  "activity_empty_title": "Pas encore d'Activity",
+  "activity_empty_reason": "Les Duels et les nouvelles amitiés de tes Friends apparaîtront ici.",
+  "activity_empty_action": "Chercher un Friend",
+  "activity_arrival": "{friend} est en ligne",
+  "activity_friendship": "{friend} et {other} sont maintenant Friends",
+  "activity_duel_win": [
+    {
+      "declarations": ["input friend", "input opponent", "input forfeit"],
+      "selectors": ["forfeit"],
+      "match": {
+        "forfeit=yes": "{friend} a battu {opponent} par abandon",
+        "forfeit=*": "{friend} a battu {opponent}"
+      }
+    }
+  ],
+  "activity_duel_loss": [
+    {
+      "declarations": ["input friend", "input opponent", "input forfeit"],
+      "selectors": ["forfeit"],
+      "match": {
+        "forfeit=yes": "{friend} a perdu contre {opponent} par abandon",
+        "forfeit=*": "{friend} a perdu contre {opponent}"
+      }
+    }
+  ],
+  "activity_duel_draw": [
+    {
+      "declarations": ["input friend", "input opponent", "input forfeit"],
+      "selectors": ["forfeit"],
+      "match": {
+        "forfeit=yes": "{friend} a fait match nul avec {opponent} par abandon",
+        "forfeit=*": "{friend} a fait match nul avec {opponent}"
+      }
+    }
+  ],
+  "activity_wpm": "{wpm} wpm",
+  "activity_wpm_both": "{wpm} wpm · {opponentWpm} wpm",
+  "activity_just_now": "à l'instant",
+  "opponent_deleted": "User supprimé"
 }
