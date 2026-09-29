@@ -80,8 +80,14 @@ const renderPage = async () => {
     component: IntroDevPage,
   });
 
+  const leaderboard = createRoute({
+    getParentRoute: () => root,
+    path: "/leaderboard",
+    component: () => <h2>Leaderboard</h2>,
+  });
+
   const router = createRouter({
-    routeTree: root.addChildren([home, page]),
+    routeTree: root.addChildren([home, page, leaderboard]),
     history: createMemoryHistory({ initialEntries: ["/dev/intro"] }),
   });
 
@@ -191,6 +197,23 @@ describe("IntroDevPage", () => {
     await choose("Theme", "Papier");
 
     expect(document.documentElement).toHaveAttribute("data-theme", "paper");
+  });
+
+  test("replayed onto another page, the Intro lands on it, the page coming in as one block", async () => {
+    await renderPage();
+    await choose("Page", "Classement");
+    await userEvent.click(screen.getByRole("button", { name: "Rejouer" }));
+    await screen.findByRole("heading", { name: "Leaderboard" });
+    await act(() => Promise.resolve());
+
+    expect(intro()).toBeInTheDocument();
+
+    gsapClock.advance(2.62 + 0.5);
+    expect(document.querySelectorAll("[data-intro='part']")).toHaveLength(0);
+    expect(intro()).toBeInTheDocument();
+
+    gsapClock.advance(LANDING_S);
+    expect(intro()).not.toBeInTheDocument();
   });
 
   test("replayed at 0,25×, the typing has not reached « typoman » after 4 s", async () => {
