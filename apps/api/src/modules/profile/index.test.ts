@@ -74,7 +74,7 @@ const played = (count: number, ada: string, alan: string, outcome?: DuelRecord["
     }),
   );
 
-const standing = (tier: "argent" | "or" | "platine", tp = 50): Standing => ({
+const standing = (tier: "silver" | "gold" | "platinum", tp = 50): Standing => ({
   tier,
   division: 1,
   tp,
@@ -230,12 +230,12 @@ describe("GET /api/users/:handle/profile", () => {
 
       duels.ratings.set(alan.id, {
         mmr: 987,
-        rank: { tier: "or", division: 2, tp: 42, shielded: false },
+        rank: { tier: "gold", division: 2, tp: 42, shielded: false },
       });
 
       const profile = await profileOf(ada.cookie, "alan");
 
-      expect(profile.rank).toEqual({ tier: "or", division: 2, tp: 42, shielded: false });
+      expect(profile.rank).toEqual({ tier: "gold", division: 2, tp: 42, shielded: false });
       expect(JSON.stringify(profile)).not.toContain("987");
     });
 
@@ -266,10 +266,10 @@ describe("GET /api/users/:handle/profile", () => {
       const ada = await newUser("ada");
       const alan = await newUser("alan");
 
-      duels.ratings.set(alan.id, { mmr: 987, rank: standing("or") });
+      duels.ratings.set(alan.id, { mmr: 987, rank: standing("gold") });
 
-      expect((await profileOf(ada.cookie, "alan")).ornament).toBe("or");
-      expect((await profileOf(alan.cookie, "alan")).ornament).toBe("or");
+      expect((await profileOf(ada.cookie, "alan")).ornament).toBe("gold");
+      expect((await profileOf(alan.cookie, "alan")).ornament).toBe("gold");
     });
 
     test("follows a move up and a move down of Tier after a Ranked Duel", async () => {
@@ -277,14 +277,16 @@ describe("GET /api/users/:handle/profile", () => {
       const ada = await newUser("ada");
       const alan = await newUser("alan");
 
-      duels.ratings.set(alan.id, { mmr: 900, rank: standing("or", 95) });
-      await duels.store.save(rankedDuel(alan.id, ada.id, standing("or", 95), standing("platine")));
+      duels.ratings.set(alan.id, { mmr: 900, rank: standing("gold", 95) });
+      await duels.store.save(
+        rankedDuel(alan.id, ada.id, standing("gold", 95), standing("platinum")),
+      );
 
-      expect((await profileOf(ada.cookie, "alan")).ornament).toBe("platine");
+      expect((await profileOf(ada.cookie, "alan")).ornament).toBe("platinum");
 
-      await duels.store.save(rankedDuel(alan.id, ada.id, standing("platine"), standing("or")));
+      await duels.store.save(rankedDuel(alan.id, ada.id, standing("platinum"), standing("gold")));
 
-      expect((await profileOf(ada.cookie, "alan")).ornament).toBe("or");
+      expect((await profileOf(ada.cookie, "alan")).ornament).toBe("gold");
     });
 
     test("is resolved by the server, never the User's raw choice", async () => {
@@ -292,13 +294,13 @@ describe("GET /api/users/:handle/profile", () => {
       const ada = await newUser("ada");
       const alan = await newUser("alan");
 
-      duels.ratings.set(alan.id, { mmr: 700, rank: standing("argent") });
-      duels.ornaments.set(alan.id, "platine");
+      duels.ratings.set(alan.id, { mmr: 700, rank: standing("silver") });
+      duels.ornaments.set(alan.id, "platinum");
 
       const profile = await profileOf(ada.cookie, "alan");
 
-      expect(profile.ornament).toBe("argent");
-      expect(JSON.stringify(profile)).not.toContain("platine");
+      expect(profile.ornament).toBe("silver");
+      expect(JSON.stringify(profile)).not.toContain("platinum");
     });
   });
 

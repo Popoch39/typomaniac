@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { moteRise, onBothSides } from "@/components/tier-up/parts/mote-rise";
 
-// The motes of the Or → Platine artboard: rising, so drawn from -280 up to -480.
+// The motes of the Gold → Platinum artboard: rising, so drawn from -280 up to -480.
 const rise = {
   count: 28,
   seed: 6,

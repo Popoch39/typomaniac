@@ -39,10 +39,10 @@ describe("UserAvatar", () => {
 
   describe("the Ornament", () => {
     test("lies behind the avatar, twice its size, never catching the pointer", () => {
-      const { container } = render(<UserAvatar handle="ada" image={null} ornament="platine" />);
+      const { container } = render(<UserAvatar handle="ada" image={null} ornament="platinum" />);
       const ornament = ornamentOf(container);
 
-      expect(ornament?.querySelector("use")?.getAttribute("href")).toBe("#tier-ornament-platine");
+      expect(ornament?.querySelector("use")?.getAttribute("href")).toBe("#tier-ornament-platinum");
       expect(ornament?.getAttribute("class")).toContain("pointer-events-none");
       expect(ornament?.getAttribute("class")).toContain("-z-10");
       expect(ornament?.getAttribute("class")).toContain("size-[200%]");

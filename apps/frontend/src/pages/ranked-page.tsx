@@ -4,7 +4,7 @@ import { meQueryOptions } from "@/api/me";
 import { RankedAside } from "@/components/ranked/ranked-aside";
 import { RankedTiers } from "@/components/ranked/ranked-tiers";
 
-// The Ranked: its Tiers from Maniac down to Fer on the page's whole height, the reader's marked;
+// The Ranked: its Tiers from Maniac down to Iron on the page's whole height, the reader's marked;
 // at the right, where they stand, the rules, and the way to the Queue. For a Visitor too: the
 // Tiers are the same, only playing needs an account.
 export const RankedPage = () => {

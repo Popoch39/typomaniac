@@ -60,37 +60,37 @@ export const METAL_STOPS: readonly (readonly [offset: number, color: keyof Metal
 ];
 
 export const METALS: Record<Tier, Metal> = {
-  fer: { light: "#e2e4ea", mid: "#8b8e9c", crease: "#4f525d", sheen: "#8b8e9c" },
+  iron: { light: "#e2e4ea", mid: "#8b8e9c", crease: "#4f525d", sheen: "#8b8e9c" },
   bronze: { light: "#f7d0ad", mid: "#c48154", crease: "#7a4526", sheen: "#c48154" },
-  argent: { light: "#ffffff", mid: "#c0c3cc", crease: "#7c808c", sheen: "#d4d6dd" },
-  or: { light: "#fff4c4", mid: "#f2c14e", crease: "#a8781a", sheen: "#f5cd6a" },
-  platine: { light: "#e0fbf6", mid: "#6fd1c0", crease: "#2f8a7c", sheen: "#8fe0d2" },
-  diamant: { light: "#f3f6ff", mid: "#9db4ff", crease: "#5068c8", sheen: "#b9c9ff" },
+  silver: { light: "#ffffff", mid: "#c0c3cc", crease: "#7c808c", sheen: "#d4d6dd" },
+  gold: { light: "#fff4c4", mid: "#f2c14e", crease: "#a8781a", sheen: "#f5cd6a" },
+  platinum: { light: "#e0fbf6", mid: "#6fd1c0", crease: "#2f8a7c", sheen: "#8fe0d2" },
+  diamond: { light: "#f3f6ff", mid: "#9db4ff", crease: "#5068c8", sheen: "#b9c9ff" },
   maniac: { light: MANIAC.light, mid: MANIAC.mid, crease: MANIAC.crease, sheen: MANIAC.mid },
 };
 
 // The outline of each Tier's metal, behind its rim and its bands.
 export const OUTLINES: Record<Tier, string> = {
-  fer: "#2e3038",
+  iron: "#2e3038",
   bronze: "#43240f",
-  argent: "#454852",
-  or: "#5c3f06",
-  platine: "#134a42",
-  diamant: "#25337a",
+  silver: "#454852",
+  gold: "#5c3f06",
+  platinum: "#134a42",
+  diamond: "#25337a",
   maniac: MANIAC.outline,
 };
 
 // The Tiers whose Ornament has pieces behind, in deep metal: from the top of that gradient to
 // the outline.
 export const DEEPS: readonly { tier: Tier; top: string }[] = [
-  { tier: "argent", top: "#7c808c" },
-  { tier: "or", top: "#a8781a" },
-  { tier: "platine", top: "#2f8a7c" },
-  { tier: "diamant", top: "#7890e8" },
+  { tier: "silver", top: "#7c808c" },
+  { tier: "gold", top: "#a8781a" },
+  { tier: "platinum", top: "#2f8a7c" },
+  { tier: "diamond", top: "#7890e8" },
   { tier: "maniac", top: MANIAC.mid },
 ];
 
-// The Tiers that glow, from Or up: their colour, its opacity at each stop from the centre out,
+// The Tiers that glow, from Gold up: their colour, its opacity at each stop from the centre out,
 // and how far it reaches on the 120 × 120 grid.
 export const GLOWS: readonly {
   tier: Tier;
@@ -98,9 +98,9 @@ export const GLOWS: readonly {
   stops: [number, number][];
   radius: number;
 }[] = [
-  { tier: "or", color: "#f2c14e", stops: [[0, 0.32]], radius: 60 },
-  { tier: "platine", color: "#6fd1c0", stops: [[0, 0.38]], radius: 60 },
-  { tier: "diamant", color: "#9db4ff", stops: [[0, 0.45]], radius: 62 },
+  { tier: "gold", color: "#f2c14e", stops: [[0, 0.32]], radius: 60 },
+  { tier: "platinum", color: "#6fd1c0", stops: [[0, 0.38]], radius: 60 },
+  { tier: "diamond", color: "#9db4ff", stops: [[0, 0.45]], radius: 62 },
   {
     tier: "maniac",
     color: MANIAC.mid,
@@ -140,7 +140,7 @@ export const BANNER_BEVEL = {
   strokeLinecap: "round",
 } as const;
 
-// The facets of the Diamant.
+// The facets of the Diamond.
 export const FACETS = {
   fill: "none",
   stroke: INK,
@@ -208,8 +208,8 @@ export const STAR_EDGE = { fill: "none", strokeWidth: 1.8, strokeLinejoin: "roun
 
 export const RAYS = { fill: "none", strokeWidth: 36, strokeDasharray: "2.4 8.07", opacity: 0.3 };
 
-// A plate behind the Platine and Diamant Ornaments, in their outline colour.
+// A plate behind the Platinum and Diamond Ornaments, in their outline colour.
 export const PLATES = {
-  platine: { fill: OUTLINES.platine, fillOpacity: 0.7 },
-  diamant: { fill: OUTLINES.diamant, fillOpacity: 0.8 },
+  platinum: { fill: OUTLINES.platinum, fillOpacity: 0.7 },
+  diamond: { fill: OUTLINES.diamond, fillOpacity: 0.8 },
 };

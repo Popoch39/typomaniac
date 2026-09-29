@@ -18,12 +18,12 @@ const bottom = (tier: Exclude<Standing["tier"], "maniac">): Standing => ({
   shielded: true,
 });
 
-// The six Tier-ups, from Fer → Bronze to Diamant → Maniac.
+// The six Tier-ups, from Iron → Bronze to Diamond → Maniac.
 export const DEV_TIER_UPS: readonly DevTierUp[] = [
-  { from: top("fer"), to: bottom("bronze") },
-  { from: top("bronze"), to: bottom("argent") },
-  { from: top("argent"), to: bottom("or") },
-  { from: top("or"), to: bottom("platine") },
-  { from: top("platine"), to: bottom("diamant") },
-  { from: top("diamant"), to: { tier: "maniac", tp: 10, shielded: true } },
+  { from: top("iron"), to: bottom("bronze") },
+  { from: top("bronze"), to: bottom("silver") },
+  { from: top("silver"), to: bottom("gold") },
+  { from: top("gold"), to: bottom("platinum") },
+  { from: top("platinum"), to: bottom("diamond") },
+  { from: top("diamond"), to: { tier: "maniac", tp: 10, shielded: true } },
 ];

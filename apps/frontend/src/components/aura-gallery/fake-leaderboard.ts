@@ -2,16 +2,16 @@ import { DIVISION_TP, type Standing, type Tier } from "ranked";
 
 import type { LeaderboardEntry } from "@/api/leaderboard";
 
-// How many of the hundred fake Users stand in each Tier, from the top: most from Or up, where
+// How many of the hundred fake Users stand in each Tier, from the top: most from Gold up, where
 // the Ornaments move and cost the most.
 const TIER_COUNTS: readonly (readonly [Tier, number])[] = [
   ["maniac", 12],
-  ["diamant", 22],
-  ["platine", 22],
-  ["or", 22],
-  ["argent", 8],
+  ["diamond", 22],
+  ["platinum", 22],
+  ["gold", 22],
+  ["silver", 8],
   ["bronze", 7],
-  ["fer", 7],
+  ["iron", 7],
 ];
 
 // The first User's TP, one less at each place down: the list reads in order.

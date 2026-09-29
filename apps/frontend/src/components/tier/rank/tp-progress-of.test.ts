@@ -4,25 +4,25 @@ import { tpProgressOf } from "@/components/tier/rank/tp-progress-of";
 
 describe("tpProgressOf", () => {
   test("a Division fills to its TP out of 100, in its Tier's colour", () => {
-    expect(tpProgressOf({ tier: "or", division: 2, tp: 42, shielded: false })).toEqual({
+    expect(tpProgressOf({ tier: "gold", division: 2, tp: 42, shielded: false })).toEqual({
       kind: "division",
       tp: 42,
       of: 100,
-      tier: "or",
-      name: "Or II",
-      next: "Or I",
-      toNext: "58 TP avant Or I",
+      tier: "gold",
+      name: "Gold II",
+      next: "Gold I",
+      toNext: "58 TP avant Gold I",
     });
   });
 
   test("the next rank of a Division I is the next Tier's Division IV", () => {
     expect(tpProgressOf({ tier: "bronze", division: 1, tp: 90, shielded: false })).toMatchObject({
-      toNext: "10 TP avant Argent IV",
+      toNext: "10 TP avant Silver IV",
     });
   });
 
-  test("past Diamant I comes Maniac, without Division", () => {
-    expect(tpProgressOf({ tier: "diamant", division: 1, tp: 0, shielded: true })).toMatchObject({
+  test("past Diamond I comes Maniac, without Division", () => {
+    expect(tpProgressOf({ tier: "diamond", division: 1, tp: 0, shielded: true })).toMatchObject({
       toNext: "100 TP avant Maniac",
     });
   });

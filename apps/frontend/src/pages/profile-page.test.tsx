@@ -34,7 +34,7 @@ const me: Me = {
   ornamentChoice: null,
 };
 
-const orII: Rank = { tier: "or", division: 2, tp: 42, shielded: false };
+const goldII: Rank = { tier: "gold", division: 2, tp: 42, shielded: false };
 
 const profile = (stats: Partial<Profile["stats"]>): Profile => ({
   handle: "ada",
@@ -147,17 +147,17 @@ describe("ProfilePage", () => {
     });
 
     test("shows the User's rank, its TP, how far the next and its bar", async () => {
-      await renderPage({ ...me, rank: orII }, profile({}));
+      await renderPage({ ...me, rank: goldII }, profile({}));
 
-      expect(hero().textContent).toContain("Or II");
-      expect(within(hero()).getByText("42 TP · 58 avant Or I")).toBeInTheDocument();
+      expect(hero().textContent).toContain("Gold II");
+      expect(within(hero()).getByText("42 TP · 58 avant Gold I")).toBeInTheDocument();
       expect(within(hero()).getByRole("meter", { name: "TP de la Division" })).toHaveAttribute(
         "value",
         "42",
       );
-      // The rank stands out in its Blason: the Emblem of Or on its Ornament.
+      // The rank stands out in its Blason: the Emblem of Gold on its Ornament.
       expect(
-        hero().querySelector('[data-tier-blason] use[href="#tier-ornament-or"]'),
+        hero().querySelector('[data-tier-blason] use[href="#tier-ornament-gold"]'),
       ).not.toBeNull();
     });
 
@@ -191,13 +191,13 @@ describe("ProfilePage", () => {
     test("the avatar wears the User's Ornament and gives off its full Aura", async () => {
       const browser = fakeAuraRuntime();
 
-      await renderPage({ ...me, rank: orII, ornament: "or" }, profile({}), {
+      await renderPage({ ...me, rank: goldII, ornament: "gold" }, profile({}), {
         auraRuntime: browser.runtime,
       });
 
       await waitFor(() => expect(browser.painters).toHaveLength(1));
 
-      expect(browser.painters[0]?.tier).toBe("or");
+      expect(browser.painters[0]?.tier).toBe("gold");
       expect(browser.painters[0]?.canvas.closest("[data-ornament]")).not.toBeNull();
     });
   });
@@ -298,7 +298,7 @@ describe("ProfilePage", () => {
 
     test("chooses the Ornament among the 9, the Tiers above the User's locked", async () => {
       await renderPage(
-        { ...me, rank: orII, ornament: "or", ornamentChoice: "follow" },
+        { ...me, rank: goldII, ornament: "gold", ornamentChoice: "follow" },
         profile({}),
       );
 
@@ -307,11 +307,11 @@ describe("ProfilePage", () => {
       expect(within(picker).getAllByRole("radio")).toHaveLength(9);
       expect(within(picker).getByRole("radio", { name: "Suivre mon Tier" })).toBeChecked();
 
-      for (const name of ["Suivre mon Tier", "Aucun", "Fer", "Bronze", "Argent", "Or"]) {
+      for (const name of ["Suivre mon Tier", "Aucun", "Iron", "Bronze", "Silver", "Gold"]) {
         expect(within(picker).getByRole("radio", { name })).toBeEnabled();
       }
 
-      for (const name of ["Platine", "Diamant", "Maniac"]) {
+      for (const name of ["Platinum", "Diamond", "Maniac"]) {
         expect(within(picker).getByRole("radio", { name })).toBeDisabled();
       }
 

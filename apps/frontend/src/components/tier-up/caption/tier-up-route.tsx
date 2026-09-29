@@ -11,7 +11,7 @@ type TierUpRouteProps = {
   arrow?: string;
 };
 
-// The rank left and the rank reached, each in its Tier's metal: « Fer I → Bronze IV ».
+// The rank left and the rank reached, each in its Tier's metal: « Iron I → Bronze IV ».
 export const TierUpRoute = ({ from, to, arrow }: TierUpRouteProps) => (
   <p data-tier-up="route" className="flex items-center gap-3.5 font-mono text-lg leading-[normal]">
     <span style={{ color: METALS[from.tier].mid }}>{standingName(from)}</span>

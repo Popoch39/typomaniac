@@ -6,7 +6,7 @@ const FINE_MASK = "radial-gradient(circle, black 5%, transparent 55%)";
 
 const BROAD_MASK = "radial-gradient(circle, black 5%, transparent 60%)";
 
-// The two wheels of rays of fire around the crown, as the Diamant → Maniac artboard draws them:
+// The two wheels of rays of fire around the crown, as the Diamond → Maniac artboard draws them:
 // fine rays close together, then pale ones far apart, turning against each other from the start
 // as in the artboard, unseen until each fades in as the crown catches fire.
 export const TierUpManiacRays = () => (

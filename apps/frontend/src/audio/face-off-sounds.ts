@@ -2,27 +2,27 @@ import { type FaceOffAudioContext, type SynthNode, synthesize } from "@/audio/fa
 
 // The sounds of a Tier-up, on the highlights of its timeline: the old Emblem coming apart, the
 // new Blason's impact, then the Tier's name; and those some Tiers cue in between (the chevrons
-// stamped into the Argent, the light sweeping it, the Diamant's facets converging, the heat, the
+// stamped into the Silver, the light sweeping it, the Diamond's facets converging, the heat, the
 // silence and the fire of the Maniac). Each Tier's own, as its Tier-up gets it.
 export const TIER_UP_SOUNDS = [
   "tier-up-bronze-dissolve",
   "tier-up-bronze-impact",
   "tier-up-bronze-name",
-  "tier-up-argent-crack",
-  "tier-up-argent-impact",
-  "tier-up-argent-stamp",
-  "tier-up-argent-sweep",
-  "tier-up-argent-name",
-  "tier-up-or-ascend",
-  "tier-up-or-materialize",
-  "tier-up-or-name",
-  "tier-up-platine-flip",
-  "tier-up-platine-assemble",
-  "tier-up-platine-name",
-  "tier-up-diamant-implode",
-  "tier-up-diamant-converge",
-  "tier-up-diamant-slam",
-  "tier-up-diamant-name",
+  "tier-up-silver-crack",
+  "tier-up-silver-impact",
+  "tier-up-silver-stamp",
+  "tier-up-silver-sweep",
+  "tier-up-silver-name",
+  "tier-up-gold-ascend",
+  "tier-up-gold-materialize",
+  "tier-up-gold-name",
+  "tier-up-platinum-flip",
+  "tier-up-platinum-assemble",
+  "tier-up-platinum-name",
+  "tier-up-diamond-implode",
+  "tier-up-diamond-converge",
+  "tier-up-diamond-slam",
+  "tier-up-diamond-name",
   "tier-up-maniac-heat",
   "tier-up-maniac-vortex",
   "tier-up-maniac-hush",

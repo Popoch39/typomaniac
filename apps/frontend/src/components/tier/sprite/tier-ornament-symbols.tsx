@@ -31,10 +31,10 @@ import {
   STUD,
 } from "@/components/tier/sprite/tier-sprite-paint";
 import {
-  DIAMANT_FANS,
+  DIAMOND_FANS,
   MANIAC_FANS,
   MANIAC_WING_EMBERS,
-  PLATINE_FAN,
+  PLATINUM_FAN,
   WING_CRYSTAL,
   WING_ROOT,
   type WingFan,
@@ -68,9 +68,9 @@ const BACK_LEAVES = [
 // Each laurel: where its stem ends, how many leaves it has in front and behind.
 const LAURELS: readonly { tier: Tier; stemEnd: string; leaves: number; backLeaves: number }[] = [
   { tier: "bronze", stemEnd: "19.2 76.5", leaves: 3, backLeaves: 0 },
-  { tier: "argent", stemEnd: "19.2 43.5", leaves: 5, backLeaves: 0 },
-  { tier: "or", stemEnd: "42.1 19.8", leaves: 7, backLeaves: 3 },
-  { tier: "platine", stemEnd: "16.1 67.7", leaves: 4, backLeaves: 2 },
+  { tier: "silver", stemEnd: "19.2 43.5", leaves: 5, backLeaves: 0 },
+  { tier: "gold", stemEnd: "42.1 19.8", leaves: 7, backLeaves: 3 },
+  { tier: "platinum", stemEnd: "16.1 67.7", leaves: 4, backLeaves: 2 },
 ];
 
 const leaf = (fill: string, [x, y, turn]: readonly [number, number, number], scale?: number) => (
@@ -99,19 +99,19 @@ const feathers = (fill: string, fan: WingFan) =>
   ));
 
 const WINGS: Partial<Record<Tier, ReactNode>> = {
-  platine: <g transform={ROOTED}>{feathers(paint(metalId("platine")), PLATINE_FAN)}</g>,
-  diamant: (
+  platinum: <g transform={ROOTED}>{feathers(paint(metalId("platinum")), PLATINUM_FAN)}</g>,
+  diamond: (
     <>
       <path
         d={WING_CRYSTAL.d}
-        fill={paint(metalId("diamant"))}
+        fill={paint(metalId("diamond"))}
         {...LINE}
         transform={WING_CRYSTAL.transform}
       />
       <path d={WING_CRYSTAL.lit} {...BRIGHT} transform={WING_CRYSTAL.transform} />
       <g transform={ROOTED}>
-        {feathers(paint(deepId("diamant")), DIAMANT_FANS.deep)}
-        {feathers(paint(metalId("diamant")), DIAMANT_FANS.metal)}
+        {feathers(paint(deepId("diamond")), DIAMOND_FANS.deep)}
+        {feathers(paint(metalId("diamond")), DIAMOND_FANS.metal)}
       </g>
     </>
   ),
@@ -149,12 +149,12 @@ const PLAIN_BANNER = "M38 95 Q60 90 82 95 V107 Q60 102 38 107 Z";
 const PLAIN_BANNER_BEVEL = "M40 97 Q60 92.4 80 97";
 
 const BANNERS: Partial<Record<Tier, ReactNode>> = {
-  argent: banner("argent", PLAIN_BANNER_TAILS, PLAIN_BANNER, PLAIN_BANNER_BEVEL),
-  or: banner("or", PLAIN_BANNER_TAILS, PLAIN_BANNER, PLAIN_BANNER_BEVEL),
-  platine: (
+  silver: banner("silver", PLAIN_BANNER_TAILS, PLAIN_BANNER, PLAIN_BANNER_BEVEL),
+  gold: banner("gold", PLAIN_BANNER_TAILS, PLAIN_BANNER, PLAIN_BANNER_BEVEL),
+  platinum: (
     <>
       {banner(
-        "platine",
+        "platinum",
         ["M26 99 H46 V111 H26 L32 105 Z", "M94 99 H74 V111 H94 L88 105 Z"],
         "M36 95 Q60 89.5 84 95 V107 Q60 101.5 36 107 Z",
         "M38 97 Q60 92 82 97",
@@ -163,15 +163,15 @@ const BANNERS: Partial<Record<Tier, ReactNode>> = {
       <circle cx={78} cy={100.4} r={1.4} {...STUD} />
     </>
   ),
-  diamant: (
+  diamond: (
     <>
       {banner(
-        "diamant",
+        "diamond",
         ["M24 99 H46 V111 H24 L30.5 105 Z", "M96 99 H74 V111 H96 L89.5 105 Z"],
         "M34 95 Q60 89 86 95 V107 Q60 101 34 107 Z",
         "M36 97 Q60 91.6 84 97",
       )}
-      <path d="M60 93.5 L65 99.5 L60 106.5 L55 99.5 Z" fill={paint(metalId("diamant"))} {...LINE} />
+      <path d="M60 93.5 L65 99.5 L60 106.5 L55 99.5 Z" fill={paint(metalId("diamond"))} {...LINE} />
       <path d="M60 93.5 L60 106.5 L55 99.5 Z" {...BRIGHT} />
     </>
   ),
@@ -198,7 +198,7 @@ const bothSides = (id: string) => (
   </>
 );
 
-// The riveted ring every Ornament from Fer to Or starts from.
+// The riveted ring every Ornament from Iron to Gold starts from.
 const ring = (tier: Tier) => (
   <>
     <circle cx={60} cy={60} r={46} {...BAND_OUTLINE} stroke={OUTLINES[tier]} />
@@ -233,13 +233,13 @@ const FLAMES = [
 // the one before it and adds its own. The glow and the Maniac's rays move, so each Ornament
 // draws them itself (`TierOrnamentArt`): GSAP cannot reach into a shared symbol.
 const ORNAMENT_DRAWINGS: Record<Tier, ReactNode> = {
-  fer: (
+  iron: (
     <>
-      {ring("fer")}
-      {rivet("fer", 106, 60)}
-      {rivet("fer", 14, 60)}
-      {rivet("fer", 60, 14)}
-      {rivet("fer", 60, 106)}
+      {ring("iron")}
+      {rivet("iron", 106, 60)}
+      {rivet("iron", 14, 60)}
+      {rivet("iron", 60, 14)}
+      {rivet("iron", 60, 106)}
     </>
   ),
   bronze: (
@@ -250,54 +250,59 @@ const ORNAMENT_DRAWINGS: Record<Tier, ReactNode> = {
       {rivet("bronze", 60, 104, 4.2)}
     </>
   ),
-  argent: (
+  silver: (
     <>
-      {ring("argent")}
-      {rivet("argent", 60, 14)}
-      {bothSides(laurelId("argent"))}
-      <use href={ref(bannerId("argent"))} width="120" height="120" />
+      {ring("silver")}
+      {rivet("silver", 60, 14)}
+      {bothSides(laurelId("silver"))}
+      <use href={ref(bannerId("silver"))} width="120" height="120" />
     </>
   ),
-  or: (
+  gold: (
     <>
-      {ring("or")}
+      {ring("gold")}
       <circle cx={60} cy={60} r={41.2} {...BEADS} />
-      {bothSides(laurelId("or"))}
-      <use href={ref(bannerId("or"))} width="120" height="120" />
+      {bothSides(laurelId("gold"))}
+      <use href={ref(bannerId("gold"))} width="120" height="120" />
       <use
         href={ref(STAR_ID)}
-        fill={paint(metalId("or"))}
+        fill={paint(metalId("gold"))}
         {...LINE}
         transform="translate(46.4 0.9) scale(0.85)"
       />
     </>
   ),
-  platine: (
+  platinum: (
     <>
-      <path d={HEXAGON_PLATE} {...PLATES.platine} />
-      <path d={HEXAGON_PLATE} {...BAND_OUTLINE} stroke={OUTLINES.platine} strokeLinejoin="round" />
-      <path d={HEXAGON_PLATE} {...BAND} stroke={paint(metalId("platine"))} strokeLinejoin="round" />
+      <path d={HEXAGON_PLATE} {...PLATES.platinum} />
+      <path d={HEXAGON_PLATE} {...BAND_OUTLINE} stroke={OUTLINES.platinum} strokeLinejoin="round" />
+      <path
+        d={HEXAGON_PLATE}
+        {...BAND}
+        stroke={paint(metalId("platinum"))}
+        strokeLinejoin="round"
+      />
       <circle cx={106.8} cy={33} r={2.4} {...STUD} />
       <circle cx={106.8} cy={87} r={2.4} {...STUD} />
       <circle cx={13.2} cy={87} r={2.4} {...STUD} />
       <circle cx={13.2} cy={33} r={2.4} {...STUD} />
-      {bothSides(wingId("platine"))}
-      {bothSides(laurelId("platine"))}
-      <use href={ref(bannerId("platine"))} width="120" height="120" />
-      <path d={HEXAGON_GEM} fill={OUTLINES.platine} stroke={OUTLINES.platine} {...RIM} />
-      <path d={HEXAGON_GEM} fill={paint(metalId("platine"))} />
+      {bothSides(wingId("platinum"))}
+      {bothSides(laurelId("platinum"))}
+      <use href={ref(bannerId("platinum"))} width="120" height="120" />
+      <path d={HEXAGON_GEM} fill={OUTLINES.platinum} stroke={OUTLINES.platinum} {...RIM} />
+      <path d={HEXAGON_GEM} fill={paint(metalId("platinum"))} />
       <path d="M60 0.5 L60 19.5 L51.8 14.75 V5.25 Z" {...BRIGHT} />
       <use href={ref(SPARK_ID)} {...GLINT} transform="translate(56 6) scale(0.4)" />
     </>
   ),
-  diamant: (
+  diamond: (
     <>
-      <path d={STAR_PLATE} {...PLATES.diamant} />
-      <path d={STAR_PLATE} {...STAR_EDGE} stroke={paint(metalId("diamant"))} />
-      {bothSides(wingId("diamant"))}
-      <use href={ref(bannerId("diamant"))} width="120" height="120" />
-      <path d={CRYSTAL} fill={OUTLINES.diamant} stroke={OUTLINES.diamant} {...RIM} />
-      <path d={CRYSTAL} fill={paint(metalId("diamant"))} />
+      <path d={STAR_PLATE} {...PLATES.diamond} />
+      <path d={STAR_PLATE} {...STAR_EDGE} stroke={paint(metalId("diamond"))} />
+      {bothSides(wingId("diamond"))}
+      <use href={ref(bannerId("diamond"))} width="120" height="120" />
+      <path d={CRYSTAL} fill={OUTLINES.diamond} stroke={OUTLINES.diamond} {...RIM} />
+      <path d={CRYSTAL} fill={paint(metalId("diamond"))} />
       <path d="M60 0 L60 30 L53.5 13 Z" {...BRIGHT} />
       <use href={ref(SPARK_ID)} {...GLINT} transform="translate(99 16) scale(0.7)" />
       <use href={ref(SPARK_ID)} {...GLINT} transform="translate(16 94) scale(0.5)" />

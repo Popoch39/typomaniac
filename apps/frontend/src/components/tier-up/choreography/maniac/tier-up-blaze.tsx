@@ -3,7 +3,7 @@ import { windowOnStage } from "@/components/tier-up/stage/beyond-stage";
 import { useStageScale } from "@/components/tier-up/stage/use-stage-scale";
 
 // The fire spreading along the window's edges as the Maniac's crown catches, then flickering
-// there, as the Diamant → Maniac artboard burns along the stage's: along the window's own, however
+// there, as the Diamond → Maniac artboard burns along the stage's: along the window's own, however
 // wider or taller than the stage it is. Unseen until then.
 export const TierUpBlaze = () => {
   const scale = useStageScale();

@@ -3,7 +3,7 @@ import type { RankedPlaceView } from "@/components/ranked/ranked-place-of";
 import { TIER_COLORS, TIER_NAMES } from "@/components/tier/tier";
 
 // The rank in words in the hero of `/profile`: its name in its Tier's colour, its TP and how far the
-// next (« 42 TP · 58 avant Or I »); Maniac's TP alone; the Placement Duels played.
+// next (« 42 TP · 58 avant Gold I »); Maniac's TP alone; the Placement Duels played.
 export const ProfileHeroRankText = ({ place }: { place: RankedPlaceView }) => {
   switch (place.kind) {
     case "division": {

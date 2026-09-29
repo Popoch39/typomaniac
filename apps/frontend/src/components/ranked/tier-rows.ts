@@ -6,7 +6,7 @@ export type TierReach = "climbed" | "mine" | "ahead" | "open";
 
 export type TierRow = {
   tier: Tier;
-  // The Tier's step, from "01" for Fer to "07" for Maniac.
+  // The Tier's step, from "01" for Iron to "07" for Maniac.
   number: string;
   reach: TierReach;
   // The Tier's marks: one per Division, the one summit of Maniac.
@@ -48,7 +48,7 @@ const rowOf = (tier: Tier, index: number, standing: Standing | null): TierRow =>
   };
 };
 
-// The Tiers from Maniac at the top down to Fer, each with how far the reader has climbed it. In
+// The Tiers from Maniac at the top down to Iron, each with how far the reader has climbed it. In
 // Placement or without a Rating, the reader has no Tier yet.
 export const tierRows = (rank: Rank | null): TierRow[] => {
   const standing = rank === null || isPlacement(rank) ? null : rank;

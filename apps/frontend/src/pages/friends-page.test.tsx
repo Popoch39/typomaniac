@@ -37,12 +37,12 @@ const me: Me = {
   ornamentChoice: null,
 };
 
-const alan = { id: "alan-id", handle: "alan", image: null, ornament: "or" } as const;
+const alan = { id: "alan-id", handle: "alan", image: null, ornament: "gold" } as const;
 
 const friends: Friend[] = [alan];
 
 const requests: FriendRequests = {
-  received: [{ id: "grace-id", handle: "grace", image: null, ornament: "platine" }],
+  received: [{ id: "grace-id", handle: "grace", image: null, ornament: "platinum" }],
   sent: [{ id: "linus-id", handle: "linus", image: null, ornament: null }],
 };
 
@@ -249,8 +249,8 @@ describe("FriendsPage", () => {
   test("each avatar wears its User's Ornament: Friends, Friend requests, search, Activity", async () => {
     await renderPage(friends, []);
 
-    expect(ornamentBy("alan")).toBe("#tier-ornament-or");
-    expect(ornamentBy("grace")).toBe("#tier-ornament-platine");
+    expect(ornamentBy("alan")).toBe("#tier-ornament-gold");
+    expect(ornamentBy("grace")).toBe("#tier-ornament-platinum");
     expect(ornamentBy("linus")).toBeNull();
 
     await userEvent.type(screen.getByLabelText("Chercher un User"), "bar");
@@ -268,7 +268,7 @@ describe("FriendsPage", () => {
       column
         .getAllByRole("listitem")
         .map((item) => item.querySelector("[data-ornament] use")?.getAttribute("href")),
-    ).toEqual(["#tier-ornament-or", "#tier-ornament-or"]);
+    ).toEqual(["#tier-ornament-gold", "#tier-ornament-gold"]);
   });
 
   test("a User found leads to their Profile, next to the Friend request", async () => {

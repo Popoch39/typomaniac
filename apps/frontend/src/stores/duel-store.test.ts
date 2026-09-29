@@ -29,12 +29,12 @@ const duelFound: ServerMessage = {
   selfStake: null,
 };
 
-const orIv = { tier: "or", division: 4, tp: 50, shielded: false } as const;
+const goldIv = { tier: "gold", division: 4, tp: 50, shielded: false } as const;
 
-// What a win and a loss would do from Or IV at 50 TP, against an equal.
-const orIvStake = {
-  win: { tp: 20, standing: { ...orIv, tp: 70 } },
-  loss: { tp: -20, standing: { ...orIv, tp: 30 } },
+// What a win and a loss would do from Gold IV at 50 TP, against an equal.
+const goldIvStake = {
+  win: { tp: 20, standing: { ...goldIv, tp: 70 } },
+  loss: { tp: -20, standing: { ...goldIv, tp: 30 } },
 };
 
 const adaForm: Form = { avgWpm: 72.4, outcomes: ["win", "loss", "draw"] };
@@ -51,9 +51,9 @@ const matchProposed: ServerMessage = {
   type: "match-proposed",
   expiresAt: 25_000,
   serverTime: 20_000,
-  opponent: { handle: "kaelis", image: null, ornament: "diamant" },
-  selfOrnament: "or",
-  selfRank: orIv,
+  opponent: { handle: "kaelis", image: null, ornament: "diamond" },
+  selfOrnament: "gold",
+  selfRank: goldIv,
   opponentRank: { placementsLeft: 3 },
   selfAccepted: false,
   opponentAccepted: false,
@@ -212,10 +212,10 @@ describe("the Duel on the app's connection", () => {
     enter();
     server().receive({
       ...duelFound,
-      opponent: { handle: "ada", image: null, ornament: "or" },
-      selfOrnament: "argent",
+      opponent: { handle: "ada", image: null, ornament: "gold" },
+      selfOrnament: "silver",
       selfRank: null,
-      opponentRank: orIv,
+      opponentRank: goldIv,
       selfForm: null,
       opponentForm: adaForm,
     });
@@ -223,10 +223,10 @@ describe("the Duel on the app's connection", () => {
     expect(useDuelStore.getState().state).toMatchObject({
       phase: "countdown",
       duel: {
-        opponent: { ornament: "or" },
-        selfOrnament: "argent",
+        opponent: { ornament: "gold" },
+        selfOrnament: "silver",
         selfRank: null,
-        opponentRank: orIv,
+        opponentRank: goldIv,
         selfForm: null,
         opponentForm: adaForm,
       },
@@ -248,21 +248,21 @@ describe("the Duel on the app's connection", () => {
       opponentConnected: true,
       pace: 40,
       opponentPace: 40,
-      selfRank: orIv,
+      selfRank: goldIv,
       opponentRank: null,
       selfForm: adaForm,
       opponentForm: null,
-      selfStake: orIvStake,
+      selfStake: goldIvStake,
     });
 
     expect(useDuelStore.getState().state).toMatchObject({
       phase: "countdown",
       duel: {
-        selfRank: orIv,
+        selfRank: goldIv,
         opponentRank: null,
         selfForm: adaForm,
         opponentForm: null,
-        selfStake: orIvStake,
+        selfStake: goldIvStake,
       },
     });
   });
@@ -277,9 +277,9 @@ describe("the Duel on the app's connection", () => {
         proposal: {
           stage: "pending",
           expiresAt: 5000,
-          opponent: { handle: "kaelis", image: null, ornament: "diamant" },
-          selfOrnament: "or",
-          selfRank: orIv,
+          opponent: { handle: "kaelis", image: null, ornament: "diamond" },
+          selfOrnament: "gold",
+          selfRank: goldIv,
           opponentRank: { placementsLeft: 3 },
           selfAccepted: false,
           opponentAccepted: false,
@@ -459,9 +459,9 @@ describe("the Duel on the app's connection", () => {
       expect(proposal()).toEqual({
         stage: "accepted",
         expiresAt: 2000,
-        opponent: { handle: "kaelis", image: null, ornament: "diamant" },
-        selfOrnament: "or",
-        selfRank: orIv,
+        opponent: { handle: "kaelis", image: null, ornament: "diamond" },
+        selfOrnament: "gold",
+        selfRank: goldIv,
         opponentRank: { placementsLeft: 3 },
         selfAccepted: true,
         opponentAccepted: true,

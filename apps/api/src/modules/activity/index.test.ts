@@ -110,7 +110,7 @@ describe("GET /api/activity", () => {
 
     duels.ratings.set(alan.id, {
       mmr: 1000,
-      rank: { tier: "platine", division: 3, tp: 0, shielded: false },
+      rank: { tier: "platinum", division: 3, tp: 0, shielded: false },
     });
     duels.ratings.set(grace.id, { mmr: 1000, rank: { placementsLeft: 1 } });
     await befriend(ada, alan, 1_000);
@@ -119,8 +119,8 @@ describe("GET /api/activity", () => {
     const activities = await activityOf(ada.cookie);
 
     expect(activities).toMatchObject([
-      { type: "duel", friend: { ornament: "platine" }, opponent: { ornament: null } },
-      { type: "friendship", friend: { ornament: "platine" }, other: { ornament: null } },
+      { type: "duel", friend: { ornament: "platinum" }, opponent: { ornament: null } },
+      { type: "friendship", friend: { ornament: "platinum" }, other: { ornament: null } },
     ]);
     expect(duels.ornamentReads).toHaveLength(1);
   });

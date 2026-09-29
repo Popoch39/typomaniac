@@ -27,8 +27,8 @@ const pending: ProposalView = {
   stage: "pending",
   expiresAt: 10_000,
   opponent: { handle: "kaelis", image: null, ornament: null },
-  selfOrnament: "or",
-  selfRank: { tier: "or", division: 2, tp: 64, shielded: false },
+  selfOrnament: "gold",
+  selfRank: { tier: "gold", division: 2, tp: 64, shielded: false },
   opponentRank: { placementsLeft: 3 },
   selfAccepted: false,
   opponentAccepted: false,
@@ -81,7 +81,7 @@ describe("MatchProposalDialog", () => {
     expect(screen.getByText("Duel classé · 30 s · anglais")).toBeInTheDocument();
     expect(screen.getByText("(toi)")).toBeInTheDocument();
     expect(screen.getByText("kaelis")).toBeInTheDocument();
-    expect(screen.getByText("Or II")).toBeInTheDocument();
+    expect(screen.getByText("Gold II")).toBeInTheDocument();
     expect(screen.getByText("Placement · 3 Duels restants")).toBeInTheDocument();
     expect(screen.getByText("À toi de répondre")).toBeInTheDocument();
     expect(screen.getByText("Réfléchit…")).toBeInTheDocument();
@@ -115,7 +115,7 @@ describe("MatchProposalDialog", () => {
   });
 
   test("each player's avatar wears their Ornament, none for one without", async () => {
-    shown({ ...pending, opponent: { ...pending.opponent, ornament: "diamant" } });
+    shown({ ...pending, opponent: { ...pending.opponent, ornament: "diamond" } });
 
     await screen.findByRole("dialog", { name: "Adversaire trouvé !" });
 
@@ -123,7 +123,7 @@ describe("MatchProposalDialog", () => {
       [...document.querySelectorAll('[data-ornament] use[href^="#tier-ornament-"]')].map((use) =>
         use.getAttribute("href"),
       ),
-    ).toEqual(["#tier-ornament-or", "#tier-ornament-diamant"]);
+    ).toEqual(["#tier-ornament-gold", "#tier-ornament-diamond"]);
 
     cleanup();
     shown(pending);

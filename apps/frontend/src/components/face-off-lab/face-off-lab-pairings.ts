@@ -6,7 +6,7 @@ import type { DuelOpponent } from "@/stores/duel-store";
 
 // The opponent the lab faces, with their Ornament and every rank, Form and Stake the Face-off can
 // show.
-export const LAB_OPPONENT: DuelOpponent = { handle: "kzr_", image: null, ornament: "diamant" };
+export const LAB_OPPONENT: DuelOpponent = { handle: "kzr_", image: null, ornament: "diamond" };
 
 export type LabPairing =
   | "ranked"
@@ -15,7 +15,7 @@ export type LabPairing =
   | "forManiac"
   | "demotion"
   | "shielded"
-  | "ferIv"
+  | "ironIv"
   | "maniac"
   | "placement"
   | "challenge";
@@ -27,86 +27,86 @@ const opponentForm: Form = { avgWpm: 91.6, outcomes: ["loss", "win", "win", "los
 export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
   // An ordinary ranked Duel: a win keeps the Division.
   ranked: {
-    selfOrnament: "platine",
-    selfRank: { tier: "platine", division: 4, tp: 12, shielded: false },
-    opponentRank: { tier: "or", division: 2, tp: 42, shielded: false },
+    selfOrnament: "platinum",
+    selfRank: { tier: "platinum", division: 4, tp: 12, shielded: false },
+    opponentRank: { tier: "gold", division: 2, tp: 42, shielded: false },
     selfForm,
     opponentForm,
     selfStake: {
-      win: { tp: 14, standing: { tier: "platine", division: 4, tp: 26, shielded: false } },
-      loss: { tp: -11, standing: { tier: "platine", division: 4, tp: 1, shielded: false } },
+      win: { tp: 14, standing: { tier: "platinum", division: 4, tp: 26, shielded: false } },
+      loss: { tp: -11, standing: { tier: "platinum", division: 4, tp: 1, shielded: false } },
     },
   },
   // A win moves this User up a Division.
   division: {
-    selfOrnament: "or",
-    selfRank: { tier: "or", division: 3, tp: 94, shielded: false },
-    opponentRank: { tier: "or", division: 2, tp: 47, shielded: false },
+    selfOrnament: "gold",
+    selfRank: { tier: "gold", division: 3, tp: 94, shielded: false },
+    opponentRank: { tier: "gold", division: 2, tp: 47, shielded: false },
     selfForm,
     opponentForm,
     selfStake: {
-      win: { tp: 12, standing: { tier: "or", division: 2, tp: 6, shielded: true } },
-      loss: { tp: -13, standing: { tier: "or", division: 3, tp: 81, shielded: false } },
+      win: { tp: 12, standing: { tier: "gold", division: 2, tp: 6, shielded: true } },
+      loss: { tp: -13, standing: { tier: "gold", division: 3, tp: 81, shielded: false } },
     },
   },
-  // A Promotion Duel: a win moves this User up a Tier, from Or I to Platine IV.
+  // A Promotion Duel: a win moves this User up a Tier, from Gold I to Platinum IV.
   promotion: {
-    selfOrnament: "or",
-    selfRank: { tier: "or", division: 1, tp: 91, shielded: false },
-    opponentRank: { tier: "platine", division: 4, tp: 30, shielded: false },
+    selfOrnament: "gold",
+    selfRank: { tier: "gold", division: 1, tp: 91, shielded: false },
+    opponentRank: { tier: "platinum", division: 4, tp: 30, shielded: false },
     selfForm,
     opponentForm,
     selfStake: {
-      win: { tp: 14, standing: { tier: "platine", division: 4, tp: 5, shielded: true } },
-      loss: { tp: -11, standing: { tier: "or", division: 1, tp: 80, shielded: false } },
+      win: { tp: 14, standing: { tier: "platinum", division: 4, tp: 5, shielded: true } },
+      loss: { tp: -11, standing: { tier: "gold", division: 1, tp: 80, shielded: false } },
     },
   },
-  // A Promotion Duel for Maniac: a win moves this User from Diamant I into Maniac.
+  // A Promotion Duel for Maniac: a win moves this User from Diamond I into Maniac.
   forManiac: {
-    selfOrnament: "diamant",
-    selfRank: { tier: "diamant", division: 1, tp: 95, shielded: false },
+    selfOrnament: "diamond",
+    selfRank: { tier: "diamond", division: 1, tp: 95, shielded: false },
     opponentRank: { tier: "maniac", tp: 212, shielded: false },
     selfForm,
     opponentForm,
     selfStake: {
       win: { tp: 9, standing: { tier: "maniac", tp: 4, shielded: true } },
-      loss: { tp: -16, standing: { tier: "diamant", division: 1, tp: 79, shielded: false } },
+      loss: { tp: -16, standing: { tier: "diamond", division: 1, tp: 79, shielded: false } },
     },
   },
   // A loss moves this User down a Division.
   demotion: {
-    selfOrnament: "or",
-    selfRank: { tier: "or", division: 2, tp: 8, shielded: false },
-    opponentRank: { tier: "or", division: 2, tp: 47, shielded: false },
+    selfOrnament: "gold",
+    selfRank: { tier: "gold", division: 2, tp: 8, shielded: false },
+    opponentRank: { tier: "gold", division: 2, tp: 47, shielded: false },
     selfForm,
     opponentForm,
     selfStake: {
-      win: { tp: 12, standing: { tier: "or", division: 2, tp: 20, shielded: false } },
-      loss: { tp: -12, standing: { tier: "or", division: 3, tp: 75, shielded: false } },
+      win: { tp: 12, standing: { tier: "gold", division: 2, tp: 20, shielded: false } },
+      loss: { tp: -12, standing: { tier: "gold", division: 3, tp: 75, shielded: false } },
     },
   },
   // Just moved up: the shield holds a loss below 0 TP in the Division.
   shielded: {
-    selfOrnament: "or",
-    selfRank: { tier: "or", division: 2, tp: 4, shielded: true },
-    opponentRank: { tier: "or", division: 2, tp: 47, shielded: false },
+    selfOrnament: "gold",
+    selfRank: { tier: "gold", division: 2, tp: 4, shielded: true },
+    opponentRank: { tier: "gold", division: 2, tp: 47, shielded: false },
     selfForm,
     opponentForm,
     selfStake: {
-      win: { tp: 12, standing: { tier: "or", division: 2, tp: 16, shielded: true } },
-      loss: { tp: -12, standing: { tier: "or", division: 2, tp: 0, shielded: false } },
+      win: { tp: 12, standing: { tier: "gold", division: 2, tp: 16, shielded: true } },
+      loss: { tp: -12, standing: { tier: "gold", division: 2, tp: 0, shielded: false } },
     },
   },
   // The lowest rank: a loss below 0 TP stays at 0.
-  ferIv: {
-    selfOrnament: "fer",
-    selfRank: { tier: "fer", division: 4, tp: 6, shielded: false },
-    opponentRank: { tier: "fer", division: 3, tp: 30, shielded: false },
+  ironIv: {
+    selfOrnament: "iron",
+    selfRank: { tier: "iron", division: 4, tp: 6, shielded: false },
+    opponentRank: { tier: "iron", division: 3, tp: 30, shielded: false },
     selfForm,
     opponentForm,
     selfStake: {
-      win: { tp: 14, standing: { tier: "fer", division: 4, tp: 20, shielded: false } },
-      loss: { tp: -12, standing: { tier: "fer", division: 4, tp: 0, shielded: false } },
+      win: { tp: 14, standing: { tier: "iron", division: 4, tp: 20, shielded: false } },
+      loss: { tp: -12, standing: { tier: "iron", division: 4, tp: 0, shielded: false } },
     },
   },
   // TP without a cap: no bar.
@@ -132,7 +132,7 @@ export const LAB_PAIRINGS: Record<LabPairing, FaceOffPairing> = {
   },
   // Never ranked, the Ornament worn all the same.
   challenge: {
-    selfOrnament: "argent",
+    selfOrnament: "silver",
     selfRank: null,
     opponentRank: null,
     selfForm,
@@ -148,7 +148,7 @@ export const LAB_PAIRING_OPTIONS: readonly SettingOption<LabPairing>[] = [
   { value: "forManiac", label: "Duel pour Maniac" },
   { value: "demotion", label: "Descente" },
   { value: "shielded", label: "Protégé" },
-  { value: "ferIv", label: "Fer IV" },
+  { value: "ironIv", label: "Iron IV" },
   { value: "maniac", label: "Maniac" },
   { value: "placement", label: "Placement" },
   { value: "challenge", label: "Challenge" },

@@ -1,6 +1,6 @@
 import type { Tier } from "ranked";
 
-import { DIAMANT_FACETS } from "@/components/tier-up/choreography/diamant/diamant-facets";
+import { DIAMOND_FACETS } from "@/components/tier-up/choreography/diamond/diamond-facets";
 import { MANIAC_CRACKS } from "@/components/tier-up/choreography/maniac/maniac-cracks";
 import { FIRE } from "@/components/tier-up/choreography/maniac/maniac-paint";
 import { tierUpPaint } from "@/components/tier-up/parts/tier-up-paint";
@@ -9,7 +9,7 @@ import { EMBLEM_OUTLINES } from "@/components/tier/sprite/tier-emblem-outline";
 // A layer of the gem, over the others, on its 32 × 32 grid.
 const LAYER = "absolute inset-0 size-full overflow-visible";
 
-// The Emblem of the Tier left, the Diamant's gem, as the Diamant → Maniac artboard melts it, 240 px,
+// The Emblem of the Tier left, the Diamond's gem, as the Diamond → Maniac artboard melts it, 240 px,
 // a little under the Blason's centre: its eight facets over its dark shape, heating up more and
 // more, trembling as cracks of white heat run through it, then flung apart. Only seen: the
 // name says the Tier reached. The wrappers move, never the drawing.
@@ -34,7 +34,7 @@ export const TierUpMeltingGem = ({ tier }: { tier: Tier }) => {
               strokeLinejoin="round"
             />
           </svg>
-          {DIAMANT_FACETS.map(({ points, color }, index) => (
+          {DIAMOND_FACETS.map(({ points, color }, index) => (
             <div
               key={points}
               data-tier-up="gem-facet"

@@ -8,7 +8,7 @@ type DivisionProgress = Extract<TpProgress, { kind: "division" }>;
 // how far the next; or nothing yet.
 export type RankedPlaceView =
   | (DivisionProgress & {
-      // "58 avant Or I".
+      // "58 avant Gold I".
       ahead: string;
     })
   | Exclude<TpProgress, DivisionProgress>

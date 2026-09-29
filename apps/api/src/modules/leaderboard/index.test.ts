@@ -8,8 +8,8 @@ import { LEADERBOARD_LIMIT, LeaderboardModel } from "./model";
 
 const leaderboardBody = TypeCompiler.Compile(LeaderboardModel.leaderboard);
 
-const or = (division: 4 | 3 | 2 | 1, tp: number): Standing => ({
-  tier: "or",
+const gold = (division: 4 | 3 | 2 | 1, tp: number): Standing => ({
+  tier: "gold",
   division,
   tp,
   shielded: false,
@@ -82,13 +82,13 @@ describe("GET /api/leaderboard", () => {
 
   test("orders by Tier, then Division, then TP, Maniac by TP", async () => {
     const { newUser, leaderboardOf } = setup();
-    const ada = await newUser("ada", or(4, 90));
+    const ada = await newUser("ada", gold(4, 90));
 
     await newUser("alan", { tier: "maniac", tp: 10, shielded: false });
-    await newUser("grace", or(3, 5));
-    await newUser("linus", { tier: "platine", division: 4, tp: 0, shielded: true });
+    await newUser("grace", gold(3, 5));
+    await newUser("linus", { tier: "platinum", division: 4, tp: 0, shielded: true });
     await newUser("barbara", { tier: "maniac", tp: 320, shielded: false });
-    await newUser("ken", or(4, 20));
+    await newUser("ken", gold(4, 20));
 
     const { entries } = await leaderboardOf(ada.cookie);
 
@@ -104,14 +104,14 @@ describe("GET /api/leaderboard", () => {
       position: 5,
       handle: "ada",
       image: "https://example.com/1.png",
-      ornament: "or",
-      rank: { tier: "or", division: 4, tp: 90, shielded: false },
+      ornament: "gold",
+      rank: { tier: "gold", division: 4, tp: 90, shielded: false },
     });
   });
 
   test("leaves out the Users in Placement and those who never joined the Queue", async () => {
     const { newUser, leaderboardOf } = setup();
-    const ada = await newUser("ada", or(4, 10));
+    const ada = await newUser("ada", gold(4, 10));
 
     await newUser("alan", { placementsLeft: 1 });
     await newUser("grace");
@@ -121,7 +121,7 @@ describe("GET /api/leaderboard", () => {
 
   test("never shows the MMR, the name nor the email", async () => {
     const { newUser, leaderboardOf } = setup();
-    const ada = await newUser("ada", or(2, 42));
+    const ada = await newUser("ada", gold(2, 42));
 
     const body = JSON.stringify(await leaderboardOf(ada.cookie));
 
@@ -134,16 +134,16 @@ describe("GET /api/leaderboard", () => {
     test("stands where they are, highlighted apart from the list", async () => {
       const { newUser, leaderboardOf } = setup();
 
-      await newUser("alan", or(1, 0));
+      await newUser("alan", gold(1, 0));
 
-      const ada = await newUser("ada", or(4, 10));
+      const ada = await newUser("ada", gold(4, 10));
 
       expect((await leaderboardOf(ada.cookie)).me).toEqual({
         position: 2,
         handle: "ada",
         image: "https://example.com/2.png",
-        ornament: "or",
-        rank: or(4, 10),
+        ornament: "gold",
+        rank: gold(4, 10),
       });
     });
 
@@ -151,10 +151,10 @@ describe("GET /api/leaderboard", () => {
       const { duels, newUser, leaderboardOf } = setup();
 
       for (let index = 0; index < LEADERBOARD_LIMIT; index += 1) {
-        duels.ratings.set(`strong-${index}`, { mmr: 1, rank: or(1, index) });
+        duels.ratings.set(`strong-${index}`, { mmr: 1, rank: gold(1, index) });
       }
 
-      const ada = await newUser("ada", or(4, 0));
+      const ada = await newUser("ada", gold(4, 0));
       const leaderboard = await leaderboardOf(ada.cookie);
 
       expect(leaderboard.entries).toHaveLength(0);
@@ -164,7 +164,7 @@ describe("GET /api/leaderboard", () => {
     test("is null in Placement", async () => {
       const { newUser, leaderboardOf } = setup();
 
-      await newUser("alan", or(1, 0));
+      await newUser("alan", gold(1, 0));
 
       const ada = await newUser("ada", { placementsLeft: 3 });
 
@@ -175,9 +175,9 @@ describe("GET /api/leaderboard", () => {
   test("keeps the place of a User without a Handle, left out of the list", async () => {
     const { duels, newUser, leaderboardOf } = setup();
 
-    duels.ratings.set("handleless", { mmr: 1, rank: or(1, 0) });
+    duels.ratings.set("handleless", { mmr: 1, rank: gold(1, 0) });
 
-    const ada = await newUser("ada", or(4, 0));
+    const ada = await newUser("ada", gold(4, 0));
 
     expect((await leaderboardOf(ada.cookie)).entries).toEqual([
       expect.objectContaining({ position: 2, handle: "ada" }),
@@ -187,30 +187,30 @@ describe("GET /api/leaderboard", () => {
   describe("the Ornament", () => {
     test("is the one each User wears, resolved from their choice, the reader's too", async () => {
       const { duels, newUser, leaderboardOf } = setup();
-      const alan = await newUser("alan", { tier: "platine", division: 1, tp: 0, shielded: false });
-      const grace = await newUser("grace", or(1, 50));
-      const ada = await newUser("ada", or(4, 10));
+      const alan = await newUser("alan", { tier: "platinum", division: 1, tp: 0, shielded: false });
+      const grace = await newUser("grace", gold(1, 50));
+      const ada = await newUser("ada", gold(4, 10));
 
-      duels.ornaments.set(alan.id, "argent");
+      duels.ornaments.set(alan.id, "silver");
       duels.ornaments.set(grace.id, "none");
 
       const leaderboard = await leaderboardOf(ada.cookie);
 
       expect(leaderboard.entries.map(({ handle, ornament }) => [handle, ornament])).toEqual([
-        ["alan", "argent"],
+        ["alan", "silver"],
         ["grace", null],
-        ["ada", "or"],
+        ["ada", "gold"],
       ]);
-      expect(leaderboard.me?.ornament).toBe("or");
+      expect(leaderboard.me?.ornament).toBe("gold");
     });
 
     test("reads the Ratings of all the Users at once, never one by one", async () => {
       const { duels, newUser, leaderboardOf } = setup();
 
-      await newUser("alan", or(1, 0));
-      await newUser("grace", or(2, 0));
+      await newUser("alan", gold(1, 0));
+      await newUser("grace", gold(2, 0));
 
-      const ada = await newUser("ada", or(4, 10));
+      const ada = await newUser("ada", gold(4, 10));
 
       await leaderboardOf(ada.cookie);
 
@@ -220,8 +220,8 @@ describe("GET /api/leaderboard", () => {
 
   test("forgets a deleted User", async () => {
     const { duels, newUser, leaderboardOf } = setup();
-    const alan = await newUser("alan", or(1, 0));
-    const ada = await newUser("ada", or(4, 0));
+    const alan = await newUser("alan", gold(1, 0));
+    const ada = await newUser("ada", gold(4, 0));
 
     duels.deleteUser(alan.id);
 

@@ -23,7 +23,7 @@ const IGNITED = `${POPPED_STUDS} [&>g:last-child]:origin-bottom [&>g:last-child]
 const ABLAZE =
   "[&>circle]:[fill:url(#tier-up-gem-fire)] [&>g:last-child>path:first-child]:[fill:url(#tier-up-flame-fire)] [&>g:last-child>path:last-child]:[fill:url(#tier-up-flame-heart)] [&>g:last-child>path:last-child]:opacity-90";
 
-// The Emblem of the Tier reached, the Maniac's crown, as the Diamant → Maniac artboard brings it
+// The Emblem of the Tier reached, the Maniac's crown, as the Diamond → Maniac artboard brings it
 // in, 320 px: it drops from above after the silence and lands with a quake, squashed then whole;
 // its gems light one by one, a ring of fire flying off each of the three in its band, and its
 // flame catches; its wings spread feather by feather; then, as it catches fire, it swells and its

@@ -2,7 +2,7 @@ import { MANIAC_SWIRL } from "@/components/tier-up/choreography/maniac/maniac-li
 import { FIRE, MANIAC_PAINT } from "@/components/tier-up/choreography/maniac/maniac-paint";
 import { TierUpCenter } from "@/components/tier-up/stage/tier-up-center";
 
-// The vortex the old gem is sucked into, as the Diamant → Maniac artboard draws it: embers
+// The vortex the old gem is sucked into, as the Diamond → Maniac artboard draws it: embers
 // swirling in from all around, each on its own line through the crown's centre, turning with it as
 // it closes in; and the heart they feed, growing until the crown drops. All unseen until then.
 export const TierUpVortex = () => (

@@ -6,7 +6,7 @@ import { TIER_COUNTS, tierRows } from "@/components/ranked/tier-rows";
 // "7 Tiers · 24 Divisions · 1 sommet", read from the ranked package.
 const COUNTS = `${TIER_COUNTS.tiers} Tiers · ${TIER_COUNTS.divisions} Divisions · ${TIER_COUNTS.summits} sommet`;
 
-// The Ranked page's Tiers from Maniac down to Fer, on the whole height of the page, the reader's
+// The Ranked page's Tiers from Maniac down to Iron, on the whole height of the page, the reader's
 // marked and the Divisions they have climbed lit.
 export const RankedTiers = ({ rank }: { rank: Rank | null }) => (
   <section aria-labelledby="ranked-title" className="flex min-w-0 flex-1 flex-col">

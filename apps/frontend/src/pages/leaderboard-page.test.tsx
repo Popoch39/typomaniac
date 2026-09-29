@@ -28,13 +28,13 @@ const me: Me = {
   ornamentChoice: null,
 };
 
-const orII: LeaderboardEntry["rank"] = { tier: "or", division: 2, tp: 42, shielded: false };
+const goldII: LeaderboardEntry["rank"] = { tier: "gold", division: 2, tp: 42, shielded: false };
 
 const entry = (
   position: number,
   handle: string,
   ornament: LeaderboardEntry["ornament"] = null,
-  rank: LeaderboardEntry["rank"] = orII,
+  rank: LeaderboardEntry["rank"] = goldII,
 ): LeaderboardEntry => ({ position, handle, image: null, ornament, rank });
 
 // The Users from `first` to `last`, in their order.
@@ -107,13 +107,13 @@ describe("LeaderboardPage", () => {
     await renderPage(me, { entries: entries(1, 5), me: null });
 
     expect(podium().map((card) => card.textContent)).toEqual([
-      "1U@user1Or II · 42 TP",
-      "2U@user2Or II · 42 TP",
-      "3U@user3Or II · 42 TP",
+      "1U@user1Gold II · 42 TP",
+      "2U@user2Gold II · 42 TP",
+      "3U@user3Gold II · 42 TP",
     ]);
     expect(listed().map((row) => row.textContent)).toEqual([
-      "4U@user4Or II · 42 TP",
-      "5U@user5Or II · 42 TP",
+      "4U@user4Gold II · 42 TP",
+      "5U@user5Gold II · 42 TP",
     ]);
   });
 
@@ -129,7 +129,7 @@ describe("LeaderboardPage", () => {
 
     const rows = [...podium(), ...listed()];
 
-    expect(listed()[1]?.textContent).toBe("5A@adaToiOr II · 42 TP");
+    expect(listed()[1]?.textContent).toBe("5A@adaToiGold II · 42 TP");
     expect(listed()[1]?.getAttribute("aria-current")).toBe("true");
     expect(rows.filter((row) => row.hasAttribute("aria-current"))).toHaveLength(1);
   });
@@ -137,23 +137,23 @@ describe("LeaderboardPage", () => {
   test("marks the reader among the first three", async () => {
     await renderPage(me, { entries: [entry(1, "alan"), entry(2, "ada")], me: entry(2, "ada") });
 
-    expect(podium()[1]?.textContent).toBe("2A@adaToiOr II · 42 TP");
+    expect(podium()[1]?.textContent).toBe("2A@adaToiGold II · 42 TP");
     expect(podium()[1]?.getAttribute("aria-current")).toBe("true");
     expect(podium()[0]?.hasAttribute("aria-current")).toBe(false);
   });
 
   test("each avatar wears its User's Ornament, the reader's below the list too", async () => {
     await renderPage(me, {
-      entries: [entry(1, "alan", "diamant"), ...entries(2, 3), entry(4, "grace", "or")],
-      me: entry(140, "ada", "argent"),
+      entries: [entry(1, "alan", "diamond"), ...entries(2, 3), entry(4, "grace", "gold")],
+      me: entry(140, "ada", "silver"),
     });
 
     expect([...podium(), ...listed()].map(ornamentOf)).toEqual([
-      "#tier-ornament-diamant",
+      "#tier-ornament-diamond",
       null,
       null,
-      "#tier-ornament-or",
-      "#tier-ornament-argent",
+      "#tier-ornament-gold",
+      "#tier-ornament-silver",
     ]);
   });
 
@@ -169,34 +169,34 @@ describe("LeaderboardPage", () => {
 
   test("tells a ranked reader their place, rank and the TP left to the next one", async () => {
     await renderPage(
-      { ...me, rank: orII },
-      { entries: entries(1, 4), me: entry(128, "ada", "or", orII) },
+      { ...me, rank: goldII },
+      { entries: entries(1, 4), me: entry(128, "ada", "gold", goldII) },
     );
 
     expect(place().textContent).toContain("128e");
-    expect(place().textContent).toContain("Or II");
+    expect(place().textContent).toContain("Gold II");
     expect(place().textContent).toContain("42 TP");
-    expect(within(place()).getByText("58 TP avant Or I")).toBeTruthy();
+    expect(within(place()).getByText("58 TP avant Gold I")).toBeTruthy();
     expect(within(place()).getByRole("meter", { name: "TP de la Division" })).toBeTruthy();
   });
 
   test("tells the rank `/me` has, fresher than the Classement's line after a Duel", async () => {
-    const platine = { tier: "platine", division: 4, tp: 6, shielded: true } as const;
+    const platinum = { tier: "platinum", division: 4, tp: 6, shielded: true } as const;
 
     await renderPage(
-      { ...me, rank: platine },
-      { entries: entries(1, 4), me: entry(128, "ada", "or", orII) },
+      { ...me, rank: platinum },
+      { entries: entries(1, 4), me: entry(128, "ada", "gold", goldII) },
     );
 
-    expect(place().textContent).toContain("Platine IV");
-    expect(place().textContent).toContain("94 TP avant Platine III");
+    expect(place().textContent).toContain("Platinum IV");
+    expect(place().textContent).toContain("94 TP avant Platinum III");
     expect(legend().find((tier) => tier.hasAttribute("aria-current"))?.textContent).toBe(
-      "Platineton Tier",
+      "Platinumton Tier",
     );
   });
 
   test("calls the first place 1er", async () => {
-    await renderPage({ ...me, rank: orII }, { entries: [entry(1, "ada")], me: entry(1, "ada") });
+    await renderPage({ ...me, rank: goldII }, { entries: [entry(1, "ada")], me: entry(1, "ada") });
 
     expect(place().textContent).toContain("1er");
   });
@@ -217,20 +217,20 @@ describe("LeaderboardPage", () => {
     expect(within(place()).queryByRole("meter")).toBeNull();
   });
 
-  test("lays out the Tiers from Maniac to Fer, the reader's marked", async () => {
+  test("lays out the Tiers from Maniac to Iron, the reader's marked", async () => {
     await renderPage(
-      { ...me, rank: orII },
-      { entries: entries(1, 4), me: entry(128, "ada", "or", orII) },
+      { ...me, rank: goldII },
+      { entries: entries(1, 4), me: entry(128, "ada", "gold", goldII) },
     );
 
     expect(legend().map((tier) => tier.textContent)).toEqual([
       "Maniacsans Division",
-      "DiamantIV à I",
-      "PlatineIV à I",
-      "Orton Tier",
-      "ArgentIV à I",
+      "DiamondIV à I",
+      "PlatinumIV à I",
+      "Goldton Tier",
+      "SilverIV à I",
       "BronzeIV à I",
-      "FerIV à I",
+      "IronIV à I",
     ]);
     expect(legend().filter((tier) => tier.hasAttribute("aria-current"))).toEqual([legend()[3]]);
   });

@@ -1,5 +1,5 @@
 // The cracks of white heat that run through the old gem before it breaks, on the Emblem's 32 grid,
-// as the Diamant → Maniac artboard draws them: down its middle, then across each side, each wide
+// as the Diamond → Maniac artboard draws them: down its middle, then across each side, each wide
 // as `width`, running through it from `at` for `duration` (s).
 export const MANIAC_CRACKS = [
   {

@@ -18,7 +18,7 @@ const renderAura = (children: ReactNode, runtime: AuraRuntime = fakeAuraRuntime(
     </>,
   );
 
-const fullOr = <UserAvatar handle="ada" image={null} ornament="or" aura="full" />;
+const fullGold = <UserAvatar handle="ada" image={null} ornament="gold" aura="full" />;
 
 // Once the full Aura's runtime has loaded and answered.
 const settle = () => act(async () => {});
@@ -53,15 +53,15 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("the full Aura of Platine", () => {
-  test("is drawn by its own program, not Or's, behind the avatar and the Blason", async () => {
+describe("the full Aura of Platinum", () => {
+  test("is drawn by its own program, not Gold's, behind the avatar and the Blason", async () => {
     const browser = fakeAuraRuntime();
 
     const { container } = renderAura(
       <>
-        {fullOr}
-        <UserAvatar handle="ada" image={null} ornament="platine" aura="full" />
-        <TierBlason tier="platine" aura="full" />
+        {fullGold}
+        <UserAvatar handle="ada" image={null} ornament="platinum" aura="full" />
+        <TierBlason tier="platinum" aura="full" />
       </>,
       browser.runtime,
     );
@@ -69,29 +69,29 @@ describe("the full Aura of Platine", () => {
     await settle();
     browser.tick();
 
-    const [or, avatar, blason] = browser.painters;
+    const [gold, avatar, blason] = browser.painters;
 
     expect(browser.painters.map((painter) => [painter.tier, painter.draws])).toEqual([
-      ["or", 1],
-      ["platine", 1],
-      ["platine", 1],
+      ["gold", 1],
+      ["platinum", 1],
+      ["platinum", 1],
     ]);
-    expect(avatar?.program).not.toBe(or?.program);
+    expect(avatar?.program).not.toBe(gold?.program);
     expect(blason?.program).toBe(avatar?.program);
     expect(glows(container)).toHaveLength(0);
     expect(sheens(container)).toHaveLength(3);
   });
 });
 
-describe("the full Aura of Diamant", () => {
-  test("is drawn by its own program, not Platine's, behind the avatar and the Blason", async () => {
+describe("the full Aura of Diamond", () => {
+  test("is drawn by its own program, not Platinum's, behind the avatar and the Blason", async () => {
     const browser = fakeAuraRuntime();
 
     const { container } = renderAura(
       <>
-        <UserAvatar handle="ada" image={null} ornament="platine" aura="full" />
-        <UserAvatar handle="ada" image={null} ornament="diamant" aura="full" />
-        <TierBlason tier="diamant" aura="full" />
+        <UserAvatar handle="ada" image={null} ornament="platinum" aura="full" />
+        <UserAvatar handle="ada" image={null} ornament="diamond" aura="full" />
+        <TierBlason tier="diamond" aura="full" />
       </>,
       browser.runtime,
     );
@@ -99,14 +99,14 @@ describe("the full Aura of Diamant", () => {
     await settle();
     browser.tick();
 
-    const [platine, avatar, blason] = browser.painters;
+    const [platinum, avatar, blason] = browser.painters;
 
     expect(browser.painters.map((painter) => [painter.tier, painter.draws])).toEqual([
-      ["platine", 1],
-      ["diamant", 1],
-      ["diamant", 1],
+      ["platinum", 1],
+      ["diamond", 1],
+      ["diamond", 1],
     ]);
-    expect(avatar?.program).not.toBe(platine?.program);
+    expect(avatar?.program).not.toBe(platinum?.program);
     expect(blason?.program).toBe(avatar?.program);
     expect(glows(container)).toHaveLength(0);
     expect(sheens(container)).toHaveLength(3);
@@ -116,12 +116,12 @@ describe("the full Aura of Diamant", () => {
 });
 
 describe("the full Aura of Maniac", () => {
-  test("is drawn by its own program, not Diamant's, in place of its rays and its glow", async () => {
+  test("is drawn by its own program, not Diamond's, in place of its rays and its glow", async () => {
     const browser = fakeAuraRuntime();
 
     const { container } = renderAura(
       <>
-        <UserAvatar handle="ada" image={null} ornament="diamant" aura="full" />
+        <UserAvatar handle="ada" image={null} ornament="diamond" aura="full" />
         <UserAvatar handle="ada" image={null} ornament="maniac" aura="full" />
         <TierBlason tier="maniac" aura="full" />
       </>,
@@ -131,14 +131,14 @@ describe("the full Aura of Maniac", () => {
     await settle();
     browser.tick();
 
-    const [diamant, avatar, blason] = browser.painters;
+    const [diamond, avatar, blason] = browser.painters;
 
     expect(browser.painters.map((painter) => [painter.tier, painter.draws])).toEqual([
-      ["diamant", 1],
+      ["diamond", 1],
       ["maniac", 1],
       ["maniac", 1],
     ]);
-    expect(avatar?.program).not.toBe(diamant?.program);
+    expect(avatar?.program).not.toBe(diamond?.program);
     expect(blason?.program).toBe(avatar?.program);
     // The fire takes the place of the rays and the glow, and its embers of the sparks.
     expect(rays(container)).toHaveLength(0);
@@ -171,7 +171,7 @@ describe("a Tier without an Aura", () => {
     const browser = fakeAuraRuntime();
 
     const { container } = renderAura(
-      <UserAvatar handle="ada" image={null} ornament="argent" aura="full" />,
+      <UserAvatar handle="ada" image={null} ornament="silver" aura="full" />,
       browser.runtime,
     );
 
@@ -182,24 +182,24 @@ describe("a Tier without an Aura", () => {
   });
 });
 
-describe("the full Aura of Or", () => {
+describe("the full Aura of Gold", () => {
   test("is drawn on a canvas behind the Ornament, in place of its glow, under its sheen", async () => {
     const browser = fakeAuraRuntime();
-    const { container } = renderAura(fullOr, browser.runtime);
+    const { container } = renderAura(fullGold, browser.runtime);
 
     await settle();
     browser.tick();
 
     expect(canvases(container)).toHaveLength(1);
     expect(browser.painters[0]?.canvas.closest("[data-ornament]")).not.toBeNull();
-    expect(browser.painters.map((painter) => [painter.tier, painter.draws])).toEqual([["or", 1]]);
+    expect(browser.painters.map((painter) => [painter.tier, painter.draws])).toEqual([["gold", 1]]);
     expect(glows(container)).toHaveLength(0);
     expect(sheens(container)).toHaveLength(1);
   });
 
   test("is drawn behind a Blason asked for it too", async () => {
     const browser = fakeAuraRuntime();
-    const { container } = renderAura(<TierBlason tier="or" aura="full" />, browser.runtime);
+    const { container } = renderAura(<TierBlason tier="gold" aura="full" />, browser.runtime);
 
     await settle();
     browser.tick();
@@ -214,8 +214,8 @@ describe("the full Aura of Or", () => {
 
     const { container } = renderAura(
       <>
-        <UserAvatar handle="ada" image={null} ornament="or" />
-        <TierBlason tier="or" />
+        <UserAvatar handle="ada" image={null} ornament="gold" />
+        <TierBlason tier="gold" />
       </>,
       browser.runtime,
     );
@@ -229,7 +229,7 @@ describe("the full Aura of Or", () => {
 
   test("without WebGL2, the light Aura is drawn instead, without an error", async () => {
     const error = vi.spyOn(console, "error");
-    const { container } = renderAura(fullOr, fakeAuraRuntime({ webgl2: false }).runtime);
+    const { container } = renderAura(fullGold, fakeAuraRuntime({ webgl2: false }).runtime);
 
     await settle();
 
@@ -250,7 +250,7 @@ describe("the full Aura of Or", () => {
         <TierSprite />
         <AuraRuntimeContext value={browser.runtime}>
           {shown.map((handle) => (
-            <UserAvatar key={handle} handle={handle} image={null} ornament="or" aura="full" />
+            <UserAvatar key={handle} handle={handle} image={null} ornament="gold" aura="full" />
           ))}
         </AuraRuntimeContext>
       </>
@@ -274,7 +274,7 @@ describe("the full Aura of Or", () => {
 
   test("once its context is lost, the light Aura takes its place", async () => {
     const browser = fakeAuraRuntime();
-    const { container } = renderAura(fullOr, browser.runtime);
+    const { container } = renderAura(fullGold, browser.runtime);
 
     await settle();
     act(() => browser.painters[0]?.lose());
@@ -289,8 +289,8 @@ describe("the full Aura of Or", () => {
 
     renderAura(
       <>
-        {fullOr}
-        {fullOr}
+        {fullGold}
+        {fullGold}
       </>,
       browser.runtime,
     );
@@ -321,7 +321,7 @@ describe("the full Aura of Or", () => {
     reduceMotion();
     const browser = fakeAuraRuntime();
 
-    renderAura(fullOr, browser.runtime);
+    renderAura(fullGold, browser.runtime);
     await settle();
     browser.tick();
     browser.tick();
@@ -336,7 +336,7 @@ describe("the full Aura of Or", () => {
     vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(100);
     const browser = fakeAuraRuntime({ pixelRatio: 3 });
 
-    renderAura(fullOr, browser.runtime);
+    renderAura(fullGold, browser.runtime);
     await settle();
     browser.tick();
 
@@ -350,8 +350,8 @@ describe("the full Aura of Or", () => {
 
     const { unmount } = renderAura(
       <>
-        {fullOr}
-        <TierBlason tier="or" aura="full" />
+        {fullGold}
+        <TierBlason tier="gold" aura="full" />
       </>,
       browser.runtime,
     );
@@ -370,7 +370,7 @@ describe("the full Aura of Or", () => {
 
   test("unmounted before its runtime loads, it never claims a place", async () => {
     const browser = fakeAuraRuntime();
-    const { unmount } = renderAura(fullOr, browser.runtime);
+    const { unmount } = renderAura(fullGold, browser.runtime);
 
     unmount();
     await settle();

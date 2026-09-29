@@ -5,16 +5,16 @@ export type WingFan = readonly (readonly [turn: number, scale: number])[];
 // Where the feathers of a wing are rooted, on the 120 grid.
 export const WING_ROOT = { x: 46, y: 56 } as const;
 
-// The Platine's wing: three feathers of its metal. The Tier-up unfurls them one by one.
-export const PLATINE_FAN: WingFan = [
+// The Platinum's wing: three feathers of its metal. The Tier-up unfurls them one by one.
+export const PLATINUM_FAN: WingFan = [
   [48, 0.85],
   [28, 1],
   [8, 0.9],
 ];
 
-// The Diamant's wing: four feathers of its deeper metal behind, three of its metal in front, each
+// The Diamond's wing: four feathers of its deeper metal behind, three of its metal in front, each
 // from the lowest. The Tier-up unfurls them one by one.
-export const DIAMANT_FANS = {
+export const DIAMOND_FANS = {
   deep: [
     [60, 0.8],
     [38, 1],
@@ -55,7 +55,7 @@ export const MANIAC_WING_EMBERS = {
   ],
 } as const;
 
-// The crystal over the Diamant's wing, turned about its heart, and its lit half. The Tier-up pops
+// The crystal over the Diamond's wing, turned about its heart, and its lit half. The Tier-up pops
 // it in.
 export const WING_CRYSTAL = {
   d: "M45 6 L49.5 17 L45 31 L40.5 17 Z",

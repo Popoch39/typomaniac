@@ -4,23 +4,23 @@ import { rankedPlaceOf } from "@/components/ranked/ranked-place-of";
 
 describe("rankedPlaceOf", () => {
   test("in a Division: its name, its TP, and what is left to the next rank", () => {
-    expect(rankedPlaceOf({ tier: "or", division: 2, tp: 42, shielded: false })).toEqual({
+    expect(rankedPlaceOf({ tier: "gold", division: 2, tp: 42, shielded: false })).toEqual({
       kind: "division",
-      tier: "or",
-      name: "Or II",
+      tier: "gold",
+      name: "Gold II",
       tp: 42,
       of: 100,
-      next: "Or I",
-      toNext: "58 TP avant Or I",
-      ahead: "58 avant Or I",
+      next: "Gold I",
+      toNext: "58 TP avant Gold I",
+      ahead: "58 avant Gold I",
     });
   });
 
-  test("past a Division I, the next Tier's lowest; past Diamant I, Maniac", () => {
-    expect(rankedPlaceOf({ tier: "argent", division: 1, tp: 90, shielded: false })).toMatchObject({
-      ahead: "10 avant Or IV",
+  test("past a Division I, the next Tier's lowest; past Diamond I, Maniac", () => {
+    expect(rankedPlaceOf({ tier: "silver", division: 1, tp: 90, shielded: false })).toMatchObject({
+      ahead: "10 avant Gold IV",
     });
-    expect(rankedPlaceOf({ tier: "diamant", division: 1, tp: 0, shielded: false })).toMatchObject({
+    expect(rankedPlaceOf({ tier: "diamond", division: 1, tp: 0, shielded: false })).toMatchObject({
       ahead: "100 avant Maniac",
     });
   });

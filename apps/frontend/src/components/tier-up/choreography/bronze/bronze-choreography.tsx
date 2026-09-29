@@ -25,7 +25,7 @@ import { TierUpGround } from "@/components/tier-up/parts/tier-up-ground";
 import { TierUpOldEmblem } from "@/components/tier-up/parts/tier-up-old-emblem";
 import { TierUpSparks } from "@/components/tier-up/parts/tier-up-sparks";
 
-// Fer → Bronze, as its artboard « 1 · Fer → Bronze » plays it, keyframe for keyframe, with its
+// Iron → Bronze, as its artboard « 1 · Fer → Bronze » plays it, keyframe for keyframe, with its
 // timings and its curves: the iron shield rises in, then dissolves into light; the bronze
 // outline traces itself, its metal fills it in, its chevrons are cut, a flash, and it lands with
 // the halo opening, a ring and sparks; then « Nouveau palier », the name letter by letter, the

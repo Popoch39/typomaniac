@@ -14,7 +14,7 @@ import { useFaceOffSoundStore } from "@/stores/face-off-sound-store";
 
 const STARTS_AT = 10_000;
 
-const alan = { handle: "alan", image: null, ornament: "platine" } as const;
+const alan = { handle: "alan", image: null, ornament: "platinum" } as const;
 
 // The Ornament worn in a side's panel, within what its timeline moves in and out.
 const ornamentIn = (side: string) =>
@@ -47,53 +47,53 @@ const challenge: FaceOffPairing = {
   selfStake: null,
 };
 
-const orIv = (tp: number) => ({ tier: "or", division: 4, tp, shielded: false }) as const;
+const goldIv = (tp: number) => ({ tier: "gold", division: 4, tp, shielded: false }) as const;
 
-const ferIv = (tp: number) => ({ tier: "fer", division: 4, tp, shielded: false }) as const;
+const ironIv = (tp: number) => ({ tier: "iron", division: 4, tp, shielded: false }) as const;
 
 const maniac = (tp: number) => ({ tier: "maniac", tp, shielded: false }) as const;
 
 // A ranked Duel between equals, at the MMR their rank expects: 20 TP either way.
 const ranked: FaceOffPairing = {
-  selfOrnament: "or",
-  selfRank: orIv(50),
-  opponentRank: orIv(30),
+  selfOrnament: "gold",
+  selfRank: goldIv(50),
+  opponentRank: goldIv(30),
   selfForm: null,
   opponentForm: null,
-  selfStake: { win: { tp: 20, standing: orIv(70) }, loss: { tp: -20, standing: orIv(30) } },
+  selfStake: { win: { tp: 20, standing: goldIv(70) }, loss: { tp: -20, standing: goldIv(30) } },
 };
 
-const orI = (tp: number) => ({ tier: "or", division: 1, tp, shielded: false }) as const;
+const goldI = (tp: number) => ({ tier: "gold", division: 1, tp, shielded: false }) as const;
 
-const diamantI = (tp: number) => ({ tier: "diamant", division: 1, tp, shielded: false }) as const;
+const diamondI = (tp: number) => ({ tier: "diamond", division: 1, tp, shielded: false }) as const;
 
-// A win moves Ada from Or I up to Platine IV: a Promotion Duel.
+// A win moves Ada from Gold I up to Platinum IV: a Promotion Duel.
 const promotion: FaceOffPairing = {
   ...ranked,
-  selfRank: orI(91),
+  selfRank: goldI(91),
   selfStake: {
-    win: { tp: 14, standing: { tier: "platine", division: 4, tp: 5, shielded: true } },
-    loss: { tp: -11, standing: orI(80) },
+    win: { tp: 14, standing: { tier: "platinum", division: 4, tp: 5, shielded: true } },
+    loss: { tp: -11, standing: goldI(80) },
   },
 };
 
-// A win moves Ada from Diamant I into Maniac.
+// A win moves Ada from Diamond I into Maniac.
 const forManiac: FaceOffPairing = {
   ...ranked,
-  selfRank: diamantI(95),
+  selfRank: diamondI(95),
   selfStake: {
     win: { tp: 9, standing: { tier: "maniac", tp: 4, shielded: true } },
-    loss: { tp: -16, standing: diamantI(79) },
+    loss: { tp: -16, standing: diamondI(79) },
   },
 };
 
-// A win moves Ada up a Division only, from Or III to Or II.
+// A win moves Ada up a Division only, from Gold III to Gold II.
 const division: FaceOffPairing = {
   ...ranked,
-  selfRank: { tier: "or", division: 3, tp: 94, shielded: false },
+  selfRank: { tier: "gold", division: 3, tp: 94, shielded: false },
   selfStake: {
-    win: { tp: 12, standing: { tier: "or", division: 2, tp: 6, shielded: true } },
-    loss: { tp: -13, standing: { tier: "or", division: 3, tp: 81, shielded: false } },
+    win: { tp: 12, standing: { tier: "gold", division: 2, tp: 6, shielded: true } },
+    loss: { tp: -13, standing: { tier: "gold", division: 3, tp: 81, shielded: false } },
   },
 };
 
@@ -231,8 +231,8 @@ describe("FaceOff", () => {
   test("each avatar wears its player's Ornament, in the panel that moves it", () => {
     faceOffAt(-4500, ranked);
 
-    expect(ornamentIn("own")).toBe("#tier-ornament-or");
-    expect(ornamentIn("opponent")).toBe("#tier-ornament-platine");
+    expect(ornamentIn("own")).toBe("#tier-ornament-gold");
+    expect(ornamentIn("opponent")).toBe("#tier-ornament-platinum");
   });
 
   test("without an Ornament, the avatar wears none", () => {
@@ -243,17 +243,17 @@ describe("FaceOff", () => {
 
   test("shows each player's rank and Form, absent for one without a Ranked Duel", () => {
     faceOffAt(-4500, {
-      selfOrnament: "or",
-      selfRank: { tier: "or", division: 2, tp: 42, shielded: false },
+      selfOrnament: "gold",
+      selfRank: { tier: "gold", division: 2, tp: 42, shielded: false },
       opponentRank: { placementsLeft: 3 },
       selfForm: { avgWpm: 80, outcomes: ["win", "loss"] },
       opponentForm: null,
       selfStake: null,
     });
 
-    expect(screen.getByText("Or II · 42 TP")).toBeInTheDocument();
+    expect(screen.getByText("Gold II · 42 TP")).toBeInTheDocument();
     // The rank carries its Emblem, never the Blason: that one is for the large formats.
-    expect(document.querySelector('use[href="#tier-emblem-or"]')).not.toBeNull();
+    expect(document.querySelector('use[href="#tier-emblem-gold"]')).not.toBeNull();
     expect(document.querySelector("[data-tier-blason]")).toBeNull();
     expect(screen.getByText("Placement · 3 Duels restants")).toBeInTheDocument();
     expect(screen.getByText("Victoire")).toBeInTheDocument();
@@ -277,10 +277,10 @@ describe("FaceOff", () => {
       [
         {
           ...ranked,
-          selfRank: { tier: "or", division: 2, tp: 8, shielded: false },
+          selfRank: { tier: "gold", division: 2, tp: 8, shielded: false },
           selfStake: {
-            win: { tp: 12, standing: { tier: "or", division: 2, tp: 20, shielded: false } },
-            loss: { tp: -14, standing: { tier: "or", division: 3, tp: 75, shielded: false } },
+            win: { tp: 12, standing: { tier: "gold", division: 2, tp: 20, shielded: false } },
+            loss: { tp: -14, standing: { tier: "gold", division: 3, tp: 75, shielded: false } },
           },
         },
         /^Victoire \+12 TP Défaite −14 TP$/,
@@ -289,22 +289,22 @@ describe("FaceOff", () => {
       [
         {
           ...ranked,
-          selfRank: { tier: "or", division: 2, tp: 4, shielded: true },
+          selfRank: { tier: "gold", division: 2, tp: 4, shielded: true },
           selfStake: {
-            win: { tp: 15, standing: { tier: "or", division: 2, tp: 19, shielded: true } },
-            loss: { tp: -12, standing: { tier: "or", division: 2, tp: 0, shielded: false } },
+            win: { tp: 15, standing: { tier: "gold", division: 2, tp: 19, shielded: true } },
+            loss: { tp: -12, standing: { tier: "gold", division: 2, tp: 0, shielded: false } },
           },
         },
         /^Victoire \+15 TP Défaite −12 TP$/,
       ],
-      // A loss in Fer IV, at its floor.
+      // A loss in Iron IV, at its floor.
       [
         {
           ...ranked,
-          selfRank: ferIv(6),
+          selfRank: ironIv(6),
           selfStake: {
-            win: { tp: 14, standing: ferIv(20) },
-            loss: { tp: -16, standing: ferIv(0) },
+            win: { tp: 14, standing: ironIv(20) },
+            loss: { tp: -16, standing: ironIv(0) },
           },
         },
         /^Victoire \+14 TP Défaite −16 TP$/,
@@ -350,8 +350,8 @@ describe("FaceOff", () => {
     faceOffAt(-3500, promotion);
 
     expect(bannerPart()).toHaveTextContent("Duel de promotion");
-    expect(bannerPart()).toHaveTextContent("Or I → Platine IV");
-    expect(bannerPart()?.querySelector('use[href="#tier-emblem-platine"]')).not.toBeNull();
+    expect(bannerPart()).toHaveTextContent("Gold I → Platinum IV");
+    expect(bannerPart()?.querySelector('use[href="#tier-emblem-platinum"]')).not.toBeNull();
     expect(document.querySelector("[data-tier-blason]")).toBeNull();
     expect(ring()).not.toBeNull();
   });
@@ -360,7 +360,7 @@ describe("FaceOff", () => {
     faceOffAt(-3500, forManiac);
 
     expect(bannerPart()).toHaveTextContent("Duel pour Maniac");
-    expect(bannerPart()).toHaveTextContent("Diamant I → Maniac");
+    expect(bannerPart()).toHaveTextContent("Diamond I → Maniac");
     expect(ring()).not.toBeNull();
   });
 

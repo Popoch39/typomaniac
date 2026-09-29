@@ -30,7 +30,7 @@ import {
 const NOW = 1_700_000_000_000;
 
 const standing = (over: Partial<Standing> = {}): Standing => ({
-  tier: "or",
+  tier: "gold",
   division: 4,
   tp: 50,
   shielded: false,
@@ -39,16 +39,18 @@ const standing = (over: Partial<Standing> = {}): Standing => ({
 
 describe("byStanding", () => {
   test("orders by Tier, then Division, then TP, Maniac first by its TP", () => {
-    const orIIIat10 = standing({ division: 3, tp: 10 });
-    const orIVat90 = standing({ tp: 90 });
-    const orIVat20 = standing({ tp: 20 });
-    const platineIV = standing({ tier: "platine", tp: 0 });
+    const goldIIIat10 = standing({ division: 3, tp: 10 });
+    const goldIVat90 = standing({ tp: 90 });
+    const goldIVat20 = standing({ tp: 20 });
+    const platinumIV = standing({ tier: "platinum", tp: 0 });
     const maniacAt5: Standing = { tier: "maniac", tp: 5, shielded: false };
     const maniacAt300: Standing = { tier: "maniac", tp: 300, shielded: false };
 
     expect(
-      [orIVat20, maniacAt5, orIIIat10, platineIV, maniacAt300, orIVat90].toSorted(byStanding),
-    ).toEqual([maniacAt300, maniacAt5, platineIV, orIIIat10, orIVat90, orIVat20]);
+      [goldIVat20, maniacAt5, goldIIIat10, platinumIV, maniacAt300, goldIVat90].toSorted(
+        byStanding,
+      ),
+    ).toEqual([maniacAt300, maniacAt5, platinumIV, goldIIIat10, goldIVat90, goldIVat20]);
   });
 
   test("ties an equal step and TP", () => {
@@ -92,7 +94,7 @@ describe("nextMmr", () => {
 
 describe("tpDelta", () => {
   test("gives the base 20 against an equal MMR at the MMR the rank expects", () => {
-    // Or IV is the 13th Division: 400 + 12 × 50.
+    // Gold IV is the 13th Division: 400 + 12 × 50.
     expect(tpDelta(standing(), 1000, 1000, "win")).toBe(20);
     expect(tpDelta(standing(), 1000, 1000, "loss")).toBe(-20);
     expect(tpDelta(standing(), 1000, 1000, "draw")).toBe(0);
@@ -140,12 +142,12 @@ describe("applyTp", () => {
       standing({ division: 3, tp: 15, shielded: true }),
     );
     expect(applyTp(standing({ division: 1, tp: 80 }), 20)).toEqual(
-      standing({ tier: "platine", division: 4, tp: 0, shielded: true }),
+      standing({ tier: "platinum", division: 4, tp: 0, shielded: true }),
     );
   });
 
-  test("moves up from Diamant I to Maniac", () => {
-    expect(applyTp(standing({ tier: "diamant", division: 1, tp: 95 }), 10)).toEqual({
+  test("moves up from Diamond I to Maniac", () => {
+    expect(applyTp(standing({ tier: "diamond", division: 1, tp: 95 }), 10)).toEqual({
       tier: "maniac",
       tp: 5,
       shielded: true,
@@ -168,16 +170,16 @@ describe("applyTp", () => {
 
   test("drops an unshielded User below 0 to the Division below at 75 TP", () => {
     expect(applyTp(standing({ tp: 0 }), -20)).toEqual(
-      standing({ tier: "argent", division: 1, tp: 75 }),
+      standing({ tier: "silver", division: 1, tp: 75 }),
     );
     expect(applyTp(standing({ division: 2, tp: 10 }), -20)).toEqual(
       standing({ division: 3, tp: 75 }),
     );
   });
 
-  test("never drops below Fer IV", () => {
-    expect(applyTp(standing({ tier: "fer", tp: 5 }), -30)).toEqual(
-      standing({ tier: "fer", tp: 0 }),
+  test("never drops below Iron IV", () => {
+    expect(applyTp(standing({ tier: "iron", tp: 5 }), -30)).toEqual(
+      standing({ tier: "iron", tp: 0 }),
     );
   });
 
@@ -189,17 +191,17 @@ describe("applyTp", () => {
     });
   });
 
-  test("drops a Maniac below 0 to Diamant I at 75 TP", () => {
+  test("drops a Maniac below 0 to Diamond I at 75 TP", () => {
     expect(applyTp({ tier: "maniac", tp: 10, shielded: false }, -20)).toEqual(
-      standing({ tier: "diamant", division: 1, tp: 75 }),
+      standing({ tier: "diamond", division: 1, tp: 75 }),
     );
   });
 });
 
 describe("nextStanding", () => {
   test("the Division above, at 0 TP", () => {
-    expect(nextStanding({ tier: "or", division: 2, tp: 42, shielded: true })).toEqual({
-      tier: "or",
+    expect(nextStanding({ tier: "gold", division: 2, tp: 42, shielded: true })).toEqual({
+      tier: "gold",
       division: 1,
       tp: 0,
       shielded: false,
@@ -208,15 +210,15 @@ describe("nextStanding", () => {
 
   test("past a Division I, the next Tier's Division IV", () => {
     expect(nextStanding({ tier: "bronze", division: 1, tp: 90, shielded: false })).toEqual({
-      tier: "argent",
+      tier: "silver",
       division: 4,
       tp: 0,
       shielded: false,
     });
   });
 
-  test("past Diamant I, Maniac", () => {
-    expect(nextStanding({ tier: "diamant", division: 1, tp: 0, shielded: false })).toEqual({
+  test("past Diamond I, Maniac", () => {
+    expect(nextStanding({ tier: "diamond", division: 1, tp: 0, shielded: false })).toEqual({
       tier: "maniac",
       tp: 0,
       shielded: false,
@@ -233,14 +235,14 @@ describe("changesTier", () => {
     expect(
       changesTier(
         standing({ division: 1, tp: 92 }),
-        standing({ tier: "platine", tp: 6, shielded: true }),
+        standing({ tier: "platinum", tp: 6, shielded: true }),
       ),
     ).toBe(true);
   });
 
-  test("is true from Diamant I to Maniac", () => {
+  test("is true from Diamond I to Maniac", () => {
     expect(
-      changesTier(standing({ tier: "diamant", division: 1, tp: 95 }), {
+      changesTier(standing({ tier: "diamond", division: 1, tp: 95 }), {
         tier: "maniac",
         tp: 4,
         shielded: true,
@@ -250,7 +252,7 @@ describe("changesTier", () => {
 
   test("is true down a Tier too", () => {
     expect(
-      changesTier(standing({ tp: 5 }), standing({ tier: "argent", division: 1, tp: 75 })),
+      changesTier(standing({ tp: 5 }), standing({ tier: "silver", division: 1, tp: 75 })),
     ).toBe(true);
   });
 
@@ -282,8 +284,8 @@ describe("rankFromMmr", () => {
     expect(rankFromMmr(1150)).toEqual(standing({ division: 1, tp: 0 }));
   });
 
-  test("places at Fer IV at the lowest, Maniac at the highest", () => {
-    expect(rankFromMmr(100)).toEqual(standing({ tier: "fer", tp: 0 }));
+  test("places at Iron IV at the lowest, Maniac at the highest", () => {
+    expect(rankFromMmr(100)).toEqual(standing({ tier: "iron", tp: 0 }));
     expect(rankFromMmr(3000)).toEqual({ tier: "maniac", tp: 0, shielded: false });
   });
 
@@ -389,15 +391,15 @@ describe("stakeOf", () => {
     });
   });
 
-  // Or IV expects 1000, Diamant I 1550, Maniac 1600.
+  // Gold IV expects 1000, Diamond I 1550, Maniac 1600.
   const ratings: Rating[] = [
     { mmr: 1000, rank: standing() },
     { mmr: 1000, rank: standing({ tp: 91 }) },
     { mmr: 1000, rank: standing({ tp: 5 }) },
     { mmr: 1000, rank: standing({ tp: 5, shielded: true }) },
     { mmr: 1300, rank: standing({ tp: 98 }) },
-    { mmr: 400, rank: standing({ tier: "fer", tp: 3 }) },
-    { mmr: 1550, rank: standing({ tier: "diamant", division: 1, tp: 95 }) },
+    { mmr: 400, rank: standing({ tier: "iron", tp: 3 }) },
+    { mmr: 1550, rank: standing({ tier: "diamond", division: 1, tp: 95 }) },
     { mmr: 1600, rank: { tier: "maniac", tp: 4, shielded: false } },
     { mmr: 1800, rank: { tier: "maniac", tp: 640, shielded: false } },
   ];
@@ -432,8 +434,8 @@ describe("ornamentOf", () => {
   const maniac: Standing = { tier: "maniac", tp: 120, shielded: false };
 
   test("follows the current Tier by default", () => {
-    expect(ornamentOf(standing({ tier: "fer" }), "follow")).toBe("fer");
-    expect(ornamentOf(standing({ tier: "platine", division: 1 }), "follow")).toBe("platine");
+    expect(ornamentOf(standing({ tier: "iron" }), "follow")).toBe("iron");
+    expect(ornamentOf(standing({ tier: "platinum", division: 1 }), "follow")).toBe("platinum");
     expect(ornamentOf(maniac, "follow")).toBe("maniac");
   });
 
@@ -443,32 +445,32 @@ describe("ornamentOf", () => {
   });
 
   test("is the frozen Tier when it is at or under the current Tier", () => {
-    expect(ornamentOf(standing({ tier: "or" }), "or")).toBe("or");
-    expect(ornamentOf(standing({ tier: "diamant" }), "bronze")).toBe("bronze");
-    expect(ornamentOf(maniac, "argent")).toBe("argent");
+    expect(ornamentOf(standing({ tier: "gold" }), "gold")).toBe("gold");
+    expect(ornamentOf(standing({ tier: "diamond" }), "bronze")).toBe("bronze");
+    expect(ornamentOf(maniac, "silver")).toBe("silver");
     expect(ornamentOf(maniac, "maniac")).toBe("maniac");
   });
 
   test("is the current Tier once the User falls under the frozen one", () => {
-    expect(ornamentOf(standing({ tier: "argent" }), "diamant")).toBe("argent");
-    expect(ornamentOf(standing({ tier: "diamant", division: 1 }), "maniac")).toBe("diamant");
+    expect(ornamentOf(standing({ tier: "silver" }), "diamond")).toBe("silver");
+    expect(ornamentOf(standing({ tier: "diamond", division: 1 }), "maniac")).toBe("diamond");
   });
 
   test("is none in Placement, whatever the choice", () => {
-    for (const choice of ["follow", "none", "or", "maniac"] as const) {
+    for (const choice of ["follow", "none", "gold", "maniac"] as const) {
       expect(ornamentOf({ placementsLeft: 3 }, choice)).toBeNull();
     }
   });
 });
 
 describe("wearableOrnaments", () => {
-  test("goes from Fer up to the current Tier", () => {
-    expect(wearableOrnaments(standing({ tier: "fer" }))).toEqual(["fer"]);
-    expect(wearableOrnaments(standing({ tier: "or", division: 1 }))).toEqual([
-      "fer",
+  test("goes from Iron up to the current Tier", () => {
+    expect(wearableOrnaments(standing({ tier: "iron" }))).toEqual(["iron"]);
+    expect(wearableOrnaments(standing({ tier: "gold", division: 1 }))).toEqual([
+      "iron",
       "bronze",
-      "argent",
-      "or",
+      "silver",
+      "gold",
     ]);
     expect(wearableOrnaments({ tier: "maniac", tp: 0, shielded: false })).toEqual([...TIERS]);
   });
@@ -480,20 +482,20 @@ describe("wearableOrnaments", () => {
 
 describe("canWear", () => {
   test("accepts following the Tier and wearing none past Placement", () => {
-    expect(canWear(standing({ tier: "fer" }), "follow")).toBe(true);
-    expect(canWear(standing({ tier: "fer" }), "none")).toBe(true);
+    expect(canWear(standing({ tier: "iron" }), "follow")).toBe(true);
+    expect(canWear(standing({ tier: "iron" }), "none")).toBe(true);
   });
 
   test("accepts a Tier up to the current one, never above", () => {
-    expect(canWear(standing({ tier: "or" }), "bronze")).toBe(true);
-    expect(canWear(standing({ tier: "or" }), "or")).toBe(true);
-    expect(canWear(standing({ tier: "or", division: 1, tp: 99 }), "platine")).toBe(false);
-    expect(canWear(standing({ tier: "diamant" }), "maniac")).toBe(false);
+    expect(canWear(standing({ tier: "gold" }), "bronze")).toBe(true);
+    expect(canWear(standing({ tier: "gold" }), "gold")).toBe(true);
+    expect(canWear(standing({ tier: "gold", division: 1, tp: 99 }), "platinum")).toBe(false);
+    expect(canWear(standing({ tier: "diamond" }), "maniac")).toBe(false);
     expect(canWear({ tier: "maniac", tp: 0, shielded: false }, "maniac")).toBe(true);
   });
 
   test("accepts nothing in Placement", () => {
-    for (const choice of ["follow", "none", "fer"] as const) {
+    for (const choice of ["follow", "none", "iron"] as const) {
       expect(canWear({ placementsLeft: 1 }, choice)).toBe(false);
     }
   });

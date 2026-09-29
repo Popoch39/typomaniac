@@ -1,7 +1,7 @@
 import { STAGE } from "@/components/tier-up/stage/stage-scale";
 import { INK, METALS } from "@/components/tier/sprite/tier-sprite-paint";
 
-// The fire of the Diamant → Maniac artboard, from white-hot down to the red of what burns: hotter
+// The fire of the Diamond → Maniac artboard, from white-hot down to the red of what burns: hotter
 // and redder than the Maniac's metal and than the sprite's fire (`HOT`), neither of which has it.
 // With `PRISM`, the one light of the Tier-up that is not its metal's, as the artboard wants it.
 export const FIRE = {

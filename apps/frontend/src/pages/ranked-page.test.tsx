@@ -26,7 +26,7 @@ const userWith = (rank: Rank | null): Me => ({
   ornamentChoice: null,
 });
 
-const orII: Rank = { tier: "or", division: 2, tp: 42, shielded: false };
+const goldII: Rank = { tier: "gold", division: 2, tp: 42, shielded: false };
 
 const rows = () => within(screen.getByRole("list", { name: "Tiers" })).getAllByRole("listitem");
 
@@ -77,23 +77,23 @@ afterEach(() => {
 });
 
 describe("RankedPage", () => {
-  test("lists the seven Tiers from Maniac down to Fer, with their figures", async () => {
-    await renderPage(userWith(orII));
+  test("lists the seven Tiers from Maniac down to Iron, with their figures", async () => {
+    await renderPage(userWith(goldII));
 
     expect(screen.getByText("7 Tiers · 24 Divisions · 1 sommet")).toBeTruthy();
     expect(rows().map((row) => row.textContent)).toEqual([
       "07Maniac",
-      "06Diamant",
-      "05Platine",
-      "04Or← toi",
-      "03Argent",
+      "06Diamond",
+      "05Platinum",
+      "04Gold← toi",
+      "03Silver",
       "02Bronze",
-      "01Fer",
+      "01Iron",
     ]);
   });
 
   test("marks the reader's Tier and lights the Divisions they have climbed", async () => {
-    await renderPage(userWith(orII));
+    await renderPage(userWith(goldII));
 
     expect(rows().filter((row) => row.hasAttribute("aria-current"))).toEqual([rows()[3]]);
     expect(rows().map(lit)).toEqual([0, 0, 0, 3, 4, 4, 4]);
@@ -102,11 +102,11 @@ describe("RankedPage", () => {
   });
 
   test("« Ta place »: the rank, its TP and what is left to the next", async () => {
-    await renderPage(userWith(orII));
+    await renderPage(userWith(goldII));
 
-    expect(within(place()).getByText("Or II")).toBeTruthy();
+    expect(within(place()).getByText("Gold II")).toBeTruthy();
     expect(within(place()).getByText("42 TP")).toBeTruthy();
-    expect(within(place()).getByText("58 avant Or I")).toBeTruthy();
+    expect(within(place()).getByText("58 avant Gold I")).toBeTruthy();
     expect(within(place()).getByRole("meter", { name: "TP de la Division" })).toBeTruthy();
   });
 
@@ -136,7 +136,7 @@ describe("RankedPage", () => {
   });
 
   test("the rules of the Ranked, from the ranked package", async () => {
-    await renderPage(userWith(orII));
+    await renderPage(userWith(goldII));
 
     const terms = screen.getAllByRole("term").map((term) => term.textContent);
     const values = screen.getAllByRole("definition").map((value) => value.textContent);
@@ -158,7 +158,7 @@ describe("RankedPage", () => {
   });
 
   test("« Jouer en Ranked » chooses the Duel and leads to the play page", async () => {
-    await renderPage(userWith(orII));
+    await renderPage(userWith(goldII));
 
     fireEvent.click(screen.getByRole("link", { name: "Jouer en Ranked" }));
 

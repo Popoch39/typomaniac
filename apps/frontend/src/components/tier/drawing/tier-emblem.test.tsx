@@ -12,7 +12,7 @@ describe("TierEmblem", () => {
   });
 
   test("fills the box its caller gives it, only seen", () => {
-    const { container } = render(<TierEmblem tier="or" />);
+    const { container } = render(<TierEmblem tier="gold" />);
     const svg = container.querySelector("svg");
 
     expect(svg?.getAttribute("class")).toContain("size-full");
@@ -20,7 +20,7 @@ describe("TierEmblem", () => {
   });
 
   test("never carries the Ornament", () => {
-    const { container } = render(<TierEmblem tier="or" />);
+    const { container } = render(<TierEmblem tier="gold" />);
 
     expect(container.querySelector('use[href^="#tier-ornament"]')).toBeNull();
   });

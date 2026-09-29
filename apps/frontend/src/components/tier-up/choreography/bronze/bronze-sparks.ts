@@ -1,6 +1,6 @@
 import { sparkBurst } from "@/components/tier-up/parts/spark-burst";
 
-// The sparks of the Fer → Bronze artboard: sixteen, flying 150 to 280 px out in about a second.
+// The sparks of the Iron → Bronze artboard: sixteen, flying 150 to 280 px out in about a second.
 export const BRONZE_SPARKS = sparkBurst({
   count: 16,
   seed: 1,

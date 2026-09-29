@@ -129,7 +129,7 @@ describe("Activity, live on the socket", () => {
 
     duels.ratings.set(ada.id, {
       mmr: 1000,
-      rank: { tier: "argent", division: 1, tp: 0, shielded: false },
+      rank: { tier: "silver", division: 1, tp: 0, shielded: false },
     });
     await befriend(ada, bob);
 
@@ -140,14 +140,14 @@ describe("Activity, live on the socket", () => {
     expect(await bobTab.nextActivity()).toMatchObject({
       activity: {
         type: "friendship",
-        friend: { id: ada.id, ornament: "argent" },
+        friend: { id: ada.id, ornament: "silver" },
         other: { id: alan.id, ornament: null },
       },
     });
 
     await tab(ada);
     expect(await alanTab.nextArrival()).toMatchObject({
-      arrival: { friend: { id: ada.id, ornament: "argent" } },
+      arrival: { friend: { id: ada.id, ornament: "silver" } },
     });
   });
 

@@ -6,9 +6,9 @@ import { TierBadge } from "@/components/tier/rank/tier-badge";
 
 describe("TierBadge", () => {
   test("screen readers hear the Tier and its Division", () => {
-    render(<TierBadge standing={{ tier: "or", division: 2, tp: 0, shielded: false }} />);
+    render(<TierBadge standing={{ tier: "gold", division: 2, tp: 0, shielded: false }} />);
 
-    expect(screen.getByText("Or II")).toBeInTheDocument();
+    expect(screen.getByText("Gold II")).toBeInTheDocument();
   });
 
   test("each Tier draws its own shape", () => {
@@ -35,25 +35,25 @@ describe("TierBadge", () => {
 
   test("in its large size, the Emblem stands on its Ornament: the Blason", () => {
     const { container, rerender } = render(
-      <TierBadge standing={{ tier: "or", division: 2, tp: 0, shielded: false }} />,
+      <TierBadge standing={{ tier: "gold", division: 2, tp: 0, shielded: false }} />,
     );
 
     expect(container.querySelector("[data-tier-blason]")).toBeNull();
     rerender(
-      <TierBadge standing={{ tier: "or", division: 2, tp: 0, shielded: false }} size="lg" />,
+      <TierBadge standing={{ tier: "gold", division: 2, tp: 0, shielded: false }} size="lg" />,
     );
     expect(container.querySelector("[data-tier-blason]")).not.toBeNull();
     expect(container.querySelector("[data-tier-emblem]")).toBeNull();
-    expect(screen.getByText("Or II")).toBeInTheDocument();
+    expect(screen.getByText("Gold II")).toBeInTheDocument();
   });
 
   test("the Division shows as bars: one for IV, four for I", () => {
     const { container, rerender } = render(
-      <TierBadge standing={{ tier: "fer", division: 4, tp: 0, shielded: false }} />,
+      <TierBadge standing={{ tier: "iron", division: 4, tp: 0, shielded: false }} />,
     );
 
     expect(container.querySelectorAll("[data-division-bar]")).toHaveLength(1);
-    rerender(<TierBadge standing={{ tier: "fer", division: 1, tp: 0, shielded: false }} />);
+    rerender(<TierBadge standing={{ tier: "iron", division: 1, tp: 0, shielded: false }} />);
     expect(container.querySelectorAll("[data-division-bar]")).toHaveLength(4);
   });
 

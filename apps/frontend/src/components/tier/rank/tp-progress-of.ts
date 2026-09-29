@@ -17,11 +17,11 @@ export type TpProgress =
       tp: number;
       of: typeof DIVISION_TP;
       tier: Standing["tier"];
-      // The rank itself: "Or II".
+      // The rank itself: "Gold II".
       name: string;
-      // The rank above: "Or I".
+      // The rank above: "Gold I".
       next: string;
-      // "58 TP avant Or I".
+      // "58 TP avant Gold I".
       toNext: string;
     }
   | { kind: "placement"; played: number; of: typeof PLACEMENT_DUELS }

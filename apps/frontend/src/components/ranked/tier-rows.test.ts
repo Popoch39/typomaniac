@@ -6,42 +6,42 @@ const summary = (rows: ReturnType<typeof tierRows>) =>
   rows.map((row) => `${row.number} ${row.tier} ${row.reach} ${row.lit}/${row.divisions}`);
 
 describe("tierRows", () => {
-  test("lists the Tiers from Maniac down to Fer, numbered from Fer", () => {
+  test("lists the Tiers from Maniac down to Iron, numbered from Iron", () => {
     expect(tierRows(null).map((row) => `${row.number} ${row.tier}`)).toEqual([
       "07 maniac",
-      "06 diamant",
-      "05 platine",
-      "04 or",
-      "03 argent",
+      "06 diamond",
+      "05 platinum",
+      "04 gold",
+      "03 silver",
       "02 bronze",
-      "01 fer",
+      "01 iron",
     ]);
   });
 
   test("lights the Divisions climbed: every one below the reader's Tier, theirs up to theirs", () => {
-    expect(summary(tierRows({ tier: "or", division: 2, tp: 42, shielded: false }))).toEqual([
+    expect(summary(tierRows({ tier: "gold", division: 2, tp: 42, shielded: false }))).toEqual([
       "07 maniac ahead 0/1",
-      "06 diamant ahead 0/4",
-      "05 platine ahead 0/4",
-      "04 or mine 3/4",
-      "03 argent climbed 4/4",
+      "06 diamond ahead 0/4",
+      "05 platinum ahead 0/4",
+      "04 gold mine 3/4",
+      "03 silver climbed 4/4",
       "02 bronze climbed 4/4",
-      "01 fer climbed 4/4",
+      "01 iron climbed 4/4",
     ]);
   });
 
   test("a Division IV lights one, a Division I all four", () => {
-    const [fer] = tierRows({ tier: "fer", division: 4, tp: 0, shielded: false }).toReversed();
-    const [diamant] = tierRows({ tier: "diamant", division: 1, tp: 0, shielded: false }).slice(1);
+    const [iron] = tierRows({ tier: "iron", division: 4, tp: 0, shielded: false }).toReversed();
+    const [diamond] = tierRows({ tier: "diamond", division: 1, tp: 0, shielded: false }).slice(1);
 
-    expect(fer?.lit).toBe(1);
-    expect(diamant?.lit).toBe(4);
+    expect(iron?.lit).toBe(1);
+    expect(diamond?.lit).toBe(4);
   });
 
   test("in Maniac, every Tier is climbed and Maniac's one mark lit", () => {
     expect(summary(tierRows({ tier: "maniac", tp: 250, shielded: false })).slice(0, 2)).toEqual([
       "07 maniac mine 1/1",
-      "06 diamant climbed 4/4",
+      "06 diamond climbed 4/4",
     ]);
   });
 

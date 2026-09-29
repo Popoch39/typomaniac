@@ -19,7 +19,7 @@ const noResult = {
 
 const noScore = { score: 0, bestCombo: 0, bursts: 0 };
 
-const or = (tp: number) => ({ tier: "or" as const, division: 2 as const, tp, shielded: false });
+const gold = (tp: number) => ({ tier: "gold" as const, division: 2 as const, tp, shielded: false });
 
 // The end of a Duel: a Ranked one moves the rank, a Challenge (`ranked` null) nothing.
 const duelEnded = (ranked: Extract<ServerMessage, { type: "duel-ended" }>["ranked"]) => ({
@@ -67,7 +67,7 @@ describe("LiveRank", () => {
   test("reads the User and the Classement again once a Ranked Duel ends", () => {
     const invalidated = renderLiveRank();
 
-    sockets.server().receive(duelEnded({ tp: 18, previousRank: or(24), rank: or(42) }));
+    sockets.server().receive(duelEnded({ tp: 18, previousRank: gold(24), rank: gold(42) }));
 
     expect(invalidated(meQueryOptions.queryKey)).toBe(true);
     expect(invalidated(leaderboardQueryOptions.queryKey)).toBe(true);

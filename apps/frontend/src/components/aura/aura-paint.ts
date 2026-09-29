@@ -4,7 +4,7 @@ import type { Tier } from "ranked";
 // sprite, prefixed `tier-` like the rest.
 
 // The Tiers whose Ornament shines: a sheen sweeps their metal now and then.
-export const SHINING_TIERS: readonly Tier[] = ["or", "platine", "diamant", "maniac"];
+export const SHINING_TIERS: readonly Tier[] = ["gold", "platinum", "diamond", "maniac"];
 
 export const shines = (tier: Tier) => SHINING_TIERS.includes(tier);
 
@@ -14,7 +14,7 @@ export type Aura = "light" | "full";
 
 // The Tiers with a full Aura, each with its shader (`fullAuraShader`'s table is keyed on them):
 // the others have no Aura at all, even when asked for a full one.
-const FULL_AURA_TIERS = ["or", "platine", "diamant", "maniac"] as const;
+const FULL_AURA_TIERS = ["gold", "platinum", "diamond", "maniac"] as const;
 
 export type FullAuraTier = (typeof FULL_AURA_TIERS)[number];
 
@@ -41,12 +41,12 @@ export const SHEEN_TRAVEL = 220;
 
 export const SHEEN_OPACITY = 0.55;
 
-// The sparks of the Diamant and the Maniac, where the drawing leaves room: where, and their size
+// The sparks of the Diamond and the Maniac, where the drawing leaves room: where, and their size
 // unlit. Lit, each grows `SPARK_PEAK` times as large.
 type Spark = readonly [x: number, y: number, scale: number];
 
 export const SPARKS: Partial<Record<Tier, readonly Spark[]>> = {
-  diamant: [
+  diamond: [
     [108, 52, 0.28],
     [10, 64, 0.25],
     [84, 112, 0.22],

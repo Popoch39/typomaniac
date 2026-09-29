@@ -141,46 +141,46 @@ const renderEnded = async ({
 
 const standing = <T extends DuelRanked["rank"]>(rank: T) => rank;
 
-const or = (division: 4 | 3 | 2 | 1, tp: number) => ({
-  tier: "or" as const,
+const gold = (division: 4 | 3 | 2 | 1, tp: number) => ({
+  tier: "gold" as const,
   division,
   tp,
   shielded: false,
 });
 
-const argentI = standing({ tier: "argent", division: 1, tp: 90, shielded: false });
+const silverI = standing({ tier: "silver", division: 1, tp: 90, shielded: false });
 
-const orIv = standing({ tier: "or", division: 4, tp: 15, shielded: true });
+const goldIv = standing({ tier: "gold", division: 4, tp: 15, shielded: true });
 
-const intoOr = { tp: 25, previousRank: argentI, rank: orIv };
+const intoGold = { tp: 25, previousRank: silverI, rank: goldIv };
 
 const intoBronze = {
   tp: 28,
-  previousRank: standing({ tier: "fer", division: 1, tp: 85, shielded: false }),
+  previousRank: standing({ tier: "iron", division: 1, tp: 85, shielded: false }),
   rank: standing({ tier: "bronze", division: 4, tp: 13, shielded: true }),
 };
 
-const intoArgent = {
+const intoSilver = {
   tp: 26,
   previousRank: standing({ tier: "bronze", division: 1, tp: 88, shielded: false }),
-  rank: standing({ tier: "argent", division: 4, tp: 14, shielded: true }),
+  rank: standing({ tier: "silver", division: 4, tp: 14, shielded: true }),
 };
 
-const intoPlatine = {
+const intoPlatinum = {
   tp: 27,
-  previousRank: standing({ tier: "or", division: 1, tp: 86, shielded: false }),
-  rank: standing({ tier: "platine", division: 4, tp: 13, shielded: true }),
+  previousRank: standing({ tier: "gold", division: 1, tp: 86, shielded: false }),
+  rank: standing({ tier: "platinum", division: 4, tp: 13, shielded: true }),
 };
 
-const intoDiamant = {
+const intoDiamond = {
   tp: 29,
-  previousRank: standing({ tier: "platine", division: 1, tp: 84, shielded: false }),
-  rank: standing({ tier: "diamant", division: 4, tp: 13, shielded: true }),
+  previousRank: standing({ tier: "platinum", division: 1, tp: 84, shielded: false }),
+  rank: standing({ tier: "diamond", division: 4, tp: 13, shielded: true }),
 };
 
 const intoManiac = {
   tp: 30,
-  previousRank: standing({ tier: "diamant", division: 1, tp: 80, shielded: false }),
+  previousRank: standing({ tier: "diamond", division: 1, tp: 80, shielded: false }),
   rank: standing({ tier: "maniac", tp: 10, shielded: true }),
 };
 
@@ -285,32 +285,32 @@ describe("DuelEnded", () => {
     await renderEnded({
       ranked: {
         tp: 20,
-        previousRank: { tier: "or", division: 3, tp: 90, shielded: false },
-        rank: { tier: "or", division: 2, tp: 10, shielded: true },
+        previousRank: { tier: "gold", division: 3, tp: 90, shielded: false },
+        rank: { tier: "gold", division: 2, tp: 10, shielded: true },
       },
     });
 
     const rank = screen.getByRole("region", { name: "Rang" });
 
     expect(rank).toHaveTextContent("+20 TP");
-    expect(rank).toHaveTextContent("Promotion : Or II");
+    expect(rank).toHaveTextContent("Promotion : Gold II");
     expect(rank).toHaveTextContent("10 TP");
-    expect(blasonOf(rank)).toBe("#tier-emblem-or");
+    expect(blasonOf(rank)).toBe("#tier-emblem-gold");
   });
 
   test("a lost ranked Duel shows the TP lost, and a demotion", async () => {
     await renderEnded({
       ranked: {
         tp: -18,
-        previousRank: { tier: "or", division: 4, tp: 5, shielded: false },
-        rank: { tier: "argent", division: 1, tp: 75, shielded: false },
+        previousRank: { tier: "gold", division: 4, tp: 5, shielded: false },
+        rank: { tier: "silver", division: 1, tp: 75, shielded: false },
       },
     });
 
     const rank = screen.getByRole("region", { name: "Rang" });
 
     expect(rank).toHaveTextContent("−18 TP");
-    expect(rank).toHaveTextContent("Descente en Argent I");
+    expect(rank).toHaveTextContent("Descente en Silver I");
   });
 
   test("a Placement Duel shows the Placements left, the last one reveals the rank", async () => {
@@ -357,35 +357,35 @@ describe("DuelEnded", () => {
 
 describe("the Tier-up", () => {
   test("a Duel into a new Tier opens it, named by the Tier, all its text there at once", async () => {
-    await renderEnded({ ranked: intoOr });
+    await renderEnded({ ranked: intoGold });
 
-    const tierUp = screen.getByRole("dialog", { name: "Or" });
+    const tierUp = screen.getByRole("dialog", { name: "Gold" });
 
     expect(tierUp).toHaveTextContent("Nouveau palier");
-    expect(tierUp).toHaveTextContent("Argent I → Or IV");
+    expect(tierUp).toHaveTextContent("Silver I → Gold IV");
     expect(within(tierUp).getByRole("button", { name: "Continuer" })).toBeInTheDocument();
-    expect(emblemOf(tierUp)).toBe("#tier-emblem-argent");
-    expect(emblemReached(tierUp)).toBe("or");
+    expect(emblemOf(tierUp)).toBe("#tier-emblem-silver");
+    expect(emblemReached(tierUp)).toBe("gold");
   });
 
   test("leaves the end screen behind it out of reach", async () => {
-    await renderEnded({ ranked: intoOr });
+    await renderEnded({ ranked: intoGold });
 
-    expect(screen.getByRole("dialog", { name: "Or" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Gold" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Nouveau Duel" })).toBeNull();
     expect(screen.queryByRole("region", { name: "Rang" })).toBeNull();
   });
 
   test("stays in the dark of its metal under Papier, the light Theme", async () => {
     document.documentElement.dataset.theme = "papier";
-    await renderEnded({ ranked: intoOr });
+    await renderEnded({ ranked: intoGold });
 
-    expect(screen.getByRole("dialog", { name: "Or" })).toHaveAttribute("data-theme", "corail");
+    expect(screen.getByRole("dialog", { name: "Gold" })).toHaveAttribute("data-theme", "corail");
     delete document.documentElement.dataset.theme;
   });
 
   test("scales its stage to fit the window whole", async () => {
-    await renderEnded({ ranked: intoOr });
+    await renderEnded({ ranked: intoGold });
 
     const stage = screen.getByRole("dialog").querySelector("[data-tier-up=stage]");
     const scale = stageScale(window.innerWidth, window.innerHeight);
@@ -399,17 +399,17 @@ describe("the Tier-up", () => {
     const tierUp = screen.getByRole("dialog", { name: "Maniac" });
 
     expect(tierUp).toHaveTextContent("Palier ultime");
-    expect(tierUp).toHaveTextContent("Diamant I → Maniac");
-    expect(emblemLeft(tierUp)).toBe("diamant");
+    expect(tierUp).toHaveTextContent("Diamond I → Maniac");
+    expect(emblemLeft(tierUp)).toBe("diamond");
     expect(emblemReached(tierUp)).toBe("maniac");
   });
 
   test.each([
-    ["a move up a Division", { tp: 20, previousRank: or(3, 90), rank: or(2, 10) }],
-    ["a demotion out of a Tier", { tp: -18, previousRank: or(4, 5), rank: argentI }],
-    ["TP within the Division", { tp: 12, previousRank: or(3, 40), rank: or(3, 52) }],
+    ["a move up a Division", { tp: 20, previousRank: gold(3, 90), rank: gold(2, 10) }],
+    ["a demotion out of a Tier", { tp: -18, previousRank: gold(4, 5), rank: silverI }],
+    ["TP within the Division", { tp: 12, previousRank: gold(3, 40), rank: gold(3, 52) }],
     ["a Placement", { tp: null, previousRank: { placementsLeft: 3 }, rank: { placementsLeft: 2 } }],
-    ["the last Placement", { tp: null, previousRank: { placementsLeft: 1 }, rank: orIv }],
+    ["the last Placement", { tp: null, previousRank: { placementsLeft: 1 }, rank: goldIv }],
   ])("does not open for %s", async (_, ranked: DuelRanked) => {
     await renderEnded({ ranked });
     await clock.advance(5);
@@ -419,7 +419,7 @@ describe("the Tier-up", () => {
     expect(played).toEqual([]);
   });
 
-  test("Fer → Bronze sounds as the iron comes apart, as the Blason lands, then with the name", async () => {
+  test("Iron → Bronze sounds as the iron comes apart, as the Blason lands, then with the name", async () => {
     await renderEnded({ ranked: intoBronze });
 
     await clock.advance(0.9);
@@ -442,42 +442,42 @@ describe("the Tier-up", () => {
     expect(played).toHaveLength(3);
   });
 
-  test("a Duel into Argent opens it, the bronze Emblem there to split", async () => {
-    await renderEnded({ ranked: intoArgent });
+  test("a Duel into Silver opens it, the bronze Emblem there to split", async () => {
+    await renderEnded({ ranked: intoSilver });
 
-    const tierUp = screen.getByRole("dialog", { name: "Argent" });
+    const tierUp = screen.getByRole("dialog", { name: "Silver" });
 
     expect(tierUp).toHaveTextContent("Nouveau palier");
-    expect(tierUp).toHaveTextContent("Bronze I → Argent IV");
+    expect(tierUp).toHaveTextContent("Bronze I → Silver IV");
     expect(emblemOf(tierUp)).toBe("#tier-emblem-bronze");
-    expect(emblemReached(tierUp)).toBe("argent");
+    expect(emblemReached(tierUp)).toBe("silver");
   });
 
-  test("Bronze → Argent sounds as the bronze cracks, as the Argent strikes, then with the name", async () => {
-    await renderEnded({ ranked: intoArgent });
+  test("Bronze → Silver sounds as the bronze cracks, as the Silver strikes, then with the name", async () => {
+    await renderEnded({ ranked: intoSilver });
 
     await clock.advance(0.8);
     expect(played).toEqual([]);
 
     await clock.advance(0.2);
-    expect(played).toEqual(["tier-up-argent-crack"]);
+    expect(played).toEqual(["tier-up-silver-crack"]);
 
     await clock.advance(1);
-    expect(played).toEqual(["tier-up-argent-crack", "tier-up-argent-impact"]);
+    expect(played).toEqual(["tier-up-silver-crack", "tier-up-silver-impact"]);
 
     // Each chevron stamped in, then the name.
     await clock.advance(0.7);
     expect(played).toEqual([
-      "tier-up-argent-crack",
-      "tier-up-argent-impact",
-      "tier-up-argent-stamp",
-      "tier-up-argent-stamp",
-      "tier-up-argent-name",
+      "tier-up-silver-crack",
+      "tier-up-silver-impact",
+      "tier-up-silver-stamp",
+      "tier-up-silver-stamp",
+      "tier-up-silver-name",
     ]);
 
     // The light sweeping over the metal.
     await clock.advance(0.3);
-    expect(played.at(-1)).toBe("tier-up-argent-sweep");
+    expect(played.at(-1)).toBe("tier-up-silver-sweep");
 
     await clock.advance(0.9);
     expect(continueButton()).not.toHaveFocus();
@@ -487,8 +487,8 @@ describe("the Tier-up", () => {
     expect(played).toHaveLength(6);
   });
 
-  test("Bronze → Argent skipped as it strikes: no chevron, sweep nor name heard after", async () => {
-    await renderEnded({ ranked: intoArgent });
+  test("Bronze → Silver skipped as it strikes: no chevron, sweep nor name heard after", async () => {
+    await renderEnded({ ranked: intoSilver });
     await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
     await clock.advance(2.1);
 
@@ -496,26 +496,30 @@ describe("the Tier-up", () => {
 
     expect(continueButton()).toHaveFocus();
     await clock.advance(5);
-    expect(played).toEqual(["tier-up-argent-crack", "tier-up-argent-impact"]);
+    expect(played).toEqual(["tier-up-silver-crack", "tier-up-silver-impact"]);
   });
 
-  test("Argent → Or sounds as the silver ascends, as the Or materializes, then with the name", async () => {
-    await renderEnded({ ranked: intoOr });
+  test("Silver → Gold sounds as the silver ascends, as the Gold materializes, then with the name", async () => {
+    await renderEnded({ ranked: intoGold });
 
     await clock.advance(0.7);
     expect(played).toEqual([]);
 
     await clock.advance(0.2);
-    expect(played).toEqual(["tier-up-or-ascend"]);
+    expect(played).toEqual(["tier-up-gold-ascend"]);
 
     await clock.advance(1);
-    expect(played).toEqual(["tier-up-or-ascend"]);
+    expect(played).toEqual(["tier-up-gold-ascend"]);
 
     await clock.advance(0.2);
-    expect(played).toEqual(["tier-up-or-ascend", "tier-up-or-materialize"]);
+    expect(played).toEqual(["tier-up-gold-ascend", "tier-up-gold-materialize"]);
 
     await clock.advance(0.6);
-    expect(played).toEqual(["tier-up-or-ascend", "tier-up-or-materialize", "tier-up-or-name"]);
+    expect(played).toEqual([
+      "tier-up-gold-ascend",
+      "tier-up-gold-materialize",
+      "tier-up-gold-name",
+    ]);
 
     await clock.advance(1);
     expect(continueButton()).not.toHaveFocus();
@@ -526,8 +530,8 @@ describe("the Tier-up", () => {
     expect(played).toHaveLength(3);
   });
 
-  test("Argent → Or skipped as it materializes: no name heard after", async () => {
-    await renderEnded({ ranked: intoOr });
+  test("Silver → Gold skipped as it materializes: no name heard after", async () => {
+    await renderEnded({ ranked: intoGold });
     await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
     await clock.advance(2.1);
 
@@ -535,11 +539,11 @@ describe("the Tier-up", () => {
 
     expect(continueButton()).toHaveFocus();
     await clock.advance(5);
-    expect(played).toEqual(["tier-up-or-ascend", "tier-up-or-materialize"]);
+    expect(played).toEqual(["tier-up-gold-ascend", "tier-up-gold-materialize"]);
   });
 
-  test("Argent → Or traces its laurels and its star, little by little, once it has materialized", async () => {
-    await renderEnded({ ranked: intoOr });
+  test("Silver → Gold traces its laurels and its star, little by little, once it has materialized", async () => {
+    await renderEnded({ ranked: intoGold });
 
     const tierUp = screen.getByRole("dialog");
     const laurel = tierUp.querySelector("[data-tier-up=laurel] path");
@@ -560,8 +564,8 @@ describe("the Tier-up", () => {
     expect(drawn(laurel)).toBe(0);
   });
 
-  test("Argent → Or pops its leaves in pair by pair, none seen before", async () => {
-    await renderEnded({ ranked: intoOr });
+  test("Silver → Gold pops its leaves in pair by pair, none seen before", async () => {
+    await renderEnded({ ranked: intoGold });
 
     const leaves = [...screen.getByRole("dialog").querySelectorAll("[data-tier-up^=leaf-]")];
     const opacities = () => leaves.map((leaf) => gsap.getProperty(leaf, "opacity"));
@@ -579,37 +583,37 @@ describe("the Tier-up", () => {
     expect(opacities()).toEqual(Array(14).fill(1));
   });
 
-  test("a Duel into Platine opens it, the Or Emblem there to turn over", async () => {
-    await renderEnded({ ranked: intoPlatine });
+  test("a Duel into Platinum opens it, the Gold Emblem there to turn over", async () => {
+    await renderEnded({ ranked: intoPlatinum });
 
-    const tierUp = screen.getByRole("dialog", { name: "Platine" });
+    const tierUp = screen.getByRole("dialog", { name: "Platinum" });
 
     expect(tierUp).toHaveTextContent("Nouveau palier");
-    expect(tierUp).toHaveTextContent("Or I → Platine IV");
-    expect(emblemOf(tierUp)).toBe("#tier-emblem-or");
-    expect(emblemReached(tierUp)).toBe("platine");
+    expect(tierUp).toHaveTextContent("Gold I → Platinum IV");
+    expect(emblemOf(tierUp)).toBe("#tier-emblem-gold");
+    expect(emblemReached(tierUp)).toBe("platinum");
   });
 
-  test("Or → Platine sounds as the gold turns over, as the Platine assembles, then with the name", async () => {
-    await renderEnded({ ranked: intoPlatine });
+  test("Gold → Platinum sounds as the gold turns over, as the Platinum assembles, then with the name", async () => {
+    await renderEnded({ ranked: intoPlatinum });
 
     await clock.advance(0.8);
     expect(played).toEqual([]);
 
     await clock.advance(0.2);
-    expect(played).toEqual(["tier-up-platine-flip"]);
+    expect(played).toEqual(["tier-up-platinum-flip"]);
 
     await clock.advance(1.2);
-    expect(played).toEqual(["tier-up-platine-flip"]);
+    expect(played).toEqual(["tier-up-platinum-flip"]);
 
     await clock.advance(0.2);
-    expect(played).toEqual(["tier-up-platine-flip", "tier-up-platine-assemble"]);
+    expect(played).toEqual(["tier-up-platinum-flip", "tier-up-platinum-assemble"]);
 
     await clock.advance(0.4);
     expect(played).toEqual([
-      "tier-up-platine-flip",
-      "tier-up-platine-assemble",
-      "tier-up-platine-name",
+      "tier-up-platinum-flip",
+      "tier-up-platinum-assemble",
+      "tier-up-platinum-name",
     ]);
 
     await clock.advance(1.2);
@@ -621,8 +625,8 @@ describe("the Tier-up", () => {
     expect(played).toHaveLength(3);
   });
 
-  test("Or → Platine skipped as it assembles: no name heard after", async () => {
-    await renderEnded({ ranked: intoPlatine });
+  test("Gold → Platinum skipped as it assembles: no name heard after", async () => {
+    await renderEnded({ ranked: intoPlatinum });
     await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
     await clock.advance(2.4);
 
@@ -630,11 +634,11 @@ describe("the Tier-up", () => {
 
     expect(continueButton()).toHaveFocus();
     await clock.advance(5);
-    expect(played).toEqual(["tier-up-platine-flip", "tier-up-platine-assemble"]);
+    expect(played).toEqual(["tier-up-platinum-flip", "tier-up-platinum-assemble"]);
   });
 
-  test("Or → Platine assembles its hexagon triangle by triangle, whole at the impact", async () => {
-    await renderEnded({ ranked: intoPlatine });
+  test("Gold → Platinum assembles its hexagon triangle by triangle, whole at the impact", async () => {
+    await renderEnded({ ranked: intoPlatinum });
 
     const triangles = [...screen.getByRole("dialog").querySelectorAll("[data-tier-up=triangle]")];
     const opacities = () => triangles.map((triangle) => gsap.getProperty(triangle, "opacity"));
@@ -655,8 +659,8 @@ describe("the Tier-up", () => {
   });
 
   test.each([
-    ["Argent → Or", intoOr, "#5c3f06"],
-    ["Or → Platine", intoPlatine, "#134a42"],
+    ["Silver → Gold", intoGold, "#5c3f06"],
+    ["Gold → Platinum", intoPlatinum, "#134a42"],
   ])(
     "%s cuts its star in the metal, never in solid ink",
     async (_, ranked: DuelRanked, outline) => {
@@ -681,8 +685,8 @@ describe("the Tier-up", () => {
     },
   );
 
-  test("Or → Platine pops its studs in one by one, then unfurls its wings, none seen before", async () => {
-    await renderEnded({ ranked: intoPlatine });
+  test("Gold → Platinum pops its studs in one by one, then unfurls its wings, none seen before", async () => {
+    await renderEnded({ ranked: intoPlatinum });
 
     const tierUp = screen.getByRole("dialog");
     const studs = [...tierUp.querySelectorAll("[data-tier-up=engraving] > circle")];
@@ -705,41 +709,41 @@ describe("the Tier-up", () => {
     expect(opacitiesOf(feathers)).toEqual(Array(6).fill(1));
   });
 
-  test("a Duel into Diamant opens it, the Platine Emblem there to implode", async () => {
-    await renderEnded({ ranked: intoDiamant });
+  test("a Duel into Diamond opens it, the Platinum Emblem there to implode", async () => {
+    await renderEnded({ ranked: intoDiamond });
 
-    const tierUp = screen.getByRole("dialog", { name: "Diamant" });
+    const tierUp = screen.getByRole("dialog", { name: "Diamond" });
 
     expect(tierUp).toHaveTextContent("Nouveau palier");
-    expect(tierUp).toHaveTextContent("Platine I → Diamant IV");
-    expect(emblemOf(tierUp)).toBe("#tier-emblem-platine");
-    expect(emblemReached(tierUp)).toBe("diamant");
+    expect(tierUp).toHaveTextContent("Platinum I → Diamond IV");
+    expect(emblemOf(tierUp)).toBe("#tier-emblem-platinum");
+    expect(emblemReached(tierUp)).toBe("diamond");
   });
 
-  test("Platine → Diamant sounds as the Platine implodes, as its facets converge, as the gem slams down, then with the name", async () => {
-    await renderEnded({ ranked: intoDiamant });
+  test("Platinum → Diamond sounds as the Platinum implodes, as its facets converge, as the gem slams down, then with the name", async () => {
+    await renderEnded({ ranked: intoDiamond });
 
     await clock.advance(0.7);
     expect(played).toEqual([]);
 
     await clock.advance(0.2);
-    expect(played).toEqual(["tier-up-diamant-implode"]);
+    expect(played).toEqual(["tier-up-diamond-implode"]);
 
     await clock.advance(1.3);
-    expect(played).toEqual(["tier-up-diamant-implode", "tier-up-diamant-converge"]);
+    expect(played).toEqual(["tier-up-diamond-implode", "tier-up-diamond-converge"]);
 
     await clock.advance(1.5);
     expect(played).toHaveLength(2);
 
     await clock.advance(0.2);
     expect(played).toEqual([
-      "tier-up-diamant-implode",
-      "tier-up-diamant-converge",
-      "tier-up-diamant-slam",
+      "tier-up-diamond-implode",
+      "tier-up-diamond-converge",
+      "tier-up-diamond-slam",
     ]);
 
     await clock.advance(0.1);
-    expect(played.at(-1)).toBe("tier-up-diamant-name");
+    expect(played.at(-1)).toBe("tier-up-diamond-name");
 
     await clock.advance(1.2);
     expect(continueButton()).not.toHaveFocus();
@@ -750,8 +754,8 @@ describe("the Tier-up", () => {
     expect(played).toHaveLength(4);
   });
 
-  test("Platine → Diamant skipped as its facets converge: no slam nor name heard after", async () => {
-    await renderEnded({ ranked: intoDiamant });
+  test("Platinum → Diamond skipped as its facets converge: no slam nor name heard after", async () => {
+    await renderEnded({ ranked: intoDiamond });
     await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
     await clock.advance(2.5);
 
@@ -759,11 +763,11 @@ describe("the Tier-up", () => {
 
     expect(continueButton()).toHaveFocus();
     await clock.advance(5);
-    expect(played).toEqual(["tier-up-diamant-implode", "tier-up-diamant-converge"]);
+    expect(played).toEqual(["tier-up-diamond-implode", "tier-up-diamond-converge"]);
   });
 
-  test("Platine → Diamant darkens and blinds past its stage too, never cut at its edges", async () => {
-    await renderEnded({ ranked: intoDiamant });
+  test("Platinum → Diamond darkens and blinds past its stage too, never cut at its edges", async () => {
+    await renderEnded({ ranked: intoDiamond });
 
     const tierUp = screen.getByRole("dialog");
     const stage = tierUp.querySelector("[data-tier-up=stage]");
@@ -781,8 +785,8 @@ describe("the Tier-up", () => {
     }
   });
 
-  test("Platine → Diamant cuts its gem facet by facet, all in place before it slams down", async () => {
-    await renderEnded({ ranked: intoDiamant });
+  test("Platinum → Diamond cuts its gem facet by facet, all in place before it slams down", async () => {
+    await renderEnded({ ranked: intoDiamond });
 
     const tierUp = screen.getByRole("dialog");
     const facets = [...tierUp.querySelectorAll("[data-tier-up=facet]")];
@@ -807,8 +811,8 @@ describe("the Tier-up", () => {
     expect(gsap.getProperty(body, "opacity")).toBe(1);
   });
 
-  test("Platine → Diamant unfurls its wings feather by feather after the impact, none seen before", async () => {
-    await renderEnded({ ranked: intoDiamant });
+  test("Platinum → Diamond unfurls its wings feather by feather after the impact, none seen before", async () => {
+    await renderEnded({ ranked: intoDiamond });
 
     const tierUp = screen.getByRole("dialog");
     const feathers = [...tierUp.querySelectorAll("[data-tier-up=feather]")];
@@ -829,8 +833,8 @@ describe("the Tier-up", () => {
     expect(opacitiesOf([...feathers, ...crystals])).toEqual(Array(16).fill(1));
   });
 
-  test("Platine → Diamant slams its name down whole, its two ghosts gone once it has", async () => {
-    await renderEnded({ ranked: intoDiamant });
+  test("Platinum → Diamond slams its name down whole, its two ghosts gone once it has", async () => {
+    await renderEnded({ ranked: intoDiamond });
 
     const tierUp = screen.getByRole("dialog");
     const name = tierUp.querySelector("[data-tier-up=name]");
@@ -853,7 +857,7 @@ describe("the Tier-up", () => {
     expect(opacitiesOf(ghosts)).toEqual([0, 0]);
   });
 
-  test("Diamant → Maniac sounds with the heat, the vortex, the silence, the crown's quake, the fire and the name", async () => {
+  test("Diamond → Maniac sounds with the heat, the vortex, the silence, the crown's quake, the fire and the name", async () => {
     await renderEnded({ ranked: intoManiac });
 
     await clock.advance(0.45);
@@ -902,7 +906,7 @@ describe("the Tier-up", () => {
     expect(played).toHaveLength(6);
   });
 
-  test("Diamant → Maniac skipped in its silence: no quake, fire nor name heard after", async () => {
+  test("Diamond → Maniac skipped in its silence: no quake, fire nor name heard after", async () => {
     await renderEnded({ ranked: intoManiac });
     await waitFor(() => expect(screen.getByRole("dialog")).toHaveFocus());
     await clock.advance(3);
@@ -914,7 +918,7 @@ describe("the Tier-up", () => {
     expect(played).toEqual(["tier-up-maniac-heat", "tier-up-maniac-vortex", "tier-up-maniac-hush"]);
   });
 
-  test("Diamant → Maniac breaks the gem into its facets, flung away as the vortex takes them", async () => {
+  test("Diamond → Maniac breaks the gem into its facets, flung away as the vortex takes them", async () => {
     await renderEnded({ ranked: intoManiac });
 
     const tierUp = screen.getByRole("dialog");
@@ -936,7 +940,7 @@ describe("the Tier-up", () => {
     expect(opacitiesOf(facets)).toEqual(Array(8).fill(0));
   });
 
-  test("Diamant → Maniac drops its crown after the silence, then lights its gems and its flame", async () => {
+  test("Diamond → Maniac drops its crown after the silence, then lights its gems and its flame", async () => {
     await renderEnded({ ranked: intoManiac });
 
     const tierUp = screen.getByRole("dialog");
@@ -967,7 +971,7 @@ describe("the Tier-up", () => {
     expect(gsap.getProperty(flame, "opacity")).toBe(1);
   });
 
-  test("Diamant → Maniac spreads its wings feather by feather, none seen before", async () => {
+  test("Diamond → Maniac spreads its wings feather by feather, none seen before", async () => {
     await renderEnded({ ranked: intoManiac });
 
     const feathers = [...screen.getByRole("dialog").querySelectorAll("[data-tier-up=feather]")];
@@ -985,7 +989,7 @@ describe("the Tier-up", () => {
     expect(opacitiesOf(feathers)).toEqual(Array(16).fill(1));
   });
 
-  test("Diamant → Maniac brings its name in letter by letter once it has caught fire", async () => {
+  test("Diamond → Maniac brings its name in letter by letter once it has caught fire", async () => {
     await renderEnded({ ranked: intoManiac });
 
     const letters = [...screen.getByRole("dialog").querySelectorAll("[data-tier-up=letter]")];
@@ -1003,7 +1007,7 @@ describe("the Tier-up", () => {
     expect(opacitiesOf(letters)).toEqual(Array(6).fill(1));
   });
 
-  test("Diamant → Maniac holds its breath and burns past its stage too, never cut at its edges", async () => {
+  test("Diamond → Maniac holds its breath and burns past its stage too, never cut at its edges", async () => {
     await renderEnded({ ranked: intoManiac });
 
     const tierUp = screen.getByRole("dialog");
@@ -1150,23 +1154,23 @@ const held = (browser: ReturnType<typeof fakeAuraRuntime>) =>
   browser.painters.flatMap((painter) => (painter.disposed ? [] : [painter.tier]));
 
 describe("the Tier-up's Aura", () => {
-  test("from Or, the Emblem lands in its full Aura, let go once the Tier-up is closed", async () => {
+  test("from Gold, the Emblem lands in its full Aura, let go once the Tier-up is closed", async () => {
     const browser = fakeAuraRuntime();
 
-    await renderEnded({ ranked: intoOr, aura: browser.runtime });
+    await renderEnded({ ranked: intoGold, aura: browser.runtime });
     await settle();
 
-    expect(held(browser)).toEqual(["or"]);
+    expect(held(browser)).toEqual(["gold"]);
 
     await userEvent.click(continueButton());
 
     expect(held(browser)).toEqual([]);
   });
 
-  test("Argent → Or lights its full Aura at the impact, never before", async () => {
+  test("Silver → Gold lights its full Aura at the impact, never before", async () => {
     const browser = fakeAuraRuntime();
 
-    await renderEnded({ ranked: intoOr, aura: browser.runtime });
+    await renderEnded({ ranked: intoGold, aura: browser.runtime });
     await settle();
 
     const aura = screen.getByRole("dialog").querySelector("[data-tier-up=aura]");
@@ -1179,25 +1183,25 @@ describe("the Tier-up's Aura", () => {
 
     await clock.advance(0.8);
     expect(gsap.getProperty(aura, "opacity")).toBe(1);
-    expect(held(browser)).toEqual(["or"]);
+    expect(held(browser)).toEqual(["gold"]);
   });
 
-  test("under reduced motion, Argent → Or opens with its full Aura already lit", async () => {
+  test("under reduced motion, Silver → Gold opens with its full Aura already lit", async () => {
     reduceMotion();
 
-    await renderEnded({ ranked: intoOr });
+    await renderEnded({ ranked: intoGold });
 
-    const aura = screen.getByRole("dialog", { name: "Or" }).querySelector("[data-tier-up=aura]");
+    const aura = screen.getByRole("dialog", { name: "Gold" }).querySelector("[data-tier-up=aura]");
 
     await waitFor(() => expect(continueButton()).toHaveFocus());
     expect(gsap.getProperty(aura, "opacity")).toBe(1);
-    expect(played).toEqual(["tier-up-or-materialize"]);
+    expect(played).toEqual(["tier-up-gold-materialize"]);
   });
 
-  test("Or → Platine lights its full Aura at the impact, never before", async () => {
+  test("Gold → Platinum lights its full Aura at the impact, never before", async () => {
     const browser = fakeAuraRuntime();
 
-    await renderEnded({ ranked: intoPlatine, aura: browser.runtime });
+    await renderEnded({ ranked: intoPlatinum, aura: browser.runtime });
     await settle();
 
     const aura = screen.getByRole("dialog").querySelector("[data-tier-up=aura]");
@@ -1210,27 +1214,27 @@ describe("the Tier-up's Aura", () => {
 
     await clock.advance(0.8);
     expect(gsap.getProperty(aura, "opacity")).toBe(1);
-    expect(held(browser)).toEqual(["platine"]);
+    expect(held(browser)).toEqual(["platinum"]);
   });
 
-  test("under reduced motion, Or → Platine opens with its full Aura already lit", async () => {
+  test("under reduced motion, Gold → Platinum opens with its full Aura already lit", async () => {
     reduceMotion();
 
-    await renderEnded({ ranked: intoPlatine });
+    await renderEnded({ ranked: intoPlatinum });
 
     const aura = screen
-      .getByRole("dialog", { name: "Platine" })
+      .getByRole("dialog", { name: "Platinum" })
       .querySelector("[data-tier-up=aura]");
 
     await waitFor(() => expect(continueButton()).toHaveFocus());
     expect(gsap.getProperty(aura, "opacity")).toBe(1);
-    expect(played).toEqual(["tier-up-platine-assemble"]);
+    expect(played).toEqual(["tier-up-platinum-assemble"]);
   });
 
-  test("Platine → Diamant lights its full Aura at the impact, never before", async () => {
+  test("Platinum → Diamond lights its full Aura at the impact, never before", async () => {
     const browser = fakeAuraRuntime();
 
-    await renderEnded({ ranked: intoDiamant, aura: browser.runtime });
+    await renderEnded({ ranked: intoDiamond, aura: browser.runtime });
     await settle();
 
     const aura = screen.getByRole("dialog").querySelector("[data-tier-up=aura]");
@@ -1243,15 +1247,15 @@ describe("the Tier-up's Aura", () => {
 
     await clock.advance(0.8);
     expect(gsap.getProperty(aura, "opacity")).toBe(1);
-    expect(held(browser)).toEqual(["diamant"]);
+    expect(held(browser)).toEqual(["diamond"]);
   });
 
-  test("under reduced motion, Platine → Diamant opens with its gem, wings and full Aura in place, and its name", async () => {
+  test("under reduced motion, Platinum → Diamond opens with its gem, wings and full Aura in place, and its name", async () => {
     reduceMotion();
 
-    await renderEnded({ ranked: intoDiamant });
+    await renderEnded({ ranked: intoDiamond });
 
-    const tierUp = screen.getByRole("dialog", { name: "Diamant" });
+    const tierUp = screen.getByRole("dialog", { name: "Diamond" });
 
     const lit = [
       ...tierUp.querySelectorAll(
@@ -1261,10 +1265,10 @@ describe("the Tier-up's Aura", () => {
 
     await waitFor(() => expect(continueButton()).toHaveFocus());
     expect(opacitiesOf(lit)).toEqual(Array(lit.length).fill(1));
-    expect(played).toEqual(["tier-up-diamant-slam"]);
+    expect(played).toEqual(["tier-up-diamond-slam"]);
   });
 
-  test("Diamant → Maniac lights its full Aura as it catches fire, never before", async () => {
+  test("Diamond → Maniac lights its full Aura as it catches fire, never before", async () => {
     const browser = fakeAuraRuntime();
 
     await renderEnded({ ranked: intoManiac, aura: browser.runtime });
@@ -1283,7 +1287,7 @@ describe("the Tier-up's Aura", () => {
     expect(held(browser)).toEqual(["maniac"]);
   });
 
-  test("under reduced motion, Diamant → Maniac opens with its crown ablaze, its wings and full Aura, and its name", async () => {
+  test("under reduced motion, Diamond → Maniac opens with its crown ablaze, its wings and full Aura, and its name", async () => {
     reduceMotion();
 
     await renderEnded({ ranked: intoManiac });
@@ -1304,7 +1308,7 @@ describe("the Tier-up's Aura", () => {
     expect(played).toEqual(["tier-up-maniac-quake"]);
   });
 
-  test("below Or, there is no full Aura to ask for", async () => {
+  test("below Gold, there is no full Aura to ask for", async () => {
     const browser = fakeAuraRuntime();
 
     await renderEnded({ ranked: intoBronze, aura: browser.runtime });
@@ -1316,12 +1320,12 @@ describe("the Tier-up's Aura", () => {
   test("refused, the Emblem lands without it", async () => {
     const browser = fakeAuraRuntime({ webgl2: false });
 
-    await renderEnded({ ranked: intoOr, aura: browser.runtime });
+    await renderEnded({ ranked: intoGold, aura: browser.runtime });
     await settle();
 
-    const tierUp = screen.getByRole("dialog", { name: "Or" });
+    const tierUp = screen.getByRole("dialog", { name: "Gold" });
 
     expect(tierUp.querySelector("[data-aura-canvas]")).toBeNull();
-    expect(emblemReached(tierUp)).toBe("or");
+    expect(emblemReached(tierUp)).toBe("gold");
   });
 });

@@ -1,7 +1,7 @@
 type RankedPlaceLineProps = {
   // At the left: "42 TP".
   value: string;
-  // At the right, faint: "58 avant Or I".
+  // At the right, faint: "58 avant Gold I".
   aside: string;
 };
 

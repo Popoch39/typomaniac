@@ -11,9 +11,9 @@ import { UserAvatar } from "@/components/user-avatar/user-avatar";
 import type { AuraRuntime } from "@/lib/aura-runtime";
 import { fakeAuraRuntime } from "@/test/fake-aura-runtime";
 
-const SHINING: readonly Tier[] = ["or", "platine", "diamant", "maniac"];
+const SHINING: readonly Tier[] = ["gold", "platinum", "diamond", "maniac"];
 
-const DULL: readonly Tier[] = ["fer", "bronze", "argent"];
+const DULL: readonly Tier[] = ["iron", "bronze", "silver"];
 
 // What a tween may change: transforms and opacity; the rest only says how.
 const TIMING = new Set([
@@ -98,16 +98,16 @@ describe("the light Aura", () => {
     expect(sparks(container)).toEqual([]);
   });
 
-  test("a User who froze the Or Ornament wears the Aura of Or, whatever their Tier", () => {
-    // The API resolves the worn Ornament: a Maniac who froze Or is handed `or`.
-    const { container } = renderAura(avatar("or"));
+  test("a User who froze the Gold Ornament wears the Aura of Gold, whatever their Tier", () => {
+    // The API resolves the worn Ornament: a Maniac who froze Gold is handed `gold`.
+    const { container } = renderAura(avatar("gold"));
 
     expect(sheens(container)).toHaveLength(1);
     expect(sparks(container)).toEqual([]);
     expect(container.querySelector("[data-ornament-rays]")).toBeNull();
   });
 
-  test.each(["diamant", "maniac"] as const)("%s twinkles with sparks", (tier) => {
+  test.each(["diamond", "maniac"] as const)("%s twinkles with sparks", (tier) => {
     const { container } = renderAura(avatar(tier));
 
     expect(sparks(container).length).toBeGreaterThan(0);
@@ -117,21 +117,21 @@ describe("the light Aura", () => {
     }
   });
 
-  test.each(["or", "platine"] as const)("%s has no sparks", (tier) => {
+  test.each(["gold", "platinum"] as const)("%s has no sparks", (tier) => {
     const { container } = renderAura(avatar(tier));
 
     expect(sparks(container)).toEqual([]);
   });
 
   test("the sheen moves by a transform only, inside the Ornament's own shape", () => {
-    const { container } = renderAura(<TierBlason tier="diamant" />);
+    const { container } = renderAura(<TierBlason tier="diamond" />);
     const [sheen] = sheens(container);
     const cut = sheen?.closest("[mask]");
 
     expect(changed(sheen ?? container)).toEqual(["x"]);
-    expect(cut?.getAttribute("mask")).toBe("url(#tier-sheen-mask-diamant)");
-    expect(container.querySelector("mask#tier-sheen-mask-diamant use")?.getAttribute("href")).toBe(
-      "#tier-ornament-diamant",
+    expect(cut?.getAttribute("mask")).toBe("url(#tier-sheen-mask-diamond)");
+    expect(container.querySelector("mask#tier-sheen-mask-diamond use")?.getAttribute("href")).toBe(
+      "#tier-ornament-diamond",
     );
   });
 
@@ -152,7 +152,7 @@ describe("the light Aura", () => {
     const { container } = renderAura(
       <>
         {avatar("maniac")}
-        {avatar("diamant")}
+        {avatar("diamond")}
       </>,
       browser.runtime,
     );
@@ -177,7 +177,7 @@ describe("the light Aura", () => {
 
     const { container } = renderAura(
       <>
-        {avatar("or")}
+        {avatar("gold")}
         <TierBlason tier="maniac" />
       </>,
       browser.runtime,
@@ -196,7 +196,7 @@ describe("the light Aura", () => {
 
   test("an Ornament that is on screen but in a hidden tab stays still", () => {
     const browser = fakeAuraRuntime();
-    const { container } = renderAura(avatar("or"), browser.runtime);
+    const { container } = renderAura(avatar("gold"), browser.runtime);
     const [ornament] = browser.watched();
 
     browser.setTabShown(false);
@@ -208,8 +208,8 @@ describe("the light Aura", () => {
   test("two neighbours never start their sheen together", () => {
     const { container } = renderAura(
       <>
-        {avatar("or")}
-        {avatar("or")}
+        {avatar("gold")}
+        {avatar("gold")}
       </>,
     );
 
@@ -222,8 +222,8 @@ describe("the light Aura", () => {
   test("two neighbours never twinkle in step", () => {
     const { container } = renderAura(
       <>
-        {avatar("diamant")}
-        {avatar("diamant")}
+        {avatar("diamond")}
+        {avatar("diamond")}
       </>,
     );
 
@@ -251,7 +251,7 @@ describe("the light Aura", () => {
     const { unmount } = renderAura(
       <>
         {avatar("maniac")}
-        <TierBlason tier="diamant" />
+        <TierBlason tier="diamond" />
       </>,
       browser.runtime,
     );

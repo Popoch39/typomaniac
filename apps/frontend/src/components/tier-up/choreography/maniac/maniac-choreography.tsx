@@ -1,4 +1,4 @@
-import { DIAMANT_FACETS } from "@/components/tier-up/choreography/diamant/diamant-facets";
+import { DIAMOND_FACETS } from "@/components/tier-up/choreography/diamond/diamond-facets";
 import { MANIAC_CRACKS } from "@/components/tier-up/choreography/maniac/maniac-cracks";
 import {
   MANIAC_EARLY_EMBERS,
@@ -216,7 +216,7 @@ const gemBreaks = (timeline: Timeline) => {
     );
   }
 
-  for (const [index, { x, y, z, rotationX, rotationY }] of DIAMANT_FACETS.entries()) {
+  for (const [index, { x, y, z, rotationX, rotationY }] of DIAMOND_FACETS.entries()) {
     timeline.fromTo(
       `${part("gem-facet")}[data-index="${index}"]`,
       { x: 0, y: 0, z: 0, rotationX: 0, rotationY: 0, opacity: 1, transformPerspective: 900 },
@@ -499,8 +499,8 @@ const feathersSway = (timeline: Timeline) => {
   }
 };
 
-// Diamant → Maniac, as its artboard « 6 · Diamant → Maniac » plays it, keyframe for keyframe,
-// with its timings and its curves: the heat rises and the Diamant's gem trembles, heating up while
+// Diamond → Maniac, as its artboard « 6 · Diamant → Maniac » plays it, keyframe for keyframe,
+// with its timings and its curves: the heat rises and the Diamond's gem trembles, heating up while
 // cracks of white heat run through it; it breaks, its facets flung into a vortex of embers around
 // a heart that grows; the silence, the stage holding its breath; the Maniac's crown drops and lands
 // with a quake and three rings, its gems light and its flame catches, its wings spread feather by

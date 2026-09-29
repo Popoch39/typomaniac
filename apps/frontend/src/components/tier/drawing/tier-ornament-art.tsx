@@ -15,9 +15,9 @@ import {
   ref,
 } from "@/components/tier/sprite/tier-sprite-paint";
 
-// One Ornament, on the 120 × 120 grid of the svg around it: its own glow from Or up, the Maniac's
+// One Ornament, on the 120 × 120 grid of the svg around it: its own glow from Gold up, the Maniac's
 // own rays, its shared symbol from the sprite, then its light Aura over the metal (a sheen from
-// Or up, sparks for the Diamant and the Maniac). All but the symbol belong to this instance, so
+// Gold up, sparks for the Diamond and the Maniac). All but the symbol belong to this instance, so
 // they can move without moving every other Ornament. Without `glow` where the full Aura draws its
 // own light behind: neither the glow, the rays nor the sparks, which its shader draws.
 export const TierOrnamentArt = ({ tier, glow }: { tier: Tier; glow: boolean }) => {

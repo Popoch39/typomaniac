@@ -6,7 +6,7 @@ import { createApp } from "../../app";
 import { createTestAuth, memoryDuelStore, signIn, testConfig, testUsers } from "../../test-app";
 import type { DuelPlayerRecord, DuelRecord } from "../duel/store";
 
-const standing = (tier: "argent" | "or" | "platine", tp = 50): Standing => ({
+const standing = (tier: "silver" | "gold" | "platinum", tp = 50): Standing => ({
   tier,
   division: 4,
   tp,
@@ -111,7 +111,7 @@ const setup = () => {
 describe("PUT /api/me/ornament", () => {
   test("freezes a Tier under the User's own, and answers the User as /api/me does", async () => {
     const { newUser, putOrnament, getMe } = setup();
-    const ada = await newUser(standing("or"));
+    const ada = await newUser(standing("gold"));
 
     const response = await putOrnament(ada.cookie, { choice: "bronze" });
 
@@ -125,32 +125,32 @@ describe("PUT /api/me/ornament", () => {
 
   test("accepts the User's own Tier, following it and wearing none", async () => {
     const { newUser, putOrnament } = setup();
-    const ada = await newUser(standing("or"));
+    const ada = await newUser(standing("gold"));
 
-    expect(await (await putOrnament(ada.cookie, { choice: "or" })).json()).toMatchObject({
-      ornament: "or",
-      ornamentChoice: "or",
+    expect(await (await putOrnament(ada.cookie, { choice: "gold" })).json()).toMatchObject({
+      ornament: "gold",
+      ornamentChoice: "gold",
     });
     expect(await (await putOrnament(ada.cookie, { choice: "none" })).json()).toMatchObject({
       ornament: null,
       ornamentChoice: "none",
     });
     expect(await (await putOrnament(ada.cookie, { choice: "follow" })).json()).toMatchObject({
-      ornament: "or",
+      ornament: "gold",
       ornamentChoice: "follow",
     });
   });
 
   test("refuses a Tier above the User's own, and changes nothing", async () => {
     const { newUser, putOrnament, getMe } = setup();
-    const ada = await newUser(standing("or"));
+    const ada = await newUser(standing("gold"));
 
-    await putOrnament(ada.cookie, { choice: "argent" });
+    await putOrnament(ada.cookie, { choice: "silver" });
 
-    const response = await putOrnament(ada.cookie, { choice: "platine" });
+    const response = await putOrnament(ada.cookie, { choice: "platinum" });
 
     expect(response.status).toBe(403);
-    expect(await getMe(ada.cookie)).toMatchObject({ ornament: "argent", ornamentChoice: "argent" });
+    expect(await getMe(ada.cookie)).toMatchObject({ ornament: "silver", ornamentChoice: "silver" });
   });
 
   test("refuses any choice in Placement or without a Rating", async () => {
@@ -159,7 +159,7 @@ describe("PUT /api/me/ornament", () => {
     const unranked = await newUser(null);
 
     const responses = await Promise.all(
-      ["follow", "none", "fer"].flatMap((choice) => [
+      ["follow", "none", "iron"].flatMap((choice) => [
         putOrnament(placed.cookie, { choice }),
         putOrnament(unranked.cookie, { choice }),
       ]),
@@ -172,13 +172,27 @@ describe("PUT /api/me/ornament", () => {
 
   test("refuses what is not an Ornament choice", async () => {
     const { newUser, putOrnament } = setup();
-    const ada = await newUser(standing("or"));
+    const ada = await newUser(standing("gold"));
 
     const responses = await Promise.all(
       [{ choice: "maitre" }, { choice: 3 }, {}].map((body) => putOrnament(ada.cookie, body)),
     );
 
     expect(responses.map((response) => response.status)).toEqual([422, 422, 422]);
+  });
+
+  test("refuses the French ids the Tiers used to have", async () => {
+    const { newUser, putOrnament, getMe } = setup();
+    const ada = await newUser(standing("gold"));
+
+    const responses = await Promise.all(
+      ["fer", "argent", "or", "platine", "diamant"].map((choice) =>
+        putOrnament(ada.cookie, { choice }),
+      ),
+    );
+
+    expect(responses.map((response) => response.status)).toEqual([422, 422, 422, 422, 422]);
+    expect(await getMe(ada.cookie)).toMatchObject({ ornament: "gold", ornamentChoice: "follow" });
   });
 
   test("needs a Session", async () => {
@@ -189,20 +203,20 @@ describe("PUT /api/me/ornament", () => {
 
   test("keeps the frozen Tier through a fall under it, and wears it again once back", async () => {
     const { duels, newUser, putOrnament, getMe } = setup();
-    const ada = await newUser(standing("or", 10));
-    const alan = await newUser(standing("or"));
+    const ada = await newUser(standing("gold", 10));
+    const alan = await newUser(standing("gold"));
 
-    await putOrnament(ada.cookie, { choice: "or" });
+    await putOrnament(ada.cookie, { choice: "gold" });
     await duels.store.save(
-      rankedDuel(ada.id, alan.id, { before: standing("or", 10), after: standing("argent", 75) }),
+      rankedDuel(ada.id, alan.id, { before: standing("gold", 10), after: standing("silver", 75) }),
     );
 
-    expect(await getMe(ada.cookie)).toMatchObject({ ornament: "argent", ornamentChoice: "or" });
+    expect(await getMe(ada.cookie)).toMatchObject({ ornament: "silver", ornamentChoice: "gold" });
 
     await duels.store.save(
-      rankedDuel(ada.id, alan.id, { before: standing("argent", 95), after: standing("or", 15) }),
+      rankedDuel(ada.id, alan.id, { before: standing("silver", 95), after: standing("gold", 15) }),
     );
 
-    expect(await getMe(ada.cookie)).toMatchObject({ ornament: "or", ornamentChoice: "or" });
+    expect(await getMe(ada.cookie)).toMatchObject({ ornament: "gold", ornamentChoice: "gold" });
   });
 });

@@ -1,6 +1,7 @@
 // Every constant below is a default chosen before any real data: tune them once Duels are played.
 
-const DIVISION_TIERS = ["fer", "bronze", "argent", "or", "platine", "diamant"] as const;
+// The Tiers split into Divisions: all but Maniac.
+export const DIVISION_TIERS = ["iron", "bronze", "silver", "gold", "platinum", "diamond"] as const;
 
 export const TIERS = [...DIVISION_TIERS, "maniac"] as const;
 
@@ -50,7 +51,7 @@ export const MAX_TP = 35;
 // TP gained or saved per MMR point above the MMR the displayed rank expects.
 const CATCH_UP_TP_PER_MMR = 0.1;
 
-const FER_IV_MMR = 400;
+const IRON_IV_MMR = 400;
 
 const MMR_PER_DIVISION = 50;
 
@@ -61,7 +62,7 @@ export const DEMOTED_TP = 75;
 
 const DIVISIONS_PER_TIER = 4;
 
-// The Divisions from Fer IV up, then Maniac as the last step.
+// The Divisions from Iron IV up, then Maniac as the last step.
 const MANIAC_STEP = DIVISION_TIERS.length * DIVISIONS_PER_TIER;
 
 const MATCH_WINDOW = 100;
@@ -94,7 +95,7 @@ export const nextMmr = (
         (OUTCOME_SCORES[outcome] - expectedScore(mmr, opponentMmr)),
   );
 
-// Fer IV is step 0, Diamant I step 23, Maniac step 24.
+// Iron IV is step 0, Diamond I step 23, Maniac step 24.
 export const stepOf = (standing: Standing) =>
   standing.tier === "maniac"
     ? MANIAC_STEP
@@ -124,7 +125,7 @@ export const ornamentOf = (rank: Rank, choice: OrnamentChoice): Tier | null => {
   return choice;
 };
 
-// The Ornaments a User may freeze: from Fer up to their current Tier, none in Placement.
+// The Ornaments a User may freeze: from Iron up to their current Tier, none in Placement.
 export const wearableOrnaments = (rank: Rank): Tier[] =>
   isPlacement(rank) ? [] : TIERS.slice(0, TIERS.indexOf(rank.tier) + 1);
 
@@ -143,7 +144,7 @@ const standingAt = (step: number, tp: number, shielded: boolean): Standing => {
   }
 
   return {
-    tier: DIVISION_TIERS[Math.floor(step / DIVISIONS_PER_TIER)] ?? "fer",
+    tier: DIVISION_TIERS[Math.floor(step / DIVISIONS_PER_TIER)] ?? "iron",
     // SAFETY: step % 4 is 0 to 3, so the Division is 4 to 1.
     division: (DIVISIONS_PER_TIER - (step % DIVISIONS_PER_TIER)) as Division,
     tp,
@@ -152,11 +153,11 @@ const standingAt = (step: number, tp: number, shielded: boolean): Standing => {
 };
 
 // The rank a standing climbs to, at 0 TP: the Division above, the next Tier's lowest past a
-// Division I, Maniac past Diamant I. None above Maniac.
+// Division I, Maniac past Diamond I. None above Maniac.
 export const nextStanding = (standing: Standing): Standing | null =>
   standing.tier === "maniac" ? null : standingAt(stepOf(standing) + 1, 0, false);
 
-const expectedMmr = (standing: Standing) => FER_IV_MMR + stepOf(standing) * MMR_PER_DIVISION;
+const expectedMmr = (standing: Standing) => IRON_IV_MMR + stepOf(standing) * MMR_PER_DIVISION;
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
@@ -184,7 +185,7 @@ export const tpDelta = (
 };
 
 // The rank after a Duel's TP: up a Division at 100 with the surplus carried and a shield, down to
-// the Division below at 75 when not shielded, never below Fer IV, and no cap in Maniac.
+// the Division below at 75 when not shielded, never below Iron IV, and no cap in Maniac.
 export const applyTp = (standing: Standing, delta: number): Standing => {
   const tp = standing.tp + delta;
   const step = stepOf(standing);
@@ -206,7 +207,7 @@ export const applyTp = (standing: Standing, delta: number): Standing => {
 
 // The rank a User gets at the end of Placement: the Division whose expected MMR theirs reaches.
 export const rankFromMmr = (mmr: number): Standing =>
-  standingAt(clamp(Math.floor((mmr - FER_IV_MMR) / MMR_PER_DIVISION), 0, MANIAC_STEP), 0, false);
+  standingAt(clamp(Math.floor((mmr - IRON_IV_MMR) / MMR_PER_DIVISION), 0, MANIAC_STEP), 0, false);
 
 // The MMR gap the Queue accepts after `waitMs` of waiting: it widens so that everyone gets a Duel.
 export const matchWindow = (waitMs: number) =>

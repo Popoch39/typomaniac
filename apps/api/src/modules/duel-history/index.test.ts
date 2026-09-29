@@ -23,7 +23,7 @@ type Side = {
 
 const RATING: Rating = {
   mmr: 1000,
-  rank: { tier: "or", division: 2, tp: 40, shielded: false },
+  rank: { tier: "gold", division: 2, tp: 40, shielded: false },
 };
 
 // A finished Duel between two Users: `outcome` and `winnerId` as the server wrote them.

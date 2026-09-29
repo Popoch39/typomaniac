@@ -1,7 +1,7 @@
 import { MANIAC_PAINT } from "@/components/tier-up/choreography/maniac/maniac-paint";
 import { BEYOND_STAGE } from "@/components/tier-up/stage/beyond-stage";
 
-// The heat rising from under the Diamant → Maniac stage, unseen until it comes, then flickering
+// The heat rising from under the Diamond → Maniac stage, unseen until it comes, then flickering
 // once the gem breaks: on past the stage's edges, as it glows on them.
 export const TierUpHeat = () => (
   <div

@@ -475,15 +475,15 @@ describe("the search", () => {
   });
 });
 
-// A User past Placement in Or II, with an Ornament choice when given.
+// A User past Placement in Gold II, with an Ornament choice when given.
 const ranked = (
   duels: ReturnType<typeof setup>["duels"],
   user: TestUser,
-  choice?: "none" | "argent",
+  choice?: "none" | "silver",
 ) => {
   duels.ratings.set(user.id, {
     mmr: 1000,
-    rank: { tier: "or", division: 2, tp: 40, shielded: false },
+    rank: { tier: "gold", division: 2, tp: 40, shielded: false },
   });
 
   if (choice) {
@@ -500,7 +500,7 @@ describe("the Ornament", () => {
     const zoe = await newUser("zoe");
 
     ranked(duels, bob);
-    ranked(duels, eve, "argent");
+    ranked(duels, eve, "silver");
     duels.ratings.set(zoe.id, { mmr: 1000, rank: { placementsLeft: 2 } });
     await befriendAll(ada, [bob, eve, zoe]);
     duels.ornamentReads.length = 0;
@@ -508,8 +508,8 @@ describe("the Ornament", () => {
     const friends = ornamentsFound.Decode(await ada.friends());
 
     expect(friends.map(({ handle, ornament }) => [handle, ornament])).toEqual([
-      ["bob", "or"],
-      ["eve", "argent"],
+      ["bob", "gold"],
+      ["eve", "silver"],
       ["zoe", null],
     ]);
     expect(duels.ornamentReads).toHaveLength(1);
@@ -527,7 +527,7 @@ describe("the Ornament", () => {
     await ada.send(eve.id);
 
     expect(await ada.requests()).toEqual({
-      received: [{ ...bob.profile, ornament: "or" }],
+      received: [{ ...bob.profile, ornament: "gold" }],
       sent: [{ ...eve.profile, ornament: null }],
     });
   });
@@ -538,12 +538,12 @@ describe("the Ornament", () => {
     const bob = await newUser("orn_bob");
 
     await newUser("orn_eve");
-    ranked(duels, bob, "argent");
+    ranked(duels, bob, "silver");
 
     const found = ornamentsFound.Decode(await me.search("orn"));
 
     expect(found.map(({ handle, ornament }) => [handle, ornament])).toEqual([
-      ["orn_bob", "argent"],
+      ["orn_bob", "silver"],
       ["orn_eve", null],
     ]);
     expect(duels.ornamentReads).toHaveLength(1);

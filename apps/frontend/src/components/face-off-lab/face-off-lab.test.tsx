@@ -31,7 +31,7 @@ describe("FaceOffLab", () => {
     await userEvent.click(screen.getByRole("button", { name: "Face-off" }));
 
     expect(screen.getByText("@kzr_")).toBeInTheDocument();
-    expect(screen.getByText("Or II · 42 TP")).toBeInTheDocument();
+    expect(screen.getByText("Gold II · 42 TP")).toBeInTheDocument();
     // happy-dom never lays out the slider's track, so its thumb stays hidden to the role queries.
     expect(
       screen.getByLabelText("Temps du Face-off", { selector: "input[type=range]" }),
@@ -53,7 +53,7 @@ describe("FaceOffLab", () => {
     await pick("Protégé");
     expect(stakeLine()).toHaveTextContent(/^Victoire \+12 TP Défaite −12 TP$/);
 
-    await pick("Fer IV");
+    await pick("Iron IV");
     expect(stakeLine()).toHaveTextContent(/^Victoire \+14 TP Défaite −12 TP$/);
 
     await pick("Maniac");
@@ -66,11 +66,11 @@ describe("FaceOffLab", () => {
     await userEvent.click(screen.getByRole("button", { name: "Face-off" }));
 
     await userEvent.click(screen.getByRole("button", { name: "Duel de promotion" }));
-    expect(screen.getByText("Or I → Platine IV")).toBeInTheDocument();
+    expect(screen.getByText("Gold I → Platinum IV")).toBeInTheDocument();
     expect(stakeLine()).toHaveTextContent(/^Victoire \+14 TP Défaite −11 TP$/);
 
     await userEvent.click(screen.getByRole("button", { name: "Duel pour Maniac" }));
-    expect(screen.getByText("Diamant I → Maniac")).toBeInTheDocument();
+    expect(screen.getByText("Diamond I → Maniac")).toBeInTheDocument();
     expect(stakeLine()).toHaveTextContent(/^Victoire \+9 TP Défaite −16 TP$/);
   });
 
@@ -82,7 +82,7 @@ describe("FaceOffLab", () => {
 
     // On both sides: a Challenge is ranked for neither.
     expect(screen.getAllByText("Challenge", { selector: "span" })).toHaveLength(2);
-    expect(screen.queryByText("Or II · 42 TP")).not.toBeInTheDocument();
+    expect(screen.queryByText("Gold II · 42 TP")).not.toBeInTheDocument();
   });
 
   test("closes", async () => {

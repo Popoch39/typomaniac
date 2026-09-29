@@ -5,9 +5,9 @@ import { FaceOffRank } from "@/components/face-off/face-off-rank";
 
 describe("FaceOffRank", () => {
   test("shows the Tier, the Division and the TP of a ranked opponent", () => {
-    render(<FaceOffRank rank={{ tier: "or", division: 2, tp: 42, shielded: false }} />);
+    render(<FaceOffRank rank={{ tier: "gold", division: 2, tp: 42, shielded: false }} />);
 
-    expect(screen.getByText("Or II · 42 TP")).toBeInTheDocument();
+    expect(screen.getByText("Gold II · 42 TP")).toBeInTheDocument();
     expect(screen.queryByText("Challenge")).not.toBeInTheDocument();
   });
 

@@ -4,7 +4,9 @@ import { rankLabel } from "@/components/tier/rank/rank-label";
 
 describe("rankLabel", () => {
   test("a Tier and Division with their TP", () => {
-    expect(rankLabel({ tier: "or", division: 2, tp: 42, shielded: false })).toBe("Or II · 42 TP");
+    expect(rankLabel({ tier: "gold", division: 2, tp: 42, shielded: false })).toBe(
+      "Gold II · 42 TP",
+    );
   });
 
   test("Maniac without Division", () => {

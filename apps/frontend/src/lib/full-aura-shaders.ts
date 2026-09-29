@@ -31,9 +31,9 @@ float noise(vec2 p) {
              mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }`;
 
-// Or: a warm halo from the metal of Or, breathing, its light stirring slowly around the Ornament,
+// Gold: a warm halo from the metal of Gold, breathing, its light stirring slowly around the Ornament,
 // and a few glints that twinkle in it. Premultiplied alpha.
-const OR_FRAGMENT = `#version 300 es
+const GOLD_FRAGMENT = `#version 300 es
 precision highp float;
 
 uniform vec2 uResolution;
@@ -71,10 +71,10 @@ void main() {
   color = vec4(mix(warm * light * 0.75, uLight * alpha, glint), alpha);
 }`;
 
-// Platine: a cool halo from the metal of Platine, fuller than Or's, its light drifting upward in
+// Platinum: a cool halo from the metal of Platinum, fuller than Gold's, its light drifting upward in
 // plumes, and motes of light rising gently in three layers from behind the drawing, each wobbling
 // and flickering on its own beat, fading out as they climb. Premultiplied alpha.
-const PLATINE_FRAGMENT = `#version 300 es
+const PLATINUM_FRAGMENT = `#version 300 es
 precision highp float;
 
 uniform vec2 uResolution;
@@ -110,7 +110,7 @@ void main() {
   float r = length(p);
   vec2 around = p / max(r, 0.001);
 
-  // Wider than Or's, strongest through the metal, gone at the canvas's edge.
+  // Wider than Gold's, strongest through the metal, gone at the canvas's edge.
   float halo = smoothstep(1.0, 0.42, r) * smoothstep(0.22, 0.42, r);
 
   // The light stirs around the circle, and plumes of it drift up, above the Ornament mostly.
@@ -131,12 +131,12 @@ void main() {
   color = vec4(cool * (1.0 - dust) + mote, veil * (1.0 - dust) + dust);
 }`;
 
-// Diamant: a gem's light, richer than Platine's. Its widest halo is cut into facets, each lit on
+// Diamond: a gem's light, richer than Platinum's. Its widest halo is cut into facets, each lit on
 // its own beat, crossed by prismatic bands that slide slowly around the Ornament: each channel
 // a little behind the next, as light splits through a prism, always between the metal's colours.
 // A bright arc of refraction turns around it, and four-pointed glints twinkle in two layers.
 // Premultiplied alpha.
-const DIAMANT_FRAGMENT = `#version 300 es
+const DIAMOND_FRAGMENT = `#version 300 es
 precision highp float;
 
 uniform vec2 uResolution;
@@ -204,7 +204,7 @@ void main() {
   float light = halo * halo * (0.45 + 0.3 * stir + 0.35 * face + 0.4 * sweep) * breath;
 
   // Each channel of the prism a third of a turn behind the next, between the metal's body and its
-  // highlight: the light splits, and never leaves the Diamant's colours.
+  // highlight: the light splits, and never leaves the Diamond's colours.
   vec3 prism = vec3(bands(a, r, 0.0), bands(a, r, 2.1), bands(a, r, 4.2));
   vec3 tint = mix(uMid, uLight, prism);
 
@@ -248,7 +248,7 @@ float fbm(vec2 p) {
   return sum;
 }
 
-// One layer of embers: columns of cells scrolling up faster than Platine's motes, one ember at
+// One layer of embers: columns of cells scrolling up faster than Platinum's motes, one ember at
 // most per cell, swaying and flickering hard. The larger the scale, the smaller and slower.
 float embers(vec2 p, float scale, float rise) {
   vec2 q = p * scale;
@@ -317,9 +317,9 @@ const metalColors = (tier: FullAuraTier): AuraColors => {
 
 // One shader for each Tier with a full Aura, none for the others.
 const FULL_AURA_SHADERS: Record<FullAuraTier, FullAuraShader> = {
-  or: { fragment: OR_FRAGMENT, colors: metalColors("or") },
-  platine: { fragment: PLATINE_FRAGMENT, colors: metalColors("platine") },
-  diamant: { fragment: DIAMANT_FRAGMENT, colors: metalColors("diamant") },
+  gold: { fragment: GOLD_FRAGMENT, colors: metalColors("gold") },
+  platinum: { fragment: PLATINUM_FRAGMENT, colors: metalColors("platinum") },
+  diamond: { fragment: DIAMOND_FRAGMENT, colors: metalColors("diamond") },
   // The sprite's fire rather than its metal: its pale core, its gold, and the Maniac's fixed
   // orange, which never follows a change of accent.
   maniac: { fragment: MANIAC_FRAGMENT, colors: HOT },

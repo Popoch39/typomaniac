@@ -92,3 +92,42 @@ describe(ORNAMENT, () => {
     expect(rows).toEqual([{ ornament: "follow" }, { ornament: "follow" }]);
   });
 });
+
+const ENGLISH_TIERS = "0009_english_tiers.sql";
+
+describe(ENGLISH_TIERS, () => {
+  test("every Tier and frozen Ornament takes its English id, with the same TP and shield", async () => {
+    const db = await migratedUpTo(ENGLISH_TIERS);
+
+    await addUser(db, "ada");
+    await addUser(db, "alan");
+    await addUser(db, "grace");
+    await addUser(db, "linus");
+    await addUser(db, "margaret");
+    await addUser(db, "tim");
+    await db.exec(`
+      insert into ranked_rating (user_id, mmr, placements_played, tier, division, tp, shielded, ornament)
+      values ('ada', 800, 5, 'or', 2, 40, true, 'argent'),
+             ('alan', 500, 5, 'fer', 4, 0, false, 'follow'),
+             ('grace', 1100, 5, 'platine', 1, 99, false, 'fer'),
+             ('linus', 1300, 5, 'diamant', 3, 12, false, 'diamant'),
+             ('margaret', 1900, 5, 'maniac', null, 250, false, 'platine'),
+             ('tim', 600, 2, null, null, 0, false, 'none')
+    `);
+
+    await apply(db, [ENGLISH_TIERS]);
+
+    const { rows } = await db.query<RatingRow & { ornament: string }>(
+      "select tier, division, tp, shielded, ornament from ranked_rating order by user_id",
+    );
+
+    expect(rows).toEqual([
+      { tier: "gold", division: 2, tp: 40, shielded: true, ornament: "silver" },
+      { tier: "iron", division: 4, tp: 0, shielded: false, ornament: "follow" },
+      { tier: "platinum", division: 1, tp: 99, shielded: false, ornament: "iron" },
+      { tier: "diamond", division: 3, tp: 12, shielded: false, ornament: "diamond" },
+      { tier: "maniac", division: null, tp: 250, shielded: false, ornament: "platinum" },
+      { tier: null, division: null, tp: 0, shielded: false, ornament: "none" },
+    ]);
+  });
+});

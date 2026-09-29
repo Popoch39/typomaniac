@@ -1,5 +1,6 @@
 export {
   DEMOTED_TP,
+  DIVISION_TIERS,
   DIVISION_TP,
   DIVISIONS,
   MAX_TP,

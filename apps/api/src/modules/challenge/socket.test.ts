@@ -271,7 +271,7 @@ describe("Challenges, on the socket", () => {
 
     duels.ratings.set(ada.id, {
       mmr: 1000,
-      rank: { tier: "or", division: 2, tp: 10, shielded: false },
+      rank: { tier: "gold", division: 2, tp: 10, shielded: false },
     });
     duels.ratings.set(alan.id, { mmr: 1000, rank: { placementsLeft: 3 } });
     await befriend(ada, alan);
@@ -285,11 +285,11 @@ describe("Challenges, on the socket", () => {
     expect(await alanTab.next()).toMatchObject({
       type: "duel-found",
       selfOrnament: null,
-      opponent: { handle: "ada", ornament: "or" },
+      opponent: { handle: "ada", ornament: "gold" },
     });
     expect(await adaTab.next()).toMatchObject({
       type: "duel-found",
-      selfOrnament: "or",
+      selfOrnament: "gold",
       opponent: { handle: "alan", ornament: null },
     });
   });

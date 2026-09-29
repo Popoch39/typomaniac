@@ -20,7 +20,7 @@ describe("TierBlason", () => {
   });
 
   test("is only seen", () => {
-    const { container } = render(<TierBlason tier="diamant" />);
+    const { container } = render(<TierBlason tier="diamond" />);
 
     expect(container.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
   });

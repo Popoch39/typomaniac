@@ -69,27 +69,27 @@ const rise = (name: string) =>
 const continueButton = () => screen.getByRole("button", { name: "Continuer" });
 
 describe("TierUpDevPage", () => {
-  test("lists the six Tier-ups, from Fer to Maniac", async () => {
+  test("lists the six Tier-ups, from Iron to Maniac", async () => {
     await renderPage();
 
     const tierUps = within(screen.getByRole("list", { name: "Tier-ups" })).getAllByRole("button");
 
     expect(tierUps.map((each) => each.textContent)).toEqual([
-      "Fer I → Bronze IV",
-      "Bronze I → Argent IV",
-      "Argent I → Or IV",
-      "Or I → Platine IV",
-      "Platine I → Diamant IV",
-      "Diamant I → Maniac",
+      "Iron I → Bronze IV",
+      "Bronze I → Silver IV",
+      "Silver I → Gold IV",
+      "Gold I → Platinum IV",
+      "Platinum I → Diamond IV",
+      "Diamond I → Maniac",
     ]);
   });
 
   test.each([
-    ["Fer I → Bronze IV", "Bronze"],
-    ["Bronze I → Argent IV", "Argent"],
-    ["Argent I → Or IV", "Or"],
-    ["Platine I → Diamant IV", "Diamant"],
-    ["Diamant I → Maniac", "Maniac"],
+    ["Iron I → Bronze IV", "Bronze"],
+    ["Bronze I → Silver IV", "Silver"],
+    ["Silver I → Gold IV", "Gold"],
+    ["Platinum I → Diamond IV", "Diamond"],
+    ["Diamond I → Maniac", "Maniac"],
   ])("choosing %s opens the Tier-up of %s, its sound unlocked", async (name, tier) => {
     await renderPage();
 
@@ -104,7 +104,7 @@ describe("TierUpDevPage", () => {
 
     expect(screen.getByRole("button", { name: "Rejouer" })).toBeDisabled();
 
-    await userEvent.click(rise("Fer I → Bronze IV"));
+    await userEvent.click(rise("Iron I → Bronze IV"));
     await clock.advance(1.1);
     await userEvent.click(continueButton());
     await userEvent.click(screen.getByRole("button", { name: "Rejouer" }));
@@ -118,7 +118,7 @@ describe("TierUpDevPage", () => {
     await renderPage();
 
     await userEvent.click(screen.getByRole("checkbox", { name: "Animations réduites" }));
-    await userEvent.click(rise("Fer I → Bronze IV"));
+    await userEvent.click(rise("Iron I → Bronze IV"));
 
     await waitFor(() => expect(continueButton()).toHaveFocus());
     await clock.advance(5);
@@ -129,7 +129,7 @@ describe("TierUpDevPage", () => {
     await renderPage();
 
     await userEvent.click(screen.getByRole("button", { name: "Couper le son" }));
-    await userEvent.click(rise("Fer I → Bronze IV"));
+    await userEvent.click(rise("Iron I → Bronze IV"));
     await clock.advance(5);
 
     expect(screen.getByRole("button", { name: "Couper le son", hidden: true })).toHaveAttribute(

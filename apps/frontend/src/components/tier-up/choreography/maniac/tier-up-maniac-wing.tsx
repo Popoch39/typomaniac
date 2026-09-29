@@ -11,7 +11,7 @@ type WingSide = "left" | "right";
 
 type TierUpManiacWingProps = { tier: Tier; side: WingSide };
 
-// A wing of the Maniac's Ornament, on its 120 grid, as the Diamant → Maniac artboard spreads it:
+// A wing of the Maniac's Ornament, on its 120 grid, as the Diamond → Maniac artboard spreads it:
 // its feathers, the deep ones behind those of fire, each unseen until it spreads from its root,
 // then the whole wing beating once and fluttering; by it, its embers, each unseen until it pops in.
 export const TierUpManiacWing = ({ tier, side }: TierUpManiacWingProps) => (

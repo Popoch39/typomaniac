@@ -17,7 +17,7 @@ import {
 gsap.registerPlugin(useGSAP);
 
 // The parts of one Ornament that move, by their data attribute. Queried rather than targeted by
-// selector: below Or there is nothing to move, and GSAP would warn about a missing target.
+// selector: below Gold there is nothing to move, and GSAP would warn about a missing target.
 const GLOW_SELECTOR = "[data-ornament-glow]";
 
 const RAYS_SELECTOR = "[data-ornament-rays]";

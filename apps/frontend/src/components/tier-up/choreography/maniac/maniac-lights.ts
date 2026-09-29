@@ -2,7 +2,7 @@ import { moteRise, onBothSides } from "@/components/tier-up/parts/mote-rise";
 import { polarBurst } from "@/components/tier-up/parts/polar-burst";
 import { sparkBurst } from "@/components/tier-up/parts/spark-burst";
 
-// The lights of the Diamant → Maniac artboard, drawn from its own seeds.
+// The lights of the Diamond → Maniac artboard, drawn from its own seeds.
 
 // Its embers rising from under the stage as the heat comes: fourteen, from 0.4 s, each rising
 // 620 to 1040 px over 4 to 6 s, again and again.

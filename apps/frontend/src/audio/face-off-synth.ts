@@ -242,7 +242,7 @@ const snap = (voice: Voice, frequency: number, peak: number) =>
 
 // The bronze shield cracking, then splitting in two a tenth of a second later: two snaps, then
 // the halves grinding apart, the noise falling as they part, over a low groan.
-const argentCrack = (voice: Voice) => {
+const silverCrack = (voice: Voice) => {
   snap(voice, 3200, 0.8);
   snap(later(voice, 0.04), 5200, 0.4);
 
@@ -269,7 +269,7 @@ const SILVER_RING: readonly [OscillatorType, number, Envelope][] = [
 ];
 
 // A chevron stamped in the metal: a short knock with a high clink.
-const argentStamp = (voice: Voice) => {
+const silverStamp = (voice: Voice) => {
   tone(
     voice,
     { type: "sine", from: 260, to: 120, glide: 0.08 },
@@ -278,8 +278,8 @@ const argentStamp = (voice: Voice) => {
   tone(voice, { type: "triangle", from: 2093 }, { peak: 0.08, attack: 0.002, release: 0.25 });
 };
 
-// The Argent striking like a stamp: a deep thump under a crack of noise, the silver ringing.
-const argentImpact = (voice: Voice) => {
+// The Silver striking like a stamp: a deep thump under a crack of noise, the silver ringing.
+const silverImpact = (voice: Voice) => {
   tone(
     voice,
     { type: "sine", from: 120, to: 36, glide: 0.4 },
@@ -293,7 +293,7 @@ const argentImpact = (voice: Voice) => {
 };
 
 // The light sweeping over the silver: airy noise brightening as it crosses the metal.
-const argentSweep = (voice: Voice) => {
+const silverSweep = (voice: Voice) => {
   const shine = filterOf(voice, "bandpass", 3000);
 
   shine.Q.value = 1.2;
@@ -301,15 +301,15 @@ const argentSweep = (voice: Voice) => {
   noiseBurst(voice, shine, { peak: 0.12, attack: 0.4, release: 0.45 });
 };
 
-// The notes under the name of Argent, in Hz: an A major arpeggio over two octaves, one note a
+// The notes under the name of Silver, in Hz: an A major arpeggio over two octaves, one note a
 // letter, each doubled an octave up, softer.
-const ARGENT_NOTES = [440, 554.37, 659.25, 880, 1108.73, 1318.51];
+const SILVER_NOTES = [440, 554.37, 659.25, 880, 1108.73, 1318.51];
 
-// The name of Argent, letter by letter: brighter plucks than Bronze's, each with its octave, the
+// The name of Silver, letter by letter: brighter plucks than Bronze's, each with its octave, the
 // last held with its fifth, then a long shimmer.
-const argentName = (voice: Voice) => {
-  for (const [step, note] of ARGENT_NOTES.entries()) {
-    const last = step === ARGENT_NOTES.length - 1;
+const silverName = (voice: Voice) => {
+  for (const [step, note] of SILVER_NOTES.entries()) {
+    const last = step === SILVER_NOTES.length - 1;
     const release = last ? 1.2 : 0.3;
     const pluck = later(voice, step * LETTER_STEP_S);
 
@@ -317,7 +317,7 @@ const argentName = (voice: Voice) => {
     tone(pluck, { type: "sine", from: note * 2 }, { peak: 0.05, attack: 0.004, release });
   }
 
-  const end = later(voice, (ARGENT_NOTES.length - 1) * LETTER_STEP_S);
+  const end = later(voice, (SILVER_NOTES.length - 1) * LETTER_STEP_S);
 
   tone(end, { type: "sine", from: 1975.53 }, { peak: 0.06, attack: 0.01, release: 1.1 });
   noiseBurst(end, filterOf(end, "highpass", 6000), { peak: 0.12, attack: 0.05, release: 0.8 });
@@ -325,7 +325,7 @@ const argentName = (voice: Voice) => {
 
 // The silver rising into the column of light, for a second: airy noise brightening as it climbs,
 // over two voices rising a fifth apart, as a choir swelling.
-const orAscend = (voice: Voice) => {
+const goldAscend = (voice: Voice) => {
   const air = filterOf(voice, "bandpass", 700);
 
   air.Q.value = 1.1;
@@ -353,9 +353,9 @@ const GOLD_RING: readonly [OscillatorType, number, Envelope][] = [
   ["sine", 2489, { peak: 0.05, attack: 0.002, release: 0.8 }],
 ];
 
-// The Or materializing in a blinding white: a deep thump shaking the screen, a burst of bright
+// The Gold materializing in a blinding white: a deep thump shaking the screen, a burst of bright
 // noise for the flash, then the gold ringing.
-const orMaterialize = (voice: Voice) => {
+const goldMaterialize = (voice: Voice) => {
   tone(
     voice,
     { type: "sine", from: 110, to: 32, glide: 0.45 },
@@ -369,9 +369,9 @@ const orMaterialize = (voice: Voice) => {
   }
 };
 
-// The notes under the name of Or, in Hz: a D major arpeggio over two octaves, each doubled an
+// The notes under the name of Gold, in Hz: a D major arpeggio over two octaves, each doubled an
 // octave up, softer.
-const OR_NOTES = [587.33, 739.99, 880, 1174.66, 1479.98, 1760];
+const GOLD_NOTES = [587.33, 739.99, 880, 1174.66, 1479.98, 1760];
 
 // When the glitter tinkles after the name's last note (s), and how high (Hz): a few pieces
 // catching the light as they fall.
@@ -384,11 +384,11 @@ const GLITTER_TINKLES: readonly [number, number][] = [
   [0.95, 3951.07],
 ];
 
-// The name of Or: a quick rising arpeggio of plucks with their octaves, richer than Argent's, the last held with its fifth over a long shimmer, then the
-// glitter tinkling as it falls.
-const orName = (voice: Voice) => {
-  for (const [step, note] of OR_NOTES.entries()) {
-    const last = step === OR_NOTES.length - 1;
+// The name of Gold: a quick rising arpeggio of plucks with their octaves, richer than Silver's,
+// the last held with its fifth over a long shimmer, then the glitter tinkling as it falls.
+const goldName = (voice: Voice) => {
+  for (const [step, note] of GOLD_NOTES.entries()) {
+    const last = step === GOLD_NOTES.length - 1;
     const release = last ? 1.6 : 0.35;
     const pluck = later(voice, step * LETTER_STEP_S);
 
@@ -396,7 +396,7 @@ const orName = (voice: Voice) => {
     tone(pluck, { type: "sine", from: note * 2 }, { peak: 0.05, attack: 0.004, release });
   }
 
-  const end = later(voice, (OR_NOTES.length - 1) * LETTER_STEP_S);
+  const end = later(voice, (GOLD_NOTES.length - 1) * LETTER_STEP_S);
 
   tone(end, { type: "sine", from: 2637.02 }, { peak: 0.05, attack: 0.01, release: 1.4 });
   noiseBurst(end, filterOf(end, "highpass", 6500), { peak: 0.12, attack: 0.05, release: 0.9 });
@@ -413,9 +413,9 @@ const orName = (voice: Voice) => {
 // When the line of light flashes after the gold starts turning over (s).
 const LINE_FLASH_S = 0.45;
 
-// The Or turning over edge on and fading: air swept up in pitch, two glassy tones rising a fifth
+// The Gold turning over edge on and fading: air swept up in pitch, two glassy tones rising a fifth
 // apart, then the zing of the line of light splitting the stage.
-const platineFlip = (voice: Voice) => {
+const platinumFlip = (voice: Voice) => {
   const air = filterOf(voice, "bandpass", 500);
 
   air.Q.value = 1.4;
@@ -466,10 +466,10 @@ const STUD_TICKS: readonly [number, number][] = [
   [0.7, 4434.92],
 ];
 
-// The Platine assembled in a blinding white: its triangles locking together in a crack of noise
+// The Platinum assembled in a blinding white: its triangles locking together in a crack of noise
 // over a deep thump shaking the screen, a long bright hiss for the flash, the platinum ringing,
 // then each stud ticking in.
-const platineAssemble = (voice: Voice) => {
+const platinumAssemble = (voice: Voice) => {
   tone(
     voice,
     { type: "sine", from: 130, to: 34, glide: 0.5 },
@@ -496,9 +496,9 @@ const platineAssemble = (voice: Voice) => {
   }
 };
 
-// The notes under the name of Platine, in Hz: an E major arpeggio climbing past two octaves, one
-// per letter, each doubled an octave up, softer.
-const PLATINE_NOTES = [659.25, 830.61, 987.77, 1318.51, 1661.22, 1975.53, 2637.02];
+// The notes under the name of Platinum, in Hz: an E major arpeggio climbing past two octaves, each
+// doubled an octave up, softer.
+const PLATINUM_NOTES = [659.25, 830.61, 987.77, 1318.51, 1661.22, 1975.53, 2637.02];
 
 // When the motes twinkle after the name's last note (s), and how high (Hz): a few of them catching
 // the light as they rise.
@@ -511,17 +511,17 @@ const MOTE_TWINKLES: readonly [number, number][] = [
   [1.15, 3951.07],
 ];
 
-// The name of Platine: a quick rising arpeggio of plucks with their octaves over a cold pad of two
-// slightly detuned fifths, richer than Or's, the last held with its fifth over a long shimmer,
+// The name of Platinum: a quick rising arpeggio of plucks with their octaves over a cold pad of two
+// slightly detuned fifths, richer than Gold's, the last held with its fifth over a long shimmer,
 // then the motes twinkling as they rise.
-const platineName = (voice: Voice) => {
-  const held = PLATINE_NOTES.length * LETTER_STEP_S + 1.4;
+const platinumName = (voice: Voice) => {
+  const held = PLATINUM_NOTES.length * LETTER_STEP_S + 1.4;
 
   tone(voice, { type: "sine", from: 329.63 }, { peak: 0.05, attack: 0.3, release: held });
   tone(voice, { type: "sine", from: 494.4 }, { peak: 0.04, attack: 0.3, release: held });
 
-  for (const [step, note] of PLATINE_NOTES.entries()) {
-    const last = step === PLATINE_NOTES.length - 1;
+  for (const [step, note] of PLATINUM_NOTES.entries()) {
+    const last = step === PLATINUM_NOTES.length - 1;
     const release = last ? 1.8 : 0.35;
     const pluck = later(voice, step * LETTER_STEP_S);
 
@@ -529,7 +529,7 @@ const platineName = (voice: Voice) => {
     tone(pluck, { type: "sine", from: note * 2 }, { peak: 0.05, attack: 0.004, release });
   }
 
-  const end = later(voice, (PLATINE_NOTES.length - 1) * LETTER_STEP_S);
+  const end = later(voice, (PLATINUM_NOTES.length - 1) * LETTER_STEP_S);
 
   tone(end, { type: "sine", from: 3951.07 }, { peak: 0.04, attack: 0.01, release: 1.6 });
   noiseBurst(end, filterOf(end, "highpass", 7000), { peak: 0.12, attack: 0.05, release: 1.1 });
@@ -543,15 +543,15 @@ const platineName = (voice: Voice) => {
   }
 };
 
-// When the Platine is gone after it starts imploding, and when the heart of light appears (s).
+// When the Platinum is gone after it starts imploding, and when the heart of light appears (s).
 const IMPLODED_S = 0.7;
 
 const CORE_S = 0.55;
 
-// The Platine imploding: noise sucked down in pitch as it turns into itself, a glassy tone falling
+// The Platinum imploding: noise sucked down in pitch as it turns into itself, a glassy tone falling
 // with its fifth, a hollow pop as it is gone, then the heart of light humming, rising an octave
 // with its fifth as it grows, up to the impact.
-const diamantImplode = (voice: Voice) => {
+const diamondImplode = (voice: Voice) => {
   const suck = filterOf(voice, "bandpass", 6000);
 
   suck.Q.value = 1.6;
@@ -591,9 +591,9 @@ const diamantImplode = (voice: Voice) => {
   );
 };
 
-// The Diamant's run, in Hz: a B major arpeggio climbing past two octaves from B5. Each facet pings
+// The Diamond's run, in Hz: a B major arpeggio climbing past two octaves from B5. Each facet pings
 // a note of it as it settles into place, and the sparkle over the name climbs it.
-const DIAMANT_RUN = [987.77, 1244.51, 1479.98, 1975.53, 2489.02, 2959.96, 3951.07, 4978.03];
+const DIAMOND_RUN = [987.77, 1244.51, 1479.98, 1975.53, 2489.02, 2959.96, 3951.07, 4978.03];
 
 // Seconds between two facets, and how long after it leaves a facet has nearly settled.
 const FACET_STEP_S = 0.08;
@@ -603,16 +603,16 @@ const FACET_SETTLED_S = 0.3;
 // When the cut is traced in light after the first facet leaves (s).
 const CUT_TRACED_S = 1.2;
 
-// The Diamant's facets converging: the rush of the streaks and facets rising, each facet pinging
+// The Diamond's facets converging: the rush of the streaks and facets rising, each facet pinging
 // as it settles into place, then a glissando shimmering up as its cut is traced in light.
-const diamantConverge = (voice: Voice) => {
+const diamondConverge = (voice: Voice) => {
   const rush = filterOf(voice, "bandpass", 900);
 
   rush.Q.value = 1.2;
   rush.frequency.exponentialRampToValueAtTime(7500, voice.at + 0.9);
   noiseBurst(voice, rush, { peak: 0.22, attack: 0.8, release: 0.15 });
 
-  for (const [step, note] of DIAMANT_RUN.entries()) {
+  for (const [step, note] of DIAMOND_RUN.entries()) {
     const ping = later(voice, step * FACET_STEP_S + FACET_SETTLED_S);
 
     tone(ping, { type: "triangle", from: note }, { peak: 0.06, attack: 0.002, release: 0.4 });
@@ -661,10 +661,10 @@ const SHARD_SNAPS: readonly [number, number][] = [
   [0.37, 6600],
 ];
 
-// The Diamant slamming down in a blinding white: the deepest thump yet shaking the screen, a crack
+// The Diamond slamming down in a blinding white: the deepest thump yet shaking the screen, a crack
 // and a snap of noise, a long bright hiss for the white, the diamond ringing, the wider rings
 // whooming out, and the glass shattering all around.
-const diamantSlam = (voice: Voice) => {
+const diamondSlam = (voice: Voice) => {
   tone(
     voice,
     { type: "sine", from: 100, to: 26, glide: 0.6 },
@@ -696,7 +696,7 @@ const diamantSlam = (voice: Voice) => {
 };
 
 // The chord struck as the name slams down, in Hz: B major, each doubled an octave up, softer.
-const DIAMANT_CHORD = [493.88, 622.25, 739.99, 987.77];
+const DIAMOND_CHORD = [493.88, 622.25, 739.99, 987.77];
 
 // The sparkle climbing the run over it: one note every 35 ms.
 const SPARKLE_STEP_S = 0.035;
@@ -714,12 +714,12 @@ const STAR_TWINKLES: readonly [number, number][] = [
   [2.4, 3951.07],
 ];
 
-// The name of Diamant, slammed down whole: a B major chord struck with its octaves over a pad of
+// The name of Diamond, slammed down whole: a B major chord struck with its octaves over a pad of
 // two slightly detuned voices and its fifth, a sparkle climbing four octaves, the last held over a
-// long shimmer, richer than Platine's; then the glint popping in on the gem, and the stars
+// long shimmer, richer than Platinum's; then the glint popping in on the gem, and the stars
 // twinkling around it.
-const diamantName = (voice: Voice) => {
-  for (const note of DIAMANT_CHORD) {
+const diamondName = (voice: Voice) => {
+  for (const note of DIAMOND_CHORD) {
     tone(voice, { type: "triangle", from: note }, { peak: 0.1, attack: 0.004, release: 1.8 });
     tone(voice, { type: "sine", from: note * 2 }, { peak: 0.04, attack: 0.004, release: 1.4 });
   }
@@ -728,8 +728,8 @@ const diamantName = (voice: Voice) => {
     tone(voice, { type: "sine", from }, { peak: 0.045, attack: 0.25, release: 2.5 });
   }
 
-  for (const [step, note] of DIAMANT_RUN.entries()) {
-    const last = step === DIAMANT_RUN.length - 1;
+  for (const [step, note] of DIAMOND_RUN.entries()) {
+    const last = step === DIAMOND_RUN.length - 1;
 
     tone(
       later(voice, step * SPARKLE_STEP_S),
@@ -738,7 +738,7 @@ const diamantName = (voice: Voice) => {
     );
   }
 
-  const end = later(voice, (DIAMANT_RUN.length - 1) * SPARKLE_STEP_S);
+  const end = later(voice, (DIAMOND_RUN.length - 1) * SPARKLE_STEP_S);
 
   noiseBurst(end, filterOf(end, "highpass", 7500), { peak: 0.1, attack: 0.05, release: 0.9 });
 
@@ -778,7 +778,7 @@ const HEAT_CRACKLES: readonly [number, number][] = [
 // When each crack of white heat runs through the gem after the heat starts (s).
 const HEAT_CRACKS = [0.7, 0.95, 1.1];
 
-// The heat rising under the Diamant: a deep rumble swelling and brightening, a sub-bass rising a
+// The heat rising under the Diamond: a deep rumble swelling and brightening, a sub-bass rising a
 // fifth under a growl, the gem crackling closer and closer as it trembles, and a hiss for each
 // crack of white heat running through it.
 const maniacHeat = (voice: Voice) => {
@@ -1059,21 +1059,21 @@ const SYNTHS: Record<FaceOffSound, (voice: Voice) => void> = {
   "tier-up-bronze-dissolve": bronzeDissolve,
   "tier-up-bronze-impact": bronzeImpact,
   "tier-up-bronze-name": bronzeName,
-  "tier-up-argent-crack": argentCrack,
-  "tier-up-argent-impact": argentImpact,
-  "tier-up-argent-stamp": argentStamp,
-  "tier-up-argent-sweep": argentSweep,
-  "tier-up-argent-name": argentName,
-  "tier-up-or-ascend": orAscend,
-  "tier-up-or-materialize": orMaterialize,
-  "tier-up-or-name": orName,
-  "tier-up-platine-flip": platineFlip,
-  "tier-up-platine-assemble": platineAssemble,
-  "tier-up-platine-name": platineName,
-  "tier-up-diamant-implode": diamantImplode,
-  "tier-up-diamant-converge": diamantConverge,
-  "tier-up-diamant-slam": diamantSlam,
-  "tier-up-diamant-name": diamantName,
+  "tier-up-silver-crack": silverCrack,
+  "tier-up-silver-impact": silverImpact,
+  "tier-up-silver-stamp": silverStamp,
+  "tier-up-silver-sweep": silverSweep,
+  "tier-up-silver-name": silverName,
+  "tier-up-gold-ascend": goldAscend,
+  "tier-up-gold-materialize": goldMaterialize,
+  "tier-up-gold-name": goldName,
+  "tier-up-platinum-flip": platinumFlip,
+  "tier-up-platinum-assemble": platinumAssemble,
+  "tier-up-platinum-name": platinumName,
+  "tier-up-diamond-implode": diamondImplode,
+  "tier-up-diamond-converge": diamondConverge,
+  "tier-up-diamond-slam": diamondSlam,
+  "tier-up-diamond-name": diamondName,
   "tier-up-maniac-heat": maniacHeat,
   "tier-up-maniac-vortex": maniacVortex,
   "tier-up-maniac-hush": maniacHush,

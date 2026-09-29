@@ -81,12 +81,12 @@ describe("AuraGalleryPage", () => {
     expect(held(browser)).toEqual(Array(5).fill("maniac"));
     expect(browser.painters.every((painter) => full.contains(painter.canvas))).toBe(true);
     expect(fullToggle("maniac")).toHaveAttribute("aria-pressed", "true");
-    expect(fullToggle("or")).toHaveAttribute("aria-pressed", "false");
-    expect(fullToggle("platine")).toHaveAttribute("aria-pressed", "false");
-    expect(fullToggle("diamant")).toHaveAttribute("aria-pressed", "false");
+    expect(fullToggle("gold")).toHaveAttribute("aria-pressed", "false");
+    expect(fullToggle("platinum")).toHaveAttribute("aria-pressed", "false");
+    expect(fullToggle("diamond")).toHaveAttribute("aria-pressed", "false");
   });
 
-  test.each(["or", "platine", "diamant"] as const)(
+  test.each(["gold", "platinum", "diamond"] as const)(
     "shows the full Aura of %s in place of the one shown, whole, within the cap",
     async (tier) => {
       const browser = fakeAuraRuntime();
@@ -124,7 +124,7 @@ describe("AuraGalleryPage", () => {
   test("offers no full Aura for a Tier without one", async () => {
     await renderPage();
 
-    const card = screen.getByRole("region", { name: "Tier argent" });
+    const card = screen.getByRole("region", { name: "Tier silver" });
 
     expect(within(card).queryByRole("button", { name: "Aura pleine" })).toBeNull();
   });

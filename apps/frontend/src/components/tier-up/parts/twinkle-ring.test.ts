@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { twinkleRing } from "@/components/tier-up/parts/twinkle-ring";
 
-// The stars of the Platine → Diamant artboard.
+// The stars of the Platinum → Diamond artboard.
 const ring = { count: 12, seed: 10, reach: [190, 340], squash: 0.85, delay: [4.3, 6.5] } as const;
 
 // The canvas's own random numbers, to check the stars against its script.

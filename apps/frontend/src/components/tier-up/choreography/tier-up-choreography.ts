@@ -2,12 +2,12 @@ import type { Tier } from "ranked";
 import type { ReactNode } from "react";
 
 import type { TierUpSound } from "@/audio/face-off-sounds";
-import { argentChoreography } from "@/components/tier-up/choreography/argent/argent-choreography";
 import { bronzeChoreography } from "@/components/tier-up/choreography/bronze/bronze-choreography";
-import { diamantChoreography } from "@/components/tier-up/choreography/diamant/diamant-choreography";
+import { diamondChoreography } from "@/components/tier-up/choreography/diamond/diamond-choreography";
+import { goldChoreography } from "@/components/tier-up/choreography/gold/gold-choreography";
 import { maniacChoreography } from "@/components/tier-up/choreography/maniac/maniac-choreography";
-import { orChoreography } from "@/components/tier-up/choreography/or/or-choreography";
-import { platineChoreography } from "@/components/tier-up/choreography/platine/platine-choreography";
+import { platinumChoreography } from "@/components/tier-up/choreography/platinum/platinum-choreography";
+import { silverChoreography } from "@/components/tier-up/choreography/silver/silver-choreography";
 import type { NameShadow } from "@/components/tier-up/parts/tier-up-paint";
 
 // The highlights every Tier-up's timeline carries, as labels: the old Emblem coming apart, the new
@@ -70,10 +70,10 @@ export const NAME_LOOK: NameLook = {
 // Each Tier's choreography, by the Tier reached, as each gets its own.
 const CHOREOGRAPHIES: Partial<Record<Tier, Choreography>> = {
   bronze: bronzeChoreography,
-  argent: argentChoreography,
-  or: orChoreography,
-  platine: platineChoreography,
-  diamant: diamantChoreography,
+  silver: silverChoreography,
+  gold: goldChoreography,
+  platinum: platinumChoreography,
+  diamond: diamondChoreography,
   maniac: maniacChoreography,
 };
 

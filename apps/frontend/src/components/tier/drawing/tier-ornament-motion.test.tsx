@@ -7,9 +7,9 @@ import { TierBlason } from "@/components/tier/drawing/tier-blason";
 import { TierOrnament } from "@/components/tier/drawing/tier-ornament";
 import { TierSprite } from "@/components/tier/sprite/tier-sprite";
 
-const GLOWING: readonly Tier[] = ["or", "platine", "diamant", "maniac"];
+const GLOWING: readonly Tier[] = ["gold", "platinum", "diamond", "maniac"];
 
-const STILL: readonly Tier[] = ["fer", "bronze", "argent"];
+const STILL: readonly Tier[] = ["iron", "bronze", "silver"];
 
 // What a tween may change: opacity and transforms, the rest only says how (GSAP adds its own
 // `overwrite` and `delay`).
@@ -80,8 +80,8 @@ describe("the Ornament's motion", () => {
   test("each instance moves on its own", () => {
     const { container } = render(
       <>
-        <TierOrnament tier="or" />
-        <TierOrnament tier="or" />
+        <TierOrnament tier="gold" />
+        <TierOrnament tier="gold" />
       </>,
     );
 
@@ -104,7 +104,7 @@ describe("the Ornament's motion", () => {
     const { container, unmount } = render(
       <>
         <TierOrnament tier="maniac" />
-        <TierBlason tier="diamant" />
+        <TierBlason tier="diamond" />
       </>,
     );
 

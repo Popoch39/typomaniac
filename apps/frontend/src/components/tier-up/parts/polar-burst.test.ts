@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { polarBurst } from "@/components/tier-up/parts/polar-burst";
 
-// The shards of glass of the Platine → Diamant artboard.
+// The shards of glass of the Platinum → Diamond artboard.
 const burst = {
   count: 34,
   seed: 8,

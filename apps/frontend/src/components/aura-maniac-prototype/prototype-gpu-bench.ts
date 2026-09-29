@@ -102,9 +102,9 @@ export const benchFullAuras = async (): Promise<BenchResult[]> => {
   const timer = gl?.getExtension("EXT_disjoint_timer_query_webgl2");
 
   const benches = [
-    ...tierBench("or", "Or"),
-    ...tierBench("platine", "Platine"),
-    ...tierBench("diamant", "Diamant"),
+    ...tierBench("gold", "Gold"),
+    ...tierBench("platinum", "Platinum"),
+    ...tierBench("diamond", "Diamond"),
     ...tierBench("maniac", "Maniac, le feu actuel"),
     wavesBench,
   ];

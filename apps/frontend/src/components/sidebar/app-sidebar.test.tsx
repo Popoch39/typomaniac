@@ -397,16 +397,16 @@ describe("the Theme button", () => {
 
 describe("the User's card", () => {
   test("shows their Handle and, in a Division, its rank and TP out of 100", async () => {
-    await renderApp(withRank({ tier: "or", division: 2, tp: 42, shielded: false }));
+    await renderApp(withRank({ tier: "gold", division: 2, tp: 42, shielded: false }));
 
     expect(within(sidebar()).getByText("ada")).toBeInTheDocument();
-    expect(within(sidebar()).getByText("Or II · 42 TP")).toBeInTheDocument();
+    expect(within(sidebar()).getByText("Gold II · 42 TP")).toBeInTheDocument();
 
     const meter = within(sidebar()).getByRole("meter", { name: "TP de la Division" });
 
     expect(meter).toHaveAttribute("value", "42");
     expect(meter).toHaveAttribute("max", "100");
-    expect(meter).toHaveAttribute("aria-valuetext", "42 TP sur 100 · 58 TP avant Or I");
+    expect(meter).toHaveAttribute("aria-valuetext", "42 TP sur 100 · 58 TP avant Gold I");
   });
 
   test("in Placement, the Duels played out of 5", async () => {
@@ -435,28 +435,28 @@ describe("the User's card", () => {
 
   test("follows the rank when the User is read again after a Duel", async () => {
     const { queryClient } = await renderApp(
-      withRank({ tier: "or", division: 2, tp: 90, shielded: false }),
+      withRank({ tier: "gold", division: 2, tp: 90, shielded: false }),
     );
 
     act(() =>
       queryClient.setQueryData(
         meQueryOptions.queryKey,
-        withRank({ tier: "or", division: 1, tp: 5, shielded: true }),
+        withRank({ tier: "gold", division: 1, tp: 5, shielded: true }),
       ),
     );
 
-    expect(await within(sidebar()).findByText("Or I · 5 TP")).toBeInTheDocument();
+    expect(await within(sidebar()).findByText("Gold I · 5 TP")).toBeInTheDocument();
   });
 
   test("the avatar wears the User's Ornament", async () => {
     await renderApp({
-      ...withRank({ tier: "platine", division: 3, tp: 10, shielded: false }),
-      ornament: "platine",
+      ...withRank({ tier: "platinum", division: 3, tp: 10, shielded: false }),
+      ornament: "platinum",
       ornamentChoice: "follow",
     });
 
     expect(sidebar().querySelector("[data-ornament] use")?.getAttribute("href")).toBe(
-      "#tier-ornament-platine",
+      "#tier-ornament-platinum",
     );
   });
 

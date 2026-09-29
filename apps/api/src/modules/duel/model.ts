@@ -1,5 +1,6 @@
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import { t } from "elysia";
+import { DIVISION_TIERS } from "ranked";
 
 import { ActivityModel } from "../activity/model";
 import { ChallengeModel } from "../challenge/model";
@@ -84,14 +85,7 @@ const PairedOpponent = t.Object({ ...DuelOpponent.properties, ornament: WornOrna
 // without Division. Never the MMR.
 const Standing = t.Union([
   t.Object({
-    tier: t.Union([
-      t.Literal("fer"),
-      t.Literal("bronze"),
-      t.Literal("argent"),
-      t.Literal("or"),
-      t.Literal("platine"),
-      t.Literal("diamant"),
-    ]),
+    tier: t.UnionEnum(DIVISION_TIERS),
     division: t.Union([t.Literal(4), t.Literal(3), t.Literal(2), t.Literal(1)]),
     tp: t.Integer(),
     shielded: t.Boolean(),

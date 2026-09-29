@@ -112,6 +112,6 @@ export const tierUpPaint = (tier: Tier) => {
   };
 };
 
-// The light split as through a prism: the red and the cyan fringes the Diamant's name leaves on
+// The light split as through a prism: the red and the cyan fringes the Diamond's name leaves on
 // either side as it slams in. The one light of the Tier-up that is not its metal's: a prism's.
 export const PRISM = { left: "#ff5a7a", right: "#4dd2ff" } as const;

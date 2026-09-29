@@ -460,10 +460,10 @@ describe("auth", () => {
 
     duels.ratings.set(user.id, {
       mmr: 900,
-      rank: { tier: "platine", division: 3, tp: 10, shielded: false },
+      rank: { tier: "platinum", division: 3, tp: 10, shielded: false },
     });
 
-    expect(await (await getMe(cookie)).json()).toMatchObject({ ornament: "platine" });
+    expect(await (await getMe(cookie)).json()).toMatchObject({ ornament: "platinum" });
   });
 
   test("GET /api/me carries the User's rank, never their MMR", async () => {

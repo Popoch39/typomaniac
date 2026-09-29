@@ -113,13 +113,13 @@ describe("UserProfilePage", () => {
 
   test("shows the User's Tier, Division and TP", async () => {
     await renderAt(me, "grace", [
-      { ...grace, rank: { tier: "or", division: 2, tp: 42, shielded: false } },
+      { ...grace, rank: { tier: "gold", division: 2, tp: 42, shielded: false } },
     ]);
 
-    expect(await screen.findByText("Or II · 42 TP")).toBeInTheDocument();
-    // The rank stands out in its Blason: the Emblem of Or on its Ornament.
+    expect(await screen.findByText("Gold II · 42 TP")).toBeInTheDocument();
+    // The rank stands out in its Blason: the Emblem of Gold on its Ornament.
     expect(
-      document.querySelector('[data-tier-blason] use[href="#tier-ornament-or"]'),
+      document.querySelector('[data-tier-blason] use[href="#tier-ornament-gold"]'),
     ).not.toBeNull();
     // Under it, its progress: the Division's TP out of 100.
     expect(screen.getByRole("meter", { name: "TP de la Division" })).toHaveAttribute("value", "42");
@@ -127,18 +127,20 @@ describe("UserProfilePage", () => {
 
   test("the User's avatar wears their Ornament", async () => {
     await renderAt(me, "grace", [
-      { ...grace, rank: { tier: "or", division: 2, tp: 42, shielded: false }, ornament: "or" },
+      { ...grace, rank: { tier: "gold", division: 2, tp: 42, shielded: false }, ornament: "gold" },
     ]);
 
-    await screen.findByText("Or II · 42 TP");
+    await screen.findByText("Gold II · 42 TP");
 
-    expect(document.querySelector('[data-ornament] use[href="#tier-ornament-or"]')).not.toBeNull();
+    expect(
+      document.querySelector('[data-ornament] use[href="#tier-ornament-gold"]'),
+    ).not.toBeNull();
   });
 
   test.each([
-    ["Or", "or"],
-    ["Platine", "platine"],
-    ["Diamant", "diamant"],
+    ["Gold", "gold"],
+    ["Platinum", "platinum"],
+    ["Diamond", "diamond"],
   ] as const)("the avatar of a %s User gives off its full Aura", async (name, tier) => {
     const browser = fakeAuraRuntime();
 
@@ -213,9 +215,9 @@ describe("UserProfilePage", () => {
   });
 
   describe("the Ornament picker", () => {
-    const orII: Rank = { tier: "or", division: 2, tp: 42, shielded: false };
-    const rankedMe: Me = { ...me, rank: orII, ornament: "or", ornamentChoice: "follow" };
-    const ada: Profile = { ...grace, handle: "ada", rank: orII, ornament: "or" };
+    const goldII: Rank = { tier: "gold", division: 2, tp: 42, shielded: false };
+    const rankedMe: Me = { ...me, rank: goldII, ornament: "gold", ornamentChoice: "follow" };
+    const ada: Profile = { ...grace, handle: "ada", rank: goldII, ornament: "gold" };
 
     // Each body the picker may send, by the choice it carries.
     const choiceOfBody = new Map(
@@ -254,12 +256,12 @@ describe("UserProfilePage", () => {
       ).toEqual([
         "Suivre mon Tier",
         "Aucun",
-        "Fer",
+        "Iron",
         "Bronze",
-        "Argent",
-        "Or",
-        "Platine",
-        "Diamant",
+        "Silver",
+        "Gold",
+        "Platinum",
+        "Diamond",
         "Maniac",
       ]);
     });
@@ -278,11 +280,11 @@ describe("UserProfilePage", () => {
 
       await screen.findByRole("group", { name: "Ornament" });
 
-      for (const name of ["Suivre mon Tier", "Aucun", "Fer", "Bronze", "Argent", "Or"]) {
+      for (const name of ["Suivre mon Tier", "Aucun", "Iron", "Bronze", "Silver", "Gold"]) {
         expect(screen.getByRole("radio", { name })).toBeEnabled();
       }
 
-      for (const name of ["Platine", "Diamant", "Maniac"]) {
+      for (const name of ["Platinum", "Diamond", "Maniac"]) {
         expect(screen.getByRole("radio", { name })).toBeDisabled();
       }
     });
@@ -331,12 +333,12 @@ describe("UserProfilePage", () => {
       const fetch = stubSave((choice) => ({ ...rankedMe, ornament: null, ornamentChoice: choice }));
       const user = userEvent.setup();
 
-      await renderAt({ ...rankedMe, ornamentChoice: "or" }, "ada", [ada]);
+      await renderAt({ ...rankedMe, ornamentChoice: "gold" }, "ada", [ada]);
       await screen.findByRole("group", { name: "Ornament" });
 
       await user.tab();
 
-      expect(screen.getByRole("radio", { name: "Or" })).toHaveFocus();
+      expect(screen.getByRole("radio", { name: "Gold" })).toHaveFocus();
 
       await user.keyboard("{ArrowRight}");
 
@@ -344,9 +346,9 @@ describe("UserProfilePage", () => {
 
       await user.keyboard("{ArrowLeft}{ArrowLeft}");
 
-      expect(screen.getByRole("radio", { name: "Argent" })).toHaveFocus();
+      expect(screen.getByRole("radio", { name: "Silver" })).toHaveFocus();
       await waitFor(() => {
-        expect(screen.getByRole("radio", { name: "Argent" })).toBeChecked();
+        expect(screen.getByRole("radio", { name: "Silver" })).toBeChecked();
       });
       expect(fetch).toHaveBeenCalledTimes(3);
     });

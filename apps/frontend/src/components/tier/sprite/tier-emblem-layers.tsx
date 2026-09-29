@@ -51,7 +51,7 @@ const metalPiece = (tier: Tier, d: string, lit: string) => (
 // The sprite draws both at once; the Tier-up brings them in one after the other.
 export type EmblemLayers = { body: ReactNode; engraving: ReactNode };
 
-// The shield of Fer to Or.
+// The shield of Iron to Gold.
 const shield = (tier: Tier, engraving: ReactNode): EmblemLayers => ({
   body: (
     <>
@@ -99,9 +99,9 @@ export const MANIAC_GEMS = [
 // The three gems set in the band, each in a socket cut around it.
 export const MANIAC_SET_GEMS = MANIAC_GEMS.slice(0, 3);
 
-// The studs set at the corners of the Platine, from its top round: the Tier-up pops them in one
+// The studs set at the corners of the Platinum, from its top round: the Tier-up pops them in one
 // by one.
-export const PLATINE_STUDS = [
+export const PLATINUM_STUDS = [
   [16, 2.6],
   [27.4, 9.3],
   [27.4, 22.7],
@@ -113,50 +113,50 @@ export const PLATINE_STUDS = [
 // The Emblem of each Tier, on its own grid: placed on the 120 × 120 grid of the mock-up by
 // `EMBLEM_OUTLINES`, bigger at each Tier.
 export const EMBLEM_LAYERS: Record<Tier, EmblemLayers> = {
-  fer: shield(
-    "fer",
+  iron: shield(
+    "iron",
     <>
       <circle cx={16} cy={15.5} r={3.4} {...ENGRAVED} />
-      <circle cx={16} cy={15.5} r={2.3} fill={paint(metalId("fer"))} />
+      <circle cx={16} cy={15.5} r={2.3} fill={paint(metalId("iron"))} />
       <circle cx={15.3} cy={14.7} r={0.8} {...BRIGHT} />
     </>,
   ),
   bronze: shield("bronze", chevron("M10.5 13 L16 18 L21.5 13")),
-  argent: shield(
-    "argent",
+  silver: shield(
+    "silver",
     <>
       {chevron("M10.5 10 L16 15 L21.5 10")}
       {chevron("M10.5 16 L16 21 L21.5 16")}
     </>,
   ),
-  or: shield(
-    "or",
+  gold: shield(
+    "gold",
     <>
-      {engravedStar("or", 0)}
+      {engravedStar("gold", 0)}
       <circle cx={16} cy={3.6} r={1} {...STUD} />
     </>,
   ),
-  platine: {
+  platinum: {
     body: (
       <>
-        {metalPiece("platine", HEXAGON, "M16 2 L4 9 V23 L16 30 Z")}
+        {metalPiece("platinum", HEXAGON, "M16 2 L4 9 V23 L16 30 Z")}
         <path d="M16 5.5 L25 10.7 V21.3 L16 26.5 L7 21.3 V10.7 Z" {...BEVEL} />
       </>
     ),
     engraving: (
       <>
-        {engravedStar("platine", 0.6)}
-        {PLATINE_STUDS.map(([cx, cy]) => (
+        {engravedStar("platinum", 0.6)}
+        {PLATINUM_STUDS.map(([cx, cy]) => (
           <circle key={`${cx} ${cy}`} cx={cx} cy={cy} r={1.1} {...STUD} />
         ))}
       </>
     ),
   },
-  diamant: {
+  diamond: {
     body: (
       <>
-        <path d={GEM} fill={OUTLINES.diamant} stroke={OUTLINES.diamant} {...RIM} />
-        <path d={GEM} fill={paint(metalId("diamant"))} />
+        <path d={GEM} fill={OUTLINES.diamond} stroke={OUTLINES.diamond} {...RIM} />
+        <path d={GEM} fill={paint(metalId("diamond"))} />
         <path d="M9 4 L12 12 L2 12 Z" {...BRIGHT} />
         <path d="M9 4 L16 4 L12 12 Z" {...LIGHT} />
         <path d="M2 12 L12 12 L16 30 Z" {...LIGHT} />
