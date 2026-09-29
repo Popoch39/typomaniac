@@ -31,7 +31,7 @@ export const ReplayScoreCard = ({ name, tone, side, shown }: ReplayScoreCardProp
     <section
       aria-label={`Score de ${name}`}
       className={cn(
-        "flex items-center justify-between gap-4 rounded-3xl bg-card px-6 py-4",
+        "flex items-center justify-between gap-4 rounded-[24px] bg-card px-6 py-4",
         shown && ["inset-ring-[1.5px]", paint.ring],
       )}
     >

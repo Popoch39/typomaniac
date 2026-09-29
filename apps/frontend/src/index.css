@@ -34,6 +34,8 @@
   --color-tier-maniac: var(--tier-maniac);
   --color-win: var(--win);
   --color-online: var(--online);
+  /* The raised surface of a Theme, on a card: pill groups, tracks, skeletons (`bg-surface-2`). */
+  --color-surface-2: var(--surface-2);
   --animate-tp-fill: tp-fill 900ms ease-out both;
   --animate-tp-pop: tp-pop 500ms ease-out both;
   --animate-caret-blink: caret-blink 1.1s steps(1) infinite;

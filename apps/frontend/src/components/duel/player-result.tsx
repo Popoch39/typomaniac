@@ -13,14 +13,14 @@ type PlayerResultProps = {
   opponent?: boolean;
 };
 
-// One player's Score and Result at the end of a Duel, under their name: the opponent's in their
-// caret color, the User's in the accent.
+// One player's Score and Result at the end of a Duel, under their name, name and figures in their
+// colour: the opponent's caret colour, the User's accent.
 export const PlayerResult = ({ name, result, score, opponent = false }: PlayerResultProps) => (
   <section aria-label={name} className="flex flex-col gap-4 rounded-card bg-card p-8">
     <h3 className={cn("text-xl font-bold", opponent ? "text-opponent-caret" : "text-caret")}>
       {name}
     </h3>
-    <ScoreResult score={score} />
-    <RunResult result={result} />
+    <ScoreResult score={score} tone={opponent ? "opponent" : "own"} />
+    <RunResult result={result} tone={opponent ? "opponent" : "own"} />
   </section>
 );
