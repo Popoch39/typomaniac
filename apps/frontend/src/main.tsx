@@ -11,7 +11,7 @@ import { AuraRuntimeContext } from "@/components/aura/aura-runtime-context";
 import { FaceOffSoundsContext } from "@/components/face-off/face-off-sounds-context";
 import { introAtStartup } from "@/components/intro/intro-at-startup";
 import { IntroGate } from "@/components/intro/intro-gate";
-import { readyOnFailedStart } from "@/components/intro/ready-on-failed-start";
+import { readyOnFirstRender } from "@/components/intro/ready-on-first-render";
 import { TabAttentionContext } from "@/components/tab-attention/tab-attention-context";
 import { type SoundPreview, SoundPreviewContext } from "@/components/sound/sound-preview-context";
 import "@/index.css";
@@ -43,7 +43,7 @@ const auraRuntime = browserAuraRuntime();
 // Once per app load, before the first render: whether the Intro plays over it.
 if (introAtStartup()) {
   useIntroStore.getState().play();
-  readyOnFailedStart(router);
+  readyOnFirstRender(router);
 }
 
 createRoot(rootElement).render(

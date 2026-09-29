@@ -266,5 +266,5 @@ La marque de typomaniac : le symbole, un t souligné d'une vague comme une faute
 _Avoid_ : marque, icône de l'app, BrandMark
 
 **Intro** :
-L'arrivée sur l'accueil au chargement de la page : le Logo de démarrage tape typomaniac, corrige sa faute et plonge dans la barre latérale.
+L'arrivée dans l'app au chargement d'une page, quelle qu'elle soit : le Logo de démarrage tape typomaniac, corrige sa faute et plonge dans la barre latérale, puis la page entre.
 _Avoid_ : splash, animation de démarrage, loader

@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 import { RotateCcwIcon } from "lucide-react";
 
 import { IntroDevSetting } from "@/components/intro-dev/intro-dev-setting";
@@ -25,6 +25,7 @@ const THEME_OPTIONS = THEMES.map((theme) => ({
 // The replay's options, then Rejouer: the Intro plays again with them, over the home page it leads
 // to. The Theme is the app's own, applied at once.
 export const IntroDevControls = () => {
+  const router = useRouter();
   const navigate = useNavigate();
   const speed = useIntroReplayStore((store) => store.speed);
   const shellDelay = useIntroReplayStore((store) => store.shellDelay);
@@ -34,7 +35,7 @@ export const IntroDevControls = () => {
   const setTheme = useThemeStore((store) => store.setTheme);
 
   const replay = () => {
-    replayIntro();
+    replayIntro(router);
     void navigate({ to: "/" });
   };
 

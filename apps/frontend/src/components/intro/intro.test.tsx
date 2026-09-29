@@ -20,7 +20,7 @@ import { paceQueryOptions } from "@/api/pace";
 import { AppFrame } from "@/components/app-frame";
 import { HandleChoiceDialog } from "@/components/handle/handle-choice-dialog";
 import { IntroGate } from "@/components/intro/intro-gate";
-import { readyOnFailedStart } from "@/components/intro/ready-on-failed-start";
+import { readyOnFirstRender } from "@/components/intro/ready-on-first-render";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "@/lib/toast";
 import { HomePage } from "@/pages/home-page";
@@ -53,10 +53,20 @@ afterEach(() => {
   useIntroStore.setState(useIntroStore.getInitialState());
 });
 
+type AppOptions = {
+  me?: Me | null;
+  shell?: Promise<void>;
+  // The page the app opens on: the home page, unless said.
+  at?: string;
+  // What the Leaderboard's loader waits on, as its data.
+  leaderboardData?: Promise<void>;
+};
+
 // The app as main.tsx and the root route render it: the Intro's overlay beside the router, the
-// frame, the home page, the Handle choice and the toasts. The shell mounts once `shell` resolves,
-// as it waits for `/me` in the app; at once without it.
-const renderApp = ({ me = ada, shell }: { me?: Me | null; shell?: Promise<void> } = {}) => {
+// frame, the home page or the Leaderboard (a page with a loader and no parts of its own), the
+// Handle choice and the toasts. The shell mounts once `shell` resolves, as it waits for `/me` in
+// the app; at once without it.
+const renderApp = ({ me = ada, shell, at = "/", leaderboardData }: AppOptions = {}) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
   });
@@ -85,15 +95,16 @@ const renderApp = ({ me = ada, shell }: { me?: Me | null; shell?: Promise<void> 
   const leaderboard = createRoute({
     getParentRoute: () => root,
     path: "/leaderboard",
-    component: () => null,
+    loader: () => leaderboardData,
+    component: () => <h1>Leaderboard</h1>,
   });
 
   const router = createRouter({
     routeTree: root.addChildren([home, leaderboard]),
-    history: createMemoryHistory({ initialEntries: ["/"] }),
+    history: createMemoryHistory({ initialEntries: [at] }),
   });
 
-  readyOnFailedStart(router);
+  readyOnFirstRender(router);
 
   render(
     <StrictMode>
@@ -152,7 +163,7 @@ const shellParts = (name: string) =>
   Array.from(document.querySelectorAll(`[data-intro='${name}']`));
 
 // Everything the landing moves: the sidebar, its brand (Logo, wave, word), its nav, its Friends
-// online and its foot, and the page's parts.
+// online and its foot, and the page's parts, or the page itself as one block.
 const moved = () => [
   sidebar(),
   ...sidebar().querySelectorAll("[data-logo]"),
@@ -161,6 +172,7 @@ const moved = () => [
   ...shellParts("online"),
   ...shellParts("foot"),
   ...shellParts("part"),
+  ...shellParts("page"),
 ];
 
 // What the landing left inline on the shell, element by element: nothing once the Intro is over,
@@ -398,5 +410,43 @@ describe("the Intro's landing into the sidebar", () => {
 
     expect(intro()).not.toBeInTheDocument();
     expect(leftInline()).toEqual(nothingInline());
+  });
+});
+
+describe("the Intro, as another page starts", () => {
+  test("the lockup lands in the sidebar and the page comes in as one block", async () => {
+    renderApp({ at: "/leaderboard" });
+    await fontsLoaded();
+    await screen.findByRole("heading", { name: "Leaderboard" });
+    gsapClock.advance(2.62 + 0.5);
+
+    expect(intro()).toBeInTheDocument();
+    expect(frame()).toHaveAttribute("inert");
+    expect(shellParts("part")).toHaveLength(0);
+    expect(shellParts("page")).toHaveLength(1);
+    expect(shellParts("nav")).toHaveLength(6);
+
+    gsapClock.advance(LANDING_S);
+
+    expect(intro()).not.toBeInTheDocument();
+    expect(frame()).not.toHaveAttribute("inert");
+    expect(leftInline()).toEqual(nothingInline());
+  });
+
+  test("its data not there at the end of the typing, the caret blinks until the page is", async () => {
+    const { shell: data, mount: resolve } = heldShell();
+
+    renderApp({ at: "/leaderboard", leaderboardData: data });
+    await fontsLoaded();
+    gsapClock.advance(2.62 + 5);
+
+    expect(intro()).toBeInTheDocument();
+    expect(typed()).toBe("typomaniac");
+
+    await resolve();
+    await screen.findByRole("heading", { name: "Leaderboard" });
+    gsapClock.advance(0.63 + LANDING_S);
+
+    expect(intro()).not.toBeInTheDocument();
   });
 });

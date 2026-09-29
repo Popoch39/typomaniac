@@ -82,7 +82,8 @@ export type ShellTargets = {
   nav: HTMLElement[];
   // The sidebar's lower part: the Friends online (or their Skeleton) when there, then its foot.
   lower: HTMLElement[];
-  // The page's parts, in order: settings, counter and stats, the Text's card, Next, the keys.
+  // The page's parts, in order: on the home page, settings, counter and stats, the Text's card,
+  // Next, the keys; on any other, the page itself, one block.
   parts: HTMLElement[];
 };
 

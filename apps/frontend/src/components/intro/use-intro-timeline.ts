@@ -57,6 +57,13 @@ const targetsIn = (overlay: HTMLElement): IntroTargets | null => {
 const elementsIn = (root: ParentNode, name: string) =>
   Array.from(root.querySelectorAll<HTMLElement>(part(name)));
 
+// The page's parts, in order, when it marks them (the home page), else the page itself, one block.
+const partsIn = (document: Document) => {
+  const parts = elementsIn(document, "part");
+
+  return parts.length > 0 ? parts : elementsIn(document, "page");
+};
+
 // The shell the lockup lands in, outside the overlay: the sidebar, its brand, its nav, its Friends
 // online (or none) and its foot, the page's parts. None without a sidebar (the page's start
 // failed, its error shown instead).
@@ -85,7 +92,7 @@ const shellIn = (document: Document): ShellTargets | null => {
     brandWave,
     nav: elementsIn(sidebar, "nav"),
     lower: [...elementsIn(sidebar, "online"), foot],
-    parts: elementsIn(document, "part"),
+    parts: partsIn(document),
   };
 };
 

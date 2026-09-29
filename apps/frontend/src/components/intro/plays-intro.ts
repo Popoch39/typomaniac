@@ -13,9 +13,12 @@ export type StartupConditions = {
   oauthReturn: boolean;
 };
 
-// The Intro plays only as the page starts on the home page of a Locale ("/", "/fr", "/en"), for
-// who has not asked for less motion, on a screen wide enough for the app, outside a Duel and not
-// back from an OAuth sign-in.
+// The dev pages ("/dev", "/dev/intro"…): /dev/intro replays the Intro on demand.
+const DEV_PAGE = /^\/dev(?:\/|$)/;
+
+// The Intro plays as the page starts, on any page but a dev one, in any Locale, for who has not
+// asked for less motion, on a screen wide enough for the app, outside a Duel and not back from an
+// OAuth sign-in.
 export const playsIntro = ({
   pathname,
   reducedMotion,
@@ -23,4 +26,8 @@ export const playsIntro = ({
   duelInProgress,
   oauthReturn,
 }: StartupConditions) =>
-  withoutLocale(pathname) === "/" && !reducedMotion && wide && !duelInProgress && !oauthReturn;
+  !DEV_PAGE.test(withoutLocale(pathname)) &&
+  !reducedMotion &&
+  wide &&
+  !duelInProgress &&
+  !oauthReturn;

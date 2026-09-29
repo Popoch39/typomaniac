@@ -16,8 +16,15 @@ describe("whether the page plays the Intro as it starts", () => {
     expect(playsIntro({ ...home, pathname })).toBe(true);
   });
 
-  test.each(["/fr/leaderboard", "/en/u/ada", "/leaderboard", "/de"])(
-    "never on another page: %s",
+  test.each(["/fr/leaderboard", "/en/u/ada", "/leaderboard", "/duels/42", "/de", "/developer"])(
+    "it plays on any other page too, even one no route answers: %s",
+    (pathname) => {
+      expect(playsIntro({ ...home, pathname })).toBe(true);
+    },
+  );
+
+  test.each(["/dev", "/dev/intro", "/dev/aura", "/fr/dev/intro"])(
+    "never on a dev page: %s",
     (pathname) => {
       expect(playsIntro({ ...home, pathname })).toBe(false);
     },

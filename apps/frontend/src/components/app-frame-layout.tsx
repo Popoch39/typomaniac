@@ -47,7 +47,9 @@ export const AppFrameLayout = ({
         )}
       >
         {duelFormat === null ? null : <DuelSceneHeader format={duelFormat} />}
-        <main className="flex flex-1 flex-col">{children}</main>
+        <main data-intro="page" className="flex flex-1 flex-col">
+          {children}
+        </main>
       </div>
     </div>
   );
