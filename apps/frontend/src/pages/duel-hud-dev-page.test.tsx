@@ -84,9 +84,11 @@ const scoreOf = (player: string) => [
 const isWord = (word: string) => (_: string, element: Element | null) =>
   element !== null && element.children.length > 0 && element.textContent === word;
 
+// Its letters only: a Wrong word holds its wave too.
 const statuses = (word: string) =>
-  Array.from(screen.getAllByText(isWord(word))[0]?.children ?? [], (letter) =>
-    letter.getAttribute("data-status"),
+  Array.from(
+    screen.getAllByText(isWord(word))[0]?.querySelectorAll("[data-status]") ?? [],
+    (letter) => letter.getAttribute("data-status"),
   );
 
 // The Text's rows as shown, each word's letters read in a row.

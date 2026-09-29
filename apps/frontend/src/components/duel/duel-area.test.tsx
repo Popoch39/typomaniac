@@ -132,10 +132,14 @@ const rows = () =>
 const isWord = (word: string) => (_: string, element: Element | null) =>
   element !== null && element.hasAttribute("data-word") && element.textContent === word;
 
+// Its letters only: a Wrong word holds its wave too.
 const statuses = (word: string) =>
-  Array.from(screen.getByText(isWord(word)).children, (letter) =>
+  Array.from(screen.getByText(isWord(word)).querySelectorAll("[data-status]"), (letter) =>
     letter.getAttribute("data-status"),
   );
+
+// Whether the word is a Wrong word, underlined with its wave.
+const isWrong = (word: string) => screen.getByText(isWord(word)).hasAttribute("data-wrong");
 
 const opponentCaret = () => document.querySelector("[data-caret=opponent]");
 
@@ -887,6 +891,61 @@ describe("the Duel's Text", () => {
     ]);
     expect(statuses("help")).toEqual(["correct", "correct", "missed", "missed"]);
     expect(statuses("while")).toEqual(["correct", "incorrect", "pending", "pending", "pending"]);
+  });
+
+  test("a word validated with a wrong, an extra or skipped letters is a Wrong word", async () => {
+    await renderStartedDuel();
+
+    await userEvent.keyboard("sma helpx whxle lxt");
+
+    expect(isWrong("small")).toBe(true);
+    expect(isWrong("helpx")).toBe(true);
+    expect(isWrong("while")).toBe(true);
+    // Still being typed: its mistake can be taken back.
+    expect(isWrong("late")).toBe(false);
+    expect(statuses("small")).toEqual(["correct", "correct", "correct", "missed", "missed"]);
+  });
+
+  test("a right word, or one corrected before the space, is no Wrong word", async () => {
+    await renderStartedDuel();
+
+    await userEvent.keyboard("small hx{Backspace}elp ");
+
+    expect(isWrong("small")).toBe(false);
+    expect(isWrong("help")).toBe(false);
+  });
+
+  test("backspace reopens a Wrong word, which is one again only if validated wrong", async () => {
+    await renderStartedDuel();
+
+    await userEvent.keyboard("smalx ");
+
+    expect(isWrong("small")).toBe(true);
+
+    await userEvent.keyboard("{Backspace}");
+
+    expect(isWrong("small")).toBe(false);
+
+    await userEvent.keyboard(" ");
+
+    expect(isWrong("small")).toBe(true);
+
+    await userEvent.keyboard("{Backspace}{Backspace}l ");
+
+    expect(isWrong("small")).toBe(false);
+  });
+
+  test("a resumed Duel's Wrong words are Wrong words at once", async () => {
+    await renderStartedDuel();
+
+    now = STARTS_AT + 6000;
+    reconnect();
+    receive({ type: "elsewhere", place: "duel" });
+    receive(duelResumed([], typedRight("smx help ", 0, 100)));
+    await at(6100);
+
+    expect(isWrong("small")).toBe(true);
+    expect(isWrong("help")).toBe(false);
   });
 
   test("shows the opponent's caret with their initials, never past the three rows", async () => {

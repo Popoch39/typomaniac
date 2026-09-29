@@ -28,9 +28,10 @@ const moverOf = (caret: HTMLElement, duration: number): CaretMover => {
   };
 };
 
-// Where a caret stands in the Text: before its letter, or just past the last one (extra letters
-// included) once the word is typed. Offsets are the Text's, the letters' offset parent. Null when
-// its word is not on the rows shown.
+// Where a caret stands in the Text: before its letter, or just past the one before it (extra
+// letters included) once the word is typed: the word's wave comes after its letters. A word places
+// its wave, so it is its letters' offset parent: a letter's offsets are the word's plus its own in
+// it, the Text being the words' offset parent. Null when its word is not on the rows shown.
 const spotOf = (text: HTMLElement, { wordIndex, letterIndex }: CaretPosition) => {
   const word = text.querySelector(`[data-word="${wordIndex}"]`);
 
@@ -39,15 +40,18 @@ const spotOf = (text: HTMLElement, { wordIndex, letterIndex }: CaretPosition) =>
   }
 
   const letter = word.children[letterIndex];
-  const last = word.lastElementChild;
+  const before = word.children[letterIndex - 1];
 
   if (letter instanceof HTMLElement) {
-    return { x: letter.offsetLeft, y: letter.offsetTop };
+    return { x: word.offsetLeft + letter.offsetLeft, y: word.offsetTop + letter.offsetTop };
   }
 
   // One px further than before a letter, as the board draws it.
-  return last instanceof HTMLElement
-    ? { x: last.offsetLeft + last.offsetWidth + 1, y: last.offsetTop }
+  return before instanceof HTMLElement
+    ? {
+        x: word.offsetLeft + before.offsetLeft + before.offsetWidth + 1,
+        y: word.offsetTop + before.offsetTop,
+      }
     : { x: word.offsetLeft, y: word.offsetTop };
 };
 
