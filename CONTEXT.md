@@ -11,7 +11,7 @@ Une personne connue de typomaniac, identifiée par son email. C'est la seule ent
 _Avoid_ : compte, player, membre
 
 **Profile** :
-La page d'un User, trouvée par son Handle, que tout User connecté peut voir : son Handle, son avatar avec son Ornament, son rang en Blason et ses Stats. Sur le sien, le User choisit son Ornament. Sa Duel history, ses Duel charts et ses Replays n'y figurent pas.
+La page d'un User, trouvée par son Handle, que tout User connecté peut voir : son Handle, son avatar avec son Ornament, son rang en Crest et ses Stats. Sur le sien, le User choisit son Ornament. Sa Duel history, ses Duel charts et ses Replays n'y figurent pas.
 _Avoid_ : fiche, page perso, compte
 
 **Handle** :
@@ -182,15 +182,15 @@ Le niveau caché d'un User, un Elo : il sert à l'apparier dans la Queue et à p
 _Avoid_ : elo, rating, cote, niveau
 
 **TP** :
-Les typing points visibles d'un User dans sa Division, de 0 à 100 : un Duel en rapporte ou en coûte entre 8 et 35 (un Draw entre 0 et 35, dans un sens ou dans l'autre), plus contre un adversaire au MMR supérieur, et plus encore quand le MMR du User dépasse ce qu'attend son rang, pour que le rang rattrape le niveau. À 100, le User monte d'une Division en gardant le surplus, sans série de promotion ; sa première défaite ensuite, si elle le fait passer sous 0, le laisse à 0 sans le faire descendre. Sinon, passer sous 0 le fait descendre à 75 dans la Division d'en dessous, jamais sous Fer IV.
+Les typing points visibles d'un User dans sa Division, de 0 à 100 : un Duel en rapporte ou en coûte entre 8 et 35 (un Draw entre 0 et 35, dans un sens ou dans l'autre), plus contre un adversaire au MMR supérieur, et plus encore quand le MMR du User dépasse ce qu'attend son rang, pour que le rang rattrape le niveau. À 100, le User monte d'une Division en gardant le surplus, sans série de promotion ; sa première défaite ensuite, si elle le fait passer sous 0, le laisse à 0 sans le faire descendre. Sinon, passer sous 0 le fait descendre à 75 dans la Division d'en dessous, jamais sous Iron IV.
 _Avoid_ : LP, points, Score
 
 **Tier** :
-Le palier du rang d'un User : Fer, Bronze, Argent, Or, Platine, Diamant, chacun en quatre Divisions, puis Maniac, sans Division, où les TP s'accumulent sans plafond.
-_Avoid_ : ligue, rang, elo, Maître
+Le palier du rang d'un User : Iron, Bronze, Silver, Gold, Platinum, Diamond, chacun en quatre Divisions, puis Maniac, sans Division, où les TP s'accumulent sans plafond. Ses noms sont les mêmes dans toutes les Locales.
+_Avoid_ : ligue, rang, elo, Maître, Fer, Argent, Or, Platine, Diamant
 
 **Emblem** :
-L'insigne d'un Tier, le même pour toutes ses Divisions : bouclier du Fer à l'Or, hexagone du Platine, gemme du Diamant, couronne du Maniac.
+L'insigne d'un Tier, le même pour toutes ses Divisions : bouclier de l'Iron au Gold, hexagone du Platinum, gemme du Diamond, couronne du Maniac.
 _Avoid_ : icône de rang, logo de rang, logo, badge
 
 **Ornament** :
@@ -198,12 +198,12 @@ La décoration d'un Tier que porte un User autour de son avatar, plus riche à c
 _Avoid_ : cadre, bordure, frame, décoration d'avatar
 
 **Aura** :
-La lumière vivante qu'un Ornament dégage à partir de l'Or, plus intense à chaque Tier : un reflet sur le métal à l'Or, des poussières de lumière au Platine, des éclats prismatiques au Diamant, un feu et des braises au Maniac. Pleine là où l'avatar ou le Blason est montré en grand, légère dans les listes.
+La lumière vivante qu'un Ornament dégage à partir du Gold, plus intense à chaque Tier : un reflet sur le métal au Gold, des poussières de lumière au Platinum, des éclats prismatiques au Diamond, un feu et des braises au Maniac. Pleine là où l'avatar ou le Crest est montré en grand, légère dans les listes.
 _Avoid_ : glow, effet, FX, prestige
 
-**Blason** :
+**Crest** :
 L'Emblem d'un Tier posé sur son Ornament, montré en grand là où le rang est mis en avant.
-_Avoid_ : crest, écusson
+_Avoid_ : blason, écusson
 
 **Division** :
 L'un des quatre échelons d'un Tier, de IV (le plus bas) à I. Chacune vaut 100 TP.
@@ -222,12 +222,12 @@ Un Duel Ranked dont la victoire ferait changer un User de Tier ou le ferait entr
 _Avoid_ : série de promotion, promo, BO
 
 **Tier-up** :
-La célébration plein écran, à la fin d'un Duel Ranked, d'un User qui monte dans un nouveau Tier ou entre en Maniac. L'ancien Emblem cède la place au nouveau Blason, puis viennent le nom du Tier et le trajet du rang. Elle est plus intense à chaque Tier. Monter d'une Division sans changer de Tier n'en déclenche pas, et une descente non plus.
+La célébration plein écran, à la fin d'un Duel Ranked, d'un User qui monte dans un nouveau Tier ou entre en Maniac. L'ancien Emblem cède la place au nouveau Crest, puis viennent le nom du Tier et le trajet du rang. Elle est plus intense à chaque Tier. Monter d'une Division sans changer de Tier n'en déclenche pas, et une descente non plus.
 _Avoid_ : promotion, level up, montée de rang
 
-**Classement** :
+**Leaderboard** :
 La liste des Users Ranked hors Placement, triés par Tier, Division puis TP.
-_Avoid_ : leaderboard, ladder, top
+_Avoid_ : classement, ladder, top
 
 ### Social
 
@@ -256,6 +256,10 @@ _Avoid_ : feed, fil, timeline, fil d'actualité
 **Theme** :
 Les couleurs de l'app, choisies sur un navigateur par un User ou un Visitor : le fond, les surfaces, l'accent (la couleur de Toi) et la couleur de l'adversaire. Il ne change jamais la place des choses ni la couleur des Tiers. Le choix reste sur ce navigateur, il ne suit pas le User.
 _Avoid_ : skin, palette, mode
+
+**Locale** :
+La langue de l'interface, français ou anglais, choisie sur un navigateur par un User ou un Visitor, comme le Theme. Elle est portée par l'URL : un lien dans une Locale s'ouvre dans cette Locale. Sans choix, elle suit la langue du navigateur. Elle ne change jamais la Language d'un Text ; tant que la Language des Runs n'a jamais été choisie, elle suit la Locale. Un anglophone ne doit trouver nulle part la trace d'une app pensée en français.
+_Avoid_ : langue de l'app, lang, i18n, Language
 
 **Logo** :
 La marque de typomaniac : le symbole, un t souligné d'une vague comme une faute de frappe, puis le mot typomaniac. Le t prend la couleur du texte du Theme, la vague son accent : il change avec le Theme, jusque dans l'onglet du navigateur.
