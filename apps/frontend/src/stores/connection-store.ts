@@ -46,11 +46,11 @@ export type LiveChallenges = {
   accepted: string | null;
 };
 
-// The Queue as Jouer shows it before joining: how many Users wait in it, and the Estimated wait in
-// ms (null without a recent pairing).
+// The Queue as Jouer shows it before joining: how many Users wait in it, the Estimated wait in
+// ms (null without a recent pairing) and the last three to join, the latest first.
 export type QueueOverview = Pick<
   Extract<ServerMessage, { type: "queue-overview" }>,
-  "size" | "estimatedWait"
+  "size" | "estimatedWait" | "waiting"
 >;
 
 type ConnectionStore = {
@@ -178,7 +178,7 @@ export const queueOverviewAfter = (
   }
 
   return message.type === "queue-overview"
-    ? { size: message.size, estimatedWait: message.estimatedWait }
+    ? { size: message.size, estimatedWait: message.estimatedWait, waiting: message.waiting }
     : overview;
 };
 

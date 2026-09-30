@@ -10,10 +10,10 @@ import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 import { useConnectionStore } from "@/stores/connection-store";
 
-// The Queue as a crowd of empty places, then « En file maintenant », its dot pulsing, and how many
-// Users wait in the Queue, the number big, and the Estimated wait, told live while the card is
-// shown: only the size without a recent pairing, nothing until the server tells it. Never who is
-// in it.
+// The Queue as a crowd, the avatars of the last to join it, then « En file maintenant », its dot
+// pulsing, and how many Users wait in the Queue, the number big, and the Estimated wait, told live
+// while the card is shown: only the size without a recent pairing, nothing until the server tells
+// it.
 export const RankedQueueNow = () => {
   const locale = useLocale();
   const dotRef = useRef<HTMLSpanElement>(null);
@@ -31,7 +31,7 @@ export const RankedQueueNow = () => {
 
   return (
     <section aria-labelledby={titleId} className="flex shrink-0 items-center gap-4">
-      <QueueCrowd size={overview.size} />
+      <QueueCrowd overview={overview} />
       <div className="flex min-w-0 flex-col gap-1">
         <h3
           id={titleId}

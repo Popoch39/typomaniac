@@ -40,6 +40,9 @@ const card = (name: string) => screen.getByRole("region", { name });
 
 const rankedCard = () => card("Ranked");
 
+// The Users last to join the Queue, by their Handle, without an image.
+const waitingAs = (...handles: string[]) => handles.map((handle) => ({ handle, image: null }));
+
 // The line of the Queue's size, its number set apart from its words: null without one.
 const queueSizeLine = () =>
   within(rankedCard()).queryByText(
@@ -385,12 +388,12 @@ describe("the Ranked card", () => {
     expect(allSent()).toEqual([{ type: "watch-queue" }]);
     expect(queueSizeLine()).not.toBeInTheDocument();
 
-    receive({ type: "queue-overview", size: 3, estimatedWait: 12_400 });
+    receive({ type: "queue-overview", size: 3, estimatedWait: 12_400, waiting: [] });
 
     expect(queueSizeLine()).toHaveTextContent(/^3 joueurs en file · ≈ 13 s d'attente$/u);
 
     // Without a recent pairing, only the size.
-    receive({ type: "queue-overview", size: 0, estimatedWait: null });
+    receive({ type: "queue-overview", size: 0, estimatedWait: null, waiting: [] });
 
     expect(queueSizeLine()).toHaveTextContent(/^0 joueur en file$/u);
 
@@ -403,13 +406,13 @@ describe("the Ranked card", () => {
     const { user } = await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
 
     receive(idle());
-    receive({ type: "queue-overview", size: 3, estimatedWait: null });
+    receive({ type: "queue-overview", size: 3, estimatedWait: null, waiting: [] });
     receive(queueElsewhere());
 
     expect(queueSizeLine()).not.toBeInTheDocument();
 
     receive(idle());
-    receive({ type: "queue-overview", size: 2, estimatedWait: null });
+    receive({ type: "queue-overview", size: 2, estimatedWait: null, waiting: [] });
 
     expect(queueSizeLine()).toHaveTextContent(/^2 joueurs en file$/u);
 
@@ -430,7 +433,7 @@ describe("the Ranked card", () => {
     await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
 
     receive(idle());
-    receive({ type: "queue-overview", size: 3, estimatedWait: null });
+    receive({ type: "queue-overview", size: 3, estimatedWait: null, waiting: [] });
     receive({ type: "elsewhere", place: "duel" });
 
     expect(queueSizeLine()).toHaveTextContent(/^3 joueurs en file$/u);
@@ -589,27 +592,38 @@ const lineOf = (row: HTMLElement) => row.textContent?.replaceAll(/\s/gu, " ");
 const recentDuelsList = (name: RegExp) => within(rankedCard()).getByRole("list", { name });
 
 describe("the Ranked card, live", () => {
-  test("shows the Queue right now, its size and Estimated wait, never who is in it", async () => {
+  test("shows the Queue right now: the last three to join, how many more, its size and Estimated wait", async () => {
     await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
 
     receive(idle());
-    receive({ type: "queue-overview", size: 14, estimatedWait: 29_500 });
+    receive({
+      type: "queue-overview",
+      size: 14,
+      estimatedWait: 29_500,
+      waiting: waitingAs("mia", "alan", "zoe"),
+    });
 
     const queue = within(rankedCard()).getByRole("region", { name: "En file maintenant" });
 
-    expect(queue).toHaveTextContent("+11En file maintenant14 joueurs en file · ≈ 30 s d'attente");
-    expect(within(queue).queryByRole("img")).not.toBeInTheDocument();
+    expect(queue).toHaveTextContent(
+      /^MAZ\+11En file maintenant14 joueurs en file · ≈ 30 s d'attente$/u,
+    );
   });
 
-  test("a Queue of two shows two places and no more", async () => {
+  test("a Queue of two shows their two avatars and no more", async () => {
     await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
 
     receive(idle());
-    receive({ type: "queue-overview", size: 2, estimatedWait: null });
+    receive({
+      type: "queue-overview",
+      size: 2,
+      estimatedWait: null,
+      waiting: waitingAs("mia", "zoe"),
+    });
 
     const queue = within(rankedCard()).getByRole("region", { name: "En file maintenant" });
 
-    expect(queue).toHaveTextContent(/^En file maintenant2 joueurs en file$/u);
+    expect(queue).toHaveTextContent(/^MZEn file maintenant2 joueurs en file$/u);
   });
 
   test("lists the last 3 Duels won in the User's Tier: who beat whom, both wpm, how long ago", async () => {
@@ -682,7 +696,7 @@ describe("the Ranked card, live", () => {
     });
 
     receive(idle());
-    receive({ type: "queue-overview", size: 14, estimatedWait: 29_500 });
+    receive({ type: "queue-overview", size: 14, estimatedWait: 29_500, waiting: [] });
 
     expect(within(rankedCard()).getByRole("region", { name: "In queue now" })).toBeVisible();
     expect(

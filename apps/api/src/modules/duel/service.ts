@@ -30,6 +30,9 @@ const DUEL_LANGUAGE = "en";
 
 const DUEL_SECONDS = 30;
 
+// How many of the Users in the Queue its overview shows.
+const OVERVIEW_WAITING = 3;
+
 // The Face-off (1.5 s), then the 3-2-1: typing is blocked all along.
 const COUNTDOWN_MS = 4500;
 
@@ -477,12 +480,21 @@ export class DuelQueue implements ChallengeArena {
     };
   }
 
-  // The Queue as a User out of it sees it from Jouer.
+  // The Queue as a User out of it sees it from Jouer: the last three to join, the latest first.
   #overview(): ServerMessage {
+    const waiting = [];
+
+    for (const { user } of [...this.#queue.values()].toReversed()) {
+      if (user !== null && waiting.length < OVERVIEW_WAITING) {
+        waiting.push({ handle: user.handle, image: user.image });
+      }
+    }
+
     return {
       type: "queue-overview",
       size: this.#queueSize(),
       estimatedWait: estimatedWait(this.#recentWaits),
+      waiting,
     };
   }
 

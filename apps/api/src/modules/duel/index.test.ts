@@ -1833,6 +1833,17 @@ describe("duel socket", () => {
     return { ada, alan };
   };
 
+  // A User in the Queue at this MMR, settled.
+  const queuedAt = async (name: string, mmr: number) => {
+    const user = await signedInUser(name);
+
+    ratings.set(user.id, { mmr, rank: goldIv(50) });
+
+    const client = await queued(user.cookie);
+
+    await client.settle();
+  };
+
   describe("Queue status", () => {
     test("a User who joins is told when, how many wait, without an Estimated wait yet", async () => {
       const ada = await queued(await signedIn("Ada"));
@@ -1910,6 +1921,27 @@ describe("duel socket", () => {
         type: "queue-overview",
         size: 0,
         estimatedWait: null,
+        waiting: [],
+      });
+    });
+
+    test("shows the last three Users to join, the latest first, by their Handle and avatar", async () => {
+      const grace = await watchingJouer(await signedIn("Grace"));
+
+      await grace.nextQueueOverview();
+
+      // MMRs too far apart to pair anyone: all four wait.
+      await queuedAt("Ada", 1000);
+      await queuedAt("Alan", 1500);
+      await queuedAt("Linus", 2000);
+      await queuedAt("Barbara", 2500);
+      setNow(NOW + 1000);
+      expect(await grace.nextQueueOverview()).toMatchObject({
+        waiting: [
+          { handle: "barbara", image: "https://img/barbara" },
+          { handle: "linus", image: "https://img/linus" },
+          { handle: "alan", image: "https://img/alan" },
+        ],
       });
     });
 
@@ -1969,6 +2001,7 @@ describe("duel socket", () => {
         type: "queue-overview",
         size: 0,
         estimatedWait: null,
+        waiting: [],
       });
     });
 
@@ -2015,6 +2048,7 @@ describe("duel socket", () => {
         type: "queue-overview",
         size: 1,
         estimatedWait: 15_000,
+        waiting: [{ handle: "linus", image: "https://img/linus" }],
       });
     });
   });

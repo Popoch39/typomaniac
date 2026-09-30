@@ -164,11 +164,13 @@ const QueueStatus = t.Object({
 export type QueueStatus = typeof QueueStatus.static;
 
 // The Queue as a tab that watches Jouer sees it before joining: how many Users wait in it, and the
-// Estimated wait in ms, null without a recent pairing.
+// Estimated wait in ms, null without a recent pairing, and the last Users to join it (three at
+// most, the latest first), as an opponent is seen: their Handle and their avatar.
 const QueueOverview = t.Object({
   type: t.Literal("queue-overview"),
   size: t.Integer(),
   estimatedWait: t.Nullable(t.Number()),
+  waiting: t.Array(DuelOpponent, { maxItems: 3 }),
 });
 
 export type QueueOverview = typeof QueueOverview.static;
