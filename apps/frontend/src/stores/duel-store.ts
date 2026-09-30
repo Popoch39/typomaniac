@@ -126,10 +126,10 @@ export type DuelState =
   // Paired, typing blocked until the start.
   | { phase: "countdown"; duel: DuelPlay }
   | { phase: "running"; duel: DuelPlay }
-  // The time is up here: typing blocked. The server ends the Duel once the last Keystrokes reached
-  // it (`ending`, null until then); its HUD stays until END_HOLD_MS after the time is up.
-  | { phase: "finishing"; duel: DuelPlay; ending: DuelEnding | null }
-  // The server's verdict, the same on both screens.
+  // The time is up here: typing blocked, the HUD says the end until the server ends the Duel, once
+  // the last Keystrokes reached it.
+  | { phase: "finishing"; duel: DuelPlay }
+  // The server's end of the Duel, the same on both screens: the Duel end.
   | { phase: "ended"; ending: DuelEnding }
   // Another tab of the same User plays the place: the Queue or the Duel.
   | { phase: "elsewhere" }
@@ -515,24 +515,12 @@ const endingOf = ({
 });
 
 // The server ends the Duel, possibly before this tab's time is up: nothing typed here counts
-// anymore. At the end of its time, the Duel played here keeps its HUD, which tells the outcome
-// until END_HOLD_MS after the time is up (`ticked`), a Forfeit told meanwhile included (a last
-// batch too fast, a connection not back in time). A Forfeit before the end goes to the end screen
-// at once, and so does a Duel that ended while this User was away, told on connection.
-const ended = (state: DuelState, message: DuelEnded): DuelState => {
+// anymore, and the Duel end shows at once, without holding the HUD: at the end of its time, by a
+// Forfeit, or while this User was away (told on connection).
+const ended = (message: DuelEnded): DuelState => {
   outbox = [];
 
-  const ending = endingOf(message);
-
-  if (
-    state.phase === "finishing" ||
-    (state.phase === "running" &&
-      (!ending.forfeit || isFinished(state.duel.run, clock() - state.duel.startsAt)))
-  ) {
-    return { phase: "finishing", duel: state.duel, ending };
-  }
-
-  return { phase: "ended", ending };
+  return { phase: "ended", ending: endingOf(message) };
 };
 
 type Idle = Extract<ServerMessage, { type: "idle" }>;
@@ -549,10 +537,9 @@ const lockedOf = ({ queueLockedUntil, serverTime }: Idle): DuelState | null =>
 // missed meanwhile, whose Dodge locked it); on the Duel's screen, nothing to resume. Held elsewhere
 // until now, or locked here already: a Dodge on another tab shows its Queue lock here too, without
 // asking the Queue. The Duel played here is gone (it ended while the connection was lost, and
-// another tab was told the end), unless its end was told here already: its HUD holds it, then the
-// end screen shows it.
+// another tab was told the end).
 const idle = (state: DuelState, message: Idle): DuelState => {
-  if (!entered || (state.phase === "finishing" && state.ending !== null)) {
+  if (!entered) {
     return state;
   }
 
@@ -637,7 +624,7 @@ const stateAfter = (
     case "opponent-reconnected":
       return updateDuel(state, (duel) => ({ ...duel, opponentConnected: true }));
     case "duel-ended":
-      return ended(state, message);
+      return ended(message);
     // The Queue seen from Jouer, before joining it: the connection store's.
     case "queue-overview":
     // The Friends: the connection store's too.
@@ -693,21 +680,9 @@ const pressed = (store: DuelStore, key: Key, now: number): Pick<DuelStore, "stat
   };
 };
 
-// The HUD stays this long at least once the time is up, in ms, so its end is seen: the disc's
-// FIN, then the server's verdict.
-const END_HOLD_MS = 2000;
-
-// The HUD has held long enough since the Duel's time was up.
-const heldEnough = (duel: DuelPlay, now: number) =>
-  now >= duel.startsAt + duel.config.seconds * 1000 + END_HOLD_MS;
-
 const ticked = (state: DuelState, now: number): DuelState => {
   if (state.phase === "countdown" && now >= state.duel.startsAt) {
     return { phase: "running", duel: state.duel };
-  }
-
-  if (state.phase === "finishing" && state.ending !== null && heldEnough(state.duel, now)) {
-    return { phase: "ended", ending: state.ending };
   }
 
   if (state.phase !== "running") {
@@ -722,7 +697,7 @@ const ticked = (state: DuelState, now: number): DuelState => {
 
   flush();
 
-  return { phase: "finishing", duel: state.duel, ending: null };
+  return { phase: "finishing", duel: state.duel };
 };
 
 // A Match proposal the User declined or let run out: out of the Queue, it stays as it ended.
@@ -800,7 +775,7 @@ export const useDuelStore = create<DuelStore>()((set, get) => ({
   exit: () => {
     const { state } = get();
 
-    // Leaving on purpose once the time is up would forfeit a Duel whose verdict is on its way.
+    // Leaving on purpose once the time is up would forfeit a Duel whose end is on its way.
     if (state.phase === "countdown" || state.phase === "running") {
       send({ type: "leave-duel" });
     } else if (seat === "queue" && inQueuePlace(state)) {

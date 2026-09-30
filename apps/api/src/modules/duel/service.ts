@@ -62,6 +62,10 @@ export type Connection = {
   send: (message: ServerMessage) => void;
 };
 
+// Waits for the write of the User's last Duel, when one is in progress: the end is told before it,
+// so a route that reads the User's history waits for it (`DuelQueue.lastDuelWritten`).
+export type LastDuelWritten = (userId: string) => Promise<void>;
+
 const randomSeed = () => crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
 
 export type DuelQueueConfig = {
@@ -164,16 +168,12 @@ export class DuelQueue implements ChallengeArena {
   // written: lost on a redeploy, as the Queue.
   readonly #dodges = new Map<string, Dodges>();
 
-  // The write of each User's last Duel, until it is done: their Pace waits for it. It gives the id
-  // the Duel was written under, null if the write failed.
-  readonly #saving = new Map<string, Promise<string | null>>();
+  // The write of each User's last Duel, until it is done: what they read of their history (their
+  // Pace first) waits for it. It gives whether the Duel was written.
+  readonly #saving = new Map<string, Promise<boolean>>();
 
   // The Duel of each User in one, until it is over.
   readonly #duels = new Map<string, RunningDuel>();
-
-  // Players whose Duel is over but not written yet: they are told its end once it is, and until
-  // then the Duel is still their place.
-  readonly #beingWritten = new Set<string>();
 
   // Players of a Duel whose playing connection dropped, each with a token of that disconnection:
   // their time to come back only runs out if they are still away from that one.
@@ -331,9 +331,15 @@ export class DuelQueue implements ChallengeArena {
     return this.#connections.get(userId)?.get(connectionId);
   }
 
-  // From the start of the Duel (Countdown included) to its end, told once the Duel is written.
+  // From the start of the Duel (Countdown included) to its end, told before the Duel is written.
   isInDuel(userId: string) {
-    return this.#duels.has(userId) || this.#beingWritten.has(userId);
+    return this.#duels.has(userId);
+  }
+
+  // Once the User's last Duel is written, or its write given up: what they read of their history
+  // from then on has it. At once without a write in progress.
+  async lastDuelWritten(userId: string) {
+    await this.#saving.get(userId);
   }
 
   // Paired by the Queue, until the Match proposal is over: neither in the Queue nor in a Duel.
@@ -540,8 +546,7 @@ export class DuelQueue implements ChallengeArena {
   // The same mechanism as a reconnection: the Duel goes on here, the connection that played it
   // until now is told, and the time to come back stops. A Duel that ended while no connection
   // played it: its end, told once, and the other connections that the User is idle. Otherwise,
-  // ignored. A Duel over but not written yet: its end is told here once it is. A Match proposal
-  // goes on here too, and one that ran out meanwhile is told here.
+  // ignored. A Match proposal goes on here too, and one that ran out meanwhile is told here.
   #resumeOn(userId: string, connection: Connection) {
     const duel = this.#duels.get(userId);
     const missed = this.#missed.get(userId);
@@ -557,8 +562,6 @@ export class DuelQueue implements ChallengeArena {
     } else if (duel) {
       this.#playOn(userId, connection);
       this.#resume(userId, duel);
-    } else if (this.#beingWritten.has(userId)) {
-      this.#playOn(userId, connection);
     } else if (missed) {
       this.#missed.delete(userId);
       this.#playOn(userId, connection);
@@ -586,10 +589,11 @@ export class DuelQueue implements ChallengeArena {
     }
   }
 
-  // Once a Duel is over, it is written, then both players are free to join the Queue again. Their
-  // Keystrokes are ignored from the end on. It ends once: at the end of its time, or on a Forfeit,
-  // whichever comes first. A failed write is logged: the players are told the end all the same,
-  // without a Duel to replay.
+  // Once a Duel is over, both players are told its end at once and are free to join the Queue
+  // again; it is written behind them. That holds with ADR 0003: only finished Duels are written,
+  // but what the end shows is not promised written yet. Their next reads of their history (Pace,
+  // Form, Records, and the routes that read it) wait for that write. Their Keystrokes are ignored
+  // from the end on. It ends once: at the end of its time, or on a Forfeit, whichever comes first.
   #finish(duel: RunningDuel, finish: (now: number) => Finish) {
     if (duel.userIds.some((userId) => this.#duels.get(userId) !== duel)) {
       return;
@@ -599,8 +603,18 @@ export class DuelQueue implements ChallengeArena {
 
     const saving = this.#write(record);
 
-    void saving.then((duelId) => {
-      if (duelId !== null) {
+    for (const userId of duel.userIds) {
+      this.#saving.set(userId, saving);
+    }
+
+    void saving.then((written) => {
+      for (const userId of duel.userIds) {
+        if (this.#saving.get(userId) === saving) {
+          this.#saving.delete(userId);
+        }
+      }
+
+      if (written) {
         this.#onDuelSaved(record);
       }
     });
@@ -608,45 +622,32 @@ export class DuelQueue implements ChallengeArena {
     for (const { userId, message } of endings) {
       this.#duels.delete(userId);
       this.#away.delete(userId);
-      this.#beingWritten.add(userId);
-      this.#saving.set(userId, saving);
-      void saving.then((duelId) => {
-        if (this.#saving.get(userId) === saving) {
-          this.#saving.delete(userId);
-        }
-
-        // Not written, no Rating moved.
-        this.#tellEnd(userId, {
-          ...message,
-          duelId,
-          ranked: duelId === null ? null : message.ranked,
-        });
-      });
+      this.#tellEnd(userId, message);
     }
   }
 
-  // The id the Duel is written under, or null: the write failed, or took longer than
-  // SAVE_TIMEOUT_MS (the players are not held up by a database that hangs). Either is logged.
+  // Whether the Duel is written: not when the write failed, or took longer than SAVE_TIMEOUT_MS
+  // (a database that hangs holds up no read for long). Either is logged.
   #write(record: DuelRecord) {
-    return new Promise<string | null>((resolve) => {
+    return new Promise<boolean>((resolve) => {
       let settled = false;
 
-      const settle = (duelId: string | null) => {
+      const settle = (written: boolean) => {
         settled = true;
-        resolve(duelId);
+        resolve(written);
       };
 
       void this.#store.save(record).then(
-        () => settle(record.id),
+        () => settle(true),
         (error) => {
           this.#logger.error({ err: error, duelId: record.id }, "finished duel not saved");
-          settle(null);
+          settle(false);
         },
       );
       this.#clock.at(this.#clock.now() + SAVE_TIMEOUT_MS, () => {
         if (!settled) {
           this.#logger.warn({ duelId: record.id }, "finished duel not saved in time");
-          settle(null);
+          settle(false);
         }
       });
     });
@@ -655,7 +656,6 @@ export class DuelQueue implements ChallengeArena {
   // The end, told on the connection that plays (or the next one that resumes the Duel), and to
   // their other connections that they are idle.
   #tellEnd(userId: string, message: DuelEnded) {
-    this.#beingWritten.delete(userId);
     this.#onDuel(userId, false);
 
     // Nobody plays it: the Duel stays their place until a connection resumes it.
@@ -817,7 +817,7 @@ export class DuelQueue implements ChallengeArena {
   // Unreadable, the default Pace: a Duel is never held up by the database.
   async readPace(userId: string) {
     try {
-      await this.#saving.get(userId);
+      await this.lastDuelWritten(userId);
 
       return await readPace(this.#store, userId);
     } catch (error) {
@@ -831,7 +831,7 @@ export class DuelQueue implements ChallengeArena {
   // absent, the Duel is played.
   async readForm(userId: string) {
     try {
-      await this.#saving.get(userId);
+      await this.lastDuelWritten(userId);
 
       return await readForm(this.#store, userId);
     } catch (error) {
@@ -845,7 +845,7 @@ export class DuelQueue implements ChallengeArena {
   // Pace. Unreadable, none: the Duel is played.
   async readOrnament(userId: string) {
     try {
-      await this.#saving.get(userId);
+      await this.lastDuelWritten(userId);
 
       return (await readRankAndOrnament(this.#store, userId)).ornament;
     } catch (error) {
@@ -859,7 +859,7 @@ export class DuelQueue implements ChallengeArena {
   // tells which the Duel beats. Unreadable, null: the end shows none, the Duel is played.
   async readRecords(userId: string) {
     try {
-      await this.#saving.get(userId);
+      await this.lastDuelWritten(userId);
 
       return await this.#store.records(userId);
     } catch (error) {

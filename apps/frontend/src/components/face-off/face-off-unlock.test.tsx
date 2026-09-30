@@ -91,7 +91,7 @@ describe("the Face-off's sound, unlocked by the click that leads to it", () => {
       <DuelEnded
         ending={{
           ranked: null,
-          duelId: null,
+          duelId: "duel-1",
           outcome: "draw",
           forfeit: false,
           result: noResult,

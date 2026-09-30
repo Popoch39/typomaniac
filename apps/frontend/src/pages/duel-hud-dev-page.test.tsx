@@ -205,7 +205,7 @@ describe("DuelHudDevPage", () => {
     expect(rows()).toEqual(shown);
   });
 
-  // The Callout the board announces at each moment, by its own engine, then the verdict at the end.
+  // The Callout the board announces at each moment, by its own engine, then the end.
   test.each([
     ["mi-duel", ""],
     ["burst", "BURST +42"],
@@ -213,7 +213,7 @@ describe("DuelHudDevPage", () => {
     ["mené", "BURST @kzr_ +56"],
     ["dernières secondes", "BURST +42"],
     ["renversement", "TU PASSES DEVANT"],
-    ["fin", "VICTOIRE +21"],
+    ["fin", "FIN"],
   ])("frozen on « %s », announces the board's Callout", async (moment, said) => {
     await renderPage();
 
@@ -258,7 +258,7 @@ describe("DuelHudDevPage in English", () => {
     ["combo cassé", "COMBO BROKEN 13 words"],
     ["mené", "BURST @kzr_ +56"],
     ["renversement", "YOU TAKE THE LEAD"],
-    ["fin", "VICTORY +21"],
+    ["fin", "END"],
   ])("frozen on « %s », announces the board's Callout in English", async (moment, said) => {
     await freezeOn(moment);
 

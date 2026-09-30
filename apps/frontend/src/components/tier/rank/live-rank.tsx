@@ -8,9 +8,10 @@ import { onServerMessage } from "@/stores/connection-store";
 
 // Keeps the rank and the Stats up to date without a reload: a Ranked Duel that ends, won, lost or
 // drawn, reads the User again (the User card) and every page of the Leaderboard, where the User's
-// Place moved. A Challenge or a Duel not written (`ranked` null) moves no rank. Any Duel that ends,
-// a Challenge too, reads the Profiles again: the Stats of both players moved, their Records
-// maybe, and the User's must never contradict the end screen.
+// Place moved. A Challenge (`ranked` null) moves no rank. Any Duel that ends, a Challenge too,
+// reads the Profiles again: the Stats of both players moved, their Records maybe, and the User's
+// must never contradict the end screen. The end comes before the Duel is written: the API answers
+// these reads once it is.
 export const LiveRank = () => {
   const queryClient = useQueryClient();
 

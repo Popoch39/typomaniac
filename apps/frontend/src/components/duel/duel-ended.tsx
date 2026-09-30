@@ -16,7 +16,7 @@ import type { DuelEnding } from "@/stores/duel-store";
 
 // The server ended the Duel, told as the board « B · Affiche » draws it: its outcome, both Scores
 // in one band, what it did to the rank when ranked, the User's Records against it when read, both
-// players' figures line by line; once written, its Duel chart and Revoir to replay it. Then back
+// players' figures line by line, its Duel chart and Revoir to replay it. Then back
 // to the play page: Nouveau Duel joins the Queue again, Retour au Solo does not. It comes in block
 // by block, as soon as it is seen.
 // A move up into a new Tier or Maniac opens its Tier-up over it first, once: the screen waits
@@ -62,7 +62,7 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
       ) : null}
       {tiles === null ? null : <DuelEndRecords tiles={tiles} />}
       <DuelEndTape ending={ending} opponent={opponent} beaten={beaten} />
-      {ending.duelId === null ? null : <DuelEndChart duelId={ending.duelId} />}
+      <DuelEndChart duelId={ending.duelId} />
       <DuelEndActions duelId={ending.duelId} />
     </div>
   );

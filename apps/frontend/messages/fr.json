@@ -337,9 +337,6 @@
   "hud_combo_gauge": "Combo",
   "hud_time_left": "temps restant",
   "hud_time_up": "FIN",
-  "hud_verdict_win": "VICTOIRE",
-  "hud_verdict_loss": "DÉFAITE",
-  "hud_verdict_draw": "DRAW",
   "hud_connection_lost": "Connexion perdue, reconnexion…",
   "hud_opponent_connection_lost": [
     {

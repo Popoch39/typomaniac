@@ -11,7 +11,7 @@ import { MatchProposalGo } from "@/components/match-proposal/match-proposal-go";
 import { FocusOverlay } from "@/components/run/focus-overlay";
 import { KeystrokeInput } from "@/components/run/keystroke-input";
 import { useTypingFocus } from "@/components/run/use-typing-focus";
-import type { DuelEnding, DuelPlay } from "@/stores/duel-store";
+import type { DuelPlay } from "@/stores/duel-store";
 import { useDuelStore } from "@/stores/duel-store";
 
 // The Duel from the Countdown to the end: the same Text for both, typing blocked until the start.
@@ -19,8 +19,8 @@ import { useDuelStore } from "@/stores/duel-store";
 // Face-off covers it during the Countdown, a new one for each Duel. A Duel of the Queue starts with
 // « C'est parti ! » the second before. The HUD is drawn from the Duel as the store holds it, the
 // Cues the bus hands out for both sides, and this User's Handle read without ever holding it up.
-// Once the time is up, it tells the server's `ending` as soon as it comes, null until then.
-export const DuelTypingArea = ({ duel, ending }: { duel: DuelPlay; ending: DuelEnding | null }) => {
+// Once the time is up, it says the end until the server ends the Duel.
+export const DuelTypingArea = ({ duel }: { duel: DuelPlay }) => {
   const { inputRef, veiled, setFocused, focus } = useTypingFocus();
   const { data: me } = useQuery(meQueryOptions);
   const press = useDuelStore((store) => store.press);
@@ -44,7 +44,7 @@ export const DuelTypingArea = ({ duel, ending }: { duel: DuelPlay; ending: DuelE
       />
       <KeystrokeInput ref={inputRef} onFocusChange={setFocused} onPress={press} />
       <DuelHud
-        model={duelHudModel(duel, { selfHandle: me?.handle ?? null, cues, elapsed, ending })}
+        model={duelHudModel(duel, { selfHandle: me?.handle ?? null, cues, elapsed })}
         veil={veiled ? <FocusOverlay onResume={focus} /> : null}
         onLeave={leave}
       />

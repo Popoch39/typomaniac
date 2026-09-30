@@ -14,11 +14,11 @@ import { m } from "@/paraglide/messages";
 // The top of the HUD, as the board B2 · Affiche draws it: a poster in two colours, this User's
 // accent and the opponent's blue, split on a slant that slides with the Lead. Each player's half
 // in ink over it, mirrored for the opponent, with the effects of their words, the disc of the
-// time in the middle. Once the server ends the Duel, the loser's half is greyed.
+// time in the middle.
 export const DuelBand = ({ model }: { model: DuelHudModel }) => {
   const bandRef = useRef<HTMLElement>(null);
   const locale = useLocale();
-  const { self, opponent, elapsed, startsAt, verdict } = model;
+  const { self, opponent, elapsed, startsAt } = model;
   const lead = self.score.score - opponent.score.score;
   const ended = isTimeUp(model);
 
@@ -39,7 +39,6 @@ export const DuelBand = ({ model }: { model: DuelHudModel }) => {
         effects={bandEffects(self.cues, elapsed, ended)}
         startsAt={startsAt}
         mirrored={false}
-        beaten={verdict?.outcome === "loss"}
       />
       <DuelDisc
         startsAt={startsAt}
@@ -55,7 +54,6 @@ export const DuelBand = ({ model }: { model: DuelHudModel }) => {
         effects={bandEffects(opponent.cues, elapsed, ended)}
         startsAt={startsAt}
         mirrored
-        beaten={verdict?.outcome === "win"}
       />
     </section>
   );

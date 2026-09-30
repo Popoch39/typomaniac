@@ -18,9 +18,8 @@ export const DuelScreen = () => {
   switch (state.phase) {
     case "countdown":
     case "running":
-      return <DuelTypingArea duel={state.duel} ending={null} />;
     case "finishing":
-      return <DuelTypingArea duel={state.duel} ending={state.ending} />;
+      return <DuelTypingArea duel={state.duel} />;
     case "ended":
       return <DuelEnded ending={state.ending} />;
     case "elsewhere":

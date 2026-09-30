@@ -31,8 +31,8 @@ const duel = async (loser: TestClient, winner: TestClient) => {
 
   expect(await winner.next()).toMatchObject({ type: "duel-ended" });
 
-  if (ended.type !== "duel-ended" || ended.duelId === null) {
-    throw new Error(`Not a written Duel's end: ${JSON.stringify(ended)}`);
+  if (ended.type !== "duel-ended") {
+    throw new Error(`Not a Duel's end: ${JSON.stringify(ended)}`);
   }
 
   return ended.duelId;

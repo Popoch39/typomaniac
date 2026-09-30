@@ -83,7 +83,7 @@ const noScore = { score: 0, bestCombo: 0, bursts: 0 };
 
 const duelEnded: ServerMessage = {
   type: "duel-ended",
-  duelId: null,
+  duelId: "duel-1",
   ranked: null,
   records: null,
   outcome: "draw",

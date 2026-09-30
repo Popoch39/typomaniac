@@ -671,7 +671,7 @@ const duelEnded = ({
   forfeit?: boolean;
 }): ServerMessage => ({
   type: "duel-ended",
-  duelId: null,
+  duelId: "duel-1",
   ranked: null,
   records: null,
   outcome,
@@ -745,54 +745,42 @@ describe("the end of the Duel", () => {
     expect(timer).toHaveTextContent("FIN");
   });
 
-  test("tells the server's outcome, a win on accuracy at equal Scores too", async () => {
+  test("the Callout says FIN once the time is up, never the outcome, until the server ends the Duel", async () => {
     await renderStartedDuel();
 
+    receive({ type: "opponent-keystrokes", keystrokes: rushed("small ") });
     await at(30_000);
 
-    expect(callouts()).toBeEmptyDOMElement();
+    expect(callouts().textContent?.trim()).toBe("FIN");
 
-    receive(duelEnded({ outcome: "win", score: 0, opponentScore: 0 }));
+    await at(31_000);
 
-    // No gap to tell.
-    expect(callouts().textContent?.trim()).toBe("VICTOIRE");
+    expect(callouts().textContent?.trim()).toBe("FIN");
+    expect(endScreen()).toBeNull();
   });
 
-  test("holds the HUD 2 s after the time is up, then gives way to the end screen", async () => {
+  test.each([
+    { outcome: "win", score: 31, opponentScore: 24 },
+    { outcome: "loss", score: 12, opponentScore: 20 },
+    { outcome: "draw", score: 15, opponentScore: 15 },
+  ] as const)(
+    "a $outcome gives way to the end screen as soon as the server tells it",
+    async ({ outcome, score, opponentScore }) => {
+      await renderStartedDuel();
+
+      await at(30_000);
+      receive(duelEnded({ outcome, score, opponentScore }));
+
+      expect(endScreen()).toBeInTheDocument();
+      expect(screen.queryByRole("status", { name: "Callouts" })).toBeNull();
+    },
+  );
+
+  test("a connection lost once it ended stays on the end screen", async () => {
     await renderStartedDuel();
 
     await at(30_000);
     receive(duelEnded({ outcome: "win", score: 6, opponentScore: 0 }));
-    await at(31_900);
-
-    expect(endScreen()).toBeNull();
-    expect(callouts()).toHaveTextContent("VICTOIRE +6");
-
-    await at(32_000);
-
-    expect(endScreen()).toBeInTheDocument();
-    expect(screen.queryByRole("status", { name: "Callouts" })).toBeNull();
-  });
-
-  test("an outcome told after the 2 s gives way to the end screen at once", async () => {
-    await renderStartedDuel();
-
-    await at(33_000);
-
-    expect(endScreen()).toBeNull();
-
-    receive(duelEnded({ outcome: "loss", score: 0, opponentScore: 6 }));
-    await at(33_000);
-
-    expect(endScreen()).toBeInTheDocument();
-  });
-
-  test("a connection lost during the hold still ends on the end screen", async () => {
-    await renderStartedDuel();
-
-    await at(30_000);
-    receive(duelEnded({ outcome: "win", score: 6, opponentScore: 0 }));
-    await at(30_500);
     reconnect();
     // The Duel over, the User has no place anymore.
     receive(idle());
@@ -810,65 +798,15 @@ describe("the end of the Duel", () => {
     expect(endScreen()).toBeInTheDocument();
   });
 
-  test("a Forfeit once the time is up still holds the HUD 2 s", async () => {
+  test("a Forfeit once the time is up goes to the end screen at once too", async () => {
     await renderStartedDuel();
 
     // The opponent's time to come back runs out after the end.
     await at(30_000);
     receive(duelEnded({ outcome: "win", score: 6, opponentScore: 0, forfeit: true }));
-    await at(31_900);
-
-    expect(endScreen()).toBeNull();
-    expect(callouts()).toHaveTextContent("VICTOIRE +6");
-
-    await at(32_000);
 
     expect(endScreen()).toBeInTheDocument();
   });
-
-  test("greys the loser's half to 50 % over 300 ms", async () => {
-    await renderStartedDuel();
-
-    await at(30_000);
-    receive(duelEnded({ outcome: "loss", score: 10, opponentScore: 12 }));
-    gsapClock.advance(0.15);
-
-    // Halfway there.
-    expect(Number(half("Toi").style.opacity)).toBeGreaterThan(0.5);
-    expect(Number(half("Toi").style.opacity)).toBeLessThan(1);
-
-    gsapClock.advance(0.15);
-
-    expect(half("Toi")).toHaveStyle({ opacity: "0.5" });
-    expect(half("@kzr_")).not.toHaveStyle({ opacity: "0.5" });
-  });
-
-  test("greys neither half on a draw", async () => {
-    await renderStartedDuel();
-
-    await at(30_000);
-    receive(duelEnded({ outcome: "draw", score: 12, opponentScore: 12 }));
-    gsapClock.advance(0.3);
-
-    expect(half("Toi")).not.toHaveStyle({ opacity: "0.5" });
-    expect(half("@kzr_")).not.toHaveStyle({ opacity: "0.5" });
-  });
-
-  test.each([
-    { outcome: "win", score: 31, opponentScore: 24, said: "VICTOIRE +7" },
-    { outcome: "loss", score: 12, opponentScore: 20, said: "DÉFAITE −8" },
-    { outcome: "draw", score: 15, opponentScore: 15, said: "DRAW" },
-  ] as const)(
-    "tells a $outcome by the gap in the server's Scores, never in the HUD's",
-    async ({ outcome, score, opponentScore, said }) => {
-      await renderStartedDuel();
-
-      await at(30_000);
-      receive(duelEnded({ outcome, score, opponentScore }));
-
-      expect(callouts()).toHaveTextContent(said);
-    },
-  );
 });
 
 describe("the Duel's Text", () => {

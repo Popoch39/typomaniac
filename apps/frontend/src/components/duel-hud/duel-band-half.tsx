@@ -1,5 +1,4 @@
 import { cn } from "cn";
-import { useRef } from "react";
 import type { ScoreState } from "typing-engine";
 
 import type { BandEffects } from "@/components/duel-hud/band-effects";
@@ -7,7 +6,6 @@ import { DuelBandAvatar } from "@/components/duel-hud/duel-band-avatar";
 import { DuelComboGauge } from "@/components/duel-hud/duel-combo-gauge";
 import { DuelMultiplier } from "@/components/duel-hud/duel-multiplier";
 import { DuelScorePop } from "@/components/duel-hud/duel-score-pop";
-import { useBeatenFade } from "@/components/duel-hud/use-beaten-fade";
 import { atHandle } from "@/lib/at-handle";
 import { numberFormat } from "@/locale/formats";
 import { useLocale } from "@/locale/use-locale";
@@ -24,14 +22,11 @@ type DuelBandHalfProps = {
   startsAt: number;
   // The opponent's, on the right, as the mirror of this User's.
   mirrored: boolean;
-  // The server says they lost the Duel.
-  beaten: boolean;
 };
 
 // One player's half of the band, in the ink the Theme lays on their colour (the same on both
 // colours in every Theme: it reads over whichever lies under it): their initials, their Handle,
-// their multiplier and Combo gauge, and their Score with the « +N » of their last word. Greyed
-// once they lost the Duel.
+// their multiplier and Combo gauge, and their Score with the « +N » of their last word.
 export const DuelBandHalf = ({
   name,
   handle,
@@ -39,16 +34,11 @@ export const DuelBandHalf = ({
   effects,
   startsAt,
   mirrored,
-  beaten,
 }: DuelBandHalfProps) => {
-  const halfRef = useRef<HTMLElement>(null);
   const locale = useLocale();
-
-  useBeatenFade(halfRef, beaten);
 
   return (
     <section
-      ref={halfRef}
       aria-label={name}
       className={cn(
         "absolute inset-y-0 flex items-center gap-4",

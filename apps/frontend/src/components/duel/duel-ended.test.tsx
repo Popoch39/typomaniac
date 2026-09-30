@@ -53,7 +53,7 @@ const NO_FIGURES: Figures = {
 };
 
 const ending = (
-  duelId: string | null,
+  duelId: string,
   ranked: DuelEnding["ranked"],
   issue: Issue,
   figures: Figures,
@@ -120,7 +120,8 @@ afterEach(() => {
 });
 
 type RenderOptions = {
-  duelId?: string | null;
+  duelId?: string;
+  // The Duel just played, in the cache: the Duel chart reads it. Null: read from the API.
   cached?: ReplayedDuel | null;
   ranked?: DuelEnding["ranked"];
   aura?: AuraRuntime;
@@ -144,11 +145,11 @@ const ada: Me = {
   place: null,
 };
 
-// The end screen on a router of its own (its ways out are links), the written Duel in the cache if
-// given.
+// The end screen on a router of its own (its ways out are links), the written Duel in the cache
+// unless said otherwise.
 const renderEnded = async ({
-  duelId = null,
-  cached = null,
+  duelId = written.id,
+  cached = written,
   ranked = null,
   aura = fakeAuraRuntime().runtime,
   issue = DRAW,
@@ -312,7 +313,7 @@ describe("DuelEnded", () => {
       vi.fn(async () => new Promise<Response>(() => {})),
     );
 
-    await renderEnded({ duelId: "duel-1" });
+    await renderEnded({ cached: null });
 
     expect(screen.getByRole("status", { name: "Chargement du Duel chart" })).toBeInTheDocument();
   });
@@ -323,7 +324,7 @@ describe("DuelEnded", () => {
       vi.fn(async () => new Response("", { status: 404 })),
     );
 
-    await renderEnded({ duelId: "duel-1" });
+    await renderEnded({ cached: null });
 
     await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
     expect(screen.getByRole("button", { name: "Nouveau Duel" })).toBeInTheDocument();
@@ -336,14 +337,6 @@ describe("DuelEnded", () => {
 
     expect(screen.queryByRole("region", { name: "Rang" })).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
-  });
-
-  test("a Duel that was not written: no Revoir, no Duel chart, no loading state", async () => {
-    await renderEnded();
-
-    expect(screen.queryByRole("button", { name: "Revoir" })).toBeNull();
-    expect(screen.queryByRole("figure", { name: "Duel chart" })).toBeNull();
-    expect(screen.queryByRole("status")).toBeNull();
   });
 });
 
@@ -471,12 +464,6 @@ describe("the Affiche", () => {
     }
 
     expect(screen.getByRole("navigation", { name: "Après le Duel" })).toBeInTheDocument();
-  });
-
-  test("the Duel chart has its card only once the Duel is written", async () => {
-    await renderEnded();
-
-    expect(screen.queryByRole("region", { name: "Le Duel seconde par seconde" })).toBeNull();
   });
 
   test("Nouveau Duel joins the Queue from Jouer, Retour au Solo goes back to Jouer in Solo", async () => {
@@ -853,7 +840,7 @@ describe("DuelEnded in English", () => {
       vi.fn(async () => new Promise<Response>(() => {})),
     );
 
-    await renderInEnglish({ duelId: "duel-1" });
+    await renderInEnglish({ cached: null });
 
     expect(screen.getByRole("status", { name: "Loading the Duel chart" })).toBeInTheDocument();
   });

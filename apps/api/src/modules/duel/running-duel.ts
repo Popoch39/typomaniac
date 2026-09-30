@@ -17,8 +17,9 @@ import { type RankedOutcome, type Rating, rateDuel, type Stake, stakeOf, type Ti
 import type { Duel, DuelScore, Form, Records, ServerMessage } from "./model";
 import type { DuelPlayerRecord, DuelRecord, RatedPlayer } from "./store";
 
-// How late past the end a Keystroke may still arrive: the network delay of the last ones.
-export const END_TOLERANCE_MS = 1000;
+// How late past the end a Keystroke may still arrive: the network delay of the last ones. The
+// client sends its batch every 50 ms and empties it at the end.
+export const END_TOLERANCE_MS = 400;
 
 // More Keystrokes than this within a second is no human's cadence: a Forfeit.
 const MAX_KEYSTROKES_PER_SECOND = 40;
@@ -41,9 +42,8 @@ export type PacedUser = {
 
 export type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
 
-// The end of the Duel as one player is told it, but for the id it is written under: known once
-// the write is done.
-export type Ending = { userId: string; message: Omit<DuelEnded, "duelId"> };
+// The end of the Duel as one player is told it.
+export type Ending = { userId: string; message: DuelEnded };
 
 // The end of the Duel: as each player is told it, and as it is written.
 export type Finish = { endings: Ending[]; record: DuelRecord };
@@ -232,6 +232,7 @@ export class RunningDuel {
       userId: player.user.id,
       message: {
         type: "duel-ended",
+        duelId: this.duel.id,
         outcome,
         forfeit,
         result: side.result,

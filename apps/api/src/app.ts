@@ -90,6 +90,10 @@ export const createApp = (config: AppConfig) => {
     onDuelSaved: (record) => friendsLive.duelSaved(record),
   });
 
+  // The end of a Duel is told before it is written: the routes that read a User's history wait for
+  // the write of their last Duel (bound here: the modules get a function, not the Queue).
+  const lastDuelWritten = (userId: string) => duelQueue.lastDuelWritten(userId);
+
   // The Friend routes tell both: an ended friendship also ends the Challenges between the two.
   const friendEvents: FriendEvents = {
     requestSent: (senderId, recipientId) => friendsLive.requestSent(senderId, recipientId),
@@ -118,7 +122,7 @@ export const createApp = (config: AppConfig) => {
       detail: { summary: "Health check", tags: ["System"] },
     })
     .use(authentication(auth, { trustProxy }))
-    .use(meModule({ auth, trustProxy, duelStore }))
+    .use(meModule({ auth, trustProxy, duelStore, lastDuelWritten }))
     .use(handleModule({ auth, trustProxy, users, duelStore }))
     .use(
       userModule({
@@ -141,9 +145,9 @@ export const createApp = (config: AppConfig) => {
         sendRateLimit: config.friendRequestRateLimit,
       }),
     )
-    .use(duelHistoryModule({ auth, trustProxy, store: duelStore, users }))
-    .use(profileModule({ auth, trustProxy, store: duelStore, users }))
-    .use(leaderboardModule({ auth, trustProxy, store: duelStore, users }))
+    .use(duelHistoryModule({ auth, trustProxy, store: duelStore, users, lastDuelWritten }))
+    .use(profileModule({ auth, trustProxy, store: duelStore, users, lastDuelWritten }))
+    .use(leaderboardModule({ auth, trustProxy, store: duelStore, users, lastDuelWritten }))
     .use(activityModule({ auth, trustProxy, duelStore, friendStore, users }))
     .use(duelModule({ auth, trustProxy, queue: duelQueue, friendsLive }));
 };

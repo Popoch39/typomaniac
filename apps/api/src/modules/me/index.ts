@@ -1,21 +1,36 @@
 import { Elysia } from "elysia";
 
 import { type AuthHandler, authentication } from "../auth";
+import type { LastDuelWritten } from "../duel/service";
 import { type DuelStore, readPace } from "../duel/store";
 import { MeModel } from "./model";
 import { meOf, setOrnament } from "./service";
 
-export type MeModuleConfig = { auth: AuthHandler; trustProxy: boolean; duelStore: DuelStore };
+export type MeModuleConfig = {
+  auth: AuthHandler;
+  trustProxy: boolean;
+  duelStore: DuelStore;
+  lastDuelWritten: LastDuelWritten;
+};
 
-// The signed-in User: /api/me and what hangs off it.
-export const meModule = ({ auth, trustProxy, duelStore }: MeModuleConfig) =>
+// The signed-in User: /api/me and what hangs off it. Their rank and Pace are read once their last
+// Duel is written: the end of a Duel reads the User again right away.
+export const meModule = ({ auth, trustProxy, duelStore, lastDuelWritten }: MeModuleConfig) =>
   new Elysia({ name: "me", seed: duelStore })
     .use(authentication(auth, { trustProxy }))
-    .get("/me", ({ user }) => meOf(duelStore, user), {
-      auth: true,
-      response: MeModel.me,
-      detail: { summary: "The signed-in User", tags: ["Auth"] },
-    })
+    .get(
+      "/me",
+      async ({ user }) => {
+        await lastDuelWritten(user.id);
+
+        return meOf(duelStore, user);
+      },
+      {
+        auth: true,
+        response: MeModel.me,
+        detail: { summary: "The signed-in User", tags: ["Auth"] },
+      },
+    )
     // Chooses the Ornament the User wears: 403 when they may not wear it, nothing changed.
     .put(
       "/me/ornament",
@@ -32,11 +47,19 @@ export const meModule = ({ auth, trustProxy, duelStore }: MeModuleConfig) =>
       },
     )
     // The Pace of a solo Run: the one of the User's Duels.
-    .get("/me/pace", async ({ user }) => ({ pace: await readPace(duelStore, user.id) }), {
-      auth: true,
-      response: MeModel.pace,
-      detail: {
-        summary: "The signed-in User's Pace: the median wpm of their last Duels",
-        tags: ["Duel"],
+    .get(
+      "/me/pace",
+      async ({ user }) => {
+        await lastDuelWritten(user.id);
+
+        return { pace: await readPace(duelStore, user.id) };
       },
-    });
+      {
+        auth: true,
+        response: MeModel.pace,
+        detail: {
+          summary: "The signed-in User's Pace: the median wpm of their last Duels",
+          tags: ["Duel"],
+        },
+      },
+    );

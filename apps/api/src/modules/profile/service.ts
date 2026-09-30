@@ -1,16 +1,18 @@
 import { ApiError } from "../../lib/errors";
+import type { LastDuelWritten } from "../duel/service";
 import { type DuelStore, readRankAndOrnament } from "../duel/store";
 import type { Users } from "../user/users";
 import type { Profile, ProgressionWindow } from "./model";
 
 const progressionLimits = { "50": 50, "200": 200, all: null } as const;
 
-export type ProfileDeps = { store: DuelStore; users: Users };
+export type ProfileDeps = { store: DuelStore; users: Users; lastDuelWritten: LastDuelWritten };
 
 // The Profile of the User who holds `handle` today, whatever its case: a Handle given up finds
-// nobody. `window` bounds the Progression only, never the rest of the Stats.
+// nobody. `window` bounds the Progression only, never the rest of the Stats. Read once their last
+// Duel is written: the end of a Duel reads both players' Profiles again right away.
 export const profileOfHandle = async (
-  { store, users }: ProfileDeps,
+  { store, users, lastDuelWritten }: ProfileDeps,
   handle: string,
   window: ProgressionWindow,
 ): Promise<Profile> => {
@@ -21,6 +23,8 @@ export const profileOfHandle = async (
   if (userId === null || profile?.handle == null) {
     throw new ApiError("NOT_FOUND", "User not found");
   }
+
+  await lastDuelWritten(userId);
 
   const [stats, progression, { rank, ornament }] = await Promise.all([
     store.stats(userId),

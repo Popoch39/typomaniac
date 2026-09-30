@@ -5,9 +5,9 @@ import { DUEL_END_LINK_PAINT, NEW_DUEL_PAINT } from "@/components/duel-end/duel-
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 
-// The ways out of a Duel's end: Nouveau Duel joins the Queue again, Revoir (a written Duel only)
-// opens its Replay, Retour au Solo goes back to Jouer.
-export const DuelEndActions = ({ duelId }: { duelId: string | null }) => {
+// The ways out of a Duel's end: Nouveau Duel joins the Queue again, Revoir opens its Replay,
+// Retour au Solo goes back to Jouer.
+export const DuelEndActions = ({ duelId }: { duelId: string }) => {
   const locale = useLocale();
 
   return (
@@ -21,7 +21,7 @@ export const DuelEndActions = ({ duelId }: { duelId: string | null }) => {
         variant="default"
         className={NEW_DUEL_PAINT}
       />
-      {duelId === null ? null : <ReplayDuelLink duelId={duelId} className={DUEL_END_LINK_PAINT} />}
+      <ReplayDuelLink duelId={duelId} className={DUEL_END_LINK_PAINT} />
       <SoloLink className={DUEL_END_LINK_PAINT} />
     </nav>
   );
