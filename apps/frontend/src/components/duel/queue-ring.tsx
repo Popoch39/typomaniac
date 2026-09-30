@@ -1,16 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
+import { cn } from "cn";
 
 import { meQueryOptions } from "@/api/me";
 import { UserAvatar } from "@/components/user-avatar/user-avatar";
 
+type QueueRingProps = {
+  // In the Queue pill: 56 px, the same ring scaled down, as the search folds into it.
+  compact?: boolean;
+};
+
 // The User's avatar, with their Ornament, in the middle of the search, 156 px: an accent arc turns
 // around it on its track, a dotted halo turns slowly the other way. Still under reduced motion.
 // The avatar never holds up the page.
-export const QueueRing = () => {
+export const QueueRing = ({ compact = false }: QueueRingProps) => {
   const { data: me } = useQuery(meQueryOptions);
 
   return (
-    <div aria-hidden className="relative flex size-39 items-center justify-center">
+    <div
+      aria-hidden
+      className={cn(
+        "relative flex size-39 shrink-0 items-center justify-center",
+        compact && "-m-12.5 scale-[0.359]",
+      )}
+    >
       {/* The wrappers turn, not the SVGs: a transformed div stays on the compositor. */}
       <div className="absolute inset-0 motion-safe:animate-queue-halo">
         <svg viewBox="0 0 156 156" className="size-full">
