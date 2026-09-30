@@ -16,6 +16,7 @@ import { type Me, meQueryOptions } from "@/api/me";
 import type { FaceOffSound, FaceOffSounds } from "@/audio/face-off-sounds";
 import { AuraRuntimeContext } from "@/components/aura/aura-runtime-context";
 import { DuelEnded } from "@/components/duel/duel-ended";
+import { forgetBandMorph, recordBandMorph } from "@/components/duel-end/band-morph";
 import type { DuelRanked } from "@/components/duel/rank-change";
 import { FaceOffSoundsContext } from "@/components/face-off/face-off-sounds-context";
 import { stageScale } from "@/components/tier-up/stage/stage-scale";
@@ -2147,5 +2148,110 @@ describe("the entrance", () => {
 
     expect(blocks.map(arrived)).toEqual(blocks.map(() => true));
     expect(gsap.globalTimeline.getChildren()).toEqual([]);
+  });
+});
+
+// The HUD's Score band as the Duel ended, at the top of the Duel's scene, its slant at 72 % by
+// Ada's Lead: recorded as the HUD records it, then gone with the HUD.
+const recordHudBand = () => {
+  const band = document.createElement("section");
+
+  band.setAttribute("data-duel-band", "");
+  band.innerHTML = "<div data-band-fill></div><p>1 284</p>";
+  document.body.append(band);
+  vi.spyOn(band, "getBoundingClientRect").mockReturnValue(new DOMRect(112, 80, 1216, 112));
+  recordBandMorph(72);
+  band.remove();
+};
+
+// The copy of the HUD's figures, fading out over the Duel end.
+const hudGhost = () => document.querySelector<HTMLElement>("[data-band-ghost]");
+
+const scoreBand = () => regionOf("Score");
+
+const bandFigures = () => {
+  const figures = scoreBand().querySelector<HTMLElement>("[data-band-figures]");
+
+  expect(figures).not.toBeNull();
+
+  return figures ?? document.body;
+};
+
+describe("the entrance out of the HUD's band", () => {
+  afterEach(() => {
+    forgetBandMorph();
+  });
+
+  test("the band starts on the HUD's box, its slant at the Lead's, the HUD's figures over it", async () => {
+    recordHudBand();
+    await renderEnded(AFFICHE);
+
+    expect(gsap.getProperty(scoreBand(), "x")).toBe(112);
+    expect(gsap.getProperty(scoreBand(), "y")).toBe(80);
+    expect(scoreBand().style.getPropertyValue("--share-from")).toBe("72");
+    expect(scoreBand().style.getPropertyValue("--share-in")).toBe("0");
+    // It never comes in as a block of its own: it is there from the start.
+    expect(scoreBand().style.opacity).toBe("");
+    expect(bandFigures().style.opacity).toBe("0");
+    expect(hudGhost()).toHaveTextContent("1 284");
+    expect(hudGhost()).toHaveAttribute("aria-hidden", "true");
+    // The rest comes in as ever.
+    expect(outcomeBlock().style.opacity).toBe("0");
+  });
+
+  test("lands in its place, the rest around it: the Duel end complete once in", async () => {
+    recordHudBand();
+    await renderEnded(AFFICHE);
+
+    await clock.advance(0.25);
+    expect(hudGhost()).toBeNull();
+
+    await clock.advance(ENTRANCE_END);
+
+    const blocks = blocksOfAll();
+
+    expect(blocks.map(arrived)).toEqual(blocks.map(() => true));
+    expect(scoreBand().style.transform).toBe("");
+    expect(scoreBand().style.getPropertyValue("--share-from")).toBe("");
+    expect(bandFigures().style.opacity).toBe("");
+  });
+
+  test("under reduced motion, the HUD's figures fade out briefly over the Duel end, there at once", async () => {
+    reduceMotion();
+    recordHudBand();
+    await renderEnded(AFFICHE);
+
+    const blocks = blocksOfAll();
+
+    expect(blocks.map(arrived)).toEqual(blocks.map(() => true));
+    expect(gsap.getProperty(scoreBand(), "x")).toBe(0);
+    expect(hudGhost()).not.toBeNull();
+
+    await clock.advance(0.3);
+    expect(hudGhost()).toBeNull();
+  });
+
+  test("leaves nothing behind once gone, halfway through", async () => {
+    recordHudBand();
+    await renderEnded(AFFICHE);
+    await clock.advance(0.1);
+
+    const band = scoreBand();
+
+    cleanup();
+
+    expect(hudGhost()).toBeNull();
+    expect(band.style.transform).toBe("");
+    expect(gsap.globalTimeline.getChildren()).toEqual([]);
+  });
+
+  test("a band leads to one Duel end only", async () => {
+    recordHudBand();
+    await renderEnded(AFFICHE);
+    cleanup();
+    await renderEnded(AFFICHE);
+
+    expect(scoreBand().style.getPropertyValue("--share-from")).toBe("");
+    expect(hudGhost()).toBeNull();
   });
 });

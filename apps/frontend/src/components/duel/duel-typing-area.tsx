@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { meQueryOptions } from "@/api/me";
+import { useBandMorphRecorder } from "@/components/duel/use-band-morph-recorder";
 import { useDuelCues } from "@/components/duel/use-duel-cues";
 import { useDuelElapsed } from "@/components/duel/use-duel-elapsed";
 import { DuelHud } from "@/components/duel-hud/duel-hud";
@@ -16,7 +17,8 @@ import { useDuelStore } from "@/stores/duel-store";
 // Face-off covers it during the Countdown, from the Duel's bridge (DuelBridge), above the pages.
 // The HUD is drawn from the Duel as the store holds it, the Cues the bus hands out for both sides,
 // and this User's Handle read without ever holding it up. Once the time is up, it says the end
-// until the server ends the Duel.
+// until the server ends the Duel; its Score band is then recorded for the Duel end's to come out
+// of it.
 export const DuelTypingArea = ({ duel }: { duel: DuelPlay }) => {
   const { inputRef, veiled, setFocused, focus } = useTypingFocus();
   const { data: me } = useQuery(meQueryOptions);
@@ -24,6 +26,8 @@ export const DuelTypingArea = ({ duel }: { duel: DuelPlay }) => {
   const leave = useDuelStore((store) => store.leave);
   const elapsed = useDuelElapsed(duel.startsAt);
   const cues = useDuelCues(duel.id);
+
+  useBandMorphRecorder();
 
   // The Face-off's panels shake: the HUD keeps the Text unpainted until the start.
   return (

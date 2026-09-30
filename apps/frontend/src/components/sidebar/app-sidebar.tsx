@@ -9,6 +9,7 @@ import { ThemeButton } from "@/components/sidebar/theme-button";
 import { useSoloRunTyping } from "@/components/run/use-solo-run-typing";
 import { useSidebarFold } from "@/components/sidebar/use-sidebar-fold";
 import { useSidebarRail } from "@/components/sidebar/use-sidebar-rail";
+import { useSidebarReturn } from "@/components/sidebar/use-sidebar-return";
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useLocale } from "@/locale/use-locale";
@@ -23,7 +24,8 @@ type AppSidebarProps = {
 // online, then the Locale switch, the Theme button and the User's card (or the Visitor's). The
 // Intro lands in it: it grows from its brand, its foot coming last. Below 1440 px, and while a Solo
 // Run is typed, its Rail: the same entries, icons named in tooltips (useSidebarRail); the Run's
-// typing folds it and unfolds it in a move (useSidebarFold).
+// typing folds it and unfolds it in a move (useSidebarFold). Hidden in the Duel's scene, it slides
+// back in after it (useSidebarReturn).
 export const AppSidebar = ({ hidden }: AppSidebarProps) => {
   const locale = useLocale();
   const rail = useSidebarRail();
@@ -31,6 +33,7 @@ export const AppSidebar = ({ hidden }: AppSidebarProps) => {
   const sidebarRef = useRef<HTMLElement>(null);
 
   useSidebarFold(sidebarRef, rail, typing);
+  useSidebarReturn(sidebarRef, hidden);
 
   return (
     <TooltipProvider>

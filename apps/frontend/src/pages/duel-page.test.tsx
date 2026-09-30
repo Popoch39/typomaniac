@@ -252,7 +252,29 @@ describe("/duel without a Duel", () => {
   });
 });
 
+// The copy of the HUD's figures, fading out over the Duel end.
+const ghost = () => document.querySelector("[data-band-ghost]");
+
 describe("the end of the Duel", () => {
+  test("the HUD's band turns into the Duel end's, complete once its entrance is over", async () => {
+    await renderDuel();
+
+    receive(duelEnded);
+
+    const band = await screen.findByRole("region", { name: "Score" });
+
+    // Where the HUD's band was: its figures fade out over the band on its way.
+    expect(ghost()).not.toBeNull();
+    expect(band.style.getPropertyValue("--share-in")).toBe("0");
+
+    await gsapClock.advance(1.5);
+
+    expect(ghost()).toBeNull();
+    expect(band.style.transform).toBe("");
+    expect(band.style.getPropertyValue("--share-in")).toBe("");
+    expect(screen.getByRole("navigation", { name: "Après le Duel" }).style.opacity).toBe("");
+  });
+
   test("Retour au Solo leads back to the play page, in Solo", async () => {
     const { url, user } = await renderDuel();
 

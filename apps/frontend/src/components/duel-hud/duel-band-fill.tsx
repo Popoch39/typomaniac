@@ -26,6 +26,7 @@ type DuelBandFillProps = {
 export const DuelBandFill = ({ handle, mirrored }: DuelBandFillProps) => (
   <div
     aria-hidden="true"
+    data-band-fill
     style={mirrored ? OPPONENT_CLIP : OWN_CLIP}
     className={cn("absolute inset-0", !mirrored && "bg-brand")}
   >

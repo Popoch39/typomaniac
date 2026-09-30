@@ -33,7 +33,10 @@ export const DuelEndScores = ({ score, opponentScore, opponent, record }: DuelEn
       className="relative h-60 overflow-hidden rounded-card bg-opponent"
     >
       <DuelEndScoreFills />
-      <div className="relative flex h-full items-stretch justify-between px-11 py-8">
+      <div
+        data-band-figures
+        className="relative flex h-full items-stretch justify-between px-11 py-8"
+      >
         <DuelEndScoreSide
           name={m.duel_self({}, { locale })}
           score={numberFormat(locale).format(score)}

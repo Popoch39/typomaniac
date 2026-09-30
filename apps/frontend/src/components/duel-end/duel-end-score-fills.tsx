@@ -1,6 +1,8 @@
 // Where the slant stands, in % of the band's width: `--share`, this User's share of both Scores,
-// reached from the middle as the entrance moves `--share-in` from 0 to 1 (1 once it is gone).
-const SLANT = "(50 + (var(--share) - 50) * var(--share-in, 1))";
+// reached from `--share-from` (the middle, or the HUD's split when the band comes from it) as the
+// entrance moves `--share-in` from 0 to 1 (1 once it is gone).
+const SLANT =
+  "(var(--share-from, 50) + (var(--share) - var(--share-from, 50)) * var(--share-in, 1))";
 
 // A point on the slant, `lean` points to the side of it, as a length of the band's width.
 const at = (lean: number) => `calc((${SLANT} + ${lean}) * 1%)`;

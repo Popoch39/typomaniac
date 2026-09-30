@@ -12,7 +12,7 @@ import { userEvent } from "@testing-library/user-event";
 import type { ServerMessage } from "api";
 import { StrictMode } from "react";
 import type { Language } from "typing-engine";
-import { afterEach, beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { friendsQueryOptions } from "@/api/friends";
 import { type Me, meQueryOptions } from "@/api/me";
@@ -118,6 +118,7 @@ beforeEach(() => {
 
 afterEach(() => {
   gsapClock.release();
+  vi.restoreAllMocks();
   useConnectionStore.getState().close();
   usePlayStore.setState(usePlayStore.getInitialState());
 });
@@ -273,6 +274,41 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
     expect(sidebar()).not.toHaveAttribute("inert");
     expect(screen.queryByRole("banner")).not.toBeInTheDocument();
     expect(screen.queryByText(/· 30 s ·/)).not.toBeInTheDocument();
+  });
+
+  test("the sidebar slides back in, from no width to its own, and keeps no inline style", async () => {
+    await renderPlayPage();
+    await pair(duelFound(placement));
+    receive(duelEnded);
+    await screen.findByRole("button", { name: "Nouveau Duel" });
+
+    expect(sidebar().style.width).toBe("0px");
+    expect(sidebar().style.overflow).toBe("hidden");
+
+    await gsapClock.advance(0.32);
+
+    expect(sidebar().style.width).toBe("");
+    expect(sidebar().style.overflow).toBe("");
+  });
+
+  test("under reduced motion, the sidebar is back at once", async () => {
+    vi.spyOn(window, "matchMedia").mockImplementation((media) => ({
+      matches: media === "(prefers-reduced-motion: reduce)",
+      media,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => true,
+    }));
+
+    await renderPlayPage();
+    await pair(duelFound(placement));
+    receive(duelEnded);
+    await screen.findByRole("button", { name: "Nouveau Duel" });
+
+    expect(sidebar().style.width).toBe("");
   });
 });
 

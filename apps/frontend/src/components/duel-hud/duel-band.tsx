@@ -28,6 +28,7 @@ export const DuelBand = ({ model }: { model: DuelHudModel }) => {
     <section
       ref={bandRef}
       aria-label={bandLabel(lead, opponent.handle, locale)}
+      data-duel-band
       className="relative h-28 overflow-hidden rounded-card bg-opponent"
     >
       <DuelBandFill handle={opponent.handle} mirrored />
