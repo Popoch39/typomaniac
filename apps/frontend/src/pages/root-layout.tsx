@@ -9,6 +9,7 @@ import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { ChallengeNotices } from "@/components/challenge/challenge-notices";
 import { DuelOnItsUrl } from "@/components/duel/duel-on-its-url";
 import { DuelPlace } from "@/components/duel/duel-place";
+import { DuelPreload } from "@/components/duel/duel-preload";
 import { DesktopOnly } from "@/components/desktop-only";
 import { WaitingChallenges } from "@/components/challenge/waiting-challenges";
 import { LiveFriendLists } from "@/components/friends/live-friend-lists";
@@ -45,6 +46,7 @@ export const RootLayout = () => (
     <QueuePill />
     <QueueProposal />
     <DuelOnItsUrl />
+    <DuelPreload />
     <SignInDialog />
     <HandleChoiceDialog />
     <OAuthErrorToast />

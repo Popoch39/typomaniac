@@ -238,6 +238,10 @@ const localExpiry = <T extends { expiresAt: number }>(
   expiresAt: challenge.expiresAt - serverTime + now,
 });
 
+// A Challenge sent or received waits for its answer: a Duel may start.
+export const hasPendingChallenge = (challenges: LiveChallenges | null) =>
+  challenges !== null && (challenges.sent !== null || challenges.received.length > 0);
+
 // The Challenges after a message: the snapshot sets them, the changes that follow update them.
 export const challengesAfter = (
   challenges: LiveChallenges | null,

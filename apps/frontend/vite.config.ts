@@ -18,4 +18,7 @@ export default defineConfig({
     tailwindcss(),
   ],
   resolve: { tsconfigPaths: true },
+  // The Duel's page and all it imports (Face-off, HUD, Duel end, Tier-up) transformed as the dev
+  // server starts: the first Face-off does not wait for them one by one.
+  server: { warmup: { clientFiles: ["./src/pages/duel-page.tsx"] } },
 });

@@ -118,5 +118,5 @@ export const renderAppFor = async (path: string, { reader, openSocket, friends =
   );
   await screen.findByLabelText(/^(Barre latérale|Sidebar)$/);
 
-  return { history, url: () => history.location.pathname, user: userEvent.setup() };
+  return { history, router, url: () => history.location.pathname, user: userEvent.setup() };
 };
