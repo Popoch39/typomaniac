@@ -385,9 +385,10 @@
       }
     }
   ],
-  "duel_rank_revealed": "Placement terminé, ton rang :",
-  "duel_rank_promoted": "Promotion : {standing}",
-  "duel_rank_demoted": "Descente en {standing}",
+  "duel_rank_placed": "Placement terminé",
+  "duel_rank_promotion": "Promotion",
+  "duel_rank_demotion": "Descente",
+  "duel_rank_tp_even": "±{tp} TP",
   "rank_division": "{tier} {division}",
   "rank_tp": "{tp} TP",
   "rank_tp_gain": "+{tp} TP",

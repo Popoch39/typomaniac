@@ -326,64 +326,6 @@ describe("DuelEnded", () => {
     expect(screen.queryByRole("figure", { name: "Duel chart" })).toBeNull();
   });
 
-  test("a ranked Duel shows the TP won and the rank after it", async () => {
-    await renderEnded({
-      ranked: {
-        tp: 20,
-        previousRank: { tier: "gold", division: 3, tp: 90, shielded: false },
-        rank: { tier: "gold", division: 2, tp: 10, shielded: true },
-      },
-    });
-
-    const rank = screen.getByRole("region", { name: "Rang" });
-
-    expect(rank).toHaveTextContent("+20 TP");
-    expect(rank).toHaveTextContent("Promotion : Gold II");
-    expect(rank).toHaveTextContent("10 TP");
-    expect(blasonOf(rank)).toBe("#tier-emblem-gold");
-  });
-
-  test("a lost ranked Duel shows the TP lost, and a demotion", async () => {
-    await renderEnded({
-      ranked: {
-        tp: -18,
-        previousRank: { tier: "gold", division: 4, tp: 5, shielded: false },
-        rank: { tier: "silver", division: 1, tp: 75, shielded: false },
-      },
-    });
-
-    const rank = screen.getByRole("region", { name: "Rang" });
-
-    expect(rank).toHaveTextContent("−18 TP");
-    expect(rank).toHaveTextContent("Descente en Silver I");
-  });
-
-  test("a Placement Duel shows the Placements left, the last one reveals the rank", async () => {
-    await renderEnded({
-      ranked: { tp: null, previousRank: { placementsLeft: 3 }, rank: { placementsLeft: 2 } },
-    });
-
-    expect(screen.getByRole("region", { name: "Rang" })).toHaveTextContent(
-      "Placement : encore 2 Duels avant ton rang",
-    );
-    expect(blasonOf(screen.getByRole("region", { name: "Rang" }))).toBeNull();
-  });
-
-  test("the last Placement reveals the rank", async () => {
-    await renderEnded({
-      ranked: {
-        tp: null,
-        previousRank: { placementsLeft: 1 },
-        rank: { tier: "bronze", division: 4, tp: 0, shielded: false },
-      },
-    });
-
-    expect(screen.getByRole("region", { name: "Rang" })).toHaveTextContent(
-      "Placement terminé, ton rang :Bronze IV",
-    );
-    expect(blasonOf(screen.getByRole("region", { name: "Rang" }))).toBe("#tier-emblem-bronze");
-  });
-
   test("an unranked Duel (a Challenge) shows no rank, and no Tier-up", async () => {
     await renderEnded();
 
@@ -554,6 +496,177 @@ describe("the Affiche", () => {
   });
 });
 
+const rankCard = (name = "Rang") => screen.getByRole("region", { name });
+
+// The TP bar of the rank card, part by part: what the Duel kept, gained or lost of the Division,
+// from where and how far, in % of it. Null without a bar.
+const tpBarOf = (rank: HTMLElement) => {
+  const bar = rank.querySelector("[data-tp-bar]");
+
+  if (bar === null) {
+    return null;
+  }
+
+  return Array.from(bar.querySelectorAll<HTMLElement>("[data-tp-part]"), (part) => ({
+    part: part.dataset.tpPart,
+    from: part.style.left,
+    width: part.style.width,
+  }));
+};
+
+// Which of the five Placement Duels are played, as the dashes under the Placement tell them.
+const placementDashes = (rank: HTMLElement) =>
+  Array.from(rank.querySelectorAll("[data-placement-dash]"), (dash) =>
+    dash.getAttribute("data-placement-dash"),
+  );
+
+describe("the rank card", () => {
+  test("TP won within the Division: the Blason, the TP, the rank, and what was kept, then gained", async () => {
+    await renderEnded({ ranked: { tp: 12, previousRank: gold(3, 40), rank: gold(3, 52) } });
+
+    const rank = rankCard();
+
+    expect(blasonOf(rank)).toBe("#tier-emblem-gold");
+    expect(rank).toHaveTextContent("+12 TP");
+    expect(rank).toHaveTextContent("Gold III52 TP");
+    expect(rank).toHaveTextContent("048 TP avant Gold II100");
+    expect(rank).not.toHaveTextContent("Promotion");
+    expect(rank).not.toHaveTextContent("Descente");
+    expect(tpBarOf(rank)).toEqual([
+      { part: "kept", from: "0%", width: "40%" },
+      { part: "gained", from: "40%", width: "12%" },
+    ]);
+  });
+
+  test("TP lost within the Division: kept down to the TP after it, the loss after that", async () => {
+    await renderEnded({ ranked: { tp: -14, previousRank: gold(3, 52), rank: gold(3, 38) } });
+
+    const rank = rankCard();
+
+    expect(rank).toHaveTextContent("−14 TP");
+    expect(rank).toHaveTextContent("Gold III38 TP");
+    expect(rank).toHaveTextContent("62 TP avant Gold II");
+    expect(tpBarOf(rank)).toEqual([
+      { part: "kept", from: "0%", width: "38%" },
+      { part: "lost", from: "38%", width: "14%" },
+    ]);
+  });
+
+  test("a Draw that moved no TP: « ±0 TP », nothing gained", async () => {
+    await renderEnded({ ranked: { tp: 0, previousRank: gold(3, 40), rank: gold(3, 40) } });
+
+    const rank = rankCard();
+
+    expect(rank).toHaveTextContent("±0 TP");
+    expect(tpBarOf(rank)).toEqual([
+      { part: "kept", from: "0%", width: "40%" },
+      { part: "gained", from: "40%", width: "0%" },
+    ]);
+  });
+
+  test("a promotion: « Promotion » over the new rank, never its name twice, the bar from 0", async () => {
+    await renderEnded({ ranked: { tp: 12, previousRank: gold(3, 92), rank: gold(2, 4) } });
+
+    const rank = rankCard();
+
+    expect(rank).toHaveTextContent("+12 TP");
+    expect(rank).toHaveTextContent("PromotionGold II4 TP");
+    expect(within(rank).getAllByText(/Gold II\b/u)).toHaveLength(1);
+    expect(rank).toHaveTextContent("96 TP avant Gold I");
+    expect(tpBarOf(rank)).toEqual([
+      { part: "kept", from: "0%", width: "0%" },
+      { part: "gained", from: "0%", width: "4%" },
+    ]);
+  });
+
+  test("a demotion: « Descente » over the new rank, the loss from the TP after it up to 100", async () => {
+    await renderEnded({
+      ranked: {
+        tp: -14,
+        previousRank: gold(4, 6),
+        rank: standing({ tier: "silver", division: 1, tp: 92, shielded: false }),
+      },
+    });
+
+    const rank = rankCard();
+
+    expect(rank).toHaveTextContent("−14 TP");
+    expect(rank).toHaveTextContent("DescenteSilver I92 TP");
+    expect(within(rank).getAllByText(/Silver I\b/u)).toHaveLength(1);
+    expect(rank).toHaveTextContent("8 TP avant Gold IV");
+    expect(blasonOf(rank)).toBe("#tier-emblem-silver");
+    expect(tpBarOf(rank)).toEqual([
+      { part: "kept", from: "0%", width: "92%" },
+      { part: "lost", from: "92%", width: "8%" },
+    ]);
+  });
+
+  test("Maniac: the TP moved, « Maniac » and its TP, no bar", async () => {
+    await renderEnded({
+      ranked: {
+        tp: 12,
+        previousRank: standing({ tier: "maniac", tp: 250, shielded: false }),
+        rank: standing({ tier: "maniac", tp: 262, shielded: false }),
+      },
+    });
+
+    const rank = rankCard();
+
+    expect(blasonOf(rank)).toBe("#tier-emblem-maniac");
+    expect(rank).toHaveTextContent("+12 TP");
+    expect(rank).toHaveTextContent("Maniac262 TP");
+    expect(rank).not.toHaveTextContent("avant");
+    expect(tpBarOf(rank)).toBeNull();
+  });
+
+  test("a Placement Duel: « 3/5 », the Placements left, five dashes, those played lit", async () => {
+    await renderEnded({
+      ranked: { tp: null, previousRank: { placementsLeft: 3 }, rank: { placementsLeft: 2 } },
+    });
+
+    const rank = rankCard();
+
+    expect(rank).toHaveTextContent("3/5");
+    expect(rank).toHaveTextContent("Placement : encore 2 Duels avant ton rang");
+    expect(placementDashes(rank)).toEqual(["played", "played", "played", "ahead", "ahead"]);
+    expect(blasonOf(rank)).toBeNull();
+    expect(rank).not.toHaveTextContent("TP");
+  });
+
+  test("the last Placement: the rank revealed at 0 TP, an empty bar, no TP moved", async () => {
+    await renderEnded({
+      ranked: {
+        tp: null,
+        previousRank: { placementsLeft: 1 },
+        rank: standing({ tier: "bronze", division: 4, tp: 0, shielded: false }),
+      },
+    });
+
+    const rank = rankCard();
+
+    expect(blasonOf(rank)).toBe("#tier-emblem-bronze");
+    expect(rank).toHaveTextContent("Placement terminéBronze IV0 TP");
+    expect(rank).toHaveTextContent("0100 TP avant Bronze III100");
+    expect(rank).not.toHaveTextContent("+");
+    expect(tpBarOf(rank)).toEqual([
+      { part: "kept", from: "0%", width: "0%" },
+      { part: "gained", from: "0%", width: "0%" },
+    ]);
+  });
+
+  test("the TP in the Locale's figures", async () => {
+    await renderEnded({
+      ranked: {
+        tp: 12,
+        previousRank: standing({ tier: "maniac", tp: 1250, shielded: false }),
+        rank: standing({ tier: "maniac", tp: 1262, shielded: false }),
+      },
+    });
+
+    expect(rankCard()).toHaveTextContent(/Maniac1\s262 TP/u);
+  });
+});
+
 // The end screen in English, found by its English button.
 const renderInEnglish = (options: RenderOptions = {}) =>
   renderEnded({ newDuel: "New Duel", ...options });
@@ -608,26 +721,65 @@ describe("DuelEnded in English", () => {
   });
 
   test("a promotion and a demotion", async () => {
-    await renderInEnglish({
-      ranked: {
-        tp: 20,
-        previousRank: { tier: "gold", division: 3, tp: 90, shielded: false },
-        rank: { tier: "gold", division: 2, tp: 10, shielded: true },
-      },
-    });
+    await renderInEnglish({ ranked: { tp: 12, previousRank: gold(3, 92), rank: gold(2, 4) } });
 
-    expect(screen.getByRole("region", { name: "Rank" })).toHaveTextContent("Promoted: Gold II");
+    expect(rankCard("Rank")).toHaveTextContent("+12 TP");
+    expect(rankCard("Rank")).toHaveTextContent("PromotionGold II4 TP");
+    expect(rankCard("Rank")).toHaveTextContent("096 TP to Gold I100");
 
     cleanup();
     await renderInEnglish({
       ranked: {
-        tp: -18,
-        previousRank: { tier: "gold", division: 4, tp: 5, shielded: false },
-        rank: { tier: "silver", division: 1, tp: 75, shielded: false },
+        tp: -14,
+        previousRank: gold(4, 6),
+        rank: standing({ tier: "silver", division: 1, tp: 92, shielded: false }),
       },
     });
 
-    expect(screen.getByRole("region", { name: "Rank" })).toHaveTextContent("Demoted to Silver I");
+    expect(rankCard("Rank")).toHaveTextContent("−14 TP");
+    expect(rankCard("Rank")).toHaveTextContent("DemotionSilver I92 TP");
+  });
+
+  test("TP won, TP lost, and Maniac without a bar", async () => {
+    await renderInEnglish({ ranked: { tp: 12, previousRank: gold(3, 40), rank: gold(3, 52) } });
+
+    expect(rankCard("Rank")).toHaveTextContent("+12 TP");
+    expect(rankCard("Rank")).toHaveTextContent("Gold III52 TP048 TP to Gold II100");
+
+    cleanup();
+    await renderInEnglish({ ranked: { tp: -14, previousRank: gold(3, 52), rank: gold(3, 38) } });
+
+    expect(rankCard("Rank")).toHaveTextContent("−14 TP");
+    expect(rankCard("Rank")).toHaveTextContent("62 TP to Gold II");
+
+    cleanup();
+    await renderInEnglish({
+      ranked: {
+        tp: 12,
+        previousRank: standing({ tier: "maniac", tp: 250, shielded: false }),
+        rank: standing({ tier: "maniac", tp: 262, shielded: false }),
+      },
+    });
+
+    expect(rankCard("Rank")).toHaveTextContent("+12 TPManiac262 TP");
+    expect(tpBarOf(rankCard("Rank"))).toBeNull();
+  });
+
+  test("a Draw that moved no TP, and the TP in the Locale's figures", async () => {
+    await renderInEnglish({ ranked: { tp: 0, previousRank: gold(3, 40), rank: gold(3, 40) } });
+
+    expect(rankCard("Rank")).toHaveTextContent("±0 TP");
+
+    cleanup();
+    await renderInEnglish({
+      ranked: {
+        tp: 12,
+        previousRank: standing({ tier: "maniac", tp: 1250, shielded: false }),
+        rank: standing({ tier: "maniac", tp: 1262, shielded: false }),
+      },
+    });
+
+    expect(rankCard("Rank")).toHaveTextContent("Maniac1,262 TP");
   });
 
   test.each([
@@ -638,7 +790,8 @@ describe("DuelEnded in English", () => {
       ranked: { tp: null, previousRank: { placementsLeft: 3 }, rank: { placementsLeft } },
     });
 
-    expect(screen.getByRole("region", { name: "Rank" })).toHaveTextContent(said);
+    expect(rankCard("Rank")).toHaveTextContent(said);
+    expect(rankCard("Rank")).toHaveTextContent(`${String(5 - placementsLeft)}/5`);
   });
 
   test("the last Placement reveals the rank", async () => {
@@ -646,13 +799,12 @@ describe("DuelEnded in English", () => {
       ranked: {
         tp: null,
         previousRank: { placementsLeft: 1 },
-        rank: { tier: "bronze", division: 4, tp: 0, shielded: false },
+        rank: standing({ tier: "bronze", division: 4, tp: 0, shielded: false }),
       },
     });
 
-    expect(screen.getByRole("region", { name: "Rank" })).toHaveTextContent(
-      "Placement complete. Your rank:Bronze IV",
-    );
+    expect(rankCard("Rank")).toHaveTextContent("Placement completeBronze IV0 TP");
+    expect(rankCard("Rank")).toHaveTextContent("100 TP to Bronze III");
   });
 });
 
@@ -1377,9 +1529,7 @@ describe("the Tier-up", () => {
       expect(screen.queryByRole("dialog")).toBeNull();
       await waitFor(() => expect(endScreen()).toHaveFocus());
       expect(screen.getByRole("region", { name: "Rang" })).toHaveTextContent("+28 TP");
-      expect(screen.getByRole("region", { name: "Rang" })).toHaveTextContent(
-        "Promotion : Bronze IV",
-      );
+      expect(screen.getByRole("region", { name: "Rang" })).toHaveTextContent("PromotionBronze IV");
     },
   );
 

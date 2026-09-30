@@ -1,10 +1,10 @@
 import { useCallback, useRef } from "react";
 
-import { DuelRank } from "@/components/duel/duel-rank";
 import { DuelTierUp } from "@/components/duel/duel-tier-up";
 import { DuelEndActions } from "@/components/duel-end/duel-end-actions";
 import { DuelEndChart } from "@/components/duel-end/duel-end-chart";
 import { DuelEndOutcome } from "@/components/duel-end/duel-end-outcome";
+import { DuelEndRank } from "@/components/duel-end/duel-end-rank";
 import { DuelEndScores } from "@/components/duel-end/duel-end-scores";
 import { DuelEndTape } from "@/components/duel-end/duel-end-tape";
 import { atHandle } from "@/lib/at-handle";
@@ -41,7 +41,7 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
       />
       {ending.ranked === null ? null : (
         <>
-          <DuelRank ranked={ending.ranked} />
+          <DuelEndRank ranked={ending.ranked} />
           <DuelTierUp ranked={ending.ranked} onClosed={() => screen.current?.focus()} />
         </>
       )}
