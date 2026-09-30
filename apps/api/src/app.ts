@@ -6,6 +6,8 @@ import { API_PREFIX } from "./lib/api-prefix";
 import type { Clock } from "./lib/clock";
 import { activityModule } from "./modules/activity";
 import { type AuthHandler, authentication } from "./modules/auth";
+import { bestRunModule } from "./modules/best-run";
+import type { BestRunStore } from "./modules/best-run/store";
 import { duelModule } from "./modules/duel";
 import { MAX_DUEL_MESSAGE_SIZE } from "./modules/duel/model";
 import { DuelQueue } from "./modules/duel/service";
@@ -58,6 +60,8 @@ export type AppConfig = {
   friendStore: FriendStore;
   // Per User, on sending a Friend request: nobody sprays them at everyone.
   friendRequestRateLimit: RateLimit;
+  // The Best Run of each User and setting: Drizzle in production, in memory in the tests.
+  bestRunStore: BestRunStore;
 };
 
 // Order matters: headers and the request id are set before anything can throw, and
@@ -149,6 +153,7 @@ export const createApp = (config: AppConfig) => {
     .use(profileModule({ auth, trustProxy, store: duelStore, users, lastDuelWritten }))
     .use(leaderboardModule({ auth, trustProxy, store: duelStore, users, lastDuelWritten }))
     .use(activityModule({ auth, trustProxy, duelStore, friendStore, users }))
+    .use(bestRunModule({ auth, trustProxy, store: config.bestRunStore, clock: config.clock }))
     .use(duelModule({ auth, trustProxy, queue: duelQueue, friendsLive }));
 };
 

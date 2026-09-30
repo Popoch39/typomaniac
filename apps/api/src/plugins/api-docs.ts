@@ -122,6 +122,7 @@ export const apiDocs = ({ enabled, auth }: ApiDocsOptions) => {
               { name: "Friends", description: "Finding other Users by their Handle" },
               { name: "Profile", description: "A User's Profile and their Stats" },
               { name: "Leaderboard", description: "The Classement of the ranked Users" },
+              { name: "Run", description: "The signed-in User's Best Run of each setting" },
             ],
           },
         }),

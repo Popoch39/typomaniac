@@ -4,6 +4,7 @@ import { env } from "./env";
 import { systemClock } from "./lib/clock";
 import { createLogger } from "./lib/logger";
 import { createAuth } from "./modules/auth/service";
+import { drizzleBestRunStore } from "./modules/best-run/drizzle-store";
 import { drizzleDuelStore } from "./modules/duel/drizzle-store";
 import { drizzleFriendStore } from "./modules/friend/drizzle-store";
 import { drizzleHandleSearch } from "./modules/user/drizzle-handle-search";
@@ -51,6 +52,7 @@ const app = createApp({
   searchRateLimit: SEARCH_RATE_LIMIT,
   friendStore: drizzleFriendStore(db),
   friendRequestRateLimit: FRIEND_REQUEST_RATE_LIMIT,
+  bestRunStore: drizzleBestRunStore(db),
 }).listen({ port: env.PORT, maxRequestBodySize: HARD_REQUEST_BODY_SIZE });
 
 logger.info({ url: app.server?.url.href }, "server started");

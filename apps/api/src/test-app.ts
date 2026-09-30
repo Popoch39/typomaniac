@@ -11,6 +11,8 @@ import type { AppConfig } from "./app";
 import { type Clock, systemClock } from "./lib/clock";
 import type { AuthHandler } from "./modules/auth";
 import { authOptions } from "./modules/auth/service";
+import type { RunSetting } from "./modules/best-run/model";
+import { type BestRunRecord, type BestRunStore, sameSetting } from "./modules/best-run/store";
 import { type ActivityMessage, ActivityModel, type ArrivalMessage } from "./modules/activity/model";
 import { type ChallengeMessage, ChallengeModel } from "./modules/challenge/model";
 import {
@@ -493,6 +495,30 @@ export const memoryFriendStore = ({ now = Date.now } = {}): FriendStore => {
   };
 };
 
+// The Best Runs in memory, the same rule as in Drizzle: a Run replaces the one kept only when its
+// wpm is higher.
+export const memoryBestRunStore = (): BestRunStore => {
+  let kept: BestRunRecord[] = [];
+
+  const find = (userId: string, setting: RunSetting) =>
+    kept.find((record) => record.userId === userId && sameSetting(record.setting, setting)) ?? null;
+
+  return {
+    bestRun: async (userId, setting) => find(userId, setting),
+    keepIfBetter: async (run) => {
+      const before = find(run.userId, run.setting);
+
+      if (before !== null && before.result.wpm >= run.result.wpm) {
+        return before;
+      }
+
+      kept = [...kept.filter((record) => record !== before), run];
+
+      return run;
+    },
+  };
+};
+
 // A Duel `userId` finished at `endedAt`, typing at `wpm`, against a User who is not in the test:
 // only its end and that wpm count for the Pace.
 export const pastDuel = (userId: string, wpm: number, endedAt: number): DuelRecord => {
@@ -762,6 +788,7 @@ export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => {
     searchRateLimit: { max: 1000, windowMs: 60_000 },
     friendStore: memoryFriendStore(),
     friendRequestRateLimit: { max: 1000, windowMs: 60_000 },
+    bestRunStore: memoryBestRunStore(),
     ...overrides,
   };
 };

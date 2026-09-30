@@ -188,3 +188,39 @@ describe(LEADERBOARD_INDEX, () => {
     ]);
   });
 });
+
+const BEST_RUN = "0011_best_run.sql";
+
+describe(BEST_RUN, () => {
+  test("keeps one Best Run per User and setting, gone with its User", async () => {
+    const db = await migratedUpTo(BEST_RUN);
+
+    await apply(db, [BEST_RUN]);
+    await addUser(db, "ada");
+
+    const insert = (mode: string, length: number, language: string) =>
+      db.query(
+        `insert into best_run (user_id, mode, length, language, seed, word_list_version, keystrokes,
+           wpm, raw, accuracy, consistency, correct_chars, incorrect_chars, extra_chars,
+           missed_chars, sent_at)
+         values ('ada', $1, $2, $3, 4294967295, 1, '[]', 90, 95, 98, 80, 200, 3, 0, 1, now())`,
+        [mode, length, language],
+      );
+
+    await insert("time", 30, "en");
+    await insert("time", 60, "en");
+    await insert("words", 30, "en");
+    await insert("time", 30, "fr");
+
+    await expect(insert("time", 30, "en")).rejects.toThrow();
+
+    const count = async () =>
+      (await db.query<{ count: number }>("select count(*)::int as count from best_run")).rows;
+
+    expect(await count()).toEqual([{ count: 4 }]);
+
+    await db.exec(`delete from "user" where id = 'ada'`);
+
+    expect(await count()).toEqual([{ count: 0 }]);
+  });
+});
