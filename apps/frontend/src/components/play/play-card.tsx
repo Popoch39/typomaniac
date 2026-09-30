@@ -22,7 +22,7 @@ type PlayCardProps = {
 // is the row's, never its content's, and it gives up whole blocks when short: the live zone
 // (`play-card-short`, `play-live-short`), then the pitch (`play-card-cramped`), taken out of the
 // layout and of the tab order.
-// Its title and its actions always stay.
+// Its title, set as Jouer's, and its actions always stay.
 export const PlayCard = ({
   title,
   pitch,
@@ -53,7 +53,7 @@ export const PlayCard = ({
         </div>
         <h2
           id={titleId}
-          className="text-[min(32px,12cqi)] leading-tight font-extrabold tracking-[-0.02em]"
+          className="font-display text-[clamp(22px,11cqi,40px)] leading-[0.9] font-black tracking-[-0.03em] uppercase"
         >
           {title}
         </h2>
