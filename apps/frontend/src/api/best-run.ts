@@ -2,7 +2,8 @@ import { queryOptions } from "@tanstack/react-query";
 import type { Keystroke, RunConfig } from "typing-engine";
 
 import { api, unwrap } from "@/api/client";
-import { durations, wordCounts } from "@/stores/settings-store";
+import type { Locale } from "@/locale/locales";
+import { durations, runLanguage, type Settings, wordCounts } from "@/stores/settings-store";
 
 // A setting of the solo Run, as the API keys a Best Run: its Mode, its length and its Language.
 export type RunSetting = NonNullable<ReturnType<typeof runSettingOf>>;
@@ -21,6 +22,16 @@ export const runSettingOf = (config: RunConfig) => {
 
   return length === undefined ? null : { mode: config.mode, length, language };
 };
+
+// The setting the settings bar has chosen, its Language resolved against the Locale: the one the
+// next Run is drawn on.
+export const chosenRunSetting = (
+  { mode, seconds, words, language }: Settings,
+  locale: Locale,
+): RunSetting =>
+  mode === "time"
+    ? { mode, length: seconds, language: runLanguage(language, locale) }
+    : { mode, length: words, language: runLanguage(language, locale) };
 
 const fetchBestRun = async (setting: RunSetting) =>
   unwrap(await api.runs.best.get({ query: setting })).bestRun;

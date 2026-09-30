@@ -5,6 +5,7 @@ import { userEvent } from "@testing-library/user-event";
 import { defaultPace } from "typing-engine";
 
 import { activityQueryOptions } from "@/api/activity";
+import { type BestRun, bestRunQueryOptions, type RunSetting } from "@/api/best-run";
 import { duelHistoryQueryOptions } from "@/api/duel-history";
 import { type Friend, friendRequestsQueryOptions, friendsQueryOptions } from "@/api/friends";
 import { leaderboardQueryOptions } from "@/api/leaderboard";
@@ -15,6 +16,7 @@ import { createAppRouter } from "@/app-router";
 import { LiveSocketContext } from "@/components/live-socket-context";
 import { ClockContext } from "@/components/run/clock-context";
 import type { OpenLiveSocket } from "@/stores/connection-store";
+import { durations, wordCounts } from "@/stores/settings-store";
 
 export const ada: Me = {
   id: "ada-id",
@@ -36,9 +38,23 @@ export const friend = (handle: string): Friend => ({
   ornament: null,
 });
 
+// A Best Run the reader holds, and the setting it is of.
+export type HeldBestRun = { setting: RunSetting; bestRun: NonNullable<BestRun> };
+
+// Every setting the app offers, each Language.
+const OFFERED_SETTINGS: readonly RunSetting[] = (["fr", "en"] as const).flatMap((language) =>
+  durations
+    .map((length): RunSetting => ({ mode: "time", length, language }))
+    .concat(wordCounts.map((length): RunSetting => ({ mode: "words", length, language }))),
+);
+
 // The cache as the root route's beforeLoad leaves it, for `reader` and their `friends`, or for a
-// Visitor.
-const cacheFor = (reader: Me | null, friends: readonly Friend[]) => {
+// Visitor; a User holds `bestRuns`, and none on the other settings.
+const cacheFor = (
+  reader: Me | null,
+  friends: readonly Friend[],
+  bestRuns: readonly HeldBestRun[],
+) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
   });
@@ -62,6 +78,16 @@ const cacheFor = (reader: Me | null, friends: readonly Friend[]) => {
     pages: [{ duels: [], next: null }],
     pageParams: [null],
   });
+
+  if (reader !== null) {
+    for (const setting of OFFERED_SETTINGS) {
+      queryClient.setQueryData(bestRunQueryOptions(setting).queryKey, null);
+    }
+
+    for (const { setting, bestRun } of bestRuns) {
+      queryClient.setQueryData(bestRunQueryOptions(setting).queryKey, bestRun);
+    }
+  }
 
   // What /profile loads: no Duel yet.
   if (reader?.handle) {
@@ -90,15 +116,20 @@ type AppFor = {
   openSocket: OpenLiveSocket;
   // None when left out.
   friends?: readonly Friend[];
+  // The reader's Best Runs, none when left out.
+  bestRuns?: readonly HeldBestRun[];
 };
 
 // The whole app at `path` for `reader`, on a clock stopped at 0 until the test moves it, its
 // connection on the fake server.
-export const renderAppFor = async (path: string, { reader, openSocket, friends = [] }: AppFor) => {
+export const renderAppFor = async (
+  path: string,
+  { reader, openSocket, friends = [], bestRuns = [] }: AppFor,
+) => {
   let now = 0;
   const clock = () => now;
   const history = createMemoryHistory({ initialEntries: [path] });
-  const queryClient = cacheFor(reader, friends);
+  const queryClient = cacheFor(reader, friends, bestRuns);
 
   const router = createAppRouter({
     history,

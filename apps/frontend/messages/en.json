@@ -102,6 +102,7 @@
   "play_training_title": "Training",
   "play_training_pitch": "On your own, unranked. Pick your pace and type at ease.",
   "play_training_presets": "Presets",
+  "play_training_ghost": "Your ghost: {wpm} wpm · {setting}",
   "play_preset_time": "time {seconds}",
   "play_preset_words": "words {words}",
   "play_preset_time_short": "{seconds} s",

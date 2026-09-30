@@ -1,14 +1,17 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import type { ServerMessage } from "api";
+import { gsap } from "gsap";
 import type { Rank } from "ranked";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { Me } from "@/api/me";
+import { GHOST_PAUSE_SECONDS } from "@/components/play/use-ghost-typing";
 import { PLAY_FADE_SECONDS } from "@/components/play/use-play-fade";
 import { useAuthStore } from "@/stores/auth-store";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
 import { usePlayStore } from "@/stores/play-store";
+import { useRunStore } from "@/stores/run-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { fakeServer, idle, queueElsewhere } from "@/test/fake-socket";
 import { holdGsapClock } from "@/test/gsap-clock";
@@ -150,6 +153,170 @@ describe("the Training card", () => {
     await user.click(within(card("Entraînement")).getByRole("button", { name: "time 30" }));
 
     expect(await screen.findByRole("group", { name: "Réglages" })).toBeInTheDocument();
+  });
+});
+
+// The Ghost's Best Run on 30 s in English: Seed 42 gives « small help while late… » (pinned in the
+// typing-engine tests), typed « smull help » one key every 100 ms, so « small » is a Wrong word.
+const GHOST_TYPED = "smull help ";
+
+const ghostKeystrokes = [...GHOST_TYPED].map((char, index) => ({
+  kind: "char" as const,
+  char,
+  at: index * 100,
+}));
+
+const time30 = { mode: "time", length: 30, language: "en" } as const;
+
+const ghostBestRun = {
+  setting: time30,
+  bestRun: { seed: 42, wordListVersion: 1, keystrokes: ghostKeystrokes, wpm: 92.4 },
+};
+
+// Its typing lasts up to its last Keystroke.
+const GHOST_TYPING_SECONDS = 1;
+
+const trainingCard = () => card("Entraînement");
+
+// The glimpse of the Text on the card, hidden from screen readers.
+const excerpt = () => {
+  const found = trainingCard().querySelector("[data-excerpt]");
+
+  if (!(found instanceof HTMLElement)) {
+    throw new Error("No excerpt on the Training card");
+  }
+
+  return found;
+};
+
+const wordOf = (index: number) => excerpt().querySelector(`[data-word="${index}"]`);
+
+// The status of each letter of a word of the excerpt, as shown.
+const statusesOf = (index: number) =>
+  [...(wordOf(index)?.querySelectorAll("[data-status]") ?? [])].map((letter) =>
+    letter.getAttribute("data-status"),
+  );
+
+const preferReducedMotion = () =>
+  vi.spyOn(window, "matchMedia").mockImplementation((media) => ({
+    matches: media === "(prefers-reduced-motion: reduce)",
+    media,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => true,
+  }));
+
+const renderWithGhost = (path = "/fr") => {
+  useSettingsStore.setState({ language: "en" });
+
+  return renderAppFor(path, { reader: ada, openSocket: sockets.open, bestRuns: [ghostBestRun] });
+};
+
+describe("the Ghost on the Training card", () => {
+  test("replays the Best Run of the setting on its Text, its wpm and setting told under it", async () => {
+    await renderWithGhost();
+
+    expect(excerpt()).toHaveAttribute("aria-hidden", "true");
+    // Words are set apart by their gap, not by a space.
+    expect(excerpt()).toHaveTextContent(/^smallhelpwhilelate/);
+    expect(within(trainingCard()).getByText("Ton fantôme : 92 wpm · 30 s")).toBeVisible();
+  });
+
+  test("is told in English", async () => {
+    await renderWithGhost("/en");
+
+    expect(within(card("Training")).getByText("Your ghost: 92 wpm · 30 s")).toBeVisible();
+  });
+
+  test("follows the setting: another one without a Best Run shows the glimpse, no caption", async () => {
+    await renderWithGhost();
+
+    act(() => useSettingsStore.getState().setSeconds(60));
+
+    expect(within(trainingCard()).queryByText(/fantôme/)).not.toBeInTheDocument();
+
+    act(() => useSettingsStore.getState().setSeconds(30));
+
+    expect(within(trainingCard()).getByText("Ton fantôme : 92 wpm · 30 s")).toBeVisible();
+  });
+
+  test("types at the pace of its Keystrokes, its Wrong words waved, then starts again after a pause", async () => {
+    await renderWithGhost();
+
+    gsapClock.advance(0.35);
+
+    expect(statusesOf(0)).toEqual(["correct", "correct", "incorrect", "correct", "pending"]);
+    expect(wordOf(0)).not.toHaveAttribute("data-wrong");
+
+    gsapClock.advance(0.3);
+
+    expect(wordOf(0)).toHaveAttribute("data-wrong");
+    expect(wordOf(0)?.querySelector("[data-wave]")).not.toBeNull();
+
+    // Its typing done, 1 s in, it holds its last state through the pause.
+    gsapClock.advance(GHOST_TYPING_SECONDS - 0.65 + 0.05);
+
+    expect(statusesOf(1)).toEqual(["correct", "correct", "correct", "correct"]);
+
+    // Then back at its start: 0.05 s into its typing again, its first letter only.
+    gsapClock.advance(GHOST_PAUSE_SECONDS);
+
+    expect(statusesOf(0)).toEqual(["correct", "pending", "pending", "pending", "pending"]);
+    expect(statusesOf(1)).toEqual(["pending", "pending", "pending", "pending"]);
+    expect(wordOf(0)).not.toHaveAttribute("data-wrong");
+  });
+
+  test("under reduced motion, shows the end of its excerpt, still", async () => {
+    preferReducedMotion();
+    await renderWithGhost();
+
+    expect(wordOf(0)).toHaveAttribute("data-wrong");
+    expect(statusesOf(1)).toEqual(["correct", "correct", "correct", "correct"]);
+
+    gsapClock.advance(GHOST_TYPING_SECONDS + GHOST_PAUSE_SECONDS);
+
+    expect(statusesOf(1)).toEqual(["correct", "correct", "correct", "correct"]);
+  });
+
+  test("leaving Jouer kills its timeline: nothing goes on in the background", async () => {
+    const { router } = await renderWithGhost();
+
+    expect(gsap.globalTimeline.getChildren(true, true, false)).not.toEqual([]);
+
+    await act(() => router.navigate({ to: "/leaderboard" }));
+
+    expect(gsap.globalTimeline.getChildren(true, true, false)).toEqual([]);
+  });
+
+  test.each([
+    ["a Visitor", null],
+    ["a User without a Best Run for the setting", ada],
+  ])("for %s, the next Text's glimpse, a caret going on alone, no caption", async (_, reader) => {
+    await renderAppFor("/fr", { reader, openSocket: sockets.open });
+
+    const next = useRunStore.getState().run.words;
+
+    expect(excerpt()).toHaveTextContent(new RegExp(`^${next[0]?.target}${next[1]?.target}`));
+    expect(within(trainingCard()).queryByText(/fantôme/)).not.toBeInTheDocument();
+    expect(excerpt()).toHaveAttribute("data-caret", "0:0");
+
+    gsapClock.advance(2);
+
+    // Only the caret goes on: nobody typed the Text, so no letter lights up.
+    expect(excerpt()).not.toHaveAttribute("data-caret", "0:0");
+    expect(excerpt().querySelector("[data-status]:not([data-status=pending])")).toBeNull();
+  });
+
+  test("under reduced motion, the glimpse's caret stays at its start", async () => {
+    preferReducedMotion();
+    await renderAppFor("/fr", { reader: null, openSocket: sockets.open });
+
+    gsapClock.advance(2);
+
+    expect(excerpt()).toHaveAttribute("data-caret", "0:0");
   });
 });
 

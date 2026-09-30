@@ -102,6 +102,7 @@
   "play_training_title": "Entraînement",
   "play_training_pitch": "Seul, sans classement. Choisis ton rythme et tape à ton aise.",
   "play_training_presets": "Préréglages",
+  "play_training_ghost": "Ton fantôme : {wpm} wpm · {setting}",
   "play_preset_time": "time {seconds}",
   "play_preset_words": "words {words}",
   "play_preset_time_short": "{seconds} s",
