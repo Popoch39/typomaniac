@@ -13,6 +13,10 @@ export const COUNT_MS = (COUNTDOWN_S - FACE_OFF_S) * 1000;
 // The panels meet in the middle this long after the pairing.
 const IMPACT_S = 0.35;
 
+// From then on, they cover the whole screen (ms since the start of the Duel, negative): the
+// Duel's scene and URL may show under them.
+export const COVERED_MS = (IMPACT_S - COUNTDOWN_S) * 1000;
+
 // Each player's avatar, Handle and rank rise into their panel this long after the pairing.
 const REVEAL_S = 0.5;
 
@@ -132,6 +136,9 @@ export const faceOffTimeline = ({ promotion, reducedMotion }: FaceOffTimelineOpt
       "entrance",
     )
     .addLabel("impact", IMPACT_S)
+    // Opaque behind the panels while they cover the screen: the shake never shows the page
+    // changing under them.
+    .set(part("backdrop"), { autoAlpha: 1 }, "impact")
     .to(part("stage"), { keyframes: shake() }, "impact")
     .fromTo(
       part("disc"),
@@ -231,6 +238,7 @@ export const faceOffTimeline = ({ promotion, reducedMotion }: FaceOffTimelineOpt
     )
     .set(PANELS, { willChange: "transform" }, "go-=0.1")
     .addLabel("exit", COUNTDOWN_S)
+    .set(part("backdrop"), { autoAlpha: 0 }, "exit")
     .to(part("own"), { yPercent: -105, duration: EXIT_S, ease: "power3.in" }, "exit")
     .to(part("opponent"), { yPercent: 105, duration: EXIT_S, ease: "power3.in" }, "exit")
     .to(part("mute"), { autoAlpha: 0, duration: 0.15 }, "exit")

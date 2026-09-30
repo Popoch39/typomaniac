@@ -40,6 +40,7 @@ export const FaceOffOverlay = ({ opponent, pairing, startsAt, elapsed }: FaceOff
       className="fixed inset-0 z-[60] overflow-hidden max-lg:hidden"
       onMouseDown={keepFocus}
     >
+      <div data-face-off="backdrop" className="invisible absolute inset-0 bg-background" />
       <div data-face-off="stage" className="absolute inset-0">
         <FaceOffSelf
           ornament={pairing.selfOrnament}

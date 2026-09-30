@@ -9,12 +9,12 @@ type AcceptedChallengeCardProps = {
 };
 
 // A Challenge accepted, sent or received: « C'est parti ! », as a Match proposal accepted by both,
-// until its Duel is found. Nothing left to answer.
+// until its Duel is found, when the Duel's bridge takes it over. Nothing left to answer.
 export const AcceptedChallengeCard = ({ user }: AcceptedChallengeCardProps) => {
   const locale = useLocale();
 
   return (
-    <li className={CHALLENGE_CARD_PAINT}>
+    <li data-duel-bridge-card className={CHALLENGE_CARD_PAINT}>
       <div className="flex items-center gap-3">
         <UserAvatar handle={user.handle} image={user.image} size="sm" />
         <span className="flex min-w-0 flex-1 flex-col">

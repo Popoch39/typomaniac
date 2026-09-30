@@ -150,6 +150,9 @@ type DuelStore = {
   // A screen of the Duel is shown in this tab (`seat`): it takes the User's place, resuming their
   // Duel or, from the Queue's, joining the Queue. `clock` stamps the Keystrokes and the Countdown.
   enter: (clock: Clock, seat?: DuelSeat) => void;
+  // The tab's clock, before any screen of the Duel is shown: a Duel found from a Challenge starts
+  // on it wherever the User is, on the same clock as the Face-off that bridges to it.
+  keepTime: (clock: Clock) => void;
   // The place is held on another screen from now on: the Duel found in the Queue goes to its own
   // URL, and back from its end or its loss to the Queue's, the Queue is joined again.
   moveTo: (seat: DuelSeat) => void;
@@ -762,6 +765,9 @@ export const useDuelStore = create<DuelStore>()((set, get) => ({
     clearOutbox();
     set({ state: { phase: "connecting" }, cues: NO_CUES, opponentCues: [] });
     claimPlace();
+  },
+  keepTime: (tabClock) => {
+    clock = tabClock;
   },
   moveTo: (at) => {
     const { phase } = get().state;

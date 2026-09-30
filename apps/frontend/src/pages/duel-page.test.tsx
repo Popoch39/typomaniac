@@ -3,6 +3,7 @@ import type { ServerMessage } from "api";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import type { Me } from "@/api/me";
+import { COVERED_MS } from "@/components/face-off/face-off-timeline";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
 import { usePlayStore } from "@/stores/play-store";
@@ -22,6 +23,9 @@ const duel = {
   // The Countdown's first moment on a clock at 0: the Face-off comes in.
   startsAt: 4_500,
 } as const;
+
+// A moment of the Face-off, its panels covering the screen: the Duel's URL shows under them.
+const PANELS_COVER = duel.startsAt + COVERED_MS + 500;
 
 const opponent = { handle: "kzr_", image: null, ornament: null };
 
@@ -132,6 +136,7 @@ const renderDuel = async () => {
   await app.user.click(await screen.findByRole("button", { name: /^Accepter/ }));
   receive({ type: "proposal-ended", reason: "accepted" });
   receive(duelFound());
+  app.clockAt(PANELS_COVER);
   await screen.findByRole("button", { name: "Quitter le Duel" });
 
   return app;
@@ -164,11 +169,12 @@ describe("the Duel has its own URL", () => {
   test.each(["/fr/ranked", "/fr/friends", "/fr/profile"])(
     "an accepted Challenge leads there from any page, the Solo Run in progress dropped: %s",
     async (page) => {
-      const { url } = await renderApp(page);
+      const { url, clockAt } = await renderApp(page);
 
       receive(idle());
       act(() => useRunStore.setState({ startedAt: 1_000 }));
       receive(duelFound(null));
+      clockAt(PANELS_COVER);
 
       await waitFor(() => expect(url()).toBe("/fr/duel"));
       expect(sent()).toEqual([{ type: "resume-duel" }]);

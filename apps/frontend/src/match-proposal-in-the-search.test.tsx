@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import type { ServerMessage } from "api";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { COVERED_MS } from "@/components/face-off/face-off-timeline";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
 import { usePlayStore } from "@/stores/play-store";
@@ -50,6 +51,12 @@ const duelFound: ServerMessage = {
   opponentForm: null,
   selfStake: null,
 };
+
+// A moment of the Face-off, its panels covering the screen: the Duel's URL shows under them.
+const PANELS_COVER = 4_500 + COVERED_MS + 500;
+
+// The copy of the card « C'est parti ! » the Duel's bridge holds, where the card was.
+const bridgeCard = () => document.querySelector("[data-duel-bridge-copy]");
 
 let sockets = fakeServer();
 
@@ -218,8 +225,8 @@ describe("a Match proposal in the Queue pill", () => {
     );
   });
 
-  test("Accepter accepts it, and the Duel found leads to /duel", async () => {
-    const { user, url } = await renderQueue();
+  test("Accepter accepts it, and the Duel found leads to /duel under the Face-off", async () => {
+    const { user, url, clockAt } = await renderQueue();
 
     await user.click(sidebarLink("Friends"));
     receive(matchProposed);
@@ -229,7 +236,16 @@ describe("a Match proposal in the Queue pill", () => {
     expect(pill("Accepté")).toHaveTextContent("En attente de kzr_…");
 
     receive({ type: "proposal-ended", reason: "accepted" });
+
+    expect(pill("C'est parti !")).toBeInTheDocument();
+
     receive(duelFound);
+
+    // The pill's copy holds its place until the Face-off covers the screen.
+    expect(bridgeCard()).toHaveTextContent("C'est parti !");
+    expect(url()).toBe("/fr/friends");
+
+    clockAt(PANELS_COVER);
 
     await waitFor(() => expect(url()).toBe("/fr/duel"));
     expect(sent()).not.toContainEqual({ type: "leave-queue" });
@@ -314,7 +330,7 @@ describe("a Match proposal during a Run", () => {
   });
 
   test("accepting it drops the Run, without a Result, then leads to /duel", async () => {
-    const { user, url } = await renderRun();
+    const { user, url, clockAt } = await renderRun();
 
     receive(matchProposed);
     await user.click(within(pill()).getByRole("button", { name: /^Accepter/ }));
@@ -327,6 +343,12 @@ describe("a Match proposal during a Run", () => {
 
     receive({ type: "proposal-ended", reason: "accepted" });
     receive(duelFound);
+
+    // In the pill's place, bottom right: the Text of the Run stays uncovered until the Face-off.
+    expect(bridgeCard()).toHaveTextContent("C'est parti !");
+    expect(screen.getByLabelText("Zone de frappe")).toBeInTheDocument();
+
+    clockAt(PANELS_COVER);
 
     await waitFor(() => expect(url()).toBe("/fr/duel"));
   });

@@ -6,5 +6,5 @@ import type { ProposalView } from "@/stores/duel-store";
 export const UnfoldedProposal = ({ proposal }: { proposal: ProposalView }) => {
   const answers = useProposalAnswers();
 
-  return <MatchProposalCard proposal={proposal} {...answers} />;
+  return <MatchProposalCard proposal={proposal} bridged {...answers} />;
 };

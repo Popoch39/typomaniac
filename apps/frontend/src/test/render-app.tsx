@@ -92,8 +92,11 @@ type AppFor = {
   friends?: readonly Friend[];
 };
 
-// The whole app at `path` for `reader`, on a clock stopped at 0, its connection on the fake server.
+// The whole app at `path` for `reader`, on a clock stopped at 0 until the test moves it, its
+// connection on the fake server.
 export const renderAppFor = async (path: string, { reader, openSocket, friends = [] }: AppFor) => {
+  let now = 0;
+  const clock = () => now;
   const history = createMemoryHistory({ initialEntries: [path] });
   const queryClient = cacheFor(reader, friends);
 
@@ -110,7 +113,7 @@ export const renderAppFor = async (path: string, { reader, openSocket, friends =
   render(
     <QueryClientProvider client={queryClient}>
       <LiveSocketContext value={openSocket}>
-        <ClockContext value={() => 0}>
+        <ClockContext value={clock}>
           <RouterProvider router={router} />
         </ClockContext>
       </LiveSocketContext>
@@ -118,5 +121,14 @@ export const renderAppFor = async (path: string, { reader, openSocket, friends =
   );
   await screen.findByLabelText(/^(Barre latérale|Sidebar)$/);
 
-  return { history, router, url: () => history.location.pathname, user: userEvent.setup() };
+  return {
+    history,
+    router,
+    url: () => history.location.pathname,
+    user: userEvent.setup(),
+    // Moves the tab's clock to `at` ms: the next frame reads it.
+    clockAt: (at: number) => {
+      now = at;
+    },
+  };
 };

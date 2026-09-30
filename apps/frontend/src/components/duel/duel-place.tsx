@@ -15,8 +15,11 @@ export const DuelPlace = () => {
   const enter = useDuelStore((store) => store.enter);
   const moveTo = useDuelStore((store) => store.moveTo);
   const exit = useDuelStore((store) => store.exit);
+  const keepTime = useDuelStore((store) => store.keepTime);
 
   const held = seat !== null;
+
+  useEffect(() => keepTime(clock), [clock, keepTime]);
 
   const enterSeat = useEffectEvent(() => {
     if (seat !== null) {

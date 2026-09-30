@@ -11,6 +11,8 @@ type QueueCardProps = {
   accent?: boolean;
   // The search's form on Jouer, unfolded: it comes from the Ranked card or the Queue pill.
   search?: boolean;
+  // The card a Duel found comes from: the Duel's bridge takes it over (DuelBridge).
+  bridged?: boolean;
   // Above the title, e.g. the search's ring.
   before?: ReactNode;
   // Under it: the wait, the buttons.
@@ -24,6 +26,7 @@ export const QueueCard = ({
   subtitle,
   accent = false,
   search = false,
+  bridged = false,
   before,
   children,
 }: QueueCardProps) => {
@@ -38,6 +41,7 @@ export const QueueCard = ({
       aria-labelledby={titleId}
       data-search-form={search ? "" : undefined}
       data-search-leaves
+      data-duel-bridge-card={bridged ? "" : undefined}
       className="relative isolate flex w-155 flex-col items-center gap-6 px-10 pt-12 pb-10 text-center"
     >
       <SearchSurface className="rounded-card bg-card shadow-[0_0_0_rgb(0_0_0/0)]" />

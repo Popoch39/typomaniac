@@ -15,7 +15,7 @@ type QueuePillProposalCardProps = MatchProposalHandlers & { proposal: ProposalVi
 // The Queue pill carrying the Match proposal, in the accent, bottom right and as wide as the
 // search it folds, so it never covers the Text of a Run: the opponent, their rank and the time
 // left, then the answers; once answered, what the stage says under them. The accent fades in over
-// the pill's surface.
+// the pill's surface. Accepted by both, the Duel's bridge takes it over as the Duel is found.
 export const QueuePillProposalCard = ({ proposal, ...handlers }: QueuePillProposalCardProps) => {
   const locale = useLocale();
   const titleId = useId();
@@ -25,6 +25,7 @@ export const QueuePillProposalCard = ({ proposal, ...handlers }: QueuePillPropos
   return (
     <section
       aria-labelledby={titleId}
+      data-duel-bridge-card
       className="fixed right-6 bottom-6 z-40 flex w-98 flex-col gap-3 py-4 pr-4 pl-5 text-primary-foreground"
     >
       <div

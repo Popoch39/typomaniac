@@ -7,6 +7,7 @@ import { AppFrame } from "@/components/app-frame";
 import { OAuthErrorToast } from "@/components/auth/oauth-error-toast";
 import { SignInDialog } from "@/components/auth/sign-in-dialog";
 import { ChallengeNotices } from "@/components/challenge/challenge-notices";
+import { DuelBridge } from "@/components/duel-bridge/duel-bridge";
 import { DuelOnItsUrl } from "@/components/duel/duel-on-its-url";
 import { DuelPlace } from "@/components/duel/duel-place";
 import { DuelPreload } from "@/components/duel/duel-preload";
@@ -24,8 +25,8 @@ import { LiveRank } from "@/components/tier/rank/live-rank";
 import { TierSprite } from "@/components/tier/sprite/tier-sprite";
 import { Toaster } from "@/components/ui/sonner";
 
-// Toasts, Challenge cards, the Queue pill and dialogs stay out of the Duel's scene (AppFrame), as
-// they are fixed.
+// Toasts, Challenge cards, the Queue pill, the Duel's bridge (« C'est parti ! » and the Face-off)
+// and dialogs stay out of the Duel's scene (AppFrame), as they are fixed.
 export const RootLayout = () => (
   <>
     <DocumentLocale />
@@ -47,6 +48,7 @@ export const RootLayout = () => (
     <QueueProposal />
     <DuelOnItsUrl />
     <DuelPreload />
+    <DuelBridge />
     <SignInDialog />
     <HandleChoiceDialog />
     <OAuthErrorToast />
