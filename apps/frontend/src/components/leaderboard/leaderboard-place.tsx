@@ -1,4 +1,3 @@
-import { cn } from "cn";
 import type { Rank } from "ranked";
 
 import { LeaderboardAsideCard } from "@/components/leaderboard/leaderboard-aside-card";
@@ -16,18 +15,15 @@ type LeaderboardPlaceProps = {
   rank: Rank | null;
 };
 
-// « Ta place »: where the reader stands in the Leaderboard, the whole card leading to their page;
-// or what they have left to get in.
+// « Ta place »: where the reader stands in the Leaderboard, with the way to their page; or what
+// they have left to get in.
 export const LeaderboardPlace = ({ reader, rank }: LeaderboardPlaceProps) => {
   const locale = useLocale();
 
   return (
     <LeaderboardAsideCard
       title={m.leaderboard_place_title({}, { locale })}
-      className={cn(
-        "gap-4 px-5.5 pt-5.5 pb-6",
-        reader === null ? null : "group/place relative transition-colors hover:bg-surface-2",
-      )}
+      className="gap-4 px-5.5 pt-5.5 pb-6"
     >
       {reader === null ? (
         <LeaderboardPlacePending rank={rank} />

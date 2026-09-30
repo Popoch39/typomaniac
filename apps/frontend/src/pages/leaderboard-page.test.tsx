@@ -268,9 +268,7 @@ describe("LeaderboardPage", () => {
         [{ at: "me" }, { ...readerPage, me: entry(128, "ada") }],
       ]);
 
-      await userEvent.click(
-        within(place()).getByRole("link", { name: "Voir ma place dans le Classement" }),
-      );
+      await userEvent.click(within(place()).getByRole("button", { name: "Aller à ma page" }));
 
       const mine = await within(await screen.findByRole("list", { name: "Classement" })).findByRole(
         "listitem",
@@ -285,7 +283,7 @@ describe("LeaderboardPage", () => {
     test("leads nowhere in Placement", async () => {
       await renderPage({ ...me, rank: { placementsLeft: 3 } }, page(entries(1, 4), null));
 
-      expect(within(place()).queryByRole("link")).toBeNull();
+      expect(within(place()).queryByRole("button", { name: "Aller à ma page" })).toBeNull();
     });
   });
 
@@ -432,9 +430,7 @@ describe("LeaderboardPage", () => {
           "Places 1,276–1,300 of 4,812",
         ),
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole("link", { name: "Show my Place in the Leaderboard" }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Go to my page" })).toBeInTheDocument();
     });
 
     test.each([
