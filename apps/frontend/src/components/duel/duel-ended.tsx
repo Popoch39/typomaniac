@@ -39,16 +39,23 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
     open: () => setTierUp("open"),
   });
 
-  // Called once with the node on mount, which takes the focus: the typing input is gone with the
-  // Duel.
+  // Called once with the node on mount, before the first frame: the screen shows from the top of
+  // the page, at once, and takes the focus without scrolling to it (the typing input is gone with
+  // the Duel).
   const mount = useCallback((node: HTMLDivElement | null) => {
     screen.current = node;
-    node?.focus();
+
+    if (node === null) {
+      return;
+    }
+
+    window.scrollTo({ top: 0, behavior: "instant" });
+    node.focus({ preventScroll: true });
   }, []);
 
   const closeTierUp = () => {
     setTierUp("closed");
-    screen.current?.focus();
+    screen.current?.focus({ preventScroll: true });
     comeIn();
   };
 

@@ -461,6 +461,17 @@ describe("the Affiche", () => {
     expect(endScreen()).toHaveFocus();
   });
 
+  test("shows from the top of the page, without scrolling to its focus", async () => {
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+    const scroll = vi.spyOn(window, "scrollTo");
+
+    await renderEnded();
+
+    expect(scroll).toHaveBeenCalledWith({ top: 0, behavior: "instant" });
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(focus).not.toHaveBeenCalledWith();
+  });
+
   test("names each block", async () => {
     await renderEnded({
       duelId: "duel-1",
@@ -2172,6 +2183,23 @@ describe("the entrance", () => {
     await clock.advance(ENTRANCE_END);
     expect(rest.map(({ block }) => arrived(block))).toEqual(rest.map(() => true));
     expect(regionOf("Rang")).toHaveTextContent("+25 TP");
+  });
+
+  test("the focus back on the screen never scrolls the page", async () => {
+    await renderEnded({ ...AFFICHE, ranked: intoGold });
+
+    await clock.advance(10);
+
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
+
+    await userEvent.click(continueButton());
+    await waitFor(() => expect(endScreen()).toHaveFocus());
+
+    const onTheScreen = focus.mock.calls.flatMap((call, index) =>
+      focus.mock.contexts[index] === endScreen() ? [call] : [],
+    );
+
+    expect(onTheScreen).toEqual([[{ preventScroll: true }]]);
   });
 
   test("never opens a Tier-up before the band and the outcome are in", async () => {
