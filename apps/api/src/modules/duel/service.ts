@@ -141,6 +141,10 @@ export class DuelQueue implements ChallengeArena {
   // The connection each User plays their place on, until another one takes it or it closes.
   readonly #playing = new Map<string, Connection>();
 
+  // The connections of each User that show Jouer, until they stop or close: told the Queue's
+  // overview while the User is out of it.
+  readonly #watching = new Map<string, Set<Connection>>();
+
   // User ids in arrival order. Queued Users always have a connection that plays: its closing drops
   // them.
   readonly #queue = new Map<string, QueueEntry>();
@@ -235,6 +239,14 @@ export class DuelQueue implements ChallengeArena {
         this.#challenges.receive(userId, connection, message);
 
         return;
+      case "watch-queue":
+        this.#watch(userId, connection);
+
+        return;
+      case "unwatch-queue":
+        this.#unwatch(userId, connection);
+
+        return;
     }
 
     if (this.#playing.get(userId) !== connection) {
@@ -273,6 +285,11 @@ export class DuelQueue implements ChallengeArena {
   // to come back starts, until one of the User's connections resumes it.
   disconnect(userId: string, connectionId: string) {
     const connections = this.#connections.get(userId);
+    const connection = connections?.get(connectionId);
+
+    if (connection) {
+      this.#unwatch(userId, connection);
+    }
 
     connections?.delete(connectionId);
 
@@ -390,7 +407,7 @@ export class DuelQueue implements ChallengeArena {
   }
 
   // The place changed: every connection of the User that does not play it is told. The one that
-  // plays learns it from its own messages.
+  // plays learns it from its own messages. Out of the Queue, those that watch Jouer see it again.
   #tellOthers(userId: string) {
     const place = this.#placeOf(userId);
     const playing = this.#playing.get(userId);
@@ -400,6 +417,8 @@ export class DuelQueue implements ChallengeArena {
         connection.send(place);
       }
     }
+
+    this.#tellOverview(userId);
   }
 
   // `connection` plays the User's place from now on: the one that played it until now is told
@@ -427,8 +446,8 @@ export class DuelQueue implements ChallengeArena {
     }
   }
 
-  // The Queue as a User in it sees it: `entry` is theirs.
-  #statusOf(entry: QueueEntry): ServerMessage {
+  // The Users in the Queue, once their Handle is read.
+  #queueSize() {
     let size = 0;
 
     for (const { user } of this.#queue.values()) {
@@ -437,17 +456,64 @@ export class DuelQueue implements ChallengeArena {
       }
     }
 
+    return size;
+  }
+
+  // The Queue as a User in it sees it: `entry` is theirs.
+  #statusOf(entry: QueueEntry): ServerMessage {
     return {
       type: "queue-status",
       joinedAt: entry.joinedAt,
       serverTime: this.#clock.now(),
-      size,
+      size: this.#queueSize(),
       estimatedWait: estimatedWait(this.#recentWaits),
     };
   }
 
+  // The Queue as a User out of it sees it from Jouer.
+  #overview(): ServerMessage {
+    return {
+      type: "queue-overview",
+      size: this.#queueSize(),
+      estimatedWait: estimatedWait(this.#recentWaits),
+    };
+  }
+
+  // The User's connections that watch Jouer are told the overview, unless their place is the Queue.
+  #tellOverview(userId: string, overview = this.#overview()) {
+    if (this.#joinedAtOf(userId) !== null) {
+      return;
+    }
+
+    for (const connection of this.#watching.get(userId) ?? []) {
+      connection.send(overview);
+    }
+  }
+
+  // The connection shows Jouer: told the overview at once, unless the User's place is the Queue.
+  #watch(userId: string, connection: Connection) {
+    const watching = this.#watching.get(userId) ?? new Set<Connection>();
+
+    watching.add(connection);
+    this.#watching.set(userId, watching);
+
+    if (this.#joinedAtOf(userId) === null) {
+      connection.send(this.#overview());
+    }
+  }
+
+  #unwatch(userId: string, connection: Connection) {
+    const watching = this.#watching.get(userId);
+
+    watching?.delete(connection);
+
+    if (watching?.size === 0) {
+      this.#watching.delete(userId);
+    }
+  }
+
   // Someone entered or left the Queue: its Users are told, once QUEUE_STATUS_MS has passed, of
-  // every change until then at once.
+  // every change until then at once, and so are the connections that watch Jouer out of it.
   #queueChanged() {
     if (this.#statusDue) {
       return;
@@ -461,6 +527,12 @@ export class DuelQueue implements ChallengeArena {
         if (entry.user !== null) {
           this.#send(userId, this.#statusOf(entry));
         }
+      }
+
+      const overview = this.#overview();
+
+      for (const userId of this.#watching.keys()) {
+        this.#tellOverview(userId, overview);
       }
     });
   }

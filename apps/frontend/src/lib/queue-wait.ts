@@ -10,12 +10,13 @@ export const formatElapsed = (ms: number) => {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 };
 
-// How many Users are in the Queue, the User included: never fewer than them.
-export const queueSizeLabel = (size: number, locale: Locale) => {
-  const count = Math.max(1, size);
+// How many Users are in the Queue, seen from out of it: none at all, maybe.
+export const queueOverviewSizeLabel = (size: number, locale: Locale) =>
+  m.queue_size({ count: size, shown: numberFormat(locale).format(size) }, { locale });
 
-  return m.queue_size({ count, shown: numberFormat(locale).format(count) }, { locale });
-};
+// How many Users are in the Queue, the User included: never fewer than them.
+export const queueSizeLabel = (size: number, locale: Locale) =>
+  queueOverviewSizeLabel(Math.max(1, size), locale);
 
 // The Estimated wait, rounded to the second above; nothing without one.
 export const estimatedWaitLabel = (estimatedWait: number | null, locale: Locale) =>

@@ -635,7 +635,9 @@ const stateAfter = (
       return updateDuel(state, (duel) => ({ ...duel, opponentConnected: true }));
     case "duel-ended":
       return ended(state, message);
-    // The Friends: the connection store's.
+    // The Queue seen from Jouer, before joining it: the connection store's.
+    case "queue-overview":
+    // The Friends: the connection store's too.
     case "friends-snapshot":
     case "presence":
     case "friend-request-received":

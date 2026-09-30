@@ -44,12 +44,22 @@ export type LiveChallenges = {
   received: readonly ReceivedChallenge[];
 };
 
+// The Queue as Jouer shows it before joining: how many Users wait in it, and the Estimated wait in
+// ms (null without a recent pairing).
+export type QueueOverview = Pick<
+  Extract<ServerMessage, { type: "queue-overview" }>,
+  "size" | "estimatedWait"
+>;
+
 type ConnectionStore = {
   status: ConnectionStatus;
   // Unknown until the server tells it on each new socket.
   place: Place | null;
   // Kept through a lost connection: the server tells it again with the place.
   queueLock: KnownQueueLock;
+  // Unknown until the server tells it to a tab that watches Jouer, while the User is out of the
+  // Queue.
+  queueOverview: QueueOverview | null;
   // Unknown until the snapshot of each new socket.
   friends: LiveFriends | null;
   // Unknown until the snapshot of each new socket.
@@ -153,6 +163,22 @@ export const queueLockAfter = (
 };
 
 const NO_QUEUE_LOCK: KnownQueueLock = { until: null, serverOffset: 0 };
+
+// The overview after a message, `place` the one it leads to: told while the User is out of the
+// Queue, forgotten once it is their place (here or in another tab), told again once they leave it.
+export const queueOverviewAfter = (
+  overview: QueueOverview | null,
+  message: ServerMessage,
+  place: Place | null,
+): QueueOverview | null => {
+  if (place?.at === "queue") {
+    return null;
+  }
+
+  return message.type === "queue-overview"
+    ? { size: message.size, estimatedWait: message.estimatedWait }
+    : overview;
+};
 
 const withPresence = (friends: LiveFriends, userId: string, presence: Presence | null) => {
   const presences = new Map(friends.presences);
@@ -323,10 +349,14 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
       const now = Date.now();
 
       attempts = 0;
+
+      const place = placeAfter(get().place, data, now);
+
       set({
         status: "open",
-        place: placeAfter(get().place, data, now),
+        place,
         queueLock: queueLockAfter(get().queueLock, data, now),
+        queueOverview: queueOverviewAfter(get().queueOverview, data, place),
         friends: friendsAfter(get().friends, data),
         challenges: challengesAfter(get().challenges, data, now),
         arrivals: arrivalsAfter(get().arrivals, data),
@@ -344,7 +374,13 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
       socket = null;
       reconnectTimer = setTimeout(connect, reconnectDelay(attempts));
       attempts += 1;
-      set({ status: "connecting", place: null, friends: null, challenges: null });
+      set({
+        status: "connecting",
+        place: null,
+        queueOverview: null,
+        friends: null,
+        challenges: null,
+      });
     });
   };
 
@@ -352,6 +388,7 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
     status: "closed",
     place: null,
     queueLock: NO_QUEUE_LOCK,
+    queueOverview: null,
     friends: null,
     challenges: null,
     arrivals: [],
@@ -370,6 +407,7 @@ export const useConnectionStore = create<ConnectionStore>()((set, get) => {
         status: "closed",
         place: null,
         queueLock: NO_QUEUE_LOCK,
+        queueOverview: null,
         friends: null,
         challenges: null,
         arrivals: [],

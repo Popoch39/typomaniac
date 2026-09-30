@@ -60,7 +60,7 @@ const server = () => sockets.server();
 // The server's messages reach the stores outside of React.
 const receive = (message: ServerMessage) => act(() => server().receive(message));
 
-const sent = () => server().sent;
+const sent = () => server().sentOfPlace();
 
 const sidebar = () => screen.getByRole("complementary", { name: "Barre latérale" });
 

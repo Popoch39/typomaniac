@@ -103,7 +103,7 @@ const server = () => sockets.server();
 // The server's messages reach the stores outside of React.
 const receive = (message: ServerMessage) => act(() => server().receive(message));
 
-const sent = () => server().sent;
+const sent = () => server().sentOfPlace();
 
 // The whole app at `path` for Ada (or a Visitor), on the fake server.
 const renderApp = (path: string, reader: Me | null = ada) =>

@@ -40,6 +40,9 @@ const ClientMessage = t.Union([
   t.Object({ type: t.Literal("accept-proposal") }),
   // Declines it: a Dodge, out of the Queue. `leave-queue` during one does the same.
   t.Object({ type: t.Literal("decline-proposal") }),
+  // This connection shows Jouer, or no longer does: told the Queue's `queue-overview` meanwhile.
+  t.Object({ type: t.Literal("watch-queue") }),
+  t.Object({ type: t.Literal("unwatch-queue") }),
   // The same socket carries the User's Challenges.
   ChallengeModel.challengeClientMessage,
 ]);
@@ -149,6 +152,16 @@ const QueueStatus = t.Object({
 
 export type QueueStatus = typeof QueueStatus.static;
 
+// The Queue as a tab that watches Jouer sees it before joining: how many Users wait in it, and the
+// Estimated wait in ms, null without a recent pairing.
+const QueueOverview = t.Object({
+  type: t.Literal("queue-overview"),
+  size: t.Integer(),
+  estimatedWait: t.Nullable(t.Number()),
+});
+
+export type QueueOverview = typeof QueueOverview.static;
+
 // Every connection of a User is told their place: the one that plays it by the messages below, the
 // others by `idle` and `elsewhere`, on connection and whenever it changes.
 const ServerMessage = t.Union([
@@ -176,6 +189,9 @@ const ServerMessage = t.Union([
   // once a second): when they joined (server time, their wait survives a reload), how many Users
   // are in it, them included, and the Estimated wait in ms, null without a recent pairing.
   QueueStatus,
+  // To a connection that watches Jouer while the User is out of the Queue: on `watch-queue`, then
+  // whenever the Queue changes (at most once a second, with `queue-status`).
+  QueueOverview,
   // Refused the Queue: a Duel shows each player's Handle, and the User has none yet.
   t.Object({ type: t.Literal("handle-required") }),
   // Refused the Queue: the User dodged too often, it is closed to them until `until` (server time).
@@ -308,6 +324,7 @@ export const DuelModel = {
   clientMessage: ClientMessage,
   serverMessage: ServerMessage,
   queueStatus: QueueStatus,
+  queueOverview: QueueOverview,
   opponent: DuelOpponent,
   duel: Duel,
   keystroke: Keystroke,

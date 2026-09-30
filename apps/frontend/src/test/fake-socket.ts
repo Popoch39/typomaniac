@@ -8,6 +8,9 @@ type SocketListeners = {
   close: () => void;
 };
 
+// What a tab sends as it shows Jouer or leaves it, apart from what it sends of its place.
+const JOUER_WATCH = new Set<ClientMessage["type"]>(["watch-queue", "unwatch-queue"]);
+
 // A socket the test speaks for the server through: it hands the store the server's messages and
 // drops the connection.
 const fakeSocket = () => {
@@ -33,6 +36,8 @@ const fakeSocket = () => {
   return {
     socket,
     sent,
+    // What was sent of the User's place (Queue, Duel, Challenges), without Jouer watched or left.
+    sentOfPlace: () => sent.filter(({ type }) => !JOUER_WATCH.has(type)),
     isClosed: () => closed,
     receive: (data: ServerMessage) => listeners.message({ data }),
     drop: () => listeners.close(),

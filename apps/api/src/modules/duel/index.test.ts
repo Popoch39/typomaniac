@@ -1750,6 +1750,133 @@ describe("duel socket", () => {
     });
   });
 
+  // A tab that shows Jouer, idle: told its Queue's size and Estimated wait before joining it.
+  const watchingJouer = async (cookie: string) => {
+    const client = await connect(cookie);
+
+    expect(await client.next()).toEqual(idle());
+    client.send({ type: "watch-queue" });
+
+    return client;
+  };
+
+  describe("Queue overview", () => {
+    test("a connection that watches Jouer is told at once, without an Estimated wait before any pairing", async () => {
+      const grace = await watchingJouer(await signedIn("Grace"));
+
+      expect(await grace.nextQueueOverview()).toEqual({
+        type: "queue-overview",
+        size: 0,
+        estimatedWait: null,
+      });
+    });
+
+    test("follows arrivals and departures, a second later at most; a connection that does not watch is never told", async () => {
+      const graceCookie = await signedIn("Grace");
+      const grace = await watchingJouer(graceCookie);
+      const graceElsewhere = await connect(graceCookie);
+
+      expect(await graceElsewhere.next()).toEqual(idle());
+      await grace.nextQueueOverview();
+
+      const { ada, alan } = await queuedApart(1000, 1500);
+
+      setNow(NOW + 1000);
+      expect(await grace.nextQueueOverview()).toMatchObject({ size: 2 });
+
+      alan.send({ type: "leave-queue" });
+      await alan.settle();
+      setNow(NOW + 2000);
+      expect(await grace.nextQueueOverview()).toMatchObject({ size: 1 });
+
+      await Promise.all([grace.settle(), graceElsewhere.settle(), ada.settle()]);
+      expect(grace.queueOverviews()).toEqual([]);
+      expect(graceElsewhere.queueOverviews()).toEqual([]);
+      expect(ada.queueOverviews()).toEqual([]);
+    });
+
+    test("a User in the Queue is told its status, not the overview, even from a tab that watches", async () => {
+      const ada = await watchingJouer(await signedIn("Ada"));
+      const grace = await watchingJouer(await signedIn("Grace"));
+
+      await Promise.all([ada.nextQueueOverview(), grace.nextQueueOverview()]);
+      ada.send({ type: "join-queue" });
+      expect(await ada.next()).toEqual({ type: "queued" });
+      expect(await ada.nextQueueStatus()).toMatchObject({ size: 1 });
+
+      // Her arrival changed the Queue: told to her as its status, to Grace as its overview.
+      setNow(NOW + 1000);
+      expect(await ada.nextQueueStatus()).toMatchObject({ size: 1 });
+      expect(await grace.nextQueueOverview()).toMatchObject({ size: 1 });
+      await ada.settle();
+      expect(ada.queueOverviews()).toEqual([]);
+    });
+
+    test("a tab that watches is told at once when another tab leaves the Queue", async () => {
+      const cookie = await signedIn("Ada");
+      const onJouer = await watchingJouer(cookie);
+
+      await onJouer.nextQueueOverview();
+
+      const playing = await queued(cookie);
+
+      expect(await onJouer.next()).toMatchObject({ type: "elsewhere", place: "queue" });
+      playing.send({ type: "leave-queue" });
+      expect(await onJouer.next()).toEqual(idle());
+      expect(await onJouer.nextQueueOverview()).toEqual({
+        type: "queue-overview",
+        size: 0,
+        estimatedWait: null,
+      });
+    });
+
+    test("told again once out of the Queue", async () => {
+      const ada = await watchingJouer(await signedIn("Ada"));
+
+      await ada.nextQueueOverview();
+      ada.send({ type: "join-queue" });
+      expect(await ada.next()).toEqual({ type: "queued" });
+      ada.send({ type: "leave-queue" });
+      await ada.settle();
+      setNow(NOW + 1000);
+      expect(await ada.nextQueueOverview()).toMatchObject({ size: 0 });
+    });
+
+    test("no longer told once the connection stops watching", async () => {
+      const grace = await watchingJouer(await signedIn("Grace"));
+
+      await grace.nextQueueOverview();
+      grace.send({ type: "unwatch-queue" });
+      await queued(await signedIn("Ada"));
+      setNow(NOW + 1000);
+      await grace.settle();
+      expect(grace.queueOverviews()).toEqual([]);
+    });
+
+    test("the Estimated wait of the last pairings", async () => {
+      const grace = await watchingJouer(await signedIn("Grace"));
+
+      await grace.nextQueueOverview();
+
+      const { ada, alan } = await queuedApart(1000, 1250);
+
+      setNow(NOW + 15_000);
+      await Promise.all([ada.next(), alan.next()]);
+      ada.send({ type: "accept-proposal" });
+      expect(await alan.next()).toEqual({ type: "opponent-accepted" });
+      alan.send({ type: "accept-proposal" });
+      await Promise.all([ada.next(), alan.next()]);
+      grace.queueOverviews();
+      await queued(await signedIn("Linus"));
+      setNow(NOW + 16_000);
+      expect(await grace.nextQueueOverview()).toEqual({
+        type: "queue-overview",
+        size: 1,
+        estimatedWait: 15_000,
+      });
+    });
+  });
+
   describe("Match proposal", () => {
     test("a pairing proposes the Duel to both, it does not start it", async () => {
       const ada = await queued(await signedIn("Ada"));

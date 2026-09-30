@@ -25,7 +25,10 @@ const server = () => sockets.server();
 // The server's messages reach the stores outside of React.
 const receive = (message: ServerMessage) => act(() => server().receive(message));
 
-const sent = () => server().sent;
+const sent = () => server().sentOfPlace();
+
+// Jouer watched and left too.
+const allSent = () => server().sent;
 
 const card = (name: string) => screen.getByRole("region", { name });
 
@@ -169,8 +172,72 @@ describe("the Ranked card", () => {
     expect(card("Ranked")).toBeInTheDocument();
   });
 
+  test("shows how many wait in the Queue and the Estimated wait, told live while Jouer is shown", async () => {
+    const { user } = await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
+
+    receive(idle());
+
+    expect(allSent()).toEqual([{ type: "watch-queue" }]);
+    expect(within(rankedCard()).queryByText(/en file$/)).not.toBeInTheDocument();
+
+    receive({ type: "queue-overview", size: 3, estimatedWait: 12_400 });
+
+    expect(within(rankedCard()).getByText("3 joueurs en file")).toBeInTheDocument();
+    expect(within(rankedCard()).getByText("≈ 13 s d'attente")).toBeInTheDocument();
+
+    // Without a recent pairing, only the size.
+    receive({ type: "queue-overview", size: 0, estimatedWait: null });
+
+    expect(within(rankedCard()).getByText("0 joueur en file")).toBeInTheDocument();
+    expect(within(rankedCard()).queryByText(/d'attente$/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("link", { name: /^Classement/ }));
+
+    expect(allSent()).toEqual([{ type: "watch-queue" }, { type: "unwatch-queue" }]);
+  });
+
+  test("the search launched here or in another tab hides the overview", async () => {
+    const { user } = await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
+
+    receive(idle());
+    receive({ type: "queue-overview", size: 3, estimatedWait: null });
+    receive(queueElsewhere());
+
+    expect(within(rankedCard()).queryByText("3 joueurs en file")).not.toBeInTheDocument();
+
+    receive(idle());
+    receive({ type: "queue-overview", size: 2, estimatedWait: null });
+
+    expect(within(rankedCard()).getByText("2 joueurs en file")).toBeInTheDocument();
+
+    await user.click(within(rankedCard()).getByRole("button", { name: "Lancer la recherche" }));
+
+    // The cards leave Jouer for the search.
+    expect(allSent()).toHaveLength(3);
+    expect(allSent()).toEqual(
+      expect.arrayContaining([
+        { type: "watch-queue" },
+        { type: "unwatch-queue" },
+        { type: "join-queue" },
+      ]),
+    );
+  });
+
+  test("a Duel played in another tab keeps the overview, as the server goes on telling it", async () => {
+    await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
+
+    receive(idle());
+    receive({ type: "queue-overview", size: 3, estimatedWait: null });
+    receive({ type: "elsewhere", place: "duel" });
+
+    expect(within(rankedCard()).getByText("3 joueurs en file")).toBeInTheDocument();
+  });
+
   test("a Visitor is asked to sign in", async () => {
     const { user } = await renderAppFor("/fr", { reader: null, openSocket: sockets.open });
+
+    // No socket: none of the Queue's figures.
+    expect(within(rankedCard()).queryByText(/en file$/)).not.toBeInTheDocument();
 
     await user.click(within(rankedCard()).getByRole("button", { name: "Lancer la recherche" }));
 
