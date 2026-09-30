@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
-import { authClient, type Provider } from "@/lib/auth-client";
+import type { Provider } from "@/lib/auth-client";
+import { loadAuthClient } from "@/lib/load-auth-client";
 import { markOAuthRoundTrip } from "@/lib/oauth-round-trip";
 import { toast } from "@/lib/toast";
 import { m } from "@/paraglide/messages";
@@ -33,6 +34,8 @@ export const useAuthStore = create<AuthState>()((set) => ({
 
     // The provider sends the User back to this very page, with `?error=` on failure, and in the
     // current Locale: the URL carries it ("/en/…"), as the router writes every URL.
+    const authClient = await loadAuthClient();
+
     const { error } = await authClient.signIn.social({
       provider,
       callbackURL: window.location.href,

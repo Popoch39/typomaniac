@@ -6,7 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
     <title>typomaniac</title>
-    <!-- The Theme stored by src/stores/theme-store.ts (same key, same JSON), set on <html> before
+    <!-- First the signed-in User, asked for while the app's JS downloads: the first `me` query
+         takes this answer (src/api/early-me.ts, same URL and credentials as src/api/client.ts), and
+         the connection to the API opens here. Vite writes VITE_API_URL in; left unwritten, it is
+         not a URL and nothing is sent.
+         Then the Theme stored by src/stores/theme-store.ts (same key, same JSON), set on <html> before
          the CSS loads: the page is painted in it from the start. A former id, kept by version 1
          before the store moves it, is read as the Theme it is now; an unknown one is not set, and
          paints as Coral.
@@ -17,6 +21,26 @@
          else the one kept by src/stores/locale-store.ts (same key, same JSON), else the browser's
          languages (src/locale/browser-locale.ts). -->
     <script>
+      {
+        const apiUrl = "%VITE_API_URL%".replace(/\/$/, "");
+
+        if (/^https?:\/\//.test(apiUrl)) {
+          const preconnect = document.createElement("link");
+
+          preconnect.rel = "preconnect";
+          preconnect.href = apiUrl;
+          preconnect.crossOrigin = "use-credentials";
+          document.head.append(preconnect);
+
+          const url = `${apiUrl}/api/me`;
+
+          window.typomaniacEarlyMe = {
+            url,
+            response: fetch(url, { method: "GET", credentials: "include" }).catch(() => null),
+          };
+        }
+      }
+
       try {
         const themeIds = [
           "coral",

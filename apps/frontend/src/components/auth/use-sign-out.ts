@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 
 import { meQueryOptions } from "@/api/me";
-import { authClient } from "@/lib/auth-client";
+import { loadAuthClient } from "@/lib/load-auth-client";
 import { toast } from "@/lib/toast";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
@@ -12,6 +12,7 @@ export const useSignOut = () => {
   const locale = useLocale();
 
   return async () => {
+    const authClient = await loadAuthClient();
     const { error } = await authClient.signOut();
 
     if (error) {

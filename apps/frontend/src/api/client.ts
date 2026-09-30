@@ -4,11 +4,16 @@ import { Value } from "@sinclair/typebox/value";
 import type { App } from "api";
 import { ERRORS, type ErrorCode, type ErrorDetail } from "api/errors";
 
+import { fetchWithEarlyMe } from "@/api/early-me";
 import { env } from "@/env";
 
 // Every API route lives under /api: the tree starts there, calls read `api.health.get()`.
 // The API is on another origin in dev: without credentials the Session cookie is never sent.
-export const api = treaty<App>(env.VITE_API_URL, { fetch: { credentials: "include" } }).api;
+// The first `me` takes the answer index.html asked for as the page opened (`fetchWithEarlyMe`).
+export const api = treaty<App>(env.VITE_API_URL, {
+  fetch: { credentials: "include" },
+  fetcher: fetchWithEarlyMe,
+}).api;
 
 // The API's error format, `ApiErrorBody` of apps/api/src/lib/errors.ts, checked at the boundary.
 const ErrorBody = Type.Object({
