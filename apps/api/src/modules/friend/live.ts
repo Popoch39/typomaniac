@@ -200,7 +200,11 @@ export class FriendsLive implements FriendEvents {
       endedAt: record.endedAt,
       outcome: record.outcome,
       winnerId: record.winnerId,
-      players: record.players.map(({ userId, result }) => ({ userId, wpm: result.wpm })),
+      players: record.players.map(({ userId, result, rated }) => ({
+        userId,
+        wpm: result.wpm,
+        tp: rated?.tp ?? null,
+      })),
     };
 
     this.#tellActivity(

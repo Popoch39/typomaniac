@@ -1,0 +1,1 @@
+CREATE INDEX "duel_ended_at_idx" ON "duel" USING btree ("ended_at","id");

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
+import type { Rating } from "ranked";
 
 import { createApp } from "../../app";
 import {
@@ -7,6 +8,7 @@ import {
   memoryDuelStore,
   memoryFriendStore,
   pastDuel,
+  rankedPastDuel,
   signIn,
   testConfig,
   testUsers,
@@ -125,6 +127,44 @@ describe("GET /api/activity", () => {
     expect(duels.ornamentReads).toHaveLength(1);
   });
 
+  test("a Ranked Duel carries the TP it moved for each; a Duel in Placement or a Challenge none", async () => {
+    const { duels, newUser, befriend, activityOf } = setup();
+    const ada = await newUser("ada");
+    const alan = await newUser("alan");
+    const grace = await newUser("grace");
+
+    const gold: Rating = {
+      mmr: 1000,
+      rank: { tier: "gold", division: 2, tp: 40, shielded: false },
+    };
+
+    const ranked = pastDuel(alan.id, 60, 3_000);
+    const [first, second] = ranked.players;
+
+    await befriend(ada, alan, 1_000);
+    duels.saved.push({
+      ...ranked,
+      outcome: "win",
+      winnerId: alan.id,
+      players: [
+        { ...first, rated: { before: gold, after: gold, tp: 18 } },
+        { ...second, userId: grace.id, rated: { before: gold, after: gold, tp: -14 } },
+      ],
+    });
+
+    const placement = rankedPastDuel(alan.id, 60, 2_000, "loss");
+
+    duels.saved.push({
+      ...placement,
+      players: [placement.players[0], { ...placement.players[1], userId: grace.id }],
+    });
+
+    const [rankedActivity, placementActivity] = await activityOf(ada.cookie);
+
+    expect(rankedActivity).toMatchObject({ friend: { tp: 18 }, opponent: { tp: -14 } });
+    expect(placementActivity).toMatchObject({ friend: { tp: null }, opponent: { tp: null } });
+  });
+
   test("refuses a Visitor", async () => {
     const { activityResponse } = setup();
 
@@ -162,8 +202,8 @@ describe("GET /api/activity", () => {
         id: lost,
         at: 4_000,
         forfeit: true,
-        friend: { ...userOf(alan), wpm: 40, outcome: "loss" },
-        opponent: { ...userOf(grace), wpm: 60, outcome: "win" },
+        friend: { ...userOf(alan), wpm: 40, outcome: "loss", tp: null },
+        opponent: { ...userOf(grace), wpm: 60, outcome: "win", tp: null },
       },
       {
         type: "friendship",
@@ -177,8 +217,8 @@ describe("GET /api/activity", () => {
         id: won,
         at: 2_000,
         forfeit: false,
-        friend: { ...userOf(alan), wpm: 60, outcome: "win" },
-        opponent: { ...userOf(grace), wpm: 40, outcome: "loss" },
+        friend: { ...userOf(alan), wpm: 60, outcome: "win", tp: null },
+        opponent: { ...userOf(grace), wpm: 40, outcome: "loss", tp: null },
       },
       // Their own friendship, the Friend first.
       {

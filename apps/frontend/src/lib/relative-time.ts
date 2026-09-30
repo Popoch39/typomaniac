@@ -9,15 +9,22 @@ const UNITS = [
   { unit: "minute", ms: 60_000 },
 ] as const;
 
-const AUTO = { numeric: "auto" } as const;
-
 // How long ago `at` was, seen from `now` (ms since the epoch), in the Locale: « à l'instant » /
 // "just now" under a minute, « il y a 5 minutes » / "5 minutes ago", « hier » / "yesterday"…
-export const relativeTime = (at: number, now: number, locale: Locale) => {
+// Short, for a line with little room: « il y a 5 min » / "5 min. ago".
+export const relativeTime = (
+  at: number,
+  now: number,
+  locale: Locale,
+  style: Intl.RelativeTimeFormatStyle = "long",
+) => {
   const gap = Math.max(0, now - at);
   const match = UNITS.find(({ ms }) => gap >= ms);
 
   return match
-    ? relativeTimeFormat(locale, AUTO).format(-Math.floor(gap / match.ms), match.unit)
+    ? relativeTimeFormat(locale, { numeric: "auto", style }).format(
+        -Math.floor(gap / match.ms),
+        match.unit,
+      )
     : m.activity_just_now({}, { locale });
 };

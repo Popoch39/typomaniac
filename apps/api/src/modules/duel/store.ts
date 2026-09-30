@@ -104,7 +104,19 @@ export type RecentDuel = {
   endedAt: number;
   outcome: DuelRecord["outcome"];
   winnerId: string | null;
-  players: { userId: string; wpm: number }[];
+  // `tp`: the TP the Duel moved for that player, null for a Challenge and in Placement.
+  players: { userId: string; wpm: number; tp: number | null }[];
+};
+
+// A player of a won Ranked Duel as Jouer lists it: who, and their wpm.
+export type WonRankedDuelPlayer = { userId: string; wpm: number };
+
+// A finished Ranked Duel someone won, a Forfeit included, never a Draw: « X bat Y ».
+export type WonRankedDuel = {
+  id: string;
+  endedAt: number;
+  winner: WonRankedDuelPlayer;
+  loser: WonRankedDuelPlayer;
 };
 
 // A finished Ranked Duel as the Form reads it: how it ended and the reader's wpm.
@@ -183,6 +195,10 @@ export type DuelStore = {
   // The last `limit` finished Duels played by any of `userIds`, each once, the most recent first
   // (by end, then by id).
   recentDuelsOf: (userIds: readonly string[], limit: number) => Promise<RecentDuel[]>;
+  // The last `limit` finished Ranked Duels someone won (no Draw, both players still there), whose
+  // winner's Rating is at `tier` today, or of every Tier when null; the most recent first (by end,
+  // then by id). The Tier at the time of the Duel is not written: today's is read.
+  recentWonRankedDuels: (tier: Tier | null, limit: number) => Promise<WonRankedDuel[]>;
 };
 
 // The outcome seen from `userId`: the winner won, the other lost, whether by Score or by Forfeit

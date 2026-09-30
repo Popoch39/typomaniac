@@ -4,12 +4,15 @@ import { gsap } from "gsap";
 import type { Rank } from "ranked";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import type { Activity } from "@/api/activity";
 import type { Me } from "@/api/me";
+import type { RecentRankedDuels } from "@/api/recent-ranked-duels";
 import { GHOST_PAUSE_SECONDS } from "@/components/play/use-ghost-typing";
 import { PLAY_FADE_SECONDS } from "@/components/play/use-play-fade";
 import { useAuthStore } from "@/stores/auth-store";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
+import { useLocaleStore } from "@/stores/locale-store";
 import { usePlayStore } from "@/stores/play-store";
 import { useRunStore } from "@/stores/run-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -449,14 +452,16 @@ describe("the Ranked card", () => {
     expect(await screen.findByRole("dialog", { name: "Choisis ton Handle" })).toBeInTheDocument();
   });
 
-  test("shows the User's rank, its Crest and its TP bar", async () => {
+  test("shows the User's rank in words and its TP bar, no more Crest", async () => {
     await renderAppFor("/fr", {
       reader: adaRanked({ tier: "gold", division: 2, tp: 42, shielded: false }),
       openSocket: sockets.open,
     });
 
-    expect(within(rankedCard()).getByText("Gold II · 42 TP")).toBeInTheDocument();
-    expect(within(rankedCard()).getByText("Gold II")).toHaveClass("sr-only");
+    // Said once, and seen: no Crest names it for screen readers alone.
+    expect(within(rankedCard()).getByText("Gold II")).not.toHaveClass("sr-only");
+    expect(within(rankedCard()).getByText("42/100 TP")).toBeVisible();
+    expect(rankedCard().querySelector("svg")).toBeNull();
     expect(within(rankedCard()).getByRole("meter", { name: "TP de la Division" })).toHaveAttribute(
       "aria-valuetext",
       "42 TP sur 100 · 58 TP avant Gold I",
@@ -469,7 +474,8 @@ describe("the Ranked card", () => {
       openSocket: sockets.open,
     });
 
-    expect(within(rankedCard()).getByText("Placement · 3 Duels restants")).toBeInTheDocument();
+    expect(within(rankedCard()).getByText("Placement")).toBeVisible();
+    expect(within(rankedCard()).getByText("2 / 5 Duels")).toBeVisible();
     expect(within(rankedCard()).getByRole("meter", { name: "Placement" })).toHaveAttribute(
       "aria-valuetext",
       "2 Duels de Placement joués sur 5",
@@ -552,6 +558,132 @@ describe("the Ranked card", () => {
   });
 });
 
+// Three Ranked Duels won in Gold, the most recent first, a minute apart.
+const goldDuels = (): RecentRankedDuels => ({
+  tier: "gold",
+  duels: [
+    ["mia", "noe", 104, 97],
+    ["zoe", "mia", 88.6, 85.2],
+    ["noe", "leo", 120, 64],
+  ].map(([winner, loser, winnerWpm, loserWpm], index) => ({
+    id: `duel-${index}`,
+    endedAt: Date.now() - (index + 1) * 60_000,
+    winner: { handle: String(winner), wpm: Number(winnerWpm) },
+    loser: { handle: String(loser), wpm: Number(loserWpm) },
+  })),
+});
+
+// A row of a card's list as read, the Locale's narrow spaces as plain ones.
+const lineOf = (row: HTMLElement) => row.textContent?.replaceAll(/\s/gu, " ");
+
+const recentDuelsList = (name: RegExp) => within(rankedCard()).getByRole("list", { name });
+
+describe("the Ranked card, live", () => {
+  test("shows the Queue right now, its size and Estimated wait, never who is in it", async () => {
+    await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
+
+    receive(idle());
+    receive({ type: "queue-overview", size: 14, estimatedWait: 29_500 });
+
+    const queue = within(rankedCard()).getByRole("region", { name: "En file maintenant" });
+
+    expect(queue).toHaveTextContent("14 joueurs en file·≈ 30 s d'attente");
+    expect(within(queue).queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  test("lists the last 3 Duels won in the User's Tier: who beat whom, both wpm, how long ago", async () => {
+    await renderAppFor("/fr", {
+      reader: adaRanked({ tier: "gold", division: 2, tp: 42, shielded: false }),
+      openSocket: sockets.open,
+      recentRankedDuels: goldDuels(),
+    });
+
+    const rows = within(recentDuelsList(/^Derniers Duels en Gold$/)).getAllByRole("listitem");
+
+    expect(
+      within(rankedCard()).getByRole("heading", { name: "Derniers Duels en Gold" }),
+    ).toBeVisible();
+    expect(rows.map(lineOf)).toEqual([
+      "@mia bat @noe104 – 97il y a 1 min",
+      "@zoe bat @mia89 – 85il y a 2 min",
+      "@noe bat @leo120 – 64il y a 3 min",
+    ]);
+  });
+
+  test("in Placement, the last Duels of every Tier", async () => {
+    await renderAppFor("/fr", {
+      reader: adaRanked({ placementsLeft: 3 }),
+      openSocket: sockets.open,
+      recentRankedDuels: { ...goldDuels(), tier: null },
+    });
+
+    expect(within(recentDuelsList(/^Derniers Duels$/)).getAllByRole("listitem")).toHaveLength(3);
+  });
+
+  test("without a Duel in the Tier, the list is gone", async () => {
+    await renderAppFor("/fr", {
+      reader: adaRanked({ tier: "gold", division: 2, tp: 42, shielded: false }),
+      openSocket: sockets.open,
+      recentRankedDuels: { tier: "gold", duels: [] },
+    });
+
+    expect(within(rankedCard()).queryByRole("list")).not.toBeInTheDocument();
+    expect(within(rankedCard()).queryByText(/^Derniers Duels/)).not.toBeInTheDocument();
+  });
+
+  test("is read again each time Jouer shows", async () => {
+    const reads = vi.fn(async () => Response.json(goldDuels()));
+
+    vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
+      String(input).endsWith("/api/ranked/recent-duels")
+        ? reads()
+        : new Promise<Response>(() => {}),
+    );
+
+    const { router } = await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
+
+    expect(
+      await within(rankedCard()).findByRole("list", { name: "Derniers Duels en Gold" }),
+    ).toBeVisible();
+
+    await act(() => router.navigate({ to: "/leaderboard" }));
+    await act(() => router.navigate({ to: "/" }));
+
+    await waitFor(() => expect(reads).toHaveBeenCalledTimes(2));
+  });
+
+  test("is told in English, the Tier's name the same, the time in the Locale", async () => {
+    useLocaleStore.setState({ locale: "en" });
+    await renderAppFor("/en", {
+      reader: adaRanked({ tier: "gold", division: 2, tp: 42, shielded: false }),
+      openSocket: sockets.open,
+      recentRankedDuels: goldDuels(),
+    });
+
+    receive(idle());
+    receive({ type: "queue-overview", size: 14, estimatedWait: 29_500 });
+
+    expect(within(rankedCard()).getByRole("region", { name: "In queue now" })).toBeVisible();
+    expect(
+      within(recentDuelsList(/^Latest Duels in Gold$/)).getAllByRole("listitem")[0],
+    ).toHaveTextContent("@mia beat @noe104 – 971 min. ago");
+    expect(within(rankedCard()).getByText("Gold II")).toBeVisible();
+    expect(rankedCard()).not.toHaveTextContent(/Derniers|bat|il y a|joueurs|En file/);
+  });
+
+  test("a Visitor sees neither the Queue nor the list", async () => {
+    await renderAppFor("/fr", {
+      reader: null,
+      openSocket: sockets.open,
+      recentRankedDuels: goldDuels(),
+    });
+
+    expect(within(rankedCard()).queryByRole("region")).not.toBeInTheDocument();
+    expect(within(rankedCard()).queryByRole("list")).not.toBeInTheDocument();
+    expect(within(rankedCard()).getByRole("button", { name: "Lancer la recherche" })).toBeVisible();
+  });
+});
+
 describe("the card of the Duel with a Friend", () => {
   test("Défier un Friend leads to Friends", async () => {
     const { user, url } = await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
@@ -563,7 +695,7 @@ describe("the card of the Duel with a Friend", () => {
     expect(url()).toBe("/fr/friends");
   });
 
-  test("shows the User facing a Friend online, none while no Friend is", async () => {
+  test("with nothing of their Friends to show, the User facing a Friend online", async () => {
     await renderAppFor("/fr", {
       reader: ada,
       openSocket: sockets.open,
@@ -574,10 +706,7 @@ describe("the card of the Duel with a Friend", () => {
 
     receive({
       type: "friends-snapshot",
-      presences: [
-        { userId: "grace-id", presence: "in-duel" },
-        { userId: "linus-id", presence: "online" },
-      ],
+      presences: [{ userId: "linus-id", presence: "online" }],
       requestsReceived: 0,
     });
 
@@ -595,6 +724,209 @@ describe("the card of the Duel with a Friend", () => {
 
     expect(await screen.findByRole("dialog", { name: "Se connecter" })).toBeInTheDocument();
     expect(url()).toBe("/fr");
+  });
+});
+
+const friendsCard = () => card("Duel entre amis");
+
+const friendsList = (name = "Chez tes Friends") =>
+  within(friendsCard()).getByRole("list", { name });
+
+// A Friend as the Activity shows them, and what they did in a Duel.
+const player = (
+  handle: string,
+  wpm: number,
+  outcome: "win" | "loss" | "draw",
+  tp: number | null,
+) => ({
+  ...friend(handle),
+  wpm,
+  outcome,
+  tp,
+});
+
+// A Duel of `friendHandle` against `opponent`, `minutes` ago.
+const duelActivity = (
+  id: string,
+  minutes: number,
+  friendSide: ReturnType<typeof player>,
+  opponent: ReturnType<typeof player>,
+): Activity => ({
+  type: "duel",
+  id,
+  at: Date.now() - minutes * 60_000,
+  forfeit: false,
+  friend: friendSide,
+  opponent,
+});
+
+// Ada, beaten by Axel in a Challenge, and two Ranked Duels of Mia's.
+const friendsActivity = (): Activity[] => [
+  duelActivity("axel-ada", 1, player("axel", 97, "win", null), {
+    ...player("ada", 94, "loss", null),
+    id: ada.id,
+  }),
+  duelActivity("mia-noe", 5, player("mia", 104, "win", 18), player("noe", 97, "loss", -12)),
+  duelActivity("mia-leo", 9, player("mia", 80, "loss", -14), player("leo", 90, "win", 15)),
+  duelActivity("mia-old", 30, player("mia", 70, "win", 16), player("leo", 60, "loss", -16)),
+];
+
+// The server tells the Friends' Presences (the others offline), and that no Challenge waits.
+const tellFriends = (presences: readonly (readonly [string, "online" | "in-duel"])[]) => {
+  receive({
+    type: "friends-snapshot",
+    presences: presences.map(([handle, presence]) => ({ userId: `${handle}-id`, presence })),
+    requestsReceived: 0,
+  });
+  receive({ type: "challenges-snapshot", sent: null, received: [], serverTime: 1_000 });
+};
+
+const renderWithFriends = (path = "/fr") =>
+  renderAppFor(path, {
+    reader: ada,
+    openSocket: sockets.open,
+    friends: ["axel", "mia", "zoe"].map(friend),
+    activities: friendsActivity(),
+  });
+
+describe("« Chez tes Friends » on the card of the Duel with a Friend", () => {
+  test("the Friends in a Duel first, then the last 3 Duels of the Friends, with their TP", async () => {
+    await renderWithFriends();
+    tellFriends([["zoe", "in-duel"]]);
+
+    const rows = within(friendsList()).getAllByRole("listitem");
+
+    expect(within(friendsCard()).getByRole("heading", { name: "Chez tes Friends" })).toBeVisible();
+    expect(rows.map(lineOf)).toEqual([
+      "Z@zoe est en Duel",
+      "A@axel t'a battu97 – 94il y a 1 min",
+      "M@mia a gagné un Duel+18 TPil y a 5 min",
+      "M@mia a perdu un Duel−14 TPil y a 9 min",
+    ]);
+    // No way to watch a Duel.
+    expect(within(friendsCard()).queryByRole("link", { name: /Regarder/ })).not.toBeInTheDocument();
+  });
+
+  test("a Challenge's Duel shows no TP", async () => {
+    await renderWithFriends();
+
+    const axel = within(friendsList()).getAllByRole("listitem")[0];
+
+    expect(axel).toHaveTextContent("@axel t'a battu");
+    expect(axel).not.toHaveTextContent("TP");
+  });
+
+  test("« Revanche ? » challenges back a Friend online who beat the User", async () => {
+    const { user } = await renderWithFriends();
+
+    tellFriends([
+      ["axel", "online"],
+      ["mia", "online"],
+    ]);
+
+    const rematches = within(friendsCard()).getAllByRole("button", { name: /^Revanche/ });
+
+    // Only on Axel's win over Ada: Mia beat someone else.
+    expect(rematches).toHaveLength(1);
+    expect(rematches[0]).toHaveAccessibleName("Revanche contre @axel");
+    expect(rematches[0]).toHaveTextContent("Revanche ?");
+
+    await user.click(rematches[0]!);
+
+    expect(sent()).toEqual([{ type: "send-challenge", userId: "axel-id" }]);
+  });
+
+  test.each([
+    ["offline", []],
+    ["in a Duel", [["axel", "in-duel"]]],
+  ] as const)("no « Revanche ? » for a Friend %s", async (_, presences) => {
+    await renderWithFriends();
+    tellFriends([...presences]);
+
+    expect(
+      within(friendsCard()).queryByRole("button", { name: /^Revanche/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("« Revanche ? » follows the Challenge buttons' rule: one Challenge sent at a time", async () => {
+    await renderWithFriends();
+    tellFriends([["axel", "online"]]);
+    receive({
+      type: "challenge-sent",
+      challenge: { id: "c-1", to: { id: "mia-id", handle: "mia", image: null }, expiresAt: 31_000 },
+      serverTime: 1_000,
+    });
+
+    expect(within(friendsCard()).getByRole("button", { name: /^Défier @axel/ })).toBeDisabled();
+  });
+
+  test("an Activity told live comes first in the block", async () => {
+    await renderWithFriends();
+
+    receive({
+      type: "activity-added",
+      activity: duelActivity(
+        "zoe-noe",
+        0,
+        player("zoe", 110, "win", 20),
+        player("noe", 90, "loss", -20),
+      ),
+    });
+
+    // Written into the cache, shown on React Query's next tick.
+    await waitFor(() =>
+      expect(lineOf(within(friendsList()).getAllByRole("listitem")[0]!)).toBe(
+        "Z@zoe a gagné un Duel+20 TPà l'instant",
+      ),
+    );
+  });
+
+  test("without a Friend nor an Activity, the block is gone: the pitch and « Défier un Friend » stay", async () => {
+    await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
+
+    expect(within(friendsCard()).queryByRole("list")).not.toBeInTheDocument();
+    expect(within(friendsCard()).getByText(/^Défie un Friend, sans enjeu de TP/)).toBeVisible();
+    expect(within(friendsCard()).getByRole("button", { name: "Défier un Friend" })).toBeVisible();
+  });
+
+  test("a Visitor keeps today's card", async () => {
+    await renderAppFor("/fr", {
+      reader: null,
+      openSocket: sockets.open,
+      activities: friendsActivity(),
+    });
+
+    expect(within(friendsCard()).queryByRole("list")).not.toBeInTheDocument();
+    expect(within(friendsCard()).getByRole("button", { name: "Défier un Friend" })).toBeVisible();
+  });
+
+  test("is told in English, no French left", async () => {
+    useLocaleStore.setState({ locale: "en" });
+
+    const { user } = await renderWithFriends("/en");
+
+    tellFriends([
+      ["axel", "online"],
+      ["zoe", "in-duel"],
+    ]);
+
+    const block = card("Duel a Friend");
+
+    const rows = within(within(block).getByRole("list", { name: "At your Friends'" })).getAllByRole(
+      "listitem",
+    );
+
+    expect(rows.map(lineOf)).toEqual([
+      "Z@zoe is in a Duel",
+      "A@axel beat you97 – 941 min. agoRematch?",
+      "M@mia won a Duel+18 TP5 min. ago",
+      "M@mia lost a Duel−14 TP9 min. ago",
+    ]);
+    expect(block).not.toHaveTextContent(/Chez|Revanche|est en Duel|t'a battu|a gagné|il y a/);
+
+    await user.click(within(block).getByRole("button", { name: "Rematch @axel" }));
+
+    expect(sent()).toEqual([{ type: "send-challenge", userId: "axel-id" }]);
   });
 });
 

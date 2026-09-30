@@ -35,10 +35,20 @@ export const duelActivity = (
       id: duel.id,
       at: duel.endedAt,
       forfeit: duel.outcome === "forfeit",
-      friend: { ...friend, wpm: friendPlayer.wpm, outcome: outcomeFor(friend.id, duel) },
+      friend: {
+        ...friend,
+        wpm: friendPlayer.wpm,
+        outcome: outcomeFor(friend.id, duel),
+        tp: friendPlayer.tp,
+      },
       opponent:
         opponentPlayer && opponent
-          ? { ...opponent, wpm: opponentPlayer.wpm, outcome: outcomeFor(opponent.id, duel) }
+          ? {
+              ...opponent,
+              wpm: opponentPlayer.wpm,
+              outcome: outcomeFor(opponent.id, duel),
+              tp: opponentPlayer.tp,
+            }
           : null,
     },
   ];

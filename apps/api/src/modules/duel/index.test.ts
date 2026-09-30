@@ -1588,6 +1588,7 @@ describe("duel socket", () => {
       leaderboardBefore: () => Promise.reject(new Error("database down")),
       leaderboardPlace: () => Promise.reject(new Error("database down")),
       leaderboardSize: () => Promise.reject(new Error("database down")),
+      recentWonRankedDuels: () => Promise.reject(new Error("database down")),
     };
 
     await app.stop(true);

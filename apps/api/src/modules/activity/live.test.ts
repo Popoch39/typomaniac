@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { TypeCompiler } from "@sinclair/typebox/compiler";
 
 import { createApp } from "../../app";
 import {
@@ -12,6 +13,9 @@ import {
   type TestClient,
   testConfig,
 } from "../../test-app";
+import { ActivityModel } from "./model";
+
+const activityMessage = TypeCompiler.Compile(ActivityModel.activityMessage);
 
 const NOW = 1_700_000_000_000;
 
@@ -118,6 +122,8 @@ describe("Activity, live on the socket", () => {
     ornament: null,
     wpm: 0,
     outcome,
+    // A Duel of their Placement: no TP.
+    tp: null,
   });
 
   const profile = ({ id, handle, image }: TestUser) => ({ id, handle, image, ornament: null });
@@ -148,6 +154,43 @@ describe("Activity, live on the socket", () => {
     await tab(ada);
     expect(await alanTab.nextArrival()).toMatchObject({
       arrival: { friend: { id: ada.id, ornament: "silver" } },
+    });
+  });
+
+  test("a Friend's Ranked Duel carries the TP it moved for each", async () => {
+    const ada = await newUser("Ada");
+    const alan = await newUser("Alan");
+    const carol = await newUser("Carol");
+    const gold = { tier: "gold", division: 2, tp: 50, shielded: false } as const;
+
+    duels.ratings.set(ada.id, { mmr: 1000, rank: gold });
+    duels.ratings.set(carol.id, { mmr: 1000, rank: gold });
+    await befriend(ada, alan);
+
+    const alanTab = await tab(alan);
+    const adaTab = await tab(ada);
+    const carolTab = await tab(carol);
+
+    await duel(adaTab, carolTab);
+
+    const told = await alanTab.nextActivity();
+
+    expect(activityMessage.Check(told)).toBe(true);
+
+    if (told.type !== "activity-added" || told.activity.type !== "duel") {
+      throw new Error(`Not a Duel's Activity: ${JSON.stringify(told)}`);
+    }
+
+    expect(told.activity.friend.tp).toBeLessThan(0);
+    expect(told.activity.opponent?.tp).toBeGreaterThan(0);
+
+    // As the Duel wrote them.
+    const tpOf = (userId: string) =>
+      duels.saved[0]?.players.find((row) => row.userId === userId)?.rated?.tp;
+
+    expect(told.activity).toMatchObject({
+      friend: { id: ada.id, tp: tpOf(ada.id) },
+      opponent: { id: carol.id, tp: tpOf(carol.id) },
     });
   });
 

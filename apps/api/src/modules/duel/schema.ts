@@ -19,25 +19,30 @@ import { DUEL_OUTCOMES } from "./store";
 
 // A finished Duel: enough to replay it on its Text (Seed, Language, Word list version, Mode) and
 // its outcome. A Duel still running when the API stops is never written (ADR 0003).
-export const duel = pgTable("duel", {
-  id: text("id").primaryKey(),
-  // A 32-bit unsigned Seed: past the range of a Postgres integer.
-  seed: bigint("seed", { mode: "number" }).notNull(),
-  language: text("language", { enum: ["fr", "en"] }).notNull(),
-  wordListVersion: integer("word_list_version").notNull(),
-  mode: text("mode", { enum: ["time"] }).notNull(),
-  seconds: integer("seconds").notNull(),
-  // The end of the Countdown.
-  startedAt: timestamp("started_at").notNull(),
-  // The end of its time, or the moment of the Forfeit.
-  endedAt: timestamp("ended_at").notNull(),
-  outcome: text("outcome", { enum: DUEL_OUTCOMES }).notNull(),
-  // Null for a Draw, or once the winner's User is deleted.
-  winnerId: text("winner_id").references(() => user.id, { onDelete: "set null" }),
-  // A Duel of the Queue, which moved both Ratings; false for a Challenge and for the Duels played
-  // before ranked existed.
-  ranked: boolean("ranked").notNull().default(false),
-});
+export const duel = pgTable(
+  "duel",
+  {
+    id: text("id").primaryKey(),
+    // A 32-bit unsigned Seed: past the range of a Postgres integer.
+    seed: bigint("seed", { mode: "number" }).notNull(),
+    language: text("language", { enum: ["fr", "en"] }).notNull(),
+    wordListVersion: integer("word_list_version").notNull(),
+    mode: text("mode", { enum: ["time"] }).notNull(),
+    seconds: integer("seconds").notNull(),
+    // The end of the Countdown.
+    startedAt: timestamp("started_at").notNull(),
+    // The end of its time, or the moment of the Forfeit.
+    endedAt: timestamp("ended_at").notNull(),
+    outcome: text("outcome", { enum: DUEL_OUTCOMES }).notNull(),
+    // Null for a Draw, or once the winner's User is deleted.
+    winnerId: text("winner_id").references(() => user.id, { onDelete: "set null" }),
+    // A Duel of the Queue, which moved both Ratings; false for a Challenge and for the Duels played
+    // before ranked existed.
+    ranked: boolean("ranked").notNull().default(false),
+  },
+  // The Duels by their end, the most recent read first: Jouer's last Duels of a Tier walk it.
+  (table) => [index("duel_ended_at_idx").on(table.endedAt, table.id)],
+);
 
 // `stepOf` of the ranked package in SQL: 4 steps per Tier, the Division within it, Maniac last.
 // Null in Placement.

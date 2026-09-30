@@ -232,7 +232,40 @@ export const memoryDuelStore = () => {
               endedAt: record.endedAt,
               outcome: record.outcome,
               winnerId: winnerOf(record),
-              players: players.map(({ userId, result }) => ({ userId, wpm: result.wpm })),
+              players: players.map(({ userId, result, rated }) => ({
+                userId,
+                wpm: result.wpm,
+                tp: rated?.tp ?? null,
+              })),
+            },
+          ];
+        })
+        .slice(0, limit),
+    recentWonRankedDuels: async (tier, limit) =>
+      saved
+        .toSorted(byNewestDuel)
+        .flatMap((record) => {
+          const players = playersOf(record);
+          const winnerId = winnerOf(record);
+          const winner = players.find((player) => player.userId === winnerId);
+          const loser = players.find((player) => player.userId !== winnerId);
+          const rank = winnerId === null ? undefined : ratings.get(winnerId)?.rank;
+          const ranked = record.players.every(({ rated }) => rated !== null);
+
+          if (!ranked || !winner || !loser || rank === undefined) {
+            return [];
+          }
+
+          if (tier !== null && !("tier" in rank && rank.tier === tier)) {
+            return [];
+          }
+
+          return [
+            {
+              id: record.id,
+              endedAt: record.endedAt,
+              winner: { userId: winner.userId, wpm: winner.result.wpm },
+              loser: { userId: loser.userId, wpm: loser.result.wpm },
             },
           ];
         })

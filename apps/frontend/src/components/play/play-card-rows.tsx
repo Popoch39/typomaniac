@@ -3,17 +3,18 @@ import type { ReactNode } from "react";
 type PlayCardRowsProps = {
   // What screen readers hear of the list.
   label: string;
-  // Its rows, three at most, each an `li` of one line.
+  // Its rows, five at most, each an `li` of one line.
   children: ReactNode;
 };
 
 // A list of a card's live zone, which takes the height left in it and keeps only the rows that fit
-// whole: the third goes first, then the second (`play-rows-fit-*`, out of the tab order too).
-// Each row is one line of 1.75rem, 0.5rem apart, as the variants count them.
+// whole: the last goes first, then the one before, down to the first (`play-rows-fit-*`, out of the
+// tab order too). Each row is one line of 1.75rem, 0.5rem apart, as the variants count them; its
+// parts can give way to its width (`play-rows-narrow`, `play-rows-slim`).
 export const PlayCardRows = ({ label, children }: PlayCardRowsProps) => (
   <ul
     aria-label={label}
-    className="flex min-h-0 w-full flex-1 flex-col gap-2 [container:play-rows_/_size] *:flex *:h-7 *:shrink-0 *:items-center *:whitespace-nowrap *:nth-[n+2]:play-rows-fit-1:hidden *:nth-[n+3]:play-rows-fit-2:hidden"
+    className="flex min-h-0 w-full flex-1 flex-col gap-2 [container:play-rows_/_size] *:flex *:h-7 *:shrink-0 *:items-center *:whitespace-nowrap *:nth-[n+2]:play-rows-fit-1:hidden *:nth-[n+3]:play-rows-fit-2:hidden *:nth-[n+4]:play-rows-fit-3:hidden *:nth-[n+5]:play-rows-fit-4:hidden"
   >
     {children}
   </ul>

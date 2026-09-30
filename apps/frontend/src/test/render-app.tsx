@@ -4,7 +4,7 @@ import { act, render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { defaultPace } from "typing-engine";
 
-import { activityQueryOptions } from "@/api/activity";
+import { type Activity, activityQueryOptions } from "@/api/activity";
 import { type BestRun, bestRunQueryOptions, type RunSetting } from "@/api/best-run";
 import { duelHistoryQueryOptions } from "@/api/duel-history";
 import { type Friend, friendRequestsQueryOptions, friendsQueryOptions } from "@/api/friends";
@@ -12,6 +12,7 @@ import { leaderboardQueryOptions } from "@/api/leaderboard";
 import { type Me, meQueryOptions } from "@/api/me";
 import { paceQueryOptions } from "@/api/pace";
 import { profileQueryOptions } from "@/api/profile";
+import { type RecentRankedDuels, recentRankedDuelsQueryOptions } from "@/api/recent-ranked-duels";
 import { createAppRouter } from "@/app-router";
 import { LiveSocketContext } from "@/components/live-socket-context";
 import { ClockContext } from "@/components/run/clock-context";
@@ -48,12 +49,19 @@ const OFFERED_SETTINGS: readonly RunSetting[] = (["fr", "en"] as const).flatMap(
     .concat(wordCounts.map((length): RunSetting => ({ mode: "words", length, language }))),
 );
 
+// What the reader's cache holds besides them, each left out an empty one.
+type Held = {
+  friends: readonly Friend[];
+  bestRuns: readonly HeldBestRun[];
+  activities: readonly Activity[];
+  recentRankedDuels: RecentRankedDuels;
+};
+
 // The cache as the root route's beforeLoad leaves it, for `reader` and their `friends`, or for a
 // Visitor; a User holds `bestRuns`, and none on the other settings.
 const cacheFor = (
   reader: Me | null,
-  friends: readonly Friend[],
-  bestRuns: readonly HeldBestRun[],
+  { friends, bestRuns, activities, recentRankedDuels }: Held,
 ) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
@@ -62,9 +70,10 @@ const cacheFor = (
   queryClient.setQueryData(meQueryOptions.queryKey, reader);
   queryClient.setQueryData(paceQueryOptions(reader).queryKey, defaultPace);
   queryClient.setQueryData(friendsQueryOptions.queryKey, [...friends]);
-  // What /friends, /leaderboard and /duels load: nothing yet.
+  // What /friends, /leaderboard and /duels load, and Jouer's live zones: nothing yet unless given.
   queryClient.setQueryData(friendRequestsQueryOptions.queryKey, { received: [], sent: [] });
-  queryClient.setQueryData(activityQueryOptions.queryKey, []);
+  queryClient.setQueryData(activityQueryOptions.queryKey, [...activities]);
+  queryClient.setQueryData(recentRankedDuelsQueryOptions.queryKey, recentRankedDuels);
   queryClient.setQueryData(leaderboardQueryOptions({}).queryKey, {
     entries: [],
     me: null,
@@ -118,18 +127,29 @@ type AppFor = {
   friends?: readonly Friend[];
   // The reader's Best Runs, none when left out.
   bestRuns?: readonly HeldBestRun[];
+  // Their Friends' Activity, none when left out.
+  activities?: readonly Activity[];
+  // The last Ranked Duels of their Tier, none of every Tier when left out.
+  recentRankedDuels?: RecentRankedDuels;
 };
 
 // The whole app at `path` for `reader`, on a clock stopped at 0 until the test moves it, its
 // connection on the fake server.
 export const renderAppFor = async (
   path: string,
-  { reader, openSocket, friends = [], bestRuns = [] }: AppFor,
+  {
+    reader,
+    openSocket,
+    friends = [],
+    bestRuns = [],
+    activities = [],
+    recentRankedDuels = { tier: null, duels: [] },
+  }: AppFor,
 ) => {
   let now = 0;
   const clock = () => now;
   const history = createMemoryHistory({ initialEntries: [path] });
-  const queryClient = cacheFor(reader, friends, bestRuns);
+  const queryClient = cacheFor(reader, { friends, bestRuns, activities, recentRankedDuels });
 
   const router = createAppRouter({
     history,

@@ -17,12 +17,19 @@
    action always stay. A card too short for its pitch and its live zone lets both go: */
 @custom-variant play-card-short (@container play-card (height < 26rem));
 
-/* A live zone too short for what fills it (the Crest, 96 px and its Division, is the tallest). */
+/* A live zone too short for what fills it (the Ranked's is the tallest: the Queue's two lines, then
+   a list's title and its first row, 6.75rem). */
 @custom-variant play-live-short (@container play-live (height < 7rem));
 
-/* A card's list that fits only one, then only two rows (rows of 1.75rem, 0.5rem apart). */
+/* A card's list that fits only one, two, three, then four rows (rows of 1.75rem, 0.5rem apart). */
 @custom-variant play-rows-fit-1 (@container play-rows (height < 4rem));
 @custom-variant play-rows-fit-2 (@container play-rows (height < 6.25rem));
+@custom-variant play-rows-fit-3 (@container play-rows (height < 8.5rem));
+@custom-variant play-rows-fit-4 (@container play-rows (height < 10.75rem));
+
+/* A card's list too narrow for all of a row: its date goes first, then its figures. */
+@custom-variant play-rows-narrow (@container play-rows (width < 20rem));
+@custom-variant play-rows-slim (@container play-rows (width < 15rem));
 
 @theme inline {
   --font-sans: "Onest Variable", ui-sans-serif, system-ui, sans-serif;

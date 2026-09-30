@@ -94,7 +94,7 @@ const activities: Activity[] = [
     id: "duel-1",
     at: Date.now() - 5 * 60_000,
     forfeit: true,
-    friend: { ...alan, wpm: 72.4, outcome: "win" },
+    friend: { ...alan, wpm: 72.4, outcome: "win", tp: null },
     opponent: {
       id: "turing-id",
       handle: "turing",
@@ -102,6 +102,7 @@ const activities: Activity[] = [
       ornament: null,
       wpm: 40,
       outcome: "loss",
+      tp: null,
     },
   },
   {

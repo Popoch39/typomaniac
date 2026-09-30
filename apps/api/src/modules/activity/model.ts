@@ -6,11 +6,13 @@ import { PublicUser } from "../user/public-user";
 // never their name nor email.
 const activityUser = PublicUser;
 
-// A player of a Duel of the Activity: their outcome seen from them, the Forfeit a loss.
+// A player of a Duel of the Activity: their outcome seen from them, the Forfeit a loss, and the TP
+// the Duel moved for them, never the MMR: null for a Challenge or a Duel in Placement.
 const activityPlayer = t.Object({
   ...activityUser.properties,
   wpm: t.Number(),
   outcome: t.UnionEnum(["win", "loss", "draw"]),
+  tp: t.Nullable(t.Integer()),
 });
 
 // A Duel or a friendship, `friend` a Friend of the reader. A Duel's `opponent` is null once their
