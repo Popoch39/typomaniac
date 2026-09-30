@@ -104,17 +104,79 @@ const BANNER_PULSES = 3;
 
 const BANNER_HALF_BEAT_S = (COUNTDOWN_S - REVEAL_S) / (2 * BANNER_PULSES);
 
+// The card the Face-off opens from (« C'est parti ! »: Jouer's, the Queue pill's or a Challenge's),
+// where it is on the screen, and the screen's size: the overlay covers it.
+export type FaceOffOpening = {
+  card: Pick<DOMRect, "left" | "top" | "width" | "height">;
+  screen: { width: number; height: number };
+};
+
+// The panels come in until the impact. From the card: each laid on the card's box, the card split
+// on their diagonal, then both grow out of it to cover the screen, faded in instead under reduced
+// motion. Without a card (a resume, a Duel with nothing to open from), they slide in from their
+// edges and meet in the middle.
+const panelsIn = (
+  timeline: gsap.core.Timeline,
+  opening: FaceOffOpening | null,
+  reducedMotion: boolean,
+) => {
+  const tween = { duration: IMPACT_S, lazy: false };
+
+  if (opening !== null && reducedMotion) {
+    timeline.fromTo(PANELS, { autoAlpha: 0 }, { autoAlpha: 1, ease: "none", ...tween }, "entrance");
+
+    return;
+  }
+
+  // A card without a box (not laid out) has nothing to open from.
+  if (opening !== null && opening.card.width > 0 && opening.card.height > 0) {
+    const { card, screen } = opening;
+
+    timeline.fromTo(
+      PANELS,
+      {
+        transformOrigin: "0 0",
+        x: card.left,
+        y: card.top,
+        scaleX: card.width / screen.width,
+        scaleY: card.height / screen.height,
+      },
+      { x: 0, y: 0, scaleX: 1, scaleY: 1, ease: "power3.in", ...tween },
+      "entrance",
+    );
+
+    return;
+  }
+
+  timeline
+    .fromTo(
+      part("own"),
+      { xPercent: -100 },
+      { xPercent: 0, ease: "power4.in", ...tween },
+      "entrance",
+    )
+    .fromTo(
+      part("opponent"),
+      { xPercent: 100 },
+      { xPercent: 0, ease: "power4.in", ...tween },
+      "entrance",
+    );
+};
+
 type FaceOffTimelineOptions = {
   // A Promotion Duel: its banner comes in with the reveal and goes at GO.
   promotion: boolean;
-  // Under reduced motion, the banner fades without moving and its emblem stays still.
+  // Under reduced motion, the banner fades without moving and its emblem stays still, and the
+  // panels fade in over the card they open from.
   reducedMotion: boolean;
+  // The card the panels open from, null without one.
+  opening: FaceOffOpening | null;
 };
 
 // The whole Face-off overlay on a single timeline, paused: its time is the time since the pairing,
 // set from the Duel's clock (never GSAP's own), so a seek lands anywhere. Transforms and opacity
 // only; the diagonal cut is a static clip-path.
-export const faceOffTimeline = ({ promotion, reducedMotion }: FaceOffTimelineOptions) => {
+export const faceOffTimeline = ({ promotion, reducedMotion, opening }: FaceOffTimelineOptions) => {
   const timeline = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
   const marquee = { duration: COUNTDOWN_S + EXIT_S, ease: "power2.out" };
 
@@ -123,19 +185,11 @@ export const faceOffTimeline = ({ promotion, reducedMotion }: FaceOffTimelineOpt
     .set(PANELS, { willChange: "transform" }, "entrance")
     .fromTo(part("marquee-forward"), { x: 0 }, { x: `-${MARQUEE_DRIFT}`, ...marquee }, "entrance")
     .fromTo(part("marquee-backward"), { x: `-${MARQUEE_DRIFT}` }, { x: 0, ...marquee }, "entrance")
-    .fromTo(
-      part("own"),
-      { xPercent: -100 },
-      { xPercent: 0, duration: IMPACT_S, ease: "power4.in" },
-      "entrance",
-    )
-    .fromTo(
-      part("opponent"),
-      { xPercent: 100 },
-      { xPercent: 0, duration: IMPACT_S, ease: "power4.in" },
-      "entrance",
-    )
-    .addLabel("impact", IMPACT_S)
+    .addLabel("impact", IMPACT_S);
+
+  panelsIn(timeline, opening, reducedMotion);
+
+  timeline
     // Opaque behind the panels while they cover the screen: the shake never shows the page
     // changing under them.
     .set(part("backdrop"), { autoAlpha: 1 }, "impact")

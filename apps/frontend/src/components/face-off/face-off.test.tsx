@@ -126,6 +126,21 @@ const discPart = () => {
   return part;
 };
 
+// A side's panel, which the timeline moves in and out.
+const panel = (side: string) => {
+  const part = document.querySelector(`[data-face-off="${side}"]`);
+
+  if (part === null) {
+    throw new Error(`No ${side} panel`);
+  }
+
+  return part;
+};
+
+// Jouer's card « C'est parti ! », 620 × 480 in the middle of the page, on a screen of
+// 1440 × 900.
+const JOUER_CARD = new DOMRect(410, 210, 620, 480);
+
 // The User prefers reduced motion: the Face-off reads it when its timeline is built.
 const reduceMotion = () =>
   vi.spyOn(window, "matchMedia").mockImplementation((media) => ({
@@ -192,7 +207,13 @@ const tickAt = (elapsed: number) => {
 };
 
 // The Face-off as the Duel shows it, `elapsed` ms into the Duel, the tab's clock on the same time.
-const faceOffAt = (elapsed: number, pairing = challenge, sounds = fakeSounds().sounds) => {
+// Opened from `card` (« C'est parti ! »), or slid in from the edges without one.
+const faceOffAt = (
+  elapsed: number,
+  pairing = challenge,
+  sounds = fakeSounds().sounds,
+  card: DOMRect | null = null,
+) => {
   const queryClient = new QueryClient();
 
   queryClient.setQueryData(meQueryOptions.queryKey, me);
@@ -202,7 +223,7 @@ const faceOffAt = (elapsed: number, pairing = challenge, sounds = fakeSounds().s
     <QueryClientProvider client={queryClient}>
       <FaceOffSoundsContext value={sounds}>
         <ClockContext value={clock}>
-          <FaceOff opponent={alan} pairing={pairing} startsAt={startsAt} elapsed={at} />
+          <FaceOff opponent={alan} pairing={pairing} startsAt={startsAt} elapsed={at} card={card} />
         </ClockContext>
       </FaceOffSoundsContext>
     </QueryClientProvider>
@@ -419,6 +440,69 @@ describe("FaceOff", () => {
       expect(gsap.getProperty(bannerPart(), "y")).toBe(0);
       expect(emblem === null ? null : gsap.getProperty(emblem, "opacity")).toBe(1);
     }
+  });
+
+  test("without a card, the panels slide in from the edges and meet at the impact", () => {
+    const faceOff = faceOffAt(-4500);
+
+    expect(gsap.getProperty(panel("own"), "xPercent")).toBe(-100);
+    expect(gsap.getProperty(panel("opponent"), "xPercent")).toBe(100);
+
+    faceOff.at(-4150);
+    tickAt(-4150);
+
+    expect(gsap.getProperty(panel("own"), "xPercent")).toBe(0);
+    expect(gsap.getProperty(panel("opponent"), "xPercent")).toBe(0);
+  });
+
+  test("opens out of the card: both panels laid on its box at the pairing, the screen at the impact", () => {
+    const faceOff = faceOffAt(-4500, challenge, fakeSounds().sounds, JOUER_CARD);
+
+    for (const side of ["own", "opponent"]) {
+      expect(gsap.getProperty(panel(side), "x")).toBe(410);
+      expect(gsap.getProperty(panel(side), "y")).toBe(210);
+      expect(gsap.getProperty(panel(side), "scaleX")).toBeCloseTo(620 / 1440);
+      expect(gsap.getProperty(panel(side), "scaleY")).toBeCloseTo(480 / 900);
+      expect(gsap.getProperty(panel(side), "xPercent")).toBe(0);
+    }
+
+    faceOff.at(-4150);
+    tickAt(-4150);
+
+    for (const side of ["own", "opponent"]) {
+      expect(gsap.getProperty(panel(side), "x")).toBe(0);
+      expect(gsap.getProperty(panel(side), "scaleX")).toBe(1);
+      expect(gsap.getProperty(panel(side), "scaleY")).toBe(1);
+    }
+  });
+
+  test("still plays the impact on its time when it opens out of the card", () => {
+    const { sounds, played } = fakeSounds();
+    const faceOff = faceOffAt(-4500, challenge, sounds, JOUER_CARD);
+
+    faceOff.at(-4150);
+    tickAt(-4150);
+
+    expect(played).toEqual(["whoosh", "impact"]);
+  });
+
+  test("under reduced motion, the panels fade in over the card, without moving", () => {
+    reduceMotion();
+
+    const faceOff = faceOffAt(-4500, challenge, fakeSounds().sounds, JOUER_CARD);
+
+    for (const side of ["own", "opponent"]) {
+      expect(gsap.getProperty(panel(side), "opacity")).toBe(0);
+      expect(gsap.getProperty(panel(side), "x")).toBe(0);
+      expect(gsap.getProperty(panel(side), "xPercent")).toBe(0);
+      expect(gsap.getProperty(panel(side), "scaleX")).toBe(1);
+    }
+
+    faceOff.at(-4150);
+    tickAt(-4150);
+
+    expect(gsap.getProperty(panel("own"), "opacity")).toBe(1);
+    expect(gsap.getProperty(panel("opponent"), "opacity")).toBe(1);
   });
 
   test("waits for the Countdown: nothing in the second of « C'est parti ! » before it", () => {

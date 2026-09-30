@@ -3,7 +3,11 @@ import { createPortal } from "react-dom";
 
 import { FaceOffOverlay } from "@/components/face-off/face-off-overlay";
 import type { FaceOffPairing } from "@/components/face-off/face-off-pairing";
-import { beforeCountdown, EXIT_MS } from "@/components/face-off/face-off-timeline";
+import {
+  beforeCountdown,
+  EXIT_MS,
+  type FaceOffOpening,
+} from "@/components/face-off/face-off-timeline";
 import { useClock } from "@/components/run/clock-context";
 import type { DuelOpponent } from "@/stores/duel-store";
 
@@ -13,12 +17,14 @@ type FaceOffProps = {
   startsAt: number;
   // Milliseconds since the start of the Duel, negative during the Countdown.
   elapsed: number;
+  // The box of the card « C'est parti ! » its panels open from; none by default, they slide in.
+  card?: FaceOffOpening["card"] | null;
 };
 
 // The Face-off overlay from the Countdown to the end of its exit, past the start: never before, in
 // the second of « C'est parti ! » of a Duel of the Queue. A Duel joined after its start (a resume)
 // never shows it.
-export const FaceOff = ({ opponent, pairing, startsAt, elapsed }: FaceOffProps) => {
+export const FaceOff = ({ opponent, pairing, startsAt, elapsed, card = null }: FaceOffProps) => {
   const clock = useClock();
   // Read from the clock: `elapsed` may still be the previous Duel's for a frame.
   const [inCountdown] = useState(() => clock() < startsAt);
@@ -28,7 +34,13 @@ export const FaceOff = ({ opponent, pairing, startsAt, elapsed }: FaceOffProps) 
   }
 
   return createPortal(
-    <FaceOffOverlay opponent={opponent} pairing={pairing} startsAt={startsAt} elapsed={elapsed} />,
+    <FaceOffOverlay
+      opponent={opponent}
+      pairing={pairing}
+      startsAt={startsAt}
+      elapsed={elapsed}
+      card={card}
+    />,
     document.body,
   );
 };

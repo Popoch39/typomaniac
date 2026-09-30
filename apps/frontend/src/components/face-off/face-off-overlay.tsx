@@ -5,6 +5,7 @@ import { FaceOffCount } from "@/components/face-off/face-off-count";
 import { FaceOffMute } from "@/components/face-off/face-off-mute";
 import { FaceOffOpponent } from "@/components/face-off/face-off-opponent";
 import type { FaceOffPairing } from "@/components/face-off/face-off-pairing";
+import type { FaceOffOpening } from "@/components/face-off/face-off-timeline";
 import { FaceOffPromotionBanner } from "@/components/face-off/face-off-promotion-banner";
 import { FaceOffSelf } from "@/components/face-off/face-off-self";
 import { promotionDuel } from "@/components/face-off/promotion-duel";
@@ -17,6 +18,8 @@ type FaceOffOverlayProps = {
   pairing: FaceOffPairing;
   startsAt: number;
   elapsed: number;
+  // The box of the card its panels open from, null without one.
+  card: FaceOffOpening["card"] | null;
 };
 
 // A click on the overlay never takes the focus from the typing area: it has it at GO.
@@ -26,12 +29,18 @@ const keepFocus = (event: MouseEvent) => event.preventDefault();
 // the right, the VS, then the 3-2-1, on the Duel's clock. The stage shakes at the impact; the two
 // panels cover the page until they split away on GO. A Promotion Duel adds its banner on top and
 // a ring of light around the disc.
-export const FaceOffOverlay = ({ opponent, pairing, startsAt, elapsed }: FaceOffOverlayProps) => {
+export const FaceOffOverlay = ({
+  opponent,
+  pairing,
+  startsAt,
+  elapsed,
+  card,
+}: FaceOffOverlayProps) => {
   const scope = useRef<HTMLDivElement>(null);
   const locale = useLocale();
   const promotion = promotionDuel(pairing.selfRank, pairing.selfStake, locale);
 
-  useFaceOffTimeline(scope, startsAt, { promotion: promotion !== null });
+  useFaceOffTimeline(scope, startsAt, { promotion: promotion !== null, card });
 
   return (
     <div

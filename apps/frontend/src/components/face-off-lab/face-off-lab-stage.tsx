@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 
 import { FaceOffLabControls } from "@/components/face-off-lab/face-off-lab-controls";
+import { labCard, type LabOpening } from "@/components/face-off-lab/face-off-lab-openings";
 import {
   type LabPairing,
   LAB_OPPONENT,
@@ -24,6 +25,7 @@ type FaceOffLabStageProps = { onClose: () => void };
 export const FaceOffLabStage = ({ onClose }: FaceOffLabStageProps) => {
   const replay = useReplayClock(DURATION);
   const [pairing, setPairing] = useState<LabPairing>("ranked");
+  const [opening, setOpening] = useState<LabOpening>("edges");
   // Each restart is a new Face-off: its sounds play again (a Face-off never replays one it played).
   const [restartCount, setRestartCount] = useState(0);
 
@@ -36,11 +38,12 @@ export const FaceOffLabStage = ({ onClose }: FaceOffLabStageProps) => {
     <>
       <ClockContext value={replay.playhead}>
         <FaceOffOverlay
-          key={`${pairing}-${restartCount}`}
+          key={`${pairing}-${opening}-${restartCount}`}
           opponent={LAB_OPPONENT}
           pairing={LAB_PAIRINGS[pairing]}
           startsAt={STARTS_AT}
           elapsed={replay.t - STARTS_AT}
+          card={labCard(opening, window.innerWidth, window.innerHeight)}
         />
       </ClockContext>
       <FaceOffLabControls
@@ -50,12 +53,14 @@ export const FaceOffLabStage = ({ onClose }: FaceOffLabStageProps) => {
         ended={replay.ended}
         speed={replay.speed}
         pairing={pairing}
+        opening={opening}
         onPause={replay.pause}
         onResume={replay.resume}
         onRestart={restart}
         onSeek={replay.seek}
         onSpeed={replay.setSpeed}
         onPairing={setPairing}
+        onOpening={setOpening}
         onClose={onClose}
       />
     </>,

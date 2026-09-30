@@ -9,8 +9,8 @@ import { type BridgedDuel, coverScene, releaseBridge } from "@/stores/duel-bridg
 
 // The Duel on its way, on the Duel's clock: « C'est parti ! » the second before the Countdown
 // (the copy of the card it came from, where it was, or the card in the middle without one), then
-// the Face-off, whose panels cover the screen for the Duel's scene and URL to show under them, up
-// to the end of its exit.
+// the Face-off, whose panels open out of the card and cover the screen for the Duel's scene and
+// URL to show under them, up to the end of its exit.
 export const BridgedFaceOff = ({ bridged }: { bridged: BridgedDuel }) => {
   const { id, opponent, pairing, startsAt, card } = bridged;
   const elapsed = useDuelElapsed(startsAt);
@@ -41,6 +41,7 @@ export const BridgedFaceOff = ({ bridged }: { bridged: BridgedDuel }) => {
         pairing={pairing}
         startsAt={startsAt}
         elapsed={elapsed}
+        card={card?.rect ?? null}
       />
     </>
   );

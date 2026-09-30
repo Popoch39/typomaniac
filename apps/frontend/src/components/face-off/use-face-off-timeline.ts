@@ -4,6 +4,7 @@ import { type RefObject, useRef } from "react";
 
 import {
   COUNTDOWN_S,
+  type FaceOffOpening,
   faceOffTimeline,
   soundsPassed,
 } from "@/components/face-off/face-off-timeline";
@@ -21,8 +22,9 @@ gsap.registerPlugin(useGSAP);
 export const useFaceOffTimeline = (
   scope: RefObject<HTMLDivElement | null>,
   startsAt: number,
-  // What the overlay shows beyond the players: a Promotion Duel's banner, which comes and goes.
-  { promotion }: { promotion: boolean },
+  // What the overlay shows beyond the players: a Promotion Duel's banner, which comes and goes;
+  // and the box of the card its panels open from, null without one.
+  { promotion, card }: { promotion: boolean; card: FaceOffOpening["card"] | null },
 ) => {
   const clock = useClock();
   const sounds = useFaceOffSounds();
@@ -34,6 +36,10 @@ export const useFaceOffTimeline = (
       const timeline = faceOffTimeline({
         promotion,
         reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+        opening:
+          card === null
+            ? null
+            : { card, screen: { width: window.innerWidth, height: window.innerHeight } },
       });
 
       const pairedAt = startsAt - COUNTDOWN_S * 1000;
@@ -61,6 +67,6 @@ export const useFaceOffTimeline = (
 
       return () => gsap.ticker.remove(sync);
     },
-    { scope, dependencies: [clock, sounds, startsAt, promotion] },
+    { scope, dependencies: [clock, sounds, startsAt, promotion, card] },
   );
 };
