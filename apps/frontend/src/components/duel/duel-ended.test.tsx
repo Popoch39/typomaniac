@@ -23,6 +23,7 @@ import type { AuraRuntime } from "@/lib/aura-runtime";
 import type { DuelEnding } from "@/stores/duel-store";
 import { useFaceOffSoundStore } from "@/stores/face-off-sound-store";
 import { useLocaleStore } from "@/stores/locale-store";
+import { usePlayStore } from "@/stores/play-store";
 import { fakeAuraRuntime } from "@/test/fake-aura-runtime";
 import { holdGsapClock } from "@/test/gsap-clock";
 
@@ -41,18 +42,26 @@ type Issue = Pick<DuelEnding, "outcome" | "forfeit">;
 
 const DRAW: Issue = { outcome: "draw", forfeit: false };
 
-const ending = (
-  duelId: string | null,
-  ranked: DuelEnding["ranked"] = null,
-  issue: Issue = DRAW,
-): DuelEnding => ({
-  ranked,
-  duelId,
-  ...issue,
+// Both players' figures, all at 0 unless a test says otherwise.
+type Figures = Pick<DuelEnding, "result" | "opponentResult" | "score" | "opponentScore">;
+
+const NO_FIGURES: Figures = {
   result: noResult,
   opponentResult: noResult,
   score: noScore,
   opponentScore: noScore,
+};
+
+const ending = (
+  duelId: string | null,
+  ranked: DuelEnding["ranked"],
+  issue: Issue,
+  figures: Figures,
+): DuelEnding => ({
+  ranked,
+  duelId,
+  ...issue,
+  ...figures,
   opponent: { handle: "alan", image: null },
 });
 
@@ -98,6 +107,7 @@ let clock = holdGsapClock();
 beforeEach(() => {
   played = [];
   useFaceOffSoundStore.setState({ muted: false });
+  usePlayStore.setState({ play: "solo" });
   clock = holdGsapClock();
 });
 
@@ -113,6 +123,7 @@ type RenderOptions = {
   ranked?: DuelEnding["ranked"];
   aura?: AuraRuntime;
   issue?: Issue;
+  figures?: Figures;
   // The button the end screen is found by, in the Locale shown.
   newDuel?: string;
 };
@@ -137,6 +148,7 @@ const renderEnded = async ({
   ranked = null,
   aura = fakeAuraRuntime().runtime,
   issue = DRAW,
+  figures = NO_FIGURES,
   newDuel = "Nouveau Duel",
 }: RenderOptions = {}) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -150,7 +162,7 @@ const renderEnded = async ({
 
   const router = createRouter({
     routeTree: createRootRoute({
-      component: () => <DuelEnded ending={ending(duelId, ranked, issue)} />,
+      component: () => <DuelEnded ending={ending(duelId, ranked, issue, figures)} />,
     }),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
@@ -388,6 +400,160 @@ describe("DuelEnded", () => {
   });
 });
 
+// A Duel won 513 to 441: better on most lines, level on the raw and the best Combo.
+const WON: Figures = {
+  result: {
+    wpm: 68.2,
+    raw: 71.4,
+    accuracy: 97.2,
+    consistency: 63.8,
+    chars: { correct: 142, incorrect: 3, extra: 0, missed: 1 },
+  },
+  opponentResult: {
+    wpm: 61,
+    raw: 70.6,
+    accuracy: 94,
+    consistency: 58,
+    chars: { correct: 1270, incorrect: 8, extra: 1, missed: 2 },
+  },
+  score: { score: 1513, bestCombo: 12, bursts: 23 },
+  opponentScore: { score: 441, bestCombo: 12, bursts: 17 },
+};
+
+// A line of the Duel's figures, by the names of both in the Locale shown.
+const tapeLineIn = (tape: string, name: string) => {
+  const header = within(screen.getByRole("region", { name: tape })).getByRole("rowheader", {
+    name,
+  });
+
+  const line = header.closest("tr");
+
+  expect(line).not.toBeNull();
+
+  return line ?? header;
+};
+
+const tapeLine = (name: string) => tapeLineIn("Le Duel en chiffres", name);
+
+// Who has the best value of a line: the triangles it shows, named « meilleur » (« best »).
+const bestOn = (line: HTMLElement, best = "meilleur") => within(line).queryAllByText(best);
+
+describe("the Affiche", () => {
+  test.each<[Issue, string, string]>([
+    [{ outcome: "win", forfeit: false }, "Victoire", "Tu bats @alan."],
+    [{ outcome: "loss", forfeit: false }, "Défaite", "@alan l'emporte."],
+    [{ outcome: "draw", forfeit: false }, "Draw", "Ni toi ni @alan ne l'emportez."],
+    [{ outcome: "win", forfeit: true }, "Victoire", "Forfeit de @alan."],
+    [{ outcome: "loss", forfeit: true }, "Défaite", "Forfeit : @alan l'emporte."],
+  ])("tells the outcome %o: « %s », « %s »", async (issue, headline, detail) => {
+    await renderEnded({ issue });
+
+    expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(headline);
+    expect(screen.getByText(detail)).toBeInTheDocument();
+  });
+
+  test("the band names both players with their Scores, in the Locale", async () => {
+    await renderEnded({ issue: { outcome: "win", forfeit: false }, figures: WON });
+
+    const band = screen.getByRole("region", { name: "Score" });
+
+    expect(band).toHaveTextContent(/Toi\s*1\s513/u);
+    expect(band).toHaveTextContent("@alan441");
+  });
+
+  test("tells the Duel line by line, the best value of each marked", async () => {
+    await renderEnded({ figures: WON });
+
+    expect(tapeLine("wpm")).toHaveTextContent("meilleur68wpm61");
+    expect(tapeLine("précision")).toHaveTextContent(/meilleur97\s%précision94\s%/u);
+    expect(tapeLine("meilleur combo")).toHaveTextContent("12meilleur combo12");
+    expect(tapeLine("bursts")).toHaveTextContent("meilleur23bursts17");
+    expect(tapeLine("raw")).toHaveTextContent("71raw71");
+    expect(tapeLine("régularité")).toHaveTextContent(/meilleur64\s%régularité58\s%/u);
+
+    expect(bestOn(tapeLine("wpm"))).toHaveLength(1);
+    expect(bestOn(tapeLine("bursts"))).toHaveLength(1);
+  });
+
+  test("a line level on its rounded figures marks no best value", async () => {
+    await renderEnded({ figures: WON });
+
+    expect(bestOn(tapeLine("raw"))).toEqual([]);
+    expect(bestOn(tapeLine("meilleur combo"))).toEqual([]);
+  });
+
+  test("the best value is on the side of whoever has it", async () => {
+    await renderEnded({
+      figures: { ...WON, opponentScore: { score: 441, bestCombo: 19, bursts: 17 } },
+    });
+
+    const line = tapeLine("meilleur combo");
+
+    // The User's value, then the name, then the opponent's value and their triangle.
+    expect(line.lastElementChild?.contains(bestOn(line)[0] ?? null)).toBe(true);
+  });
+
+  test("then both players' characters", async () => {
+    await renderEnded({ figures: WON });
+
+    expect(tapeLine("caractères")).toHaveTextContent("142/3/0/1caractères1 270/8/1/2");
+  });
+
+  test("the root takes the focus as the screen shows", async () => {
+    await renderEnded();
+
+    expect(endScreen()).toHaveFocus();
+  });
+
+  test("names each block", async () => {
+    await renderEnded({
+      duelId: "duel-1",
+      cached: written,
+      ranked: { tp: 12, previousRank: gold(3, 40), rank: gold(3, 52) },
+    });
+
+    for (const name of ["Score", "Rang", "Le Duel en chiffres", "Le Duel seconde par seconde"]) {
+      expect(screen.getByRole("region", { name })).toBeInTheDocument();
+    }
+
+    expect(screen.getByRole("navigation", { name: "Après le Duel" })).toBeInTheDocument();
+  });
+
+  test("the Duel chart has its card only once the Duel is written", async () => {
+    await renderEnded();
+
+    expect(screen.queryByRole("region", { name: "Le Duel seconde par seconde" })).toBeNull();
+  });
+
+  test("Nouveau Duel joins the Queue from Jouer, Retour au Solo goes back to Jouer in Solo", async () => {
+    await renderEnded();
+
+    const after = within(screen.getByRole("navigation", { name: "Après le Duel" }));
+
+    expect(after.getByRole("button", { name: "Nouveau Duel" })).toHaveAttribute("href", "/");
+    expect(after.getByRole("button", { name: "Retour au Solo" })).toHaveAttribute("href", "/");
+
+    await userEvent.click(after.getByRole("button", { name: "Nouveau Duel" }));
+    expect(usePlayStore.getState().play).toBe("duel");
+  });
+
+  test("Retour au Solo chooses Solo", async () => {
+    usePlayStore.setState({ play: "duel" });
+    await renderEnded();
+
+    await userEvent.click(screen.getByRole("button", { name: "Retour au Solo" }));
+
+    expect(usePlayStore.getState().play).toBe("solo");
+  });
+
+  test("the players' Results are no longer there, as cards of their own", async () => {
+    await renderEnded({ figures: WON });
+
+    expect(screen.queryByRole("region", { name: "Toi" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "@alan" })).toBeNull();
+  });
+});
+
 // The end screen in English, found by its English button.
 const renderInEnglish = (options: RenderOptions = {}) =>
   renderEnded({ newDuel: "New Duel", ...options });
@@ -410,11 +576,19 @@ describe("DuelEnded in English", () => {
     expect(screen.getByText(detail)).toBeInTheDocument();
   });
 
-  test("names both players' Results, then a new Duel and the Replay", async () => {
-    await renderInEnglish({ duelId: "duel-1", cached: written });
+  test("names the band, the Duel's figures and what comes after, in the Locale", async () => {
+    await renderInEnglish({ duelId: "duel-1", cached: written, figures: WON });
 
-    expect(screen.getByRole("region", { name: "You" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "@alan" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Score" })).toHaveTextContent(/You\s*1,513/u);
+    expect(screen.getByRole("region", { name: "The Duel in figures" })).toBeInTheDocument();
+    expect(tapeLineIn("The Duel in figures", "accuracy")).toHaveTextContent("best97%accuracy94%");
+    expect(tapeLineIn("The Duel in figures", "characters")).toHaveTextContent(
+      "142/3/0/1characters1,270/8/1/2",
+    );
+    expect(bestOn(tapeLineIn("The Duel in figures", "wpm"), "best")).toHaveLength(1);
+    expect(screen.getByRole("region", { name: "The Duel second by second" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "After the Duel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back to Solo" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "New Duel" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Watch the Replay" })).toHaveAttribute(
       "href",

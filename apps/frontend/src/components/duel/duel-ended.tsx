@@ -1,34 +1,22 @@
-import { lazy, Suspense, useCallback, useRef } from "react";
+import { useCallback, useRef } from "react";
 
-import { DuelOutcome } from "@/components/duel/duel-outcome";
 import { DuelRank } from "@/components/duel/duel-rank";
 import { DuelTierUp } from "@/components/duel/duel-tier-up";
-import { NothingOnError } from "@/components/duel/nothing-on-error";
-import { PlayerResult } from "@/components/duel/player-result";
-import { ReplayDuelLink } from "@/components/duel/replay-duel-link";
-import { SearchDuelLink } from "@/components/duel/search-duel-link";
-import { SoloLink } from "@/components/duel/solo-link";
-import { LoadingRegion } from "@/components/ui/loading-region";
-import { DuelChartSkeleton } from "@/components/duel-chart/duel-chart-skeleton";
+import { DuelEndActions } from "@/components/duel-end/duel-end-actions";
+import { DuelEndChart } from "@/components/duel-end/duel-end-chart";
+import { DuelEndOutcome } from "@/components/duel-end/duel-end-outcome";
+import { DuelEndScores } from "@/components/duel-end/duel-end-scores";
+import { DuelEndTape } from "@/components/duel-end/duel-end-tape";
 import { atHandle } from "@/lib/at-handle";
-import { useLocale } from "@/locale/use-locale";
-import { m } from "@/paraglide/messages";
 import type { DuelEnding } from "@/stores/duel-store";
 
-// recharts stays out of the home page's bundle until a Duel ends.
-const WrittenDuelChart = lazy(async () => {
-  const module = await import("@/components/duel/written-duel-chart");
-
-  return { default: module.WrittenDuelChart };
-});
-
-// The server ended the Duel: its outcome, what it did to the rank when ranked, and both Scores and
-// Results, the same on both screens. Once written, its Duel chart and Revoir to replay it. Then
-// back to the play page: Nouveau Duel joins the Queue again, Retour au Solo does not.
+// The server ended the Duel, told as the board « B · Affiche » draws it: its outcome, both Scores
+// in one band, what it did to the rank when ranked, both players' figures line by line; once
+// written, its Duel chart and Revoir to replay it. Then back to the play page: Nouveau Duel joins
+// the Queue again, Retour au Solo does not.
 // A move up into a new Tier or Maniac opens its Tier-up over it first; the focus comes back here
 // once it is closed.
 export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
-  const locale = useLocale();
   const opponent = atHandle(ending.opponent.handle);
   const screen = useRef<HTMLDivElement | null>(null);
 
@@ -40,45 +28,26 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
   }, []);
 
   return (
-    <div ref={mount} tabIndex={-1} className="flex flex-col gap-8 outline-none">
-      <DuelOutcome outcome={ending.outcome} forfeit={ending.forfeit} opponent={opponent} />
+    <div
+      ref={mount}
+      tabIndex={-1}
+      className="mx-auto flex w-full max-w-[1100px] flex-col gap-6 outline-none"
+    >
+      <DuelEndOutcome outcome={ending.outcome} forfeit={ending.forfeit} opponent={opponent} />
+      <DuelEndScores
+        score={ending.score.score}
+        opponentScore={ending.opponentScore.score}
+        opponent={opponent}
+      />
       {ending.ranked === null ? null : (
         <>
           <DuelRank ranked={ending.ranked} />
           <DuelTierUp ranked={ending.ranked} onClosed={() => screen.current?.focus()} />
         </>
       )}
-      <div className="grid gap-8 md:grid-cols-2">
-        <PlayerResult
-          name={m.duel_self({}, { locale })}
-          result={ending.result}
-          score={ending.score}
-        />
-        <PlayerResult
-          name={opponent}
-          result={ending.opponentResult}
-          score={ending.opponentScore}
-          opponent
-        />
-      </div>
-      {ending.duelId === null ? null : (
-        <NothingOnError>
-          <Suspense
-            fallback={
-              <LoadingRegion label={m.duel_ended_chart_loading({}, { locale })}>
-                <DuelChartSkeleton />
-              </LoadingRegion>
-            }
-          >
-            <WrittenDuelChart duelId={ending.duelId} />
-          </Suspense>
-        </NothingOnError>
-      )}
-      <div className="flex gap-2">
-        <SearchDuelLink label={m.duel_ended_new_duel({}, { locale })} />
-        {ending.duelId === null ? null : <ReplayDuelLink duelId={ending.duelId} />}
-        <SoloLink />
-      </div>
+      <DuelEndTape ending={ending} opponent={opponent} />
+      {ending.duelId === null ? null : <DuelEndChart duelId={ending.duelId} />}
+      <DuelEndActions duelId={ending.duelId} />
     </div>
   );
 };

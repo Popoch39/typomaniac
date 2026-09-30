@@ -369,6 +369,11 @@
   "duel_ended_chart_loading": "Loading the Duel chart",
   "duel_ended_new_duel": "New Duel",
   "duel_ended_replay": "Watch the Replay",
+  "duel_ended_scores": "Score",
+  "duel_ended_tape": "The Duel in figures",
+  "duel_ended_best": "best",
+  "duel_ended_chart": "The Duel second by second",
+  "duel_ended_after": "After the Duel",
   "duel_rank": "Rank",
   "duel_rank_placement": [
     {
