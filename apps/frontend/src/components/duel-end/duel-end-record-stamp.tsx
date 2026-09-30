@@ -7,6 +7,7 @@ type DuelEndRecordStampProps = { className: string; children: ReactNode };
 // band's beside the Score, the tiles' « Nouveau record ». Each sizes and tilts its own.
 export const DuelEndRecordStamp = ({ className, children }: DuelEndRecordStampProps) => (
   <span
+    data-record-stamp
     className={cn(
       "bg-background font-display font-extrabold tracking-[0.08em] text-brand uppercase",
       className,

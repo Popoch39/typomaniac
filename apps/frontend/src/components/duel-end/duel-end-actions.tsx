@@ -11,7 +11,11 @@ export const DuelEndActions = ({ duelId }: { duelId: string | null }) => {
   const locale = useLocale();
 
   return (
-    <nav aria-label={m.duel_ended_after({}, { locale })} className="flex gap-3">
+    <nav
+      aria-label={m.duel_ended_after({}, { locale })}
+      data-entrance="actions"
+      className="flex gap-3"
+    >
       <SearchDuelLink
         label={m.duel_ended_new_duel({}, { locale })}
         variant="default"

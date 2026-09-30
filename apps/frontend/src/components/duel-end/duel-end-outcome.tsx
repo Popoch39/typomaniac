@@ -29,7 +29,7 @@ export const DuelEndOutcome = ({ outcome, forfeit, opponent }: DuelEndOutcomePro
   const locale = useLocale();
 
   return (
-    <div className="flex items-end justify-between gap-6">
+    <div data-entrance="outcome" className="flex items-end justify-between gap-6">
       <h2
         className={cn(
           "font-display text-[104px] leading-[0.9] font-black tracking-[-0.03em] uppercase",

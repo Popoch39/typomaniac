@@ -11,8 +11,9 @@ export const DuelEndTpDelta = ({ tp }: { tp: number }) => {
 
   return (
     <p
+      data-entrance="tp"
       className={cn(
-        "shrink-0 font-display text-[56px] font-black tracking-[-0.03em] motion-safe:animate-tp-pop",
+        "shrink-0 font-display text-[56px] font-black tracking-[-0.03em]",
         tp >= 0 ? "text-brand" : "text-muted-foreground",
       )}
     >

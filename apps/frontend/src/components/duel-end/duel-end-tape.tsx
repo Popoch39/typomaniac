@@ -30,7 +30,7 @@ export const DuelEndTape = ({ ending, opponent, beaten }: DuelEndTapeProps) => {
   );
 
   return (
-    <section aria-label={title} className={DUEL_END_CARD_PAINT}>
+    <section aria-label={title} data-entrance="tape" className={DUEL_END_CARD_PAINT}>
       <table className="-mt-3 -mb-1.5 w-full table-fixed border-separate border-spacing-x-0 border-spacing-y-1.5">
         <colgroup>
           <col />

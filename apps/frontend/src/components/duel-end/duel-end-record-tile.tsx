@@ -40,6 +40,7 @@ export const DuelEndRecordTile = ({ tile }: { tile: RecordTile }) => {
 
   return (
     <li
+      data-entrance="tile"
       className={cn(
         "flex h-[150px] flex-col justify-between rounded-[24px] px-6 py-5",
         tile.beaten ? "bg-brand text-on-brand" : "bg-card text-muted-foreground",

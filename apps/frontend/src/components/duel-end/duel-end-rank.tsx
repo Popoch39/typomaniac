@@ -15,6 +15,7 @@ export const DuelEndRank = ({ ranked }: { ranked: DuelRanked }) => {
   return (
     <section
       aria-label={m.duel_rank({}, { locale })}
+      data-entrance="rank"
       className="flex items-center gap-8 rounded-card bg-card px-9 py-[26px]"
     >
       {card.kind === "placement" ? (

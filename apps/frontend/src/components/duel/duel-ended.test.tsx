@@ -1943,3 +1943,222 @@ describe("the Tier-up's Aura", () => {
     expect(emblemReached(tierUp)).toBe("gold");
   });
 });
+
+// The whole Affiche: a ranked Duel won within the Division, two Records beaten, written.
+const AFFICHE: RenderOptions = {
+  duelId: "duel-1",
+  cached: written,
+  ranked: { tp: 12, previousRank: gold(3, 40), rank: gold(3, 52) },
+  issue: { outcome: "win", forfeit: false },
+  figures: WON,
+  records: BEATEN,
+};
+
+// Found behind a Tier-up too, where the end screen is out of reach.
+const HIDDEN = { hidden: true };
+
+// The block the outcome's headline heads.
+const outcomeBlock = () => {
+  const block = screen.getByRole("heading", {
+    level: 2,
+    name: "Victoire",
+    ...HIDDEN,
+  }).parentElement;
+
+  expect(block).not.toBeNull();
+
+  return block ?? document.body;
+};
+
+const regionOf = (name: string) => screen.getByRole("region", { name, ...HIDDEN });
+
+// How a block comes in: fading in (and moving), filling up, or the band's slant sliding to its
+// share.
+type Entrance = "fade" | "fill" | "slant";
+
+// Where each block stands before its entrance, as GSAP wrote it.
+const STARTS: Record<Entrance, (block: HTMLElement) => boolean> = {
+  fade: (block) => block.style.opacity === "0",
+  fill: (block) => gsap.getProperty(block, "scaleX") === 0,
+  slant: (block) => block.style.getPropertyValue("--share-in") === "0",
+};
+
+// Where each block stands once in: nothing of that entrance left on it.
+const ENDS: Record<Entrance, (block: HTMLElement) => boolean> = {
+  fade: (block) => block.style.opacity === "" && block.style.transform === "",
+  fill: (block) => block.style.transform === "",
+  slant: (block) => block.style.getPropertyValue("--share-in") === "",
+};
+
+// Nothing of the entrance on a block at all.
+const arrived = (block: HTMLElement) => Object.values(ENDS).every((ended) => ended(block));
+
+type EntranceBlock = {
+  name: string;
+  blocksOf: () => HTMLElement[];
+  from: number;
+  to: number;
+  entrance: Entrance;
+};
+
+// Each block of the Affiche, from when it starts coming in to when it is in, in seconds.
+const ENTRANCE: EntranceBlock[] = [
+  {
+    name: "the outcome",
+    blocksOf: () => [outcomeBlock()],
+    from: 0,
+    to: 0.35,
+    entrance: "fade",
+  },
+  { name: "the band", blocksOf: () => [regionOf("Score")], from: 0.2, to: 0.55, entrance: "fade" },
+  {
+    name: "the band's slant",
+    blocksOf: () => [regionOf("Score")],
+    from: 0.2,
+    to: 0.8,
+    entrance: "slant",
+  },
+  {
+    name: "the band's stamp",
+    blocksOf: () => [within(regionOf("Score")).getByText("Record")],
+    from: 0.7,
+    to: 0.95,
+    entrance: "fade",
+  },
+  {
+    name: "the rank card",
+    blocksOf: () => [regionOf("Rang")],
+    from: 0.5,
+    to: 0.85,
+    entrance: "fade",
+  },
+  {
+    name: "the TP",
+    // However many TP the Duel moved.
+    blocksOf: () => [within(regionOf("Rang")).getByText(/^\+\d+ TP$/u)],
+    from: 0.6,
+    to: 1,
+    entrance: "fade",
+  },
+  {
+    name: "the TP gained",
+    blocksOf: () => [...regionOf("Rang").querySelectorAll<HTMLElement>("[data-tp-part=gained]")],
+    from: 0.6,
+    to: 1,
+    entrance: "fill",
+  },
+  {
+    name: "the Records' tiles",
+    blocksOf: () => within(regionOf("Records")).getAllByRole("listitem", HIDDEN),
+    from: 0.8,
+    to: 1.1,
+    entrance: "fade",
+  },
+  {
+    name: "the Records' stamps",
+    // Those of the first two tiles, the Records beaten: each as its tile lands.
+    blocksOf: () => within(regionOf("Records")).getAllByText("Nouveau record"),
+    from: 0.9,
+    to: 1.05,
+    entrance: "fade",
+  },
+  {
+    name: "the tale of the tape's lines",
+    blocksOf: () => within(regionOf("Le Duel en chiffres")).getAllByRole("row", HIDDEN).slice(1),
+    from: 0.9,
+    to: 1.3,
+    entrance: "fade",
+  },
+  {
+    name: "the Duel chart",
+    blocksOf: () => [regionOf("Le Duel seconde par seconde")],
+    from: 1,
+    to: 1.3,
+    entrance: "fade",
+  },
+  {
+    name: "the buttons",
+    blocksOf: () => [screen.getByRole("navigation", { name: "Après le Duel", ...HIDDEN })],
+    from: 1.1,
+    to: 1.4,
+    entrance: "fade",
+  },
+];
+
+// The whole entrance, over.
+const ENTRANCE_END = 1.4;
+
+const blocksOfAll = () => ENTRANCE.flatMap(({ blocksOf }) => blocksOf());
+
+describe("the entrance", () => {
+  test.each(ENTRANCE)(
+    "$name comes in from $from s to $to s",
+    async ({ blocksOf, from, to, entrance }) => {
+      await renderEnded(AFFICHE);
+
+      const blocks = blocksOf();
+      const before = Math.max(0, from - 0.02);
+
+      expect(blocks.length).toBeGreaterThan(0);
+      await clock.advance(before);
+      expect(blocks.map(STARTS[entrance])).toEqual(blocks.map(() => true));
+
+      await clock.advance(to + 0.02 - before);
+      expect(blocks.map(ENDS[entrance])).toEqual(blocks.map(() => true));
+    },
+  );
+
+  test("under reduced motion, the Affiche is there at once", async () => {
+    reduceMotion();
+
+    await renderEnded(AFFICHE);
+
+    const blocks = blocksOfAll();
+
+    expect(blocks.map(arrived)).toEqual(blocks.map(() => true));
+  });
+
+  test("its buttons answer while it plays", async () => {
+    await renderEnded(AFFICHE);
+
+    await userEvent.click(screen.getByRole("button", { name: "Nouveau Duel" }));
+    expect(usePlayStore.getState().play).toBe("duel");
+
+    await userEvent.click(screen.getByRole("button", { name: "Retour au Solo" }));
+    expect(usePlayStore.getState().play).toBe("solo");
+    expect(screen.getByRole("button", { name: "Revoir" })).toHaveAttribute("href", "/duels/duel-1");
+  });
+
+  test("waits under a Tier-up, hidden, and plays once it is closed", async () => {
+    await renderEnded({ ...AFFICHE, ranked: intoGold });
+
+    const blocks = ENTRANCE.flatMap(({ blocksOf, entrance }) =>
+      blocksOf().map((block) => ({ block, entrance })),
+    );
+
+    const waiting = () => blocks.map(({ block, entrance }) => STARTS[entrance](block));
+
+    await clock.advance(10);
+    expect(waiting()).toEqual(blocks.map(() => true));
+
+    await userEvent.click(continueButton());
+    await waitFor(() => expect(endScreen()).toHaveFocus());
+    expect(waiting()).toEqual(blocks.map(() => true));
+
+    await clock.advance(ENTRANCE_END + 0.02);
+    expect(blocks.map(({ block }) => arrived(block))).toEqual(blocks.map(() => true));
+    expect(regionOf("Rang")).toHaveTextContent("+25 TP");
+  });
+
+  test("leaves nothing behind once gone", async () => {
+    await renderEnded(AFFICHE);
+    await clock.advance(0.5);
+
+    const blocks = blocksOfAll();
+
+    cleanup();
+
+    expect(blocks.map(arrived)).toEqual(blocks.map(() => true));
+    expect(gsap.globalTimeline.getChildren()).toEqual([]);
+  });
+});

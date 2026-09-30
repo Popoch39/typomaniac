@@ -21,7 +21,11 @@ export const DuelEndChart = ({ duelId }: { duelId: string }) => {
 
   return (
     <NothingOnError>
-      <section aria-label={m.duel_ended_chart({}, { locale })} className={DUEL_END_CARD_PAINT}>
+      <section
+        aria-label={m.duel_ended_chart({}, { locale })}
+        data-entrance="chart"
+        className={DUEL_END_CARD_PAINT}
+      >
         <Suspense
           fallback={
             <LoadingRegion label={m.duel_ended_chart_loading({}, { locale })}>

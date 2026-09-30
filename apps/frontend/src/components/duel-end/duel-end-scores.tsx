@@ -28,6 +28,7 @@ export const DuelEndScores = ({ score, opponentScore, opponent, record }: DuelEn
   return (
     <section
       aria-label={m.duel_ended_scores({}, { locale })}
+      data-entrance="band"
       style={share}
       className="relative h-60 overflow-hidden rounded-card bg-opponent"
     >

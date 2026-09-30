@@ -26,7 +26,7 @@ export const DuelEndTpTrack = ({ bar }: { bar: TpBar }) => (
     />
     <span
       data-tp-part={bar.move}
-      className={cn("absolute inset-y-0 origin-left motion-safe:animate-tp-fill", MOVES[bar.move])}
+      className={cn("absolute inset-y-0 origin-left", MOVES[bar.move])}
       style={{ left: `${bar.from}%`, width: `${bar.width}%` }}
     />
     {TICKS.map((tick) => (
