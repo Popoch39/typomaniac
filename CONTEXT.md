@@ -112,7 +112,7 @@ Le temps pendant lequel un User qui a trop Dodgé ne peut pas rejoindre la Queue
 _Avoid_ : cooldown, ban, pénalité, blocage
 
 **Countdown** :
-Les 4,5 secondes avant le départ d'un Duel, identiques pour les deux Users : le Face-off, puis le 3-2-1. La frappe y est bloquée tout du long. Il part 1 seconde après la double acceptation d'une Match proposal, ou dès l'acceptation d'un Challenge.
+Les 4,5 secondes avant le départ d'un Duel, identiques pour les deux Users : le Face-off, puis le 3-2-1. La frappe y est bloquée tout du long. Il part 1 seconde après la double acceptation d'une Match proposal ou l'acceptation d'un Challenge.
 _Avoid_ : timer, décompte, compte à rebours
 
 **Face-off** :
@@ -156,8 +156,12 @@ Le passage en tête de l'autre User pendant un Duel, compté seulement quand sa 
 _Avoid_ : renversement, comeback, retournement
 
 **Callout** :
-Ce que le HUD d'un Duel annonce au centre, un seul à la fois, tiré des Cues des deux Users et des Lead changes. Par ordre d'importance : un Lead change, puis les Bursts, les paliers de Combo et les Combos cassés du User, puis les Bursts, les Combos cassés et le x4 de son adversaire. Chacun reste au moins 0,5 seconde, sauf si un plus important arrive. À la fin du temps, le Callout donne l'issue du Duel.
+Ce que le HUD d'un Duel annonce au centre, un seul à la fois, tiré des Cues des deux Users et des Lead changes. Par ordre d'importance : un Lead change, puis les Bursts, les paliers de Combo et les Combos cassés du User, puis les Bursts, les Combos cassés et le x4 de son adversaire. Chacun reste au moins 0,5 seconde, sauf si un plus important arrive. À la fin du temps, le Callout annonce la fin ; l'issue se lit sur le Duel end.
 _Avoid_ : annonce, toast, notification, popup
+
+**Duel end** :
+L'écran qui suit la fin du temps d'un Duel, dès que le serveur l'a tranché : l'issue, les deux Scores, le rang et ses TP, les Records battus et le Duel chart. Un Tier-up s'y ouvre après l'issue.
+_Avoid_ : Affiche, écran de résultat, récap, écran de fin
 
 **Duel history** :
 Les Duels terminés d'un User, du plus récent au plus ancien.
@@ -260,7 +264,7 @@ Ce qu'un User laisse voir à ses Friends de sa disponibilité : en ligne (typoma
 _Avoid_ : statut, online, activité
 
 **Challenge** :
-L'invitation d'un User à l'un de ses Friends, en ligne, à jouer un Duel ensemble, hors de la Queue. Elle expire au bout de 30 secondes ; l'envoyeur peut l'annuler, le destinataire l'accepter ou la refuser. Accepter lance le Countdown du Duel, qui compte comme n'importe quel autre, sauf qu'il n'est jamais Ranked : il ne touche ni au MMR ni aux TP. Un User n'a qu'un Challenge envoyé à la fois.
+L'invitation d'un User à l'un de ses Friends, en ligne, à jouer un Duel ensemble, hors de la Queue. Elle expire au bout de 30 secondes ; l'envoyeur peut l'annuler, le destinataire l'accepter ou la refuser. Accepter lance le Countdown du Duel 1 seconde plus tard ; ce Duel compte comme n'importe quel autre, sauf qu'il n'est jamais Ranked : il ne touche ni au MMR ni aux TP. Un User n'a qu'un Challenge envoyé à la fois.
 _Avoid_ : défi, invitation, invite, duel privé
 
 **Activity** :
