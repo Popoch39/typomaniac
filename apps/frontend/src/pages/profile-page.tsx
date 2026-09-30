@@ -18,7 +18,8 @@ export const ProfilePage = () => {
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    // The whole window's height: the Stats' bento takes what the header leaves.
+    <div className="flex flex-1 flex-col gap-5">
       <ProfileHero me={me} />
       {/* No Duel without a Handle, so no Stats. A new Handle reads the Stats again: the header
           and the settings stay while they load. */}

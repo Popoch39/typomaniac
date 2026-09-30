@@ -26,7 +26,7 @@ export const UserProfilePage = () => {
   }
 
   return (
-    <section className="flex flex-col gap-8">
+    <section className="flex flex-1 flex-col gap-5">
       <ProfileHeader handle={handle} />
       <ProfileStats handle={handle} empty={<UserProfileEmpty />} />
     </section>

@@ -9,7 +9,7 @@ export const WinRateLegend = ({ record }: { record: Stats["record"] }) => {
   const locale = useLocale();
 
   return (
-    <dl className="flex flex-col gap-2.5 text-[15px]">
+    <dl className="flex flex-col gap-1.5 text-sm">
       <OutcomeCount outcome="wins" term={m.profile_stat_wins({}, { locale })} count={record.wins} />
       <OutcomeCount
         outcome="draws"

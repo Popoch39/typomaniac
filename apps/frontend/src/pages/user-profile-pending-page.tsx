@@ -4,15 +4,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 
-// A User's Profile while it loads: the header (avatar, Handle and Duels, rank card), then the Stats.
+// A User's Profile while it loads: the header (avatar, Handle and Duels, rank card), then the Stats'
+// bento on the rest of the window.
 export const UserProfilePendingPage = () => {
   const locale = useLocale();
 
   return (
-    <section className="flex flex-col gap-8">
+    <section className="flex flex-1 flex-col gap-5">
       <LoadingRegion label={m.profile_loading({}, { locale })}>
-        <div className="flex items-center gap-6">
-          <Skeleton className="size-22 rounded-[33%]" />
+        <div className="flex h-32 items-center gap-6">
+          <Skeleton className="size-16 rounded-[33%]" />
           <div className="flex flex-1 flex-col gap-2">
             <Skeleton className="h-10 w-48" />
             <Skeleton className="h-5 w-20" />

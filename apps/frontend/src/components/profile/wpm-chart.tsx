@@ -30,7 +30,7 @@ import { m } from "@/paraglide/messages";
 // ground under it, their average dashed across, their best ringed and tagged (« record 128 » when it
 // is the User's record, « pic 104 » otherwise), the last Duel dotted. From the oldest Duel of the
 // window, at the left, to the last. The tooltip gives the date of the hovered Duel and its wpm; every
-// figure in the Locale. Nothing when the window has no Duel but Forfeits.
+// figure in the Locale. On the rest of its tile. Nothing when the window has no Duel but Forfeits.
 export const WpmChart = ({
   handle,
   span,
@@ -82,9 +82,9 @@ export const WpmChart = ({
         },
         { locale },
       )}
-      className="flex flex-col gap-1"
+      className="flex min-h-0 flex-1 flex-col gap-1"
     >
-      <ChartContainer config={config} className="aspect-auto h-86 w-full font-mono">
+      <ChartContainer config={config} className="aspect-auto min-h-0 w-full flex-1 font-mono">
         <ComposedChart data={curve.rows} margin={{ top: 44, right: 8, bottom: 4, left: 0 }}>
           <CartesianGrid vertical={false} stroke="var(--surface-2)" />
           <XAxis dataKey="duel" type="number" domain={["dataMin", "dataMax"]} hide />
