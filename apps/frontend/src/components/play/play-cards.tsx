@@ -18,9 +18,10 @@ export const PlayCards = () => {
       >
         {m.play_cards_title({}, { locale })}
       </h1>
-      {/* No height of its own (a 0 px basis): the rest of the window, 34rem at least, the height
-          left by a 720 px one. Below, the page scrolls. */}
-      <div className="flex min-h-[34rem] flex-[1_1_0px] gap-6">
+      {/* No height of its own (a 0 px basis, no floor): the rest of the main, under the title, with
+          the sidebar unfolded as in its Rail. Its cards are size containers, so what fills them
+          never pushes the page past the window: they give up blocks instead. */}
+      <div className="flex min-h-0 flex-[1_1_0px] gap-6">
         <TrainingCard />
         <RankedCard />
         <FriendsDuelCard />

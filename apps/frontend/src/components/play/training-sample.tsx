@@ -6,7 +6,8 @@ const SHOWN_WORDS = 5;
 const TYPED_WORDS = 2;
 
 // A glimpse of the Run's Text, as it would be typed: its first words, a caret after two of them.
-// A drawing: hidden from screen readers.
+// A drawing: hidden from screen readers. As many whole lines as the live zone holds (`cqh`), never
+// one cut.
 export const TrainingSample = () => {
   const words = useRunStore((state) =>
     state.run.words
@@ -18,7 +19,7 @@ export const TrainingSample = () => {
   return (
     <p
       aria-hidden="true"
-      className="w-full font-mono text-[26px] leading-[1.6] font-bold text-pending"
+      className="max-h-[round(down,100cqh,1lh)] w-full overflow-hidden font-mono text-[26px] leading-[1.6] font-bold text-pending"
     >
       <span className="text-foreground">{words.slice(0, TYPED_WORDS).join(" ")}</span>
       <span className="mx-[-1.5px] inline-block h-[1.1em] w-0.75 rounded-xs bg-caret align-text-bottom" />{" "}

@@ -14,7 +14,7 @@ export const TrainingCard = () => {
     <PlayCard
       title={m.play_training_title({}, { locale })}
       pitch={m.play_training_pitch({}, { locale })}
-      visual={<TrainingSample />}
+      live={<TrainingSample />}
       className="bg-card"
       pitchClassName="text-muted-foreground"
     >

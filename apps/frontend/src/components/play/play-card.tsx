@@ -4,8 +4,8 @@ import { type ReactNode, useId } from "react";
 type PlayCardProps = {
   title: string;
   pitch: string;
-  // What fills the card above its title: a Text, a Crest, two avatars.
-  visual: ReactNode;
+  // The live zone, above the title: a Text, a Crest, two avatars.
+  live: ReactNode;
   // Its actions, under the pitch.
   children: ReactNode;
   // Its surface and its ink: the card's, or the accent for the Ranked.
@@ -16,14 +16,16 @@ type PlayCardProps = {
   search?: boolean;
 };
 
-// One of Jouer's cards, named by its title: what fills it, its title and pitch, then its actions.
-// A part the Intro brings in; it fades out as the search is launched. A container: its padding and
-// its title follow its width (`cqi`), from a 1024 px window to a wide one, and what fills it gives
-// up its height first, never pushing the page past the window.
+// One of Jouer's cards, named by its title: its live zone, its title and pitch, then its actions.
+// A part the Intro brings in; it fades out as the search is launched. A size container: its
+// padding and its title follow its width (`cqi`), from a 1024 px window to a wide one; its height
+// is the row's, never its content's, and it gives up whole blocks when short (`play-card-short`,
+// `play-live-short`): the live zone, then the pitch, taken out of the layout and of the tab order.
+// Its title and its actions always stay.
 export const PlayCard = ({
   title,
   pitch,
-  visual,
+  live,
   children,
   className,
   pitchClassName,
@@ -40,13 +42,13 @@ export const PlayCard = ({
       data-flip-id={search ? "search-surface" : undefined}
       data-search-leaves
       className={cn(
-        "@container flex min-w-0 flex-1 flex-col rounded-card shadow-[0_0_0_rgb(0_0_0/0)]",
+        "flex min-w-0 flex-1 flex-col rounded-card shadow-[0_0_0_rgb(0_0_0/0)] [container:play-card_/_size]",
         className,
       )}
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-3.5 p-[min(2rem,7cqi)]">
-        <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
-          {visual}
+      <div className="flex h-full flex-col gap-3.5 p-[min(2rem,7cqi)]">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden [container:play-live_/_size] *:play-card-short:hidden *:play-live-short:hidden">
+          {live}
         </div>
         <h2
           id={titleId}
@@ -54,7 +56,7 @@ export const PlayCard = ({
         >
           {title}
         </h2>
-        <p className={cn("leading-normal", pitchClassName)}>{pitch}</p>
+        <p className={cn("leading-normal play-card-short:hidden", pitchClassName)}>{pitch}</p>
         {children}
       </div>
     </section>

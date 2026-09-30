@@ -12,6 +12,18 @@
 /* The sidebar folded into its Rail, below 1440 px (useSidebarRail): the sidebar and what is in it. */
 @custom-variant rail (&:where([data-rail], [data-rail] *));
 
+/* Jouer's cards (PlayCard) give up whole blocks as they get short, never cutting a text: first a
+   list's rows, one by one (PlayCardRows), then the live zone, then the pitch. Their title and their
+   action always stay. A card too short for its pitch and its live zone lets both go: */
+@custom-variant play-card-short (@container play-card (height < 26rem));
+
+/* A live zone too short for what fills it (the Crest, 96 px and its Division, is the tallest). */
+@custom-variant play-live-short (@container play-live (height < 7rem));
+
+/* A card's list that fits only one, then only two rows (rows of 1.75rem, 0.5rem apart). */
+@custom-variant play-rows-fit-1 (@container play-rows (height < 4rem));
+@custom-variant play-rows-fit-2 (@container play-rows (height < 6.25rem));
+
 @theme inline {
   --font-sans: "Onest Variable", ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-sans);

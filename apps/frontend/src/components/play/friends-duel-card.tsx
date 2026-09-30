@@ -13,7 +13,7 @@ export const FriendsDuelCard = () => {
     <PlayCard
       title={m.play_friends_title({}, { locale })}
       pitch={m.play_friends_pitch({}, { locale })}
-      visual={<FriendsFaceToFace />}
+      live={<FriendsFaceToFace />}
       className="bg-card"
       pitchClassName="text-muted-foreground"
     >

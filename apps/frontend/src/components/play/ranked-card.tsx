@@ -22,7 +22,7 @@ export const RankedCard = () => {
       search
       title={m.play_ranked_title({}, { locale })}
       pitch={m.play_ranked_pitch({}, { locale })}
-      visual={<RankedCardCrest rank={me?.rank ?? null} />}
+      live={<RankedCardCrest rank={me?.rank ?? null} />}
       className="flex-[1.4] bg-primary text-on-brand"
     >
       {me === null ? null : (
