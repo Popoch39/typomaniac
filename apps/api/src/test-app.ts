@@ -241,35 +241,6 @@ export const memoryDuelStore = () => {
           ];
         })
         .slice(0, limit),
-    recentWonRankedDuels: async (tier, limit) =>
-      saved
-        .toSorted(byNewestDuel)
-        .flatMap((record) => {
-          const players = playersOf(record);
-          const winnerId = winnerOf(record);
-          const winner = players.find((player) => player.userId === winnerId);
-          const loser = players.find((player) => player.userId !== winnerId);
-          const rank = winnerId === null ? undefined : ratings.get(winnerId)?.rank;
-          const ranked = record.players.every(({ rated }) => rated !== null);
-
-          if (!ranked || !winner || !loser || rank === undefined) {
-            return [];
-          }
-
-          if (tier !== null && !("tier" in rank && rank.tier === tier)) {
-            return [];
-          }
-
-          return [
-            {
-              id: record.id,
-              endedAt: record.endedAt,
-              winner: { userId: winner.userId, wpm: winner.result.wpm },
-              loser: { userId: loser.userId, wpm: loser.result.wpm },
-            },
-          ];
-        })
-        .slice(0, limit),
     save: async (record) => {
       saved.push(record);
 

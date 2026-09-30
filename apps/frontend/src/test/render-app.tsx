@@ -12,7 +12,6 @@ import { leaderboardQueryOptions } from "@/api/leaderboard";
 import { type Me, meQueryOptions } from "@/api/me";
 import { paceQueryOptions } from "@/api/pace";
 import { profileQueryOptions } from "@/api/profile";
-import { type RecentRankedDuels, recentRankedDuelsQueryOptions } from "@/api/recent-ranked-duels";
 import { createAppRouter } from "@/app-router";
 import { LiveSocketContext } from "@/components/live-socket-context";
 import { ClockContext } from "@/components/run/clock-context";
@@ -54,15 +53,11 @@ type Held = {
   friends: readonly Friend[];
   bestRuns: readonly HeldBestRun[];
   activities: readonly Activity[];
-  recentRankedDuels: RecentRankedDuels;
 };
 
 // The cache as the root route's beforeLoad leaves it, for `reader` and their `friends`, or for a
 // Visitor; a User holds `bestRuns`, and none on the other settings.
-const cacheFor = (
-  reader: Me | null,
-  { friends, bestRuns, activities, recentRankedDuels }: Held,
-) => {
+const cacheFor = (reader: Me | null, { friends, bestRuns, activities }: Held) => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
   });
@@ -73,7 +68,6 @@ const cacheFor = (
   // What /friends, /leaderboard and /duels load, and Jouer's live zones: nothing yet unless given.
   queryClient.setQueryData(friendRequestsQueryOptions.queryKey, { received: [], sent: [] });
   queryClient.setQueryData(activityQueryOptions.queryKey, [...activities]);
-  queryClient.setQueryData(recentRankedDuelsQueryOptions.queryKey, recentRankedDuels);
   queryClient.setQueryData(leaderboardQueryOptions({}).queryKey, {
     entries: [],
     me: null,
@@ -129,27 +123,18 @@ type AppFor = {
   bestRuns?: readonly HeldBestRun[];
   // Their Friends' Activity, none when left out.
   activities?: readonly Activity[];
-  // The last Ranked Duels of their Tier, none of every Tier when left out.
-  recentRankedDuels?: RecentRankedDuels;
 };
 
 // The whole app at `path` for `reader`, on a clock stopped at 0 until the test moves it, its
 // connection on the fake server.
 export const renderAppFor = async (
   path: string,
-  {
-    reader,
-    openSocket,
-    friends = [],
-    bestRuns = [],
-    activities = [],
-    recentRankedDuels = { tier: null, duels: [] },
-  }: AppFor,
+  { reader, openSocket, friends = [], bestRuns = [], activities = [] }: AppFor,
 ) => {
   let now = 0;
   const clock = () => now;
   const history = createMemoryHistory({ initialEntries: [path] });
-  const queryClient = cacheFor(reader, { friends, bestRuns, activities, recentRankedDuels });
+  const queryClient = cacheFor(reader, { friends, bestRuns, activities });
 
   const router = createAppRouter({
     history,

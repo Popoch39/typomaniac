@@ -6,7 +6,6 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { Activity } from "@/api/activity";
 import type { Me } from "@/api/me";
-import type { RecentRankedDuels } from "@/api/recent-ranked-duels";
 import { GHOST_PAUSE_SECONDS } from "@/components/play/use-ghost-typing";
 import { PLAY_FADE_SECONDS } from "@/components/play/use-play-fade";
 import { useAuthStore } from "@/stores/auth-store";
@@ -571,25 +570,8 @@ describe("the Ranked card", () => {
   });
 });
 
-// Three Ranked Duels won in Gold, the most recent first, a minute apart.
-const goldDuels = (): RecentRankedDuels => ({
-  tier: "gold",
-  duels: [
-    ["mia", "noe", 104, 97],
-    ["zoe", "mia", 88.6, 85.2],
-    ["noe", "leo", 120, 64],
-  ].map(([winner, loser, winnerWpm, loserWpm], index) => ({
-    id: `duel-${index}`,
-    endedAt: Date.now() - (index + 1) * 60_000,
-    winner: { handle: String(winner), wpm: Number(winnerWpm) },
-    loser: { handle: String(loser), wpm: Number(loserWpm) },
-  })),
-});
-
 // A row of a card's list as read, the Locale's narrow spaces as plain ones.
 const lineOf = (row: HTMLElement) => row.textContent?.replaceAll(/\s/gu, " ");
-
-const recentDuelsList = (name: RegExp) => within(rankedCard()).getByRole("list", { name });
 
 describe("the Ranked card, live", () => {
   test("shows the Queue right now: the last three to join, how many more, its size and Estimated wait", async () => {
@@ -626,95 +608,27 @@ describe("the Ranked card, live", () => {
     expect(queue).toHaveTextContent(/^MZEn file maintenant2 joueurs en file$/u);
   });
 
-  test("lists the last 3 Duels won in the User's Tier: who beat whom, both wpm, how long ago", async () => {
-    await renderAppFor("/fr", {
-      reader: adaRanked({ tier: "gold", division: 2, tp: 42, shielded: false }),
-      openSocket: sockets.open,
-      recentRankedDuels: goldDuels(),
-    });
-
-    const rows = within(recentDuelsList(/^Derniers Duels en Gold$/)).getAllByRole("listitem");
-
-    expect(
-      within(rankedCard()).getByRole("heading", { name: "Derniers Duels en Gold" }),
-    ).toBeVisible();
-    expect(rows.map(lineOf)).toEqual([
-      "@mia bat @noe104 – 97il y a 1 min",
-      "@zoe bat @mia89 – 85il y a 2 min",
-      "@noe bat @leo120 – 64il y a 3 min",
-    ]);
-  });
-
-  test("in Placement, the last Duels of every Tier", async () => {
-    await renderAppFor("/fr", {
-      reader: adaRanked({ placementsLeft: 3 }),
-      openSocket: sockets.open,
-      recentRankedDuels: { ...goldDuels(), tier: null },
-    });
-
-    expect(within(recentDuelsList(/^Derniers Duels$/)).getAllByRole("listitem")).toHaveLength(3);
-  });
-
-  test("without a Duel in the Tier, the list is gone", async () => {
-    await renderAppFor("/fr", {
-      reader: adaRanked({ tier: "gold", division: 2, tp: 42, shielded: false }),
-      openSocket: sockets.open,
-      recentRankedDuels: { tier: "gold", duels: [] },
-    });
-
-    expect(within(rankedCard()).queryByRole("list")).not.toBeInTheDocument();
-    expect(within(rankedCard()).queryByText(/^Derniers Duels/)).not.toBeInTheDocument();
-  });
-
-  test("is read again each time Jouer shows", async () => {
-    const reads = vi.fn(async () => Response.json(goldDuels()));
-
-    vi.stubGlobal("fetch", async (input: RequestInfo | URL) =>
-      String(input).endsWith("/api/ranked/recent-duels")
-        ? reads()
-        : new Promise<Response>(() => {}),
-    );
-
-    const { router } = await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
-
-    expect(
-      await within(rankedCard()).findByRole("list", { name: "Derniers Duels en Gold" }),
-    ).toBeVisible();
-
-    await act(() => router.navigate({ to: "/leaderboard" }));
-    await act(() => router.navigate({ to: "/" }));
-
-    await waitFor(() => expect(reads).toHaveBeenCalledTimes(2));
-  });
-
-  test("is told in English, the Tier's name the same, the time in the Locale", async () => {
+  test("is told in English, the Tier's name the same", async () => {
     useLocaleStore.setState({ locale: "en" });
     await renderAppFor("/en", {
       reader: adaRanked({ tier: "gold", division: 2, tp: 42, shielded: false }),
       openSocket: sockets.open,
-      recentRankedDuels: goldDuels(),
     });
 
     receive(idle());
     receive({ type: "queue-overview", size: 14, estimatedWait: 29_500, waiting: [] });
 
-    expect(within(rankedCard()).getByRole("region", { name: "In queue now" })).toBeVisible();
-    expect(
-      within(recentDuelsList(/^Latest Duels in Gold$/)).getAllByRole("listitem")[0],
-    ).toHaveTextContent("@mia beat @noe104 – 971 min. ago");
+    expect(within(rankedCard()).getByRole("region", { name: "In queue now" })).toHaveTextContent(
+      "In queue now14 players in the Queue",
+    );
     expect(within(rankedCard()).getByText("Gold II")).toBeVisible();
-    expect(rankedCard()).not.toHaveTextContent(/Derniers|bat|il y a|joueurs|En file/);
+    expect(rankedCard()).not.toHaveTextContent(/joueurs|En file|attente/);
   });
 
-  test("a Visitor sees neither the Queue nor the list", async () => {
-    await renderAppFor("/fr", {
-      reader: null,
-      openSocket: sockets.open,
-      recentRankedDuels: goldDuels(),
-    });
+  test("a Visitor does not see the Queue", async () => {
+    await renderAppFor("/fr", { reader: null, openSocket: sockets.open });
 
     expect(within(rankedCard()).queryByRole("region")).not.toBeInTheDocument();
-    expect(within(rankedCard()).queryByRole("list")).not.toBeInTheDocument();
     expect(within(rankedCard()).getByRole("button", { name: "Lancer la recherche" })).toBeVisible();
   });
 });

@@ -428,42 +428,6 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
       ),
     }));
   },
-  // On the index of the Duels' ends, read from the most recent: the winner's and the loser's rows
-  // joined to each Duel (a deleted User's row goes with them), the winner's Rating for their Tier.
-  recentWonRankedDuels: async (tier, limit) => {
-    const winner = alias(duelPlayer, "winner");
-    const loser = alias(duelPlayer, "loser");
-
-    const rows = await db
-      .select({
-        id: duel.id,
-        endedAt: duel.endedAt,
-        winnerId: winner.userId,
-        winnerWpm: winner.wpm,
-        loserId: loser.userId,
-        loserWpm: loser.wpm,
-      })
-      .from(duel)
-      .innerJoin(winner, and(eq(winner.duelId, duel.id), eq(winner.userId, duel.winnerId)))
-      .innerJoin(loser, and(eq(loser.duelId, duel.id), ne(loser.userId, duel.winnerId)))
-      .innerJoin(rankedRating, eq(rankedRating.userId, duel.winnerId))
-      .where(
-        and(
-          eq(duel.ranked, true),
-          ne(duel.outcome, "draw"),
-          tier === null ? undefined : eq(rankedRating.tier, tier),
-        ),
-      )
-      .orderBy(desc(duel.endedAt), desc(duel.id))
-      .limit(limit);
-
-    return rows.map((row) => ({
-      id: row.id,
-      endedAt: row.endedAt.getTime(),
-      winner: { userId: row.winnerId, wpm: row.winnerWpm },
-      loser: { userId: row.loserId, wpm: row.loserWpm },
-    }));
-  },
   // One pass over the User's player rows. A loss is neither a win nor a Draw: a deleted winner
   // leaves `winner_id` null on a Duel that was not a Draw. The averages leave out the Forfeits, as
   // the Progression does.

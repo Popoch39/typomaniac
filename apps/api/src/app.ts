@@ -20,7 +20,6 @@ import { handleModule } from "./modules/handle";
 import { meModule } from "./modules/me";
 import { leaderboardModule } from "./modules/leaderboard";
 import { profileModule } from "./modules/profile";
-import { recentRankedDuelsModule } from "./modules/recent-ranked-duels";
 import { userModule } from "./modules/user";
 import type { Users } from "./modules/user/users";
 import { apiDocs } from "./plugins/api-docs";
@@ -153,7 +152,6 @@ export const createApp = (config: AppConfig) => {
     .use(duelHistoryModule({ auth, trustProxy, store: duelStore, users, lastDuelWritten }))
     .use(profileModule({ auth, trustProxy, store: duelStore, users, lastDuelWritten }))
     .use(leaderboardModule({ auth, trustProxy, store: duelStore, users, lastDuelWritten }))
-    .use(recentRankedDuelsModule({ auth, trustProxy, store: duelStore, users, lastDuelWritten }))
     .use(activityModule({ auth, trustProxy, duelStore, friendStore, users }))
     .use(bestRunModule({ auth, trustProxy, store: config.bestRunStore, clock: config.clock }))
     .use(duelModule({ auth, trustProxy, queue: duelQueue, friendsLive }));
