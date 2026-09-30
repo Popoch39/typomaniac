@@ -36,6 +36,7 @@ const me: Me = {
   rank: null,
   ornament: null,
   ornamentChoice: null,
+  place: null,
 };
 
 const alan = { id: "alan-id", handle: "alan", image: null, ornament: "gold" } as const;

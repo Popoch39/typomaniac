@@ -38,6 +38,7 @@ const me: Me = {
   rank: null,
   ornament: null,
   ornamentChoice: null,
+  place: null,
 };
 
 const placement = { placementsLeft: 5 };
@@ -178,7 +179,7 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
 
     expect(sidebar()).toBeVisible();
     expect(sidebar()).not.toHaveAttribute("inert");
-    expect(within(sidebar()).getByRole("button", { name: "Menu de Ada" })).toBeInTheDocument();
+    expect(within(sidebar()).getByRole("button", { name: "Menu de ada" })).toBeInTheDocument();
     expect(screen.queryByRole("banner")).not.toBeInTheDocument();
     expect(settings()).not.toBeInTheDocument();
   });

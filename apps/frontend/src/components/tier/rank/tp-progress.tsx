@@ -30,7 +30,7 @@ export const TpProgress = ({ rank, size = "sm" }: TpProgressProps) => {
 
   if (progress.kind === "placement") {
     return (
-      <div>
+      <span className="block">
         <meter
           className="sr-only"
           aria-label={m.tp_progress_placement_label({}, { locale })}
@@ -39,7 +39,7 @@ export const TpProgress = ({ rank, size = "sm" }: TpProgressProps) => {
           value={progress.played}
           aria-valuetext={placementMeterText(progress.played, progress.of, locale)}
         />
-        <div aria-hidden="true" className="flex gap-1">
+        <span aria-hidden="true" className="flex gap-1">
           {PLACEMENT_NOTCHES.map((notch) => (
             <span
               key={notch}
@@ -50,13 +50,14 @@ export const TpProgress = ({ rank, size = "sm" }: TpProgressProps) => {
               )}
             />
           ))}
-        </div>
-      </div>
+        </span>
+      </span>
     );
   }
 
+  // In spans, displayed as blocks: it may stand in a button, as on the User's card.
   return (
-    <div>
+    <span className="block">
       <meter
         className="sr-only"
         aria-label={m.tp_progress_division_label({}, { locale })}
@@ -65,12 +66,15 @@ export const TpProgress = ({ rank, size = "sm" }: TpProgressProps) => {
         value={progress.tp}
         aria-valuetext={divisionMeterText(progress.tp, progress.of, progress.toNext, locale)}
       />
-      <div aria-hidden="true" className={cn("overflow-hidden rounded-full bg-border", thickness)}>
-        <div
-          className={cn("h-full rounded-full bg-current", TIER_COLORS[progress.tier])}
+      <span
+        aria-hidden="true"
+        className={cn("block overflow-hidden rounded-full bg-border", thickness)}
+      >
+        <span
+          className={cn("block h-full rounded-full bg-current", TIER_COLORS[progress.tier])}
           style={{ width: `${Math.min(progress.tp / progress.of, 1) * 100}%` }}
         />
-      </div>
-    </div>
+      </span>
+    </span>
   );
 };

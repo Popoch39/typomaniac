@@ -25,6 +25,7 @@ export const ada: Me = {
   rank: null,
   ornament: null,
   ornamentChoice: null,
+  place: null,
 };
 
 // A Friend of the reader, known by their Handle.

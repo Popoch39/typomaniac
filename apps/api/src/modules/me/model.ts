@@ -22,6 +22,9 @@ export const MeModel = {
     ornament: t.Nullable(DuelModel.tier),
     // Their raw choice, theirs alone, for the Profile's picker: null without a Rating.
     ornamentChoice: t.Nullable(ornamentChoice),
+    // Their Place in the Leaderboard, as its `me`: null in Placement, without a Rating or without
+    // a Handle.
+    place: t.Nullable(t.Integer()),
   }),
   ornamentInput: t.Object({ choice: ornamentChoice }),
   // In wpm: the median wpm of the User's last Duels, or the default Pace without any.

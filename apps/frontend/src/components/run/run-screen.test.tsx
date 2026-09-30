@@ -321,6 +321,7 @@ describe("the Run", () => {
       rank: null,
       ornament: null,
       ornamentChoice: null,
+      place: null,
     };
 
     // At a Pace of 500 wpm, a Burst takes 600 wpm: "help " in 150 ms, 400 wpm, is not one, when it

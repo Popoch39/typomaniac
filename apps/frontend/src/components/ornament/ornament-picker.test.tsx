@@ -17,6 +17,7 @@ const ada: Me = {
   rank: { tier: "gold", division: 2, tp: 42, shielded: false },
   ornament: "gold",
   ornamentChoice: "follow",
+  place: null,
 };
 
 beforeEach(() => {

@@ -25,6 +25,7 @@ const userWith = (rank: Rank | null): Me => ({
   rank,
   ornament: null,
   ornamentChoice: null,
+  place: null,
 });
 
 const goldII: Rank = { tier: "gold", division: 2, tp: 42, shielded: false };

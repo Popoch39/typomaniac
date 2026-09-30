@@ -29,6 +29,7 @@ const me: Me = {
   rank: null,
   ornament: null,
   ornamentChoice: null,
+  place: null,
 };
 
 // The tab's clock, moved by hand.

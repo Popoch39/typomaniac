@@ -18,6 +18,7 @@ const me: Me = {
   rank: null,
   ornament: null,
   ornamentChoice: null,
+  place: null,
 };
 
 let now = 0;

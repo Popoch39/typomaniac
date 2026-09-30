@@ -23,6 +23,7 @@ const me: Me = {
   rank: null,
   ornament: null,
   ornamentChoice: null,
+  place: null,
 };
 
 const pending: ProposalView = {

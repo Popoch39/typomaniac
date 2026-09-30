@@ -44,6 +44,7 @@ const ada: Me = {
   rank: null,
   ornament: null,
   ornamentChoice: null,
+  place: null,
 };
 
 // Seed 42 in English, version 1, gives this Text (pinned in the typing-engine tests).
@@ -155,6 +156,9 @@ const navLinks = () =>
     .map((link) => link.textContent);
 
 const withRank = (rank: Rank | null): Me => ({ ...ada, rank });
+
+// The User's whole card: the button that opens their menu.
+const card = (name = "ada") => within(sidebar()).getByRole("button", { name: `Menu de ${name}` });
 
 describe("the sidebar's nav", () => {
   test("a Visitor has Jouer, Ranked and Classement only", async () => {
@@ -409,38 +413,77 @@ describe("the User's card", () => {
   test("shows their Handle and, in a Division, its rank and TP out of 100", async () => {
     await renderApp(withRank({ tier: "gold", division: 2, tp: 42, shielded: false }));
 
-    expect(within(sidebar()).getByText("ada")).toBeInTheDocument();
-    expect(within(sidebar()).getByText("Gold II · 42 TP")).toBeInTheDocument();
+    expect(within(card()).getByText("ada")).toBeInTheDocument();
+    expect(within(card()).getByText("Gold II")).toBeInTheDocument();
+    expect(within(card()).getByText("42 TP")).toBeInTheDocument();
 
-    const meter = within(sidebar()).getByRole("meter", { name: "TP de la Division" });
+    const meter = within(card()).getByRole("meter", { name: "TP de la Division" });
 
     expect(meter).toHaveAttribute("value", "42");
     expect(meter).toHaveAttribute("max", "100");
     expect(meter).toHaveAttribute("aria-valuetext", "42 TP sur 100 · 58 TP avant Gold I");
   });
 
+  test("describes the button by the rank", async () => {
+    await renderApp({
+      ...withRank({ tier: "gold", division: 2, tp: 42, shielded: false }),
+      place: 51,
+    });
+
+    expect(card()).toHaveAccessibleDescription("Gold II 51e mondial 42 TP");
+  });
+
   test("in Placement, the Duels played out of 5", async () => {
     await renderApp(withRank({ placementsLeft: 2 }));
 
-    expect(within(sidebar()).getByText("Placement · 2 Duels restants")).toBeInTheDocument();
-    const meter = within(sidebar()).getByRole("meter", { name: "Placement" });
+    expect(within(card()).getByText("Placement")).toBeInTheDocument();
+    expect(within(card()).getByText("3 / 5")).toBeInTheDocument();
+
+    const meter = within(card()).getByRole("meter", { name: "Placement" });
 
     expect(meter).toHaveAttribute("value", "3");
     expect(meter).toHaveAttribute("max", "5");
   });
 
   test("a Maniac's TP, without a bar", async () => {
-    await renderApp(withRank({ tier: "maniac", tp: 250, shielded: false }));
+    await renderApp(withRank({ tier: "maniac", tp: 1250, shielded: false }));
 
-    expect(within(sidebar()).getByText("Maniac · 250 TP")).toBeInTheDocument();
-    expect(within(sidebar()).queryByRole("meter")).not.toBeInTheDocument();
+    expect(within(card()).getByText("Maniac")).toBeInTheDocument();
+    expect(within(card()).getByText("1 250 TP")).toBeInTheDocument();
+    expect(within(card()).queryByRole("meter")).not.toBeInTheDocument();
   });
 
   test("without a Rating, neither rank nor bar", async () => {
     await renderApp(ada);
 
-    expect(within(sidebar()).queryByText(/ TP/)).not.toBeInTheDocument();
-    expect(within(sidebar()).queryByRole("meter")).not.toBeInTheDocument();
+    expect(within(card()).queryByText(/TP/)).not.toBeInTheDocument();
+    expect(within(card()).queryByRole("meter")).not.toBeInTheDocument();
+  });
+
+  test("shows the User's Place in the Leaderboard, next to the rank", async () => {
+    await renderApp({
+      ...withRank({ tier: "diamond", division: 2, tp: 83, shielded: false }),
+      place: 51,
+    });
+
+    expect(within(card()).getByText("51e mondial")).toBeInTheDocument();
+  });
+
+  test("no Place out of the Leaderboard", async () => {
+    await renderApp(withRank({ placementsLeft: 2 }));
+
+    expect(within(card()).queryByText(/mondial/)).not.toBeInTheDocument();
+  });
+
+  test("the whole card opens the User's menu", async () => {
+    const { user } = await renderApp(
+      withRank({ tier: "gold", division: 2, tp: 42, shielded: false }),
+    );
+
+    await user.click(within(card()).getByText("Gold II"));
+
+    expect(await screen.findByRole("menu")).toBeInTheDocument();
+    expect(card()).toHaveAttribute("aria-expanded", "true");
   });
 
   test("follows the rank when the User is read again after a Duel", async () => {
@@ -455,7 +498,8 @@ describe("the User's card", () => {
       ),
     );
 
-    expect(await within(sidebar()).findByText("Gold I · 5 TP")).toBeInTheDocument();
+    expect(await within(card()).findByText("Gold I")).toBeInTheDocument();
+    expect(within(card()).getByText("5 TP")).toBeInTheDocument();
   });
 
   test("the avatar wears the User's Ornament", async () => {
@@ -488,7 +532,7 @@ describe("the User's menu", () => {
   test("leads to their public Profile and to the Handle's settings", async () => {
     const { user } = await renderApp(ada);
 
-    await user.click(screen.getByRole("button", { name: "Menu de Ada Lovelace" }));
+    await user.click(screen.getByRole("button", { name: "Menu de ada" }));
 
     expect(await screen.findByRole("menuitem", { name: "Mon Profile" })).toHaveAttribute(
       "href",
@@ -509,6 +553,31 @@ describe("the User's menu", () => {
     expect(screen.queryByRole("menuitem", { name: "Mon Profile" })).not.toBeInTheDocument();
   });
 
+  test("leads to the User's own page of the Leaderboard, their Place with it", async () => {
+    const { user } = await renderApp({
+      ...withRank({ tier: "diamond", division: 2, tp: 83, shielded: false }),
+      place: 51,
+    });
+
+    await user.click(card());
+
+    const place = await screen.findByRole("menuitem", { name: /^Ma place au Classement/ });
+
+    expect(place).toHaveAttribute("href", "/leaderboard?at=me");
+    expect(within(place).getByText("51e")).toBeInTheDocument();
+  });
+
+  test("has no Place to lead to out of the Leaderboard", async () => {
+    const { user } = await renderApp(withRank({ placementsLeft: 2 }));
+
+    await user.click(card());
+
+    await screen.findByRole("menuitem", { name: "Réglages du Handle" });
+    expect(
+      screen.queryByRole("menuitem", { name: /^Ma place au Classement/ }),
+    ).not.toBeInTheDocument();
+  });
+
   test("signing out closes the Session and forgets the User", async () => {
     const fetch = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
       Response.json({ success: true }),
@@ -518,7 +587,7 @@ describe("the User's menu", () => {
 
     const { user } = await renderApp(ada);
 
-    await user.click(screen.getByRole("button", { name: "Menu de Ada Lovelace" }));
+    await user.click(screen.getByRole("button", { name: "Menu de ada" }));
     await user.click(await screen.findByRole("menuitem", { name: "Se déconnecter" }));
 
     expect(await within(sidebar()).findByRole("button", { name: "Se connecter" })).toBeVisible();
@@ -535,11 +604,11 @@ describe("the User's menu", () => {
 
     const { user } = await renderApp(ada);
 
-    await user.click(screen.getByRole("button", { name: "Menu de Ada Lovelace" }));
+    await user.click(screen.getByRole("button", { name: "Menu de ada" }));
     await user.click(await screen.findByRole("menuitem", { name: "Se déconnecter" }));
 
     expect(await screen.findByText("La déconnexion a échoué. Réessaie.")).toBeInTheDocument();
-    expect(within(sidebar()).getByRole("button", { name: "Menu de Ada Lovelace" })).toBeVisible();
+    expect(within(sidebar()).getByRole("button", { name: "Menu de ada" })).toBeVisible();
   });
 });
 
@@ -608,7 +677,7 @@ describe("the sidebar in English", () => {
 
     const { user } = await renderApp(ada);
 
-    await user.click(screen.getByRole("button", { name: "Menu for Ada Lovelace" }));
+    await user.click(screen.getByRole("button", { name: "Menu for ada" }));
     await user.click(await screen.findByRole("menuitem", { name: "Sign out" }));
 
     expect(await screen.findByText("Signed out")).toBeInTheDocument();
@@ -622,7 +691,7 @@ describe("the sidebar in English", () => {
 
     const { user } = await renderApp(ada);
 
-    await user.click(screen.getByRole("button", { name: "Menu for Ada Lovelace" }));
+    await user.click(screen.getByRole("button", { name: "Menu for ada" }));
     await user.click(await screen.findByRole("menuitem", { name: "Sign out" }));
 
     expect(await screen.findByText("Sign-out failed. Try again.")).toBeInTheDocument();
@@ -650,12 +719,23 @@ describe("the sidebar in English", () => {
     expect(within(englishNav).getByLabelText("2 Friend requests")).toHaveTextContent("2");
   });
 
-  test("the User's menu", async () => {
-    const { user } = await renderApp(ada);
+  test("the User's card, their Place and their menu", async () => {
+    const { user } = await renderApp({
+      ...withRank({ tier: "diamond", division: 2, tp: 83, shielded: false }),
+      place: 51,
+    });
 
-    await user.click(screen.getByRole("button", { name: "Menu for Ada Lovelace" }));
+    const englishCard = screen.getByRole("button", { name: "Menu for ada" });
 
-    expect(await screen.findByRole("menuitem", { name: "My Profile" })).toBeInTheDocument();
+    expect(within(englishCard).getByText("51st worldwide")).toBeInTheDocument();
+
+    await user.click(englishCard);
+
+    expect(await screen.findByRole("menuitem", { name: /^My Leaderboard Place/ })).toHaveAttribute(
+      "href",
+      "/leaderboard?at=me",
+    );
+    expect(screen.getByRole("menuitem", { name: "My Profile" })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Handle settings" })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Sign out" })).toBeInTheDocument();
   });
@@ -858,7 +938,7 @@ describe("the Rail, below 1440 px", () => {
       "/themes",
     );
 
-    await user.click(within(sidebar()).getByRole("button", { name: "Menu de Ada Lovelace" }));
+    await user.click(within(sidebar()).getByRole("button", { name: "Menu de ada" }));
 
     expect(await screen.findByRole("menuitem", { name: "Mon Profile" })).toBeInTheDocument();
   });
@@ -866,7 +946,7 @@ describe("the Rail, below 1440 px", () => {
   test("the User's menu opens from their avatar, wearing their Ornament", async () => {
     await renderApp({ ...ada, ornament: "gold", ornamentChoice: "follow" });
 
-    const menu = within(sidebar()).getByRole("button", { name: "Menu de Ada Lovelace" });
+    const menu = within(sidebar()).getByRole("button", { name: "Menu de ada" });
 
     expect(within(menu).getByText("A")).toBeInTheDocument();
     expect(menu.querySelector("[data-ornament]")).not.toBeNull();

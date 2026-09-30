@@ -126,6 +126,7 @@ const ada: Me = {
   rank: null,
   ornament: null,
   ornamentChoice: null,
+  place: null,
 };
 
 // The end screen on a router of its own (its ways out are links), the written Duel in the cache if

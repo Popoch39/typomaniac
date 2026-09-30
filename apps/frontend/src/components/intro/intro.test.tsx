@@ -39,6 +39,7 @@ const ada: Me = {
   rank: null,
   ornament: null,
   ornamentChoice: null,
+  place: null,
 };
 
 const free: HandleAvailability = { available: true, handle: "ada" };

@@ -69,13 +69,13 @@ const setup = () => {
 
   let count = 0;
 
-  const newUser = async (rank: Rank | null) => {
+  const newUser = async (rank: Rank | null, { handle = true } = {}) => {
     count += 1;
 
     const { user, cookie } = await signIn(auth, {
       name: `User ${count}`,
       email: `user-${count}@example.com`,
-      handle: `user${count}`,
+      handle: handle ? `user${count}` : undefined,
     });
 
     if (rank !== null) {
@@ -107,6 +107,32 @@ const setup = () => {
 
   return { duels, newUser, putOrnament, getMe };
 };
+
+describe("GET /api/me", () => {
+  test("tells the User their Place in the Leaderboard", async () => {
+    const { newUser, getMe } = setup();
+
+    await newUser(standing("platinum"));
+    await newUser(standing("gold", 80));
+    const ada = await newUser(standing("gold", 40));
+    await newUser(standing("silver"));
+
+    expect(await getMe(ada.cookie)).toMatchObject({ place: 3 });
+  });
+
+  test("has no Place in Placement, without a Rating or without a Handle", async () => {
+    const { newUser, getMe } = setup();
+
+    await newUser(standing("gold"));
+    const placed = await newUser({ placementsLeft: 2 });
+    const unrated = await newUser(null);
+    const nameless = await newUser(standing("silver"), { handle: false });
+
+    expect(await getMe(placed.cookie)).toMatchObject({ place: null });
+    expect(await getMe(unrated.cookie)).toMatchObject({ place: null });
+    expect(await getMe(nameless.cookie)).toMatchObject({ handle: null, place: null });
+  });
+});
 
 describe("PUT /api/me/ornament", () => {
   test("freezes a Tier under the User's own, and answers the User as /api/me does", async () => {

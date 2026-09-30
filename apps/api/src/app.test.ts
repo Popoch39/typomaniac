@@ -448,6 +448,7 @@ describe("auth", () => {
       rank: null,
       ornament: null,
       ornamentChoice: null,
+      place: null,
     });
   });
 
