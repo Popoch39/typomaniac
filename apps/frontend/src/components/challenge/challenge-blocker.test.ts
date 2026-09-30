@@ -13,7 +13,7 @@ const friends: LiveFriends = {
   requestsReceived: 0,
 };
 
-const none: LiveChallenges = { sent: null, received: [] };
+const none: LiveChallenges = { sent: null, received: [], accepted: null };
 
 const idle = { place: { at: "idle" }, friends, challenges: none } as const;
 
@@ -34,7 +34,7 @@ describe("why a Friend cannot be challenged", () => {
   });
 
   test("the User's Challenge waits for its answer, from this Friend or another", () => {
-    const sent = { sent: { id: "c1", to: ada, expiresAt: 0 }, received: [] };
+    const sent = { sent: { id: "c1", to: ada, expiresAt: 0 }, received: [], accepted: null };
 
     expect(challengeBlocker({ ...idle, challenges: sent }, "ada", "fr")).toBe(
       "Challenge envoyé, en attente de sa réponse",
@@ -51,7 +51,7 @@ describe("why a Friend cannot be challenged", () => {
   });
 
   test("says why in English", () => {
-    const sent = { sent: { id: "c1", to: ada, expiresAt: 0 }, received: [] };
+    const sent = { sent: { id: "c1", to: ada, expiresAt: 0 }, received: [], accepted: null };
 
     expect([
       challengeBlocker({ ...idle, challenges: null }, "ada", "en"),

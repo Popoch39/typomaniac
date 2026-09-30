@@ -38,10 +38,12 @@ export type SentChallenge = NonNullable<Snapshot["sent"]>;
 
 export type ReceivedChallenge = Snapshot["received"][number];
 
-// The User's Challenges waiting: the one they sent, and those they received.
+// The User's Challenges waiting: the one they sent, and those they received. `accepted`: the id of
+// the one accepted, kept with them until its Duel is found (null without).
 export type LiveChallenges = {
   sent: SentChallenge | null;
   received: readonly ReceivedChallenge[];
+  accepted: string | null;
 };
 
 // The Queue as Jouer shows it before joining: how many Users wait in it, and the Estimated wait in
@@ -242,7 +244,14 @@ const localExpiry = <T extends { expiresAt: number }>(
 export const hasPendingChallenge = (challenges: LiveChallenges | null) =>
   challenges !== null && (challenges.sent !== null || challenges.received.length > 0);
 
-// The Challenges after a message: the snapshot sets them, the changes that follow update them.
+const withoutChallenge = (challenges: LiveChallenges, challengeId: string): LiveChallenges => ({
+  sent: challenges.sent?.id === challengeId ? null : challenges.sent,
+  received: challenges.received.filter(({ id }) => id !== challengeId),
+  accepted: challenges.accepted === challengeId ? null : challenges.accepted,
+});
+
+// The Challenges after a message: the snapshot sets them, the changes that follow update them. One
+// accepted stays, « C'est parti ! », until its Duel is found.
 export const challengesAfter = (
   challenges: LiveChallenges | null,
   message: ServerMessage,
@@ -254,6 +263,7 @@ export const challengesAfter = (
       received: message.received.map((challenge) =>
         localExpiry(challenge, message.serverTime, now),
       ),
+      accepted: null,
     };
   }
 
@@ -270,10 +280,16 @@ export const challengesAfter = (
     case "challenge-sent":
       return { ...challenges, sent: localExpiry(message.challenge, message.serverTime, now) };
     case "challenge-ended":
-      return {
-        sent: challenges.sent?.id === message.challengeId ? null : challenges.sent,
-        received: challenges.received.filter(({ id }) => id !== message.challengeId),
-      };
+      return message.reason === "accepted"
+        ? { ...challenges, accepted: message.challengeId }
+        : withoutChallenge(challenges, message.challengeId);
+    // The Duel of the Challenge accepted, played in this tab or another.
+    case "duel-found":
+    case "elsewhere":
+      return challenges.accepted === null ||
+        (message.type === "elsewhere" && message.place !== "duel")
+        ? challenges
+        : withoutChallenge(challenges, challenges.accepted);
     default:
       return challenges;
   }

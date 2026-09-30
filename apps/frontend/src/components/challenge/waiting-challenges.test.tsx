@@ -45,16 +45,84 @@ afterEach(() => {
   useConnectionStore.getState().close();
 });
 
+const cardTexts = () =>
+  within(screen.getByRole("list", { name: "Challenges" }))
+    .queryAllByRole("listitem")
+    .map((card) => card.textContent);
+
+const accepted = (sockets: ReturnType<typeof fakeServer>, challengeId: string) => {
+  act(() => {
+    sockets.server().receive({ type: "challenge-ended", challengeId, reason: "accepted" });
+  });
+};
+
+// The Duel of the Challenge accepted, found by the server.
+const duelFound = (sockets: ReturnType<typeof fakeServer>, opponent: { handle: string }) => {
+  act(() => {
+    sockets.server().receive({
+      type: "duel-found",
+      duel: {
+        id: "duel-1",
+        seed: 42,
+        language: "en",
+        wordListVersion: 1,
+        seconds: 30,
+        startsAt: Date.now() + 5500,
+      },
+      opponent: { handle: opponent.handle, image: null, ornament: null },
+      selfOrnament: null,
+      serverTime: Date.now(),
+      pace: 40,
+      opponentPace: 40,
+      selfRank: null,
+      opponentRank: null,
+      selfForm: null,
+      opponentForm: null,
+      selfStake: null,
+    });
+  });
+};
+
 describe("WaitingChallenges", () => {
   test("the Challenge sent, to cancel, and the one received, to answer", () => {
     renderChallenges();
 
-    const cards = within(screen.getByRole("list", { name: "Challenges" })).getAllByRole("listitem");
-
-    expect(cards.map((card) => card.textContent)).toEqual([
+    expect(cardTexts()).toEqual([
       "AChallenge envoyé à @alan30 sAnnuler",
       "G@grace te défie en Duel30 sRefuserAccepter",
     ]);
+  });
+
+  test("the Challenge received and accepted says « C'est parti ! » until its Duel is found", () => {
+    const sockets = renderChallenges();
+
+    accepted(sockets, "from-grace");
+    act(() => {
+      sockets.server().receive({
+        type: "challenge-ended",
+        challengeId: "to-alan",
+        reason: "unavailable",
+      });
+    });
+    expect(cardTexts()).toEqual([
+      "GC'est parti !Vous avez accepté tous les deux. Le Face-off commence.",
+    ]);
+
+    duelFound(sockets, grace);
+    expect(cardTexts()).toEqual([]);
+  });
+
+  test("the Challenge sent and accepted says « C'est parti ! » until its Duel is found", () => {
+    const sockets = renderChallenges();
+
+    accepted(sockets, "to-alan");
+    expect(cardTexts()).toEqual([
+      "AC'est parti !Vous avez accepté tous les deux. Le Face-off commence.",
+      "G@grace te défie en Duel30 sRefuserAccepter",
+    ]);
+
+    duelFound(sockets, alan);
+    expect(cardTexts()).toEqual(["G@grace te défie en Duel30 sRefuserAccepter"]);
   });
 
   describe("in English", () => {
@@ -73,6 +141,13 @@ describe("WaitingChallenges", () => {
         "AChallenge sent to @alan30 sCancel",
         "G@grace challenges you to a Duel30 sDeclineAccept",
       ]);
+    });
+
+    test("a Challenge accepted says « Let's go! » until its Duel is found", () => {
+      const sockets = renderChallenges();
+
+      accepted(sockets, "to-alan");
+      expect(cardTexts()[0]).toBe("ALet's go!You both accepted. The Face-off is starting.");
     });
 
     test("a Challenge the server refused to send is toasted", async () => {

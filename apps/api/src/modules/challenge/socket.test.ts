@@ -20,6 +20,9 @@ import { CHALLENGE_MS } from "./service";
 
 const NOW = 1_700_000_000_000;
 
+// Accepted: « C'est parti ! » for 1 s, then the Countdown's 4.5 s, as with a Match proposal.
+const STARTS_AT = NOW + 1000 + 4500;
+
 type Received = Extract<ChallengeMessage, { type: "challenge-received" }>;
 
 const ended = (challengeId: string, reason: ChallengeEnding): ChallengeMessage => ({
@@ -243,7 +246,7 @@ describe("Challenges, on the socket", () => {
 
     expect(alanFound).toMatchObject({
       type: "duel-found",
-      duel: { language: "en", seconds: 30, startsAt: NOW + 4500 },
+      duel: { language: "en", seconds: 30, startsAt: STARTS_AT },
       opponent: { handle: "ada", image: ada.image },
       serverTime: NOW,
       // Never ranked: no rank to show.
@@ -257,7 +260,7 @@ describe("Challenges, on the socket", () => {
 
     // It counts like any Duel: written at its end. But it is never ranked: no Rating moves, none
     // is even created.
-    clock.set(NOW + 4500 + 30_000 + 1000);
+    clock.set(STARTS_AT + 30_000 + 400);
     // Each is told their own Records from before it: none for Alan, who never played.
     expect(await alanTab.next()).toMatchObject({
       type: "duel-ended",
@@ -618,6 +621,55 @@ describe("Challenges, on the socket", () => {
     expect(await adaTab.next()).toMatchObject({ type: "duel-found" });
   });
 
+  test("the sender gone while the acceptance reads: never announced accepted", async () => {
+    const ada = await newUser("Ada");
+    const alan = await newUser("Alan");
+
+    await befriend(ada, alan);
+
+    const adaTab = await tab(ada);
+    const alanTab = await tab(alan);
+    const challengeId = await challenge(ada, [adaTab], alan, [alanTab]);
+    const held = Promise.withResolvers<void>();
+    const released = Promise.withResolvers<void>();
+
+    holding = { held: held.resolve, released: released.promise };
+    alanTab.send({ type: "accept-challenge", challengeId });
+    await held.promise;
+    await closed(adaTab);
+    expect(await alanTab.nextChallenge()).toEqual(ended(challengeId, "unavailable"));
+    released.resolve();
+
+    await alanTab.settleChallenges();
+    await alanTab.settle();
+  });
+
+  test("the tab that accepted gone while the acceptance reads: never announced accepted", async () => {
+    const ada = await newUser("Ada");
+    const alan = await newUser("Alan");
+
+    await befriend(ada, alan);
+
+    const adaTab = await tab(ada);
+    const alanTab = await tab(alan);
+    const alanOtherTab = await tab(alan);
+    const challengeId = await challenge(ada, [adaTab], alan, [alanTab, alanOtherTab]);
+    const held = Promise.withResolvers<void>();
+    const released = Promise.withResolvers<void>();
+
+    holding = { held: held.resolve, released: released.promise };
+    alanTab.send({ type: "accept-challenge", challengeId });
+    await held.promise;
+    await closed(alanTab);
+    // The server has seen it close once a round trip on another tab is done.
+    await alanOtherTab.settle();
+    released.resolve();
+
+    expect(await adaTab.nextChallenge()).toEqual(ended(challengeId, "unavailable"));
+    expect(await alanOtherTab.nextChallenge()).toEqual(ended(challengeId, "unavailable"));
+    await adaTab.settle();
+  });
+
   test("a Challenge ends once either has no tab left, not before", async () => {
     const ada = await newUser("Ada");
     const alan = await newUser("Alan");
@@ -697,7 +749,7 @@ describe("Challenges, on the socket", () => {
     await alanTab.settleChallenges();
   });
 
-  test("a Challenge accepted from the Queue starts the Countdown at once, no Match proposal", async () => {
+  test("a Challenge accepted from the Queue starts the Countdown 1 s later, no Match proposal", async () => {
     const ada = await newUser("Ada");
     const alan = await newUser("Alan");
 
@@ -715,7 +767,7 @@ describe("Challenges, on the socket", () => {
     expect(await adaTab.next()).toMatchObject({
       type: "duel-found",
       serverTime: NOW,
-      duel: { startsAt: NOW + 4500 },
+      duel: { startsAt: STARTS_AT },
     });
     expect(await alanTab.next()).toMatchObject({ type: "duel-found" });
   });

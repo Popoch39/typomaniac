@@ -317,6 +317,7 @@ describe("the Challenges, from the server's messages", () => {
   const known: LiveChallenges = {
     sent: { id: "c1", to: ada, expiresAt: 40_000 },
     received: [{ id: "c2", from: alan, expiresAt: 35_000 }],
+    accepted: null,
   };
 
   test("are unknown until the snapshot, which sets them on this tab's clock", () => {
@@ -336,7 +337,7 @@ describe("the Challenges, from the server's messages", () => {
   });
 
   test("gain a Challenge received, or the one sent", () => {
-    const none: LiveChallenges = { sent: null, received: [] };
+    const none: LiveChallenges = { sent: null, received: [], accepted: null };
 
     expect(
       challengesAfter(
@@ -348,7 +349,7 @@ describe("the Challenges, from the server's messages", () => {
         },
         NOW,
       ),
-    ).toEqual({ sent: null, received: known.received });
+    ).toEqual({ sent: null, received: known.received, accepted: null });
     expect(
       challengesAfter(
         none,
@@ -359,7 +360,7 @@ describe("the Challenges, from the server's messages", () => {
         },
         NOW,
       ),
-    ).toEqual({ sent: known.sent, received: [] });
+    ).toEqual({ sent: known.sent, received: [], accepted: null });
   });
 
   test("lose a Challenge once it ended, sent or received", () => {
@@ -369,14 +370,56 @@ describe("the Challenges, from the server's messages", () => {
         { type: "challenge-ended", challengeId: "c1", reason: "declined" },
         NOW,
       ),
-    ).toEqual({ sent: null, received: known.received });
+    ).toEqual({ sent: null, received: known.received, accepted: null });
     expect(
       challengesAfter(
         known,
         { type: "challenge-ended", challengeId: "c2", reason: "expired" },
         NOW,
       ),
-    ).toEqual({ sent: known.sent, received: [] });
+    ).toEqual({ sent: known.sent, received: [], accepted: null });
+  });
+
+  test("keep a Challenge accepted, sent or received, until its Duel is found", () => {
+    const sentAccepted = challengesAfter(
+      known,
+      { type: "challenge-ended", challengeId: "c1", reason: "accepted" },
+      NOW,
+    );
+
+    expect(sentAccepted).toEqual({ ...known, accepted: "c1" });
+    expect(challengesAfter(sentAccepted, duelFound, NOW)).toEqual({
+      sent: null,
+      received: known.received,
+      accepted: null,
+    });
+
+    const receivedAccepted = challengesAfter(
+      known,
+      { type: "challenge-ended", challengeId: "c2", reason: "accepted" },
+      NOW,
+    );
+
+    expect(receivedAccepted).toEqual({ ...known, accepted: "c2" });
+    expect(challengesAfter(receivedAccepted, duelFound, NOW)).toEqual({
+      sent: known.sent,
+      received: [],
+      accepted: null,
+    });
+  });
+
+  test("lose a Challenge accepted once its Duel is played in another tab", () => {
+    const accepted = challengesAfter(
+      known,
+      { type: "challenge-ended", challengeId: "c1", reason: "accepted" },
+      NOW,
+    );
+
+    expect(challengesAfter(accepted, { type: "elsewhere", place: "duel" }, NOW)).toEqual({
+      sent: null,
+      received: known.received,
+      accepted: null,
+    });
   });
 
   test("unchanged by a refusal, the Queue and the Duel", () => {
@@ -384,6 +427,7 @@ describe("the Challenges, from the server's messages", () => {
       challengesAfter(known, { type: "challenge-refused", userId: "ada", reason: "offline" }, NOW),
     ).toBe(known);
     expect(challengesAfter(known, duelFound, NOW)).toBe(known);
+    expect(challengesAfter(known, { type: "elsewhere", place: "duel" }, NOW)).toBe(known);
   });
 });
 
@@ -525,7 +569,11 @@ describe("the connection store", () => {
     fake.server().receive(idle());
     fake.server().receive({ type: "challenges-snapshot", sent: null, received: [], serverTime: 0 });
 
-    expect(useConnectionStore.getState().challenges).toEqual({ sent: null, received: [] });
+    expect(useConnectionStore.getState().challenges).toEqual({
+      sent: null,
+      received: [],
+      accepted: null,
+    });
 
     fake.server().drop();
     expect(useConnectionStore.getState().challenges).toBeNull();

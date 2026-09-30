@@ -36,7 +36,8 @@ const COUNTDOWN_MS = 4500;
 // How long both Users of a Match proposal have to accept it.
 export const PROPOSAL_MS = 10_000;
 
-// Between the double acceptance of a Match proposal and the Countdown: « C'est parti ! ».
+// Between the double acceptance of a Match proposal, or the acceptance of a Challenge, and the
+// Countdown: « C'est parti ! ».
 const ACCEPTED_MS = 1000;
 
 // How long the User whose opponent declined or let the Match proposal run out waits before being
@@ -1075,7 +1076,7 @@ export class DuelQueue implements ChallengeArena {
     }
 
     this.#recentWaits = this.#recentWaits.slice(-2 * ESTIMATED_WAIT_PAIRINGS);
-    this.#start(players, ACCEPTED_MS);
+    this.#start(players);
   }
 
   // Declining, or leaving the Queue during a Match proposal.
@@ -1190,10 +1191,10 @@ export class DuelQueue implements ChallengeArena {
     this.#pair();
   }
 
-  // Seed drawn here, same format for every Duel, the Countdown starting in `delay` ms. Each player
-  // is told on the connection that plays, their other connections that the Duel is elsewhere;
-  // their Challenges are over.
-  #start([a, b]: readonly [PacedUser, PacedUser], delay = 0) {
+  // Seed drawn here, same format for every Duel, the Countdown starting ACCEPTED_MS from now. Each
+  // player is told on the connection that plays, their other connections that the Duel is
+  // elsewhere; their Challenges are over.
+  #start([a, b]: readonly [PacedUser, PacedUser]) {
     const serverTime = this.#clock.now();
 
     const duel = new RunningDuel(
@@ -1203,7 +1204,7 @@ export class DuelQueue implements ChallengeArena {
         language: DUEL_LANGUAGE,
         wordListVersion: currentWordListVersion[DUEL_LANGUAGE],
         seconds: DUEL_SECONDS,
-        startsAt: serverTime + delay + COUNTDOWN_MS,
+        startsAt: serverTime + ACCEPTED_MS + COUNTDOWN_MS,
       },
       [a, b],
     );
