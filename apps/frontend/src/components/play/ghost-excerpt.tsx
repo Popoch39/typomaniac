@@ -38,25 +38,40 @@ const wordsShown = (box: HTMLElement, words: HTMLElement) => {
 // these lines only, then starts again. A drawing: hidden from screen readers. Where its caret
 // stands is on the excerpt (`data-caret`), for the tests: happy-dom lays nothing out.
 export const GhostExcerpt = ({ config, keystrokes, ghost }: GhostExcerptProps) => {
+  const zoneRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const wordsRef = useRef<HTMLDivElement>(null);
   const caretRef = useRef<HTMLSpanElement>(null);
-  const [shownWords, setShownWords] = useState(EXCERPT_WORDS);
+  // The words that fit whole in the box; null while they are to be measured again, all of them
+  // drawn meanwhile. Only these are drawn once measured: no word lies outside the card, hidden.
+  const [fit, setFit] = useState<number | null>(null);
+  const shownWords = fit ?? EXCERPT_WORDS;
 
+  // Its zone's size never follows what it holds (a size container): measured again when it
+  // changes, never looping on its own measure.
   useEffect(() => {
-    const box = boxRef.current;
-    const words = wordsRef.current;
+    const zone = zoneRef.current;
 
-    if (box === null || words === null) {
+    if (zone === null) {
       return;
     }
 
-    const observer = new ResizeObserver(() => setShownWords(wordsShown(box, words)));
+    const observer = new ResizeObserver(() => setFit(null));
 
-    observer.observe(box);
+    observer.observe(zone);
 
     return () => observer.disconnect();
   }, []);
+
+  // Before the frame is painted: every word drawn, then only those that fit.
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const words = wordsRef.current;
+
+    if (fit === null && box !== null && words !== null) {
+      setFit(wordsShown(box, words));
+    }
+  }, [fit]);
 
   const length = excerptLength(config, keystrokes, shownWords);
   const typed = useGhostTyping(boxRef, keystrokes, length, ghost ? "end" : "start");
@@ -78,7 +93,10 @@ export const GhostExcerpt = ({ config, keystrokes, ghost }: GhostExcerptProps) =
 
   return (
     // The height left in the live zone, whose lines `cqh` counts.
-    <div className="flex min-h-0 w-full flex-1 flex-col justify-center [container-type:size]">
+    <div
+      ref={zoneRef}
+      className="flex min-h-0 w-full flex-1 flex-col justify-center [container-type:size]"
+    >
       <div
         ref={boxRef}
         data-excerpt
@@ -88,7 +106,7 @@ export const GhostExcerpt = ({ config, keystrokes, ghost }: GhostExcerptProps) =
       >
         <RunCaret ref={caretRef} tone={ghost ? "opponent" : "own"} />
         <div ref={wordsRef} className="flex flex-wrap gap-x-[1ch]">
-          {shown.words.slice(0, EXCERPT_WORDS).map((word) => (
+          {shown.words.slice(0, shownWords).map((word) => (
             <RunWord
               key={word.index}
               word={word}

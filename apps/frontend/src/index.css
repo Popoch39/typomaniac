@@ -14,8 +14,11 @@
 
 /* Jouer's cards (PlayCard) give up whole blocks as they get short, never cutting a text: first a
    list's rows, one by one (PlayCardRows), then the live zone, then the pitch. Their title and their
-   action always stay. A card too short for its pitch and its live zone lets both go: */
+   action always stay. A card too short for its live zone lets it go, then one too short for its
+   pitch lets it go too (the Ranked's, the tallest, holds its title, pitch, rank and button in
+   21rem at 1024 px): */
 @custom-variant play-card-short (@container play-card (height < 26rem));
+@custom-variant play-card-cramped (@container play-card (height < 21rem));
 
 /* A live zone too short for what fills it (the Ranked's is the tallest: the Queue's two lines, then
    a list's title and its first row, 6.75rem). */

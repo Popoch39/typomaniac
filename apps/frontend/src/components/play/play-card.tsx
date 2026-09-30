@@ -19,8 +19,9 @@ type PlayCardProps = {
 // One of Jouer's cards, named by its title: its live zone, its title and pitch, then its actions.
 // A part the Intro brings in; it fades out as the search is launched. A size container: its
 // padding and its title follow its width (`cqi`), from a 1024 px window to a wide one; its height
-// is the row's, never its content's, and it gives up whole blocks when short (`play-card-short`,
-// `play-live-short`): the live zone, then the pitch, taken out of the layout and of the tab order.
+// is the row's, never its content's, and it gives up whole blocks when short: the live zone
+// (`play-card-short`, `play-live-short`), then the pitch (`play-card-cramped`), taken out of the
+// layout and of the tab order.
 // Its title and its actions always stay.
 export const PlayCard = ({
   title,
@@ -56,7 +57,7 @@ export const PlayCard = ({
         >
           {title}
         </h2>
-        <p className={cn("leading-normal play-card-short:hidden", pitchClassName)}>{pitch}</p>
+        <p className={cn("leading-normal play-card-cramped:hidden", pitchClassName)}>{pitch}</p>
         {children}
       </div>
     </section>

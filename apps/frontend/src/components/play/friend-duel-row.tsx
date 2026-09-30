@@ -5,9 +5,11 @@ import type { DuelActivity } from "@/components/play/friends-live-rows";
 import { RematchButton } from "@/components/play/rematch-button";
 import { signedTp } from "@/components/tier/rank/rank-label";
 import { UserAvatar } from "@/components/user-avatar/user-avatar";
-import { atHandle } from "@/lib/at-handle";
+import { RowHandle } from "@/components/play/row-handle";
+import { RowSentence } from "@/components/play/row-sentence";
 import { relativeTime } from "@/lib/relative-time";
 import { numberFormat } from "@/locale/formats";
+import { withSlots } from "@/locale/message-slots";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 
@@ -33,23 +35,26 @@ const SENTENCES = {
 export const FriendDuelRow = ({ activity, readerId, friendOnline, now }: FriendDuelRowProps) => {
   const locale = useLocale();
   const { friend, opponent } = activity;
-  const handle = atHandle(friend.handle);
   const beatReader = opponent?.id === readerId && friend.outcome === "win";
   const wpm = (value: number) => numberFormat(locale).format(Math.round(value));
 
   return (
-    <li className="gap-2 text-sm">
+    <li className="gap-2 text-sm play-rows-slim:gap-1.5 play-rows-slim:text-xs">
       <UserAvatar
         handle={friend.handle}
         image={friend.image}
         size="sm"
         fallbackClassName="bg-surface-2 text-[10px] font-bold text-foreground"
       />
-      <span className="min-w-0 truncate font-semibold">
-        {beatReader
-          ? m.play_friends_beat_you({ friend: handle }, { locale })
-          : SENTENCES[friend.outcome]({ friend: handle }, { locale })}
-      </span>
+      <RowSentence>
+        {withSlots(
+          (marks) =>
+            beatReader
+              ? m.play_friends_beat_you(marks, { locale })
+              : SENTENCES[friend.outcome](marks, { locale }),
+          { friend: <RowHandle handle={friend.handle} /> },
+        )}
+      </RowSentence>
       {beatReader && opponent !== null ? (
         <span className="shrink-0 font-mono text-xs text-muted-foreground tabular-nums play-rows-slim:hidden">
           {m.play_duel_wpm({ winnerWpm: wpm(friend.wpm), loserWpm: wpm(opponent.wpm) }, { locale })}
