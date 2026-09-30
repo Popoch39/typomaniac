@@ -7,9 +7,9 @@ import {
 } from "@tanstack/react-router";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { Rank } from "ranked";
+import { ORNAMENT_CHOICES, type OrnamentChoice, type Rank } from "ranked";
 import { Suspense } from "react";
-import { beforeEach, describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { type Me, meQueryOptions } from "@/api/me";
 import {
@@ -56,15 +56,26 @@ const profile = (stats: Partial<Profile["stats"]>): Profile => ({
 const isProgressionWindow = (value: string): value is ProgressionWindow =>
   PROGRESSION_WINDOWS.some((window) => window === value);
 
-// `count` Duels of the Progression, one a minute.
-const points = (count: number): Profile["stats"]["progression"] =>
-  Array.from({ length: count }, (_, index) => ({
+// The Duels of the Progression, one a minute, at these wpm.
+const points = (wpms: readonly number[]): Profile["stats"]["progression"] =>
+  wpms.map((wpm, index) => ({
     endedAt: Date.UTC(2026, 8, 25, 9, index),
-    wpm: 60 + index,
-    raw: 70 + index,
+    wpm,
+    raw: wpm + 10,
     accuracy: 95,
     consistency: 80,
   }));
+
+// `count` Duels at `wpm`.
+const steady = (count: number, wpm: number) => Array.from({ length: count }, () => wpm);
+
+const played = {
+  duels: 4,
+  record: { wins: 2, losses: 1, draws: 1 },
+  averages: { wpm: 62.4, accuracy: 96.6 },
+  records: { wpm: 90, score: 1234, combo: null },
+  progression: points([60, 62, 61]),
+};
 
 type RenderOptions = {
   windows?: Partial<Record<ProgressionWindow, Profile>>;
@@ -109,69 +120,74 @@ const renderPage = async (
   );
 
   await screen.findByRole("heading", { level: 1 });
+
+  return queryClient;
 };
 
-// The hero, named by its title: the User's Handle.
+// The header, named by its title: the User's Handle.
 const hero = () => screen.getByRole("region", { name: "@ada" });
 
-// The terms of the Stats' tiles, in their order on the grid.
-const tileTerms = () =>
-  within(screen.getByLabelText("Stats"))
-    .getAllByRole("term")
-    .map((term) => term.textContent);
+const card = (name: string) => screen.getByRole("region", { name });
 
-const tile = (term: string) => {
-  const found = within(screen.getByLabelText("Stats")).getByText(term).closest("div");
+// The value a term of `list` gives.
+const valueOf = (list: HTMLElement, term: string) =>
+  within(list).getByText(term, { selector: "dt" }).nextElementSibling?.textContent;
 
-  if (found === null) {
-    throw new Error(`No tile ${term}`);
-  }
+// The settings, behind « Modifier le profil ».
+const openSettings = async (name = "Modifier le profil", header = "@ada") => {
+  await userEvent.click(
+    within(screen.getByRole("region", { name: header })).getByRole("button", { name }),
+  );
 
-  return found;
+  return screen.findByRole("dialog", { name });
 };
 
 describe("ProfilePage", () => {
-  describe("the hero", () => {
-    test("names the User by their Handle, as the others see them", async () => {
-      await renderPage(me, profile({}));
+  describe("the header", () => {
+    test("names the User by their Handle, with the Duels they played", async () => {
+      await renderPage(me, profile(played));
 
       expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("@ada");
-      expect(within(hero()).getByText("Les autres te voient en @ada.")).toBeInTheDocument();
+      expect(within(hero()).getByText("4 Duels")).toBeInTheDocument();
     });
 
-    test("links to the User's public Profile", async () => {
-      await renderPage(me, profile({}));
+    test("one Duel is one", async () => {
+      await renderPage(me, profile({ ...played, duels: 1 }));
 
-      expect(within(hero()).getByRole("button", { name: "Profile public" })).toHaveAttribute(
-        "href",
-        "/u/ada",
-      );
+      expect(within(hero()).getByText("1 Duel")).toBeInTheDocument();
     });
 
-    test("shows the User's rank, its TP, how far the next and its bar", async () => {
-      await renderPage({ ...me, rank: goldII }, profile({}));
+    test("no longer links to the public Profile", async () => {
+      await renderPage(me, profile(played));
 
-      expect(hero().textContent).toContain("Gold II");
-      expect(within(hero()).getByText("42 TP · 58 avant Gold I")).toBeInTheDocument();
+      expect(within(hero()).queryByRole("link")).not.toBeInTheDocument();
+    });
+
+    test("shows the User's rank once: its Emblem, its TP out of 100, how far the next, its bar", async () => {
+      await renderPage({ ...me, rank: goldII }, profile(played));
+
+      expect(within(hero()).getByText("Gold II")).toBeInTheDocument();
+      expect(within(hero()).getByText("42/100 TP")).toBeInTheDocument();
+      expect(within(hero()).getByText("58 TP avant Gold I")).toBeInTheDocument();
       expect(within(hero()).getByRole("meter", { name: "TP de la Division" })).toHaveAttribute(
         "value",
         "42",
       );
-      // The rank stands out in its Blason: the Emblem of Gold on its Ornament.
-      expect(
-        hero().querySelector('[data-tier-blason] use[href="#tier-ornament-gold"]'),
-      ).not.toBeNull();
+      expect(hero().querySelector('[data-tier-emblem] use[href="#tier-emblem-gold"]')).not.toBe(
+        null,
+      );
+      expect(hero().querySelector("[data-tier-blason]")).toBeNull();
     });
 
     test("a Maniac has their TP and no bar, the Maniac has no ceiling", async () => {
       await renderPage({ ...me, rank: { tier: "maniac", tp: 250, shielded: false } }, profile({}));
 
-      expect(hero().textContent).toContain("Maniac");
+      expect(within(hero()).getByText("Maniac")).toBeInTheDocument();
       expect(within(hero()).getByText("250 TP")).toBeInTheDocument();
       expect(within(hero()).queryByRole("meter")).not.toBeInTheDocument();
     });
 
-    test("in Placement, the Placement Duels played, one notch each", async () => {
+    test("in Placement, the Placement Duels played, one notch each, and no Emblem", async () => {
       await renderPage({ ...me, rank: { placementsLeft: 3 } }, profile({}));
 
       expect(within(hero()).getByText("Placement")).toBeInTheDocument();
@@ -180,14 +196,14 @@ describe("ProfilePage", () => {
         "value",
         "2",
       );
-      expect(hero().querySelector("[data-tier-blason]")).toBeNull();
+      expect(hero().querySelector("[data-tier-emblem]")).toBeNull();
     });
 
     test("without a Rating, neither a rank nor a bar", async () => {
       await renderPage(me, profile({}));
 
       expect(within(hero()).queryByRole("meter")).not.toBeInTheDocument();
-      expect(hero().querySelector("[data-tier-blason]")).toBeNull();
+      expect(hero().querySelector("[data-tier-emblem]")).toBeNull();
     });
 
     test("the avatar wears the User's Ornament and gives off its full Aura", async () => {
@@ -204,80 +220,124 @@ describe("ProfilePage", () => {
     });
   });
 
-  test("shows the User's Stats on one grid of 10 tiles", async () => {
-    await renderPage(
-      me,
-      profile({
-        duels: 4,
-        record: { wins: 2, losses: 1, draws: 1 },
-        averages: { wpm: 62.4, accuracy: 96.6 },
-        records: { wpm: 90, score: 1234, combo: null },
-      }),
-    );
+  describe("the wpm card", () => {
+    test("shows the average wpm, large, and the curve of the last 50 Duels", async () => {
+      await renderPage(me, profile(played));
 
-    expect(screen.getByRole("heading", { level: 2, name: "Stats" })).toBeInTheDocument();
-    expect(tileTerms()).toEqual([
-      "victoires",
-      "défaites",
-      "Draws",
-      "taux de victoire",
-      "Duels",
-      "wpm moyen",
-      "meilleur wpm",
-      "accuracy moyenne",
-      "meilleur Score",
-      "meilleur Combo",
-    ]);
-    expect(tile("victoires")).toHaveTextContent("2");
-    expect(tile("défaites")).toHaveTextContent("1");
-    expect(tile("Draws")).toHaveTextContent("1");
-    expect(tile("taux de victoire")).toHaveTextContent("50 %");
-    expect(tile("Duels")).toHaveTextContent("4");
-    expect(tile("wpm moyen")).toHaveTextContent("62");
-    expect(tile("meilleur wpm")).toHaveTextContent("90");
-    expect(tile("accuracy moyenne")).toHaveTextContent("97 %");
-    expect(tile("meilleur Score")).toHaveTextContent("1 234");
-    expect(tile("meilleur Combo")).toHaveTextContent("–");
-  });
+      const wpm = card("wpm moyen");
 
-  test("shows the four curves of the Progression on one card, with the Duels there are", async () => {
-    await renderPage(me, profile({ duels: 3, progression: points(3) }));
-
-    const progression = screen.getByRole("region", { name: "Progression" });
-
-    for (const metric of ["wpm", "raw", "accuracy", "consistency"]) {
+      expect(within(wpm).getByText("62")).toBeInTheDocument();
       expect(
-        within(progression).getByRole("figure", { name: `Progression ${metric}` }),
+        within(wpm).getByRole("figure", {
+          name: "Progression wpm sur les 3 derniers Duels, de 60 à 62, moyenne 61",
+        }),
       ).toBeInTheDocument();
-    }
-
-    expect(within(progression).getByText("3 Duels, hors Forfeits")).toBeInTheDocument();
-    expect(within(progression).getByRole("button", { name: "50 derniers" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-  });
-
-  test("another window reloads the Progression, never the tiles", async () => {
-    const tiles = { duels: 250, record: { wins: 250, losses: 0, draws: 0 } };
-
-    await renderPage(me, profile({ ...tiles, progression: points(50) }), {
-      windows: {
-        "200": profile({ ...tiles, duels: 999, progression: points(200) }),
-        all: profile({ ...tiles, duels: 999, progression: points(240) }),
-      },
+      expect(within(wpm).getByText("il y a 3 Duels")).toBeInTheDocument();
+      expect(within(wpm).getByText("dernier Duel")).toBeInTheDocument();
+      expect(within(wpm).getByRole("button", { name: "50 derniers" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+      expect(within(wpm).getByRole("button", { name: "tous" })).toBeInTheDocument();
+      expect(within(wpm).queryByRole("button", { name: "200 derniers" })).not.toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByRole("button", { name: "200 derniers" }));
+    test("says how far the wpm went over the window", async () => {
+      await renderPage(
+        me,
+        profile({ ...played, progression: points([...steady(10, 80), ...steady(10, 86)]) }),
+      );
 
-    expect(await screen.findByText("200 Duels, hors Forfeits")).toBeInTheDocument();
-    expect(tile("Duels")).toHaveTextContent("250");
+      const wpm = card("wpm moyen");
 
-    await userEvent.click(screen.getByRole("button", { name: "tous" }));
+      expect(within(wpm).getByText("+6")).toBeInTheDocument();
+      expect(within(wpm).getByText("sur les 20 derniers Duels")).toBeInTheDocument();
+    });
 
-    expect(await screen.findByText("240 Duels, hors Forfeits")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "tous" })).toHaveAttribute("aria-pressed", "true");
-    expect(tile("Duels")).toHaveTextContent("250");
+    test("and when it went down", async () => {
+      await renderPage(
+        me,
+        profile({ ...played, progression: points([...steady(10, 86), ...steady(10, 83)]) }),
+      );
+
+      expect(within(card("wpm moyen")).getByText("−3")).toBeInTheDocument();
+    });
+
+    test("a flat trend is no gain", async () => {
+      await renderPage(me, profile({ ...played, progression: points(steady(20, 80)) }));
+
+      const wpm = card("wpm moyen");
+
+      expect(within(wpm).getByText("0")).toBeInTheDocument();
+      expect(within(wpm).queryByText("+0")).toBeNull();
+    });
+
+    test("no trend under 20 Duels", async () => {
+      await renderPage(me, profile(played));
+
+      expect(within(card("wpm moyen")).queryByText(/derniers Duels$/)).toBeNull();
+    });
+
+    test("every Duel reloads the curve and the trend, never the average", async () => {
+      const all = profile({
+        ...played,
+        averages: { wpm: 999, accuracy: 99 },
+        progression: points([...steady(20, 50), ...steady(20, 70)]),
+      });
+
+      await renderPage(me, profile(played), { windows: { all } });
+
+      await userEvent.click(screen.getByRole("button", { name: "tous" }));
+
+      const wpm = card("wpm moyen");
+
+      expect(
+        await within(wpm).findByRole("figure", {
+          name: "Progression wpm sur les 40 derniers Duels, de 50 à 70, moyenne 60",
+        }),
+      ).toBeInTheDocument();
+      expect(within(wpm).getByText("+20")).toBeInTheDocument();
+      expect(within(wpm).getByText("62")).toBeInTheDocument();
+      expect(within(wpm).getByRole("button", { name: "tous" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      );
+    });
+  });
+
+  test("shows the win rate, and the wins, Draws and losses it is made of", async () => {
+    await renderPage(me, profile(played));
+
+    const winRate = card("taux de victoire");
+
+    expect(within(winRate).getByText("50")).toBeInTheDocument();
+    expect(winRate).toHaveTextContent("50 %");
+    expect(valueOf(winRate, "victoires")).toBe("2");
+    expect(valueOf(winRate, "Draws")).toBe("1");
+    expect(valueOf(winRate, "défaites")).toBe("1");
+  });
+
+  test("shows the average accuracy", async () => {
+    await renderPage(me, profile(played));
+
+    expect(card("accuracy moyenne")).toHaveTextContent("97 %");
+  });
+
+  test("shows the three Records, a dash for one never set", async () => {
+    await renderPage(me, profile(played));
+
+    const records = card("Records");
+
+    expect(within(records).getByRole("heading", { level: 2 })).toHaveTextContent("Records");
+    expect(
+      within(records)
+        .getAllByRole("term")
+        .map((term) => term.textContent),
+    ).toEqual(["meilleur wpm", "meilleur Score", "meilleur Combo"]);
+    expect(valueOf(records, "meilleur wpm")).toBe("90");
+    // Grouped by the narrow no-break space of French.
+    expect(valueOf(records, "meilleur Score")).toBe("1 234");
+    expect(valueOf(records, "meilleur Combo")).toBe("–");
   });
 
   test("invites a User without a Duel to play", async () => {
@@ -285,26 +345,38 @@ describe("ProfilePage", () => {
 
     expect(screen.getByText(/ton premier Duel/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Lancer un Duel" })).toHaveAttribute("href", "/");
-    expect(screen.queryByLabelText("Stats")).not.toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Progression" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "wpm moyen" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Records" })).not.toBeInTheDocument();
+    expect(within(hero()).getByText("0 Duel")).toBeInTheDocument();
   });
 
-  describe("the settings column", () => {
-    test("changes the Handle, and says what changing it does", async () => {
+  describe("the settings, behind « Modifier le profil »", () => {
+    test("are not on the page until asked for", async () => {
       await renderPage(me, profile({}));
 
-      expect(screen.getByRole("textbox", { name: "Handle" })).toHaveValue("ada");
-      expect(screen.getByRole("button", { name: "Enregistrer" })).toBeInTheDocument();
-      expect(screen.getByText(/Changer de Handle libère l'ancien aussitôt/)).toBeInTheDocument();
+      expect(screen.queryByRole("textbox", { name: "Handle" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("group", { name: "Ornament" })).not.toBeInTheDocument();
     });
 
-    test("chooses the Ornament among the 9, the Tiers above the User's locked", async () => {
+    test("change the Handle, and say what changing it does", async () => {
+      await renderPage(me, profile({}));
+
+      const settings = await openSettings();
+
+      expect(within(settings).getByRole("textbox", { name: "Handle" })).toHaveValue("ada");
+      expect(within(settings).getByRole("button", { name: "Enregistrer" })).toBeInTheDocument();
+      expect(
+        within(settings).getByText(/Changer de Handle libère l'ancien aussitôt/),
+      ).toBeInTheDocument();
+    });
+
+    test("choose the Ornament among the 9, the Tiers above the User's locked", async () => {
       await renderPage(
         { ...me, rank: goldII, ornament: "gold", ornamentChoice: "follow" },
         profile({}),
       );
 
-      const picker = screen.getByRole("group", { name: "Ornament" });
+      const picker = within(await openSettings()).getByRole("group", { name: "Ornament" });
 
       expect(within(picker).getAllByRole("radio")).toHaveLength(9);
       expect(within(picker).getByRole("radio", { name: "Suivre mon Tier" })).toBeChecked();
@@ -333,7 +405,7 @@ describe("ProfilePage", () => {
         profile({}),
       );
 
-      const picker = screen.getByRole("group", { name: "Ornament" });
+      const picker = within(await openSettings()).getByRole("group", { name: "Ornament" });
 
       for (const radio of within(picker).getAllByRole("radio")) {
         expect(radio).toBeEnabled();
@@ -342,13 +414,13 @@ describe("ProfilePage", () => {
       expect(picker).not.toHaveAttribute("aria-describedby");
     });
 
-    test("in Placement, every Ornament is locked until the Placement ends", async () => {
-      await renderPage(
-        { ...me, rank: { placementsLeft: 3 }, ornamentChoice: "follow" },
-        profile({}),
-      );
+    test.each([
+      ["in Placement", { placementsLeft: 3 }, "follow"],
+      ["without a Rating", null, null],
+    ] as const)("%s, every Ornament is locked", async (_when, rank, ornamentChoice) => {
+      await renderPage({ ...me, rank, ornamentChoice }, profile({}));
 
-      const picker = screen.getByRole("group", { name: "Ornament" });
+      const picker = within(await openSettings()).getByRole("group", { name: "Ornament" });
 
       expect(picker).toHaveAccessibleDescription("Termine ton Placement");
 
@@ -356,6 +428,103 @@ describe("ProfilePage", () => {
         expect(radio).toBeDisabled();
       }
     });
+
+    describe("the Ornament chosen", () => {
+      // Each body the picker may send, by the choice it carries.
+      const choiceOfBody = new Map(
+        ORNAMENT_CHOICES.map((choice) => [JSON.stringify({ choice }), choice]),
+      );
+
+      // The API as it answers the choice: the User wearing what they chose.
+      const stubSave = (answer: (choice: OrnamentChoice | null) => Me) => {
+        const fetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+          const choice = choiceOfBody.get(String(init?.body)) ?? null;
+
+          return new Response(JSON.stringify(answer(choice)), {
+            headers: { "content-type": "application/json" },
+          });
+        });
+
+        vi.stubGlobal("fetch", fetch);
+
+        return fetch;
+      };
+
+      const rankedMe: Me = { ...me, rank: goldII, ornament: "gold", ornamentChoice: "follow" };
+
+      afterEach(() => {
+        vi.unstubAllGlobals();
+      });
+
+      test("is worn by the avatar at once", async () => {
+        const fetch = stubSave((choice) => ({
+          ...rankedMe,
+          ornament: "bronze",
+          ornamentChoice: choice,
+        }));
+
+        const queryClient = await renderPage(rankedMe, profile({}));
+        const settings = await openSettings();
+
+        await userEvent.click(within(settings).getByRole("radio", { name: "Bronze" }));
+
+        await waitFor(() => {
+          expect(within(settings).getByRole("radio", { name: "Bronze" })).toBeChecked();
+        });
+        // Under the open dialog, the header is hidden from assistive tech, not from the eye.
+        expect(
+          screen
+            .getByRole("region", { name: "@ada", hidden: true })
+            .querySelector('[data-ornament] use[href="#tier-ornament-bronze"]'),
+        ).not.toBeNull();
+        expect(queryClient.getQueryData(meQueryOptions.queryKey)?.ornament).toBe("bronze");
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(String(fetch.mock.calls[0]?.[0])).toMatch(/\/api\/me\/ornament$/);
+      });
+
+      test("moves with the arrow keys, skipping the locked Ornaments", async () => {
+        const fetch = stubSave((choice) => ({
+          ...rankedMe,
+          ornament: null,
+          ornamentChoice: choice,
+        }));
+
+        const user = userEvent.setup();
+
+        await renderPage({ ...rankedMe, ornamentChoice: "gold" }, profile({}));
+
+        const settings = await openSettings();
+
+        within(settings).getByRole("radio", { name: "Gold" }).focus();
+
+        await user.keyboard("{ArrowRight}");
+
+        expect(within(settings).getByRole("radio", { name: "Suivre mon Tier" })).toHaveFocus();
+
+        await user.keyboard("{ArrowLeft}{ArrowLeft}");
+
+        expect(within(settings).getByRole("radio", { name: "Silver" })).toHaveFocus();
+        await waitFor(() => {
+          expect(within(settings).getByRole("radio", { name: "Silver" })).toBeChecked();
+        });
+        expect(fetch).toHaveBeenCalledTimes(3);
+      });
+    });
+  });
+
+  test("a User without a Handle is told why they need one, and has neither Stats nor Ornament", async () => {
+    await renderPage({ ...me, handle: null }, null);
+
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Ada");
+    expect(
+      screen.getByText("Tu n'as pas encore de Handle : sans lui, pas de Duel."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "wpm moyen" })).not.toBeInTheDocument();
+
+    const settings = await openSettings("Modifier le profil", "Ada");
+
+    expect(within(settings).getByRole("textbox", { name: "Handle" })).toHaveValue("ada");
+    expect(within(settings).queryByRole("group", { name: "Ornament" })).not.toBeInTheDocument();
   });
 
   describe("in English", () => {
@@ -363,20 +532,18 @@ describe("ProfilePage", () => {
       useLocaleStore.setState({ locale: "en" });
     });
 
-    test("the hero: how the others see the User, and their public Profile", async () => {
-      await renderPage(me, profile({}));
+    test("the header: the Duels played, and the way to the settings", async () => {
+      await renderPage(me, profile(played));
 
-      expect(within(hero()).getByText("Others see you as @ada.")).toBeInTheDocument();
-      expect(within(hero()).getByRole("button", { name: "Public Profile" })).toHaveAttribute(
-        "href",
-        "/u/ada",
-      );
+      expect(within(hero()).getByText("4 Duels")).toBeInTheDocument();
+      expect(await openSettings("Edit profile")).toBeInTheDocument();
     });
 
-    test("the hero's rank: its TP and how far the next", async () => {
+    test("the header's rank: its TP and how far the next", async () => {
       await renderPage({ ...me, rank: goldII }, profile({}));
 
-      expect(within(hero()).getByText("42 TP · 58 to Gold I")).toBeInTheDocument();
+      expect(within(hero()).getByText("42/100 TP")).toBeInTheDocument();
+      expect(within(hero()).getByText("58 TP to Gold I")).toBeInTheDocument();
     });
 
     test("a Maniac's TP, grouped the English way", async () => {
@@ -385,69 +552,38 @@ describe("ProfilePage", () => {
       expect(within(hero()).getByText("1,284 TP")).toBeInTheDocument();
     });
 
-    test("in Placement, the Placement Duels played", async () => {
-      await renderPage({ ...me, rank: { placementsLeft: 3 } }, profile({}));
-
-      expect(within(hero()).getByText("Placement")).toBeInTheDocument();
-      expect(within(hero()).getByText("2 / 5 Duels")).toBeInTheDocument();
-    });
-
-    test("the tiles, their figures grouped and their shares the English way", async () => {
+    test("the wpm card, its curve, its trend and its windows", async () => {
       await renderPage(
         me,
-        profile({
-          duels: 4,
-          record: { wins: 2, losses: 1, draws: 1 },
-          averages: { wpm: 62.4, accuracy: 96.6 },
-          records: { wpm: 90, score: 1234, combo: null },
-        }),
+        profile({ ...played, progression: points([...steady(10, 80), ...steady(10, 86)]) }),
       );
 
-      expect(screen.getByRole("heading", { level: 2, name: "Stats" })).toBeInTheDocument();
-      expect(tileTerms()).toEqual([
-        "wins",
-        "losses",
-        "Draws",
-        "win rate",
-        "Duels",
-        "average wpm",
-        "best wpm",
-        "average accuracy",
-        "best Score",
-        "best Combo",
-      ]);
-      expect(tile("win rate")).toHaveTextContent("50%");
-      expect(tile("average accuracy")).toHaveTextContent("97%");
-      expect(tile("best Score")).toHaveTextContent("1,234");
-      expect(tile("best Combo")).toHaveTextContent("–");
-    });
+      const wpm = card("average wpm");
 
-    test("the Progression, its curves, its Duels and its windows", async () => {
-      await renderPage(me, profile({ duels: 1, progression: points(1) }), {
-        windows: { "200": profile({ duels: 1, progression: points(2) }) },
-      });
-
-      const progression = screen.getByRole("region", { name: "Progression" });
-
-      for (const metric of ["wpm", "raw", "accuracy", "consistency"]) {
-        expect(
-          within(progression).getByRole("figure", { name: `${metric} Progression` }),
-        ).toBeInTheDocument();
-      }
-
-      expect(within(progression).getByText("1 Duel, excluding Forfeits")).toBeInTheDocument();
       expect(
-        within(progression).getByRole("group", { name: "Progression window" }),
+        within(wpm).getByRole("figure", {
+          name: "wpm Progression over the last 20 Duels, from 80 to 86, average 83",
+        }),
       ).toBeInTheDocument();
-      expect(within(progression).getByRole("button", { name: "last 50" })).toHaveAttribute(
+      expect(within(wpm).getByText("over the last 20 Duels")).toBeInTheDocument();
+      expect(within(wpm).getByText("20 Duels ago")).toBeInTheDocument();
+      expect(within(wpm).getByText("last Duel")).toBeInTheDocument();
+      expect(within(wpm).getByRole("group", { name: "Progression window" })).toBeInTheDocument();
+      expect(within(wpm).getByRole("button", { name: "last 50" })).toHaveAttribute(
         "aria-pressed",
         "true",
       );
-      expect(within(progression).getByRole("button", { name: "all" })).toBeInTheDocument();
+      expect(within(wpm).getByRole("button", { name: "all" })).toBeInTheDocument();
+    });
 
-      await userEvent.click(within(progression).getByRole("button", { name: "last 200" }));
+    test("the shares the English way, the Records grouped", async () => {
+      await renderPage(me, profile(played));
 
-      expect(await screen.findByText("2 Duels, excluding Forfeits")).toBeInTheDocument();
+      expect(card("win rate")).toHaveTextContent("50%");
+      expect(valueOf(card("win rate"), "wins")).toBe("2");
+      expect(card("average accuracy")).toHaveTextContent("97%");
+      expect(valueOf(card("Records"), "best Score")).toBe("1,234");
+      expect(valueOf(card("Records"), "best Combo")).toBe("–");
     });
 
     test("invites a User without a Duel to play", async () => {
@@ -467,18 +603,5 @@ describe("ProfilePage", () => {
         screen.getByText("You don't have a Handle yet, and you need one to play Duels."),
       ).toBeInTheDocument();
     });
-  });
-
-  test("a User without a Handle is asked for one, and has neither Stats nor Ornament", async () => {
-    await renderPage({ ...me, handle: null }, null);
-
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Ada");
-    expect(
-      screen.getByText("Tu n'as pas encore de Handle : sans lui, pas de Duel."),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Handle" })).toHaveValue("ada");
-    expect(screen.queryByRole("button", { name: "Profile public" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Stats" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("group", { name: "Ornament" })).not.toBeInTheDocument();
   });
 });

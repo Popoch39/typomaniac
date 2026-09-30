@@ -11,7 +11,7 @@ Une personne connue de typomaniac, identifiée par son email. C'est la seule ent
 _Avoid_ : compte, player, membre
 
 **Profile** :
-La page d'un User, trouvée par son Handle, que tout User connecté peut voir : son Handle, son avatar avec son Ornament, son rang en Crest et ses Stats. Sur le sien, le User choisit son Ornament. Sa Duel history, ses Duel charts et ses Replays n'y figurent pas.
+La page d'un User, trouvée par son Handle, que tout User connecté peut voir : son Handle, son avatar avec son Ornament, son rang avec son Emblem et ses Stats. Sur la page Profil, la sienne, le User choisit son Handle et son Ornament. Sa Duel history, ses Duel charts et ses Replays n'y figurent pas.
 _Avoid_ : fiche, page perso, compte
 
 **Handle** :

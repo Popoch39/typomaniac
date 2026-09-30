@@ -8,9 +8,7 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { render, screen, waitFor, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { ORNAMENT_CHOICES, type OrnamentChoice, type Rank } from "ranked";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 
 import { type Me, meQueryOptions } from "@/api/me";
 import { type Profile, profileQueryOptions } from "@/api/profile";
@@ -99,17 +97,22 @@ const renderAt = async (
   return queryClient;
 };
 
+// The value a term of the card named `card` gives.
+const valueOf = (card: string, term: string) =>
+  within(screen.getByRole("region", { name: card })).getByText(term, { selector: "dt" })
+    .nextElementSibling?.textContent;
+
 describe("UserProfilePage", () => {
   test("shows another User's Handle and Stats, and nothing of their Duels", async () => {
     await renderAt(me, "grace", [grace]);
 
-    expect(await screen.findByRole("heading", { name: "@grace" })).toBeInTheDocument();
-    expect(
-      within(screen.getByLabelText("Stats")).getByText("Duels").closest("div"),
-    ).toHaveTextContent("3");
-    expect(
-      within(screen.getByLabelText("Stats")).getByText("victoires").closest("div"),
-    ).toHaveTextContent("2");
+    const header = await screen.findByRole("region", { name: "@grace" });
+
+    expect(within(header).getByRole("heading", { level: 1 })).toHaveTextContent("@grace");
+    expect(within(header).getByText("3 Duels")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "wpm moyen" })).getByText("71")).toBeVisible();
+    expect(valueOf("taux de victoire", "victoires")).toBe("2");
+    expect(valueOf("Records", "meilleur Combo")).toBe("40");
     expect(screen.queryByRole("link", { name: /Revoir/ })).not.toBeInTheDocument();
     expect(screen.queryByText(/Duel history/)).not.toBeInTheDocument();
   });
@@ -119,10 +122,12 @@ describe("UserProfilePage", () => {
       { ...grace, rank: { tier: "gold", division: 2, tp: 42, shielded: false } },
     ]);
 
-    expect(await screen.findByText("Gold II · 42 TP")).toBeInTheDocument();
-    // The rank stands out in its Blason: the Emblem of Gold on its Ornament.
+    expect(await screen.findByText("Gold II")).toBeInTheDocument();
+    expect(screen.getByText("42/100 TP")).toBeInTheDocument();
+    expect(screen.getByText("58 TP avant Gold I")).toBeInTheDocument();
+    // Before it, the Emblem of Gold.
     expect(
-      document.querySelector('[data-tier-blason] use[href="#tier-ornament-gold"]'),
+      document.querySelector('[data-tier-emblem] use[href="#tier-emblem-gold"]'),
     ).not.toBeNull();
     // Under it, its progress: the Division's TP out of 100.
     expect(screen.getByRole("meter", { name: "TP de la Division" })).toHaveAttribute("value", "42");
@@ -133,7 +138,7 @@ describe("UserProfilePage", () => {
       { ...grace, rank: { tier: "gold", division: 2, tp: 42, shielded: false }, ornament: "gold" },
     ]);
 
-    await screen.findByText("Gold II · 42 TP");
+    await screen.findByText("Gold II");
 
     expect(
       document.querySelector('[data-ornament] use[href="#tier-ornament-gold"]'),
@@ -154,7 +159,7 @@ describe("UserProfilePage", () => {
       browser.runtime,
     );
 
-    await screen.findByText(`${name} II · 42 TP`);
+    await screen.findByText(`${name} II`);
     await waitFor(() => expect(browser.painters).toHaveLength(1));
 
     expect(browser.painters[0]?.tier).toBe(tier);
@@ -171,7 +176,9 @@ describe("UserProfilePage", () => {
       browser.runtime,
     );
 
-    await screen.findByText("Maniac · 42 TP");
+    await screen.findByText("Maniac");
+
+    expect(screen.getByText("42 TP")).toBeInTheDocument();
     await waitFor(() => expect(browser.painters).toHaveLength(1));
 
     const ornament = browser.painters[0]?.canvas.closest("[data-ornament]");
@@ -189,11 +196,12 @@ describe("UserProfilePage", () => {
     expect(document.querySelector("[data-ornament]")).toBeNull();
   });
 
-  test("shows the Placement Duels a User has left", async () => {
+  test("shows the Placement Duels a User has played", async () => {
     await renderAt(me, "grace", [{ ...grace, rank: { placementsLeft: 4 } }]);
 
-    expect(await screen.findByText("Placement · 4 Duels restants")).toBeInTheDocument();
-    expect(document.querySelector("[data-tier-blason]")).toBeNull();
+    expect(await screen.findByText("Placement")).toBeInTheDocument();
+    expect(screen.getByText("1 / 5 Duels")).toBeInTheDocument();
+    expect(document.querySelector("[data-tier-emblem]")).toBeNull();
     expect(screen.getByRole("meter", { name: "Placement" })).toHaveAttribute("value", "1");
   });
 
@@ -208,7 +216,8 @@ describe("UserProfilePage", () => {
 
     expect(await screen.findByText("Pas encore de Duel")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Lancer un Duel" })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Stats")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "wpm moyen" })).not.toBeInTheDocument();
+    expect(screen.getByText("0 Duel")).toBeInTheDocument();
   });
 
   test("an unknown Handle leads to a not-found page", async () => {
@@ -217,144 +226,13 @@ describe("UserProfilePage", () => {
     expect(await screen.findByRole("heading", { name: "User introuvable" })).toBeInTheDocument();
   });
 
-  describe("the Ornament picker", () => {
-    const goldII: Rank = { tier: "gold", division: 2, tp: 42, shielded: false };
-    const rankedMe: Me = { ...me, rank: goldII, ornament: "gold", ornamentChoice: "follow" };
-    const ada: Profile = { ...grace, handle: "ada", rank: goldII, ornament: "gold" };
+  test("has no settings, not even on the User's own Profile: they are on `/profile`", async () => {
+    await renderAt({ ...me, ornamentChoice: "follow" }, "ada", [{ ...grace, handle: "ada" }]);
 
-    // Each body the picker may send, by the choice it carries.
-    const choiceOfBody = new Map(
-      ORNAMENT_CHOICES.map((choice) => [JSON.stringify({ choice }), choice]),
-    );
+    await screen.findByRole("heading", { name: "@ada" });
 
-    // The API as it answers the choice: the User wearing what they chose.
-    const stubSave = (answer: (choice: OrnamentChoice | null) => Me) => {
-      const fetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-        const choice = choiceOfBody.get(String(init?.body)) ?? null;
-
-        return new Response(JSON.stringify(answer(choice)), {
-          headers: { "content-type": "application/json" },
-        });
-      });
-
-      vi.stubGlobal("fetch", fetch);
-
-      return fetch;
-    };
-
-    afterEach(() => {
-      vi.unstubAllGlobals();
-    });
-
-    test("is on the User's own Profile only", async () => {
-      await renderAt(rankedMe, "ada", [ada, grace]);
-
-      const picker = await screen.findByRole("group", { name: "Ornament" });
-
-      expect(screen.getByRole("radio", { name: "Suivre mon Tier" })).toBeChecked();
-      expect(
-        within(picker)
-          .getAllByRole("radio")
-          .map((radio) => radio.closest("label")?.textContent),
-      ).toEqual([
-        "Suivre mon Tier",
-        "Aucun",
-        "Iron",
-        "Bronze",
-        "Silver",
-        "Gold",
-        "Platinum",
-        "Diamond",
-        "Maniac",
-      ]);
-    });
-
-    test("is not on another User's Profile", async () => {
-      await renderAt(rankedMe, "grace", [ada, grace]);
-
-      await screen.findByRole("heading", { name: "@grace" });
-
-      expect(screen.queryByRole("group", { name: "Ornament" })).not.toBeInTheDocument();
-      expect(screen.queryByRole("radio")).not.toBeInTheDocument();
-    });
-
-    test("locks the Ornaments above the User's Tier", async () => {
-      await renderAt(rankedMe, "ada", [ada]);
-
-      await screen.findByRole("group", { name: "Ornament" });
-
-      for (const name of ["Suivre mon Tier", "Aucun", "Iron", "Bronze", "Silver", "Gold"]) {
-        expect(screen.getByRole("radio", { name })).toBeEnabled();
-      }
-
-      for (const name of ["Platinum", "Diamond", "Maniac"]) {
-        expect(screen.getByRole("radio", { name })).toBeDisabled();
-      }
-    });
-
-    test.each([
-      ["in Placement", { placementsLeft: 3 }, "follow"],
-      ["without a Rating", null, null],
-    ] as const)("locks every Ornament %s", async (_when, rank, ornamentChoice) => {
-      await renderAt({ ...me, rank, ornamentChoice }, "ada", [{ ...ada, rank, ornament: null }]);
-
-      expect(await screen.findByRole("group", { name: "Ornament" })).toHaveAccessibleDescription(
-        "Termine ton Placement",
-      );
-
-      for (const radio of screen.getAllByRole("radio")) {
-        expect(radio).toBeDisabled();
-      }
-    });
-
-    test("applies the choice to the avatar at once", async () => {
-      const fetch = stubSave((choice) => ({
-        ...rankedMe,
-        ornament: "bronze",
-        ornamentChoice: choice,
-      }));
-
-      const user = userEvent.setup();
-
-      const queryClient = await renderAt(rankedMe, "ada", [ada]);
-
-      await user.click(await screen.findByRole("radio", { name: "Bronze" }));
-
-      await waitFor(() => {
-        expect(screen.getByRole("radio", { name: "Bronze" })).toBeChecked();
-      });
-      expect(
-        document.querySelector('[data-ornament] use[href="#tier-ornament-bronze"]'),
-      ).not.toBeNull();
-      // The header's avatar reads the signed-in User: it wears the new Ornament too.
-      expect(queryClient.getQueryData(meQueryOptions.queryKey)?.ornament).toBe("bronze");
-      expect(fetch).toHaveBeenCalledTimes(1);
-      expect(String(fetch.mock.calls[0]?.[0])).toMatch(/\/api\/me\/ornament$/);
-    });
-
-    test("moves the choice with the arrow keys, skipping the locked Ornaments", async () => {
-      const fetch = stubSave((choice) => ({ ...rankedMe, ornament: null, ornamentChoice: choice }));
-      const user = userEvent.setup();
-
-      await renderAt({ ...rankedMe, ornamentChoice: "gold" }, "ada", [ada]);
-      await screen.findByRole("group", { name: "Ornament" });
-
-      await user.tab();
-
-      expect(screen.getByRole("radio", { name: "Gold" })).toHaveFocus();
-
-      await user.keyboard("{ArrowRight}");
-
-      expect(screen.getByRole("radio", { name: "Suivre mon Tier" })).toHaveFocus();
-
-      await user.keyboard("{ArrowLeft}{ArrowLeft}");
-
-      expect(screen.getByRole("radio", { name: "Silver" })).toHaveFocus();
-      await waitFor(() => {
-        expect(screen.getByRole("radio", { name: "Silver" })).toBeChecked();
-      });
-      expect(fetch).toHaveBeenCalledTimes(3);
-    });
+    expect(screen.queryByRole("group", { name: "Ornament" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Modifier le profil" })).not.toBeInTheDocument();
   });
 
   describe("in English", () => {
@@ -367,9 +245,9 @@ describe("UserProfilePage", () => {
 
       await screen.findByRole("heading", { name: "@grace" });
 
-      expect(
-        within(screen.getByLabelText("Stats")).getByText("wins").closest("div"),
-      ).toHaveTextContent("2");
+      expect(screen.getByText("3 Duels")).toBeInTheDocument();
+      expect(valueOf("win rate", "wins")).toBe("2");
+      expect(valueOf("Records", "best Score")).toBe("900");
     });
 
     test("a User without a Duel yet has no Stats", async () => {
@@ -399,7 +277,7 @@ describe("UserProfilePage", () => {
     test("while the Profile loads, each part says what it loads", () => {
       render(<UserProfilePendingPage />);
 
-      for (const name of ["Loading Profile", "Loading Stats", "Loading Progression"]) {
+      for (const name of ["Loading Profile", "Loading Stats"]) {
         expect(screen.getByRole("status", { name })).toBeInTheDocument();
       }
     });

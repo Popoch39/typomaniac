@@ -1,35 +1,29 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { useId } from "react";
 
 import { profileQueryOptions } from "@/api/profile";
-import { OwnOrnamentPicker } from "@/components/ornament/own-ornament-picker";
-import { ProfileRank } from "@/components/profile/profile-rank";
-import { UserAvatar } from "@/components/user-avatar/user-avatar";
+import { ProfileAvatar } from "@/components/profile/profile-avatar";
+import { ProfileDuels } from "@/components/profile/profile-duels";
+import { ProfileRankCard } from "@/components/profile/profile-rank-card";
+import { ProfileTitle } from "@/components/profile/profile-title";
 import { atHandle } from "@/lib/at-handle";
 
-// The top of a Profile, on a card: the squircle avatar, shown large enough for the full Aura, and
-// the Handle of today, as the API spells it.
-// On the User's own Profile, the Ornament picker under it.
+// The header of a Profile, named by its title, as `/profile`'s without its settings: the avatar
+// with the full Aura of its Ornament, the Handle of today as the API spells it and the Duels played,
+// the rank on its card.
 export const ProfileHeader = ({ handle }: { handle: string }) => {
   const { data: profile } = useSuspenseQuery(profileQueryOptions(handle));
+  const titleId = useId();
 
   return (
-    <div className="flex flex-col gap-5 rounded-card bg-card p-5">
-      <div className="flex items-center gap-4">
-        <UserAvatar
-          handle={profile.handle}
-          image={profile.image}
-          ornament={profile.ornament}
-          aura="full"
-          className="size-16"
-          fallbackClassName="bg-primary text-lg font-bold text-primary-foreground"
-        />
-        {/* Positioned after the avatar: drawn over the Ornament's overflow, never under it. */}
-        <h1 className="relative text-3xl font-extrabold tracking-tight">
-          {atHandle(profile.handle)}
-        </h1>
-        {profile.rank ? <ProfileRank rank={profile.rank} /> : null}
-      </div>
-      <OwnOrnamentPicker handle={profile.handle} />
-    </div>
+    <section aria-labelledby={titleId} className="flex items-center gap-6">
+      <ProfileAvatar handle={profile.handle} image={profile.image} ornament={profile.ornament} />
+      <ProfileTitle
+        id={titleId}
+        title={atHandle(profile.handle)}
+        line={<ProfileDuels handle={handle} />}
+      />
+      <ProfileRankCard rank={profile.rank} />
+    </section>
   );
 };

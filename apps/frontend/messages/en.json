@@ -475,17 +475,24 @@
   "tier_up_continue": "Continue",
   "profile_title": "Profile",
   "profile_loading": "Loading Profile",
-  "profile_others_see_you": "Others see you as {handle}.",
   "profile_no_handle": "You don't have a Handle yet, and you need one to play Duels.",
-  "profile_public_link": "Public Profile",
-  "profile_hero_rank_line": "{tp} TP · {ahead}",
-  "profile_stats_title": "Stats",
+  "profile_duels": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{shown} Duel",
+        "countPlural=*": "{shown} Duels"
+      }
+    }
+  ],
+  "profile_edit": "Edit profile",
+  "profile_rank_tp_of": "{tp}/{of} TP",
   "profile_stats_loading": "Loading Stats",
   "profile_stat_wins": "wins",
   "profile_stat_losses": "losses",
   "profile_stat_draws": "Draws",
   "profile_stat_win_rate": "win rate",
-  "profile_stat_duels": "Duels",
   "profile_stat_average_wpm": "average wpm",
   "profile_stat_best_wpm": "best wpm",
   "profile_stat_average_accuracy": "average accuracy",
@@ -495,28 +502,55 @@
   "profile_empty_own_reason": "Your Stats will show up after your first finished Duel.",
   "profile_empty_own_action": "Start a Duel",
   "profile_empty_other_reason": "Their Stats will show up after their first finished Duel.",
-  "profile_progression_title": "Progression",
+  "profile_records_title": "Records",
   "profile_progression_loading": "Loading Progression",
   "profile_progression_window": "Progression window",
   "profile_progression_window_last": "last {count}",
   "profile_progression_window_all": "all",
-  "profile_progression_duels": [
+  "profile_wpm_trend_gain": "+{value}",
+  "profile_wpm_trend_loss": "−{value}",
+  "profile_wpm_trend_span": [
     {
       "declarations": ["input count", "input shown", "local countPlural = count: plural"],
       "selectors": ["countPlural"],
       "match": {
-        "countPlural=one": "{shown} Duel, excluding Forfeits",
-        "countPlural=*": "{shown} Duels, excluding Forfeits"
+        "countPlural=one": "over the last Duel",
+        "countPlural=*": "over the last {shown} Duels"
       }
     }
   ],
-  "profile_progression_metric_wpm": "wpm",
-  "profile_progression_metric_raw": "raw",
-  "profile_progression_metric_accuracy": "accuracy",
-  "profile_progression_metric_consistency": "consistency",
-  "profile_progression_chart": "{metric} Progression",
-  "profile_progression_average": "{count}-Duel average",
-  "profile_progression_point": "{wpm} wpm · {raw} raw · {accuracy}% acc · {consistency}% cons",
+  "profile_wpm_chart": [
+    {
+      "declarations": [
+        "input count",
+        "input shown",
+        "input low",
+        "input high",
+        "input average",
+        "local countPlural = count: plural"
+      ],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "wpm Progression over the last Duel: {average}",
+        "countPlural=*": "wpm Progression over the last {shown} Duels, from {low} to {high}, average {average}"
+      }
+    }
+  ],
+  "profile_wpm_average_line": "average {value}",
+  "profile_wpm_record_tag": "record {value}",
+  "profile_wpm_peak_tag": "peak {value}",
+  "profile_wpm_first_duel": [
+    {
+      "declarations": ["input count", "input shown", "local countPlural = count: plural"],
+      "selectors": ["countPlural"],
+      "match": {
+        "countPlural=one": "{shown} Duel ago",
+        "countPlural=*": "{shown} Duels ago"
+      }
+    }
+  ],
+  "profile_wpm_last_duel": "last Duel",
+  "profile_wpm_series": "wpm",
   "profile_sign_in_reason": "Sign in to see this User's Profile.",
   "profile_not_found_title": "User not found",
   "profile_not_found_happened": "No User has this Handle: it was never taken, or its owner has since changed it.",

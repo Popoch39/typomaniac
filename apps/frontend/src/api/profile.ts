@@ -2,8 +2,9 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { api, unwrap } from "@/api/client";
 
-// How many of their last Duels the Progression shows: the server's default is 50.
-export const PROGRESSION_WINDOWS = ["50", "200", "all"] as const;
+// How many of their last Duels the Progression shows, among the server's windows: its default, 50,
+// or all of them.
+export const PROGRESSION_WINDOWS = ["50", "all"] as const;
 
 export type ProgressionWindow = (typeof PROGRESSION_WINDOWS)[number];
 
@@ -22,7 +23,7 @@ export type ProgressionPoint = Stats["progression"][number];
 // Every window of one User's Profile: the prefix of their entries. A Handle has no case.
 export const profileQueryKey = (handle: string) => ["profile", handle.toLowerCase()] as const;
 
-// The window changes the Progression only: the tiles and the record read the default one. A Handle
+// The window changes the Progression only: the rest of the Stats reads the default one. A Handle
 // has no case: `/u/Ada` and `/u/ada` share one entry.
 export const profileQueryOptions = (
   handle: string,

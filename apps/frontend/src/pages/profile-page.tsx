@@ -3,14 +3,12 @@ import { Suspense } from "react";
 
 import { meQueryOptions } from "@/api/me";
 import { OwnProfileEmpty } from "@/components/profile/own-profile-empty";
-import { ProfileColumns } from "@/components/profile/profile-columns";
 import { ProfileHero } from "@/components/profile/profile-hero";
-import { ProfileSettings } from "@/components/profile/profile-settings";
 import { ProfileStats } from "@/components/profile/profile-stats";
 import { ProfileStatsSkeleton } from "@/components/profile/profile-stats-skeleton";
 
-// The Profil page, the signed-in User's own (`/profile`): their hero, then their Stats, and at the
-// right their settings (their Handle, changed at will, and their Ornament).
+// The Profil page, the signed-in User's own (`/profile`), the Vitrine: their header, with their
+// settings behind « Modifier le profil », then their Stats.
 export const ProfilePage = () => {
   const { data: me } = useSuspenseQuery(meQueryOptions);
 
@@ -20,20 +18,15 @@ export const ProfilePage = () => {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <ProfileHero me={me} />
-      <ProfileColumns
-        stats={
-          // No Duel without a Handle, so no Stats. A new Handle reads the Stats again: the
-          // settings stay while they load.
-          me.handle === null ? null : (
-            <Suspense fallback={<ProfileStatsSkeleton />}>
-              <ProfileStats handle={me.handle} empty={<OwnProfileEmpty />} />
-            </Suspense>
-          )
-        }
-        settings={<ProfileSettings me={me} />}
-      />
+      {/* No Duel without a Handle, so no Stats. A new Handle reads the Stats again: the header
+          and the settings stay while they load. */}
+      {me.handle === null ? null : (
+        <Suspense fallback={<ProfileStatsSkeleton />}>
+          <ProfileStats handle={me.handle} empty={<OwnProfileEmpty />} />
+        </Suspense>
+      )}
     </div>
   );
 };

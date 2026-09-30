@@ -2,27 +2,33 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
 import { profileQueryOptions } from "@/api/profile";
-import { ProfileProgression } from "@/components/profile/profile-progression";
-import { StatsTiles } from "@/components/profile/stats-tiles";
-import { SMALL_TITLE_PAINT } from "@/components/small-title-paint";
-import { useLocale } from "@/locale/use-locale";
-import { m } from "@/paraglide/messages";
+import { AccuracyCard } from "@/components/profile/accuracy-card";
+import { ProfileRecords } from "@/components/profile/profile-records";
+import { WinRateCard } from "@/components/profile/win-rate-card";
+import { WpmCard } from "@/components/profile/wpm-card";
 
-// The Stats of the User who holds `handle`: their tiles, then their Progression on its card, or
+// The Stats of the User who holds `handle`, the Vitrine: their average wpm and its curve on the
+// widest card, their win rate and their average accuracy beside it, their Records under both. Or
 // `empty` before their first Duel (an invitation to play on one's own Profile, a plain fact on
 // another's).
 export const ProfileStats = ({ handle, empty }: { handle: string; empty: ReactNode }) => {
-  const locale = useLocale();
   const { data: profile } = useSuspenseQuery(profileQueryOptions(handle));
-  const played = profile.stats.duels > 0;
+  const { stats } = profile;
+
+  if (stats.duels === 0) {
+    return empty;
+  }
 
   return (
-    <>
-      <section className="flex flex-col gap-2.5">
-        <h2 className={SMALL_TITLE_PAINT}>{m.profile_stats_title({}, { locale })}</h2>
-        {played ? <StatsTiles stats={profile.stats} /> : empty}
-      </section>
-      {played ? <ProfileProgression handle={handle} /> : null}
-    </>
+    <div className="flex flex-col gap-8">
+      <div className="grid grid-cols-[minmax(0,1fr)_22.5rem] gap-5">
+        <WpmCard handle={handle} average={stats.averages.wpm} record={stats.records.wpm} />
+        <div className="flex flex-col gap-5">
+          <WinRateCard record={stats.record} duels={stats.duels} />
+          <AccuracyCard accuracy={stats.averages.accuracy} />
+        </div>
+      </div>
+      <ProfileRecords records={stats.records} />
+    </div>
   );
 };

@@ -14,7 +14,9 @@ const windowLabel = (span: ProgressionWindow, locale: Locale) =>
         { locale },
       );
 
-// Which of their last Duels the Progression shows, as segmented pills on the card's raised surface.
+// Which of their last Duels the Progression shows, as segmented pills sunk into the card: the
+// chosen one raised on the card's raised surface, never filled with the accent, which the average
+// wpm beside it holds.
 export const ProgressionWindowPicker = ({
   span,
   onChange,
@@ -35,7 +37,8 @@ export const ProgressionWindowPicker = ({
       options={options}
       value={span}
       onChange={onChange}
-      className="bg-surface-2"
+      className="shrink-0 bg-background"
+      optionClassName="px-4 aria-pressed:bg-surface-2 aria-pressed:text-foreground aria-pressed:hover:bg-surface-2"
     />
   );
 };
