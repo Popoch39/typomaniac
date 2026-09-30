@@ -9,7 +9,7 @@ import { act, cleanup, render, screen, waitFor, within } from "@testing-library/
 import { userEvent } from "@testing-library/user-event";
 import { gsap } from "gsap";
 import { StrictMode } from "react";
-import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, type MockInstance, test, vi } from "vitest";
 
 import { type ReplayedDuel, replayedDuelQueryOptions } from "@/api/duel-history";
 import { type Me, meQueryOptions } from "@/api/me";
@@ -289,6 +289,10 @@ const continueButton = () => screen.getByRole("button", { name: "Continuer" });
 // The end screen itself, which the focus comes back to once the Tier-up is closed.
 const endScreen = () => screen.getByText("Nouveau Duel").closest("[tabindex='-1']");
 
+// The arguments of each focus the spy saw given to that element.
+const focusCallsOn = (element: Element | null, focus: MockInstance<HTMLElement["focus"]>) =>
+  focus.mock.calls.flatMap((call, index) => (focus.mock.contexts[index] === element ? [call] : []));
+
 // The User prefers reduced motion: the Tier-up reads it as it opens.
 const reduceMotion = () =>
   vi.spyOn(window, "matchMedia").mockImplementation((media) => ({
@@ -467,9 +471,12 @@ describe("the Affiche", () => {
 
     await renderEnded();
 
+    const calls = focusCallsOn(endScreen(), focus);
+
     expect(scroll).toHaveBeenCalledWith({ top: 0, behavior: "instant" });
-    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
-    expect(focus).not.toHaveBeenCalledWith();
+    // Twice under StrictMode, which attaches the ref again: each without scrolling.
+    expect(calls).toContainEqual([{ preventScroll: true }]);
+    expect(calls.filter(([options]) => options?.preventScroll !== true)).toEqual([]);
   });
 
   test("names each block", async () => {
@@ -2194,12 +2201,7 @@ describe("the entrance", () => {
 
     await userEvent.click(continueButton());
     await waitFor(() => expect(endScreen()).toHaveFocus());
-
-    const onTheScreen = focus.mock.calls.flatMap((call, index) =>
-      focus.mock.contexts[index] === endScreen() ? [call] : [],
-    );
-
-    expect(onTheScreen).toEqual([[{ preventScroll: true }]]);
+    expect(focusCallsOn(endScreen(), focus)).toEqual([[{ preventScroll: true }]]);
   });
 
   test("never opens a Tier-up before the band and the outcome are in", async () => {

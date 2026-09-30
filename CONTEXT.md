@@ -81,6 +81,14 @@ La part de frappes de caractères justes. Une faute corrigée reste une faute.
 **consistency** :
 La régularité du raw d'une seconde à l'autre, de 0 à 100.
 
+**Best Run** :
+La meilleure Run d'un User pour un réglage (un Mode, sa durée ou son nombre de mots, une Language), au wpm. Une Run qui fait mieux la remplace ; à wpm égal, la plus ancienne reste. Son Result se recalcule depuis ses Keystrokes, jamais depuis ce qu'annonce la Run. Un Visitor n'en a pas. Elle ne compte ni dans les Stats ni dans les Records, qui restent propres aux Duels.
+_Avoid_ : record de Run, meilleur score, PB
+
+**Ghost** :
+Le rejeu d'une Best Run sur son propre Text, frappe par frappe, fautes comprises, tracé comme un second curseur.
+_Avoid_ : ombre, bot, pacer
+
 ### Duel
 
 **Duel** :
@@ -268,7 +276,7 @@ L'invitation d'un User à l'un de ses Friends, en ligne, à jouer un Duel ensemb
 _Avoid_ : défi, invitation, invite, duel privé
 
 **Activity** :
-Ce qu'un User voit de ses Friends actuels : leurs Duels terminés, contre n'importe qui, et leurs nouvelles amitiés, avec n'importe qui. Elle découle des Duels et des amitiés : quand une amitié prend fin, les Activities de l'ex-Friend disparaissent. L'arrivée en ligne d'un Friend y apparaît sur le moment, sans être conservée.
+Ce qu'un User voit de ses Friends actuels : leurs Duels terminés, contre n'importe qui, avec les TP qu'ils ont gagnés ou perdus quand le Duel était Ranked, et leurs nouvelles amitiés, avec n'importe qui. Elle découle des Duels et des amitiés : quand une amitié prend fin, les Activities de l'ex-Friend disparaissent. L'arrivée en ligne d'un Friend y apparaît sur le moment, sans être conservée.
 _Avoid_ : feed, fil, timeline, fil d'actualité
 
 ### Apparence
