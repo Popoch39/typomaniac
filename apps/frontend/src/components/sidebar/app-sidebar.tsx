@@ -50,7 +50,8 @@ export const AppSidebar = ({ hidden }: AppSidebarProps) => {
         <SidebarHeader className="pt-0.5 pr-2.5 pb-4.5 pl-1.5 rail:items-center rail:px-0">
           <BrandMark />
         </SidebarHeader>
-        <SidebarContent>
+        {/* The Rail never scrolls: its Friends are as many as fit (OnlineFriendsSection). */}
+        <SidebarContent className="rail:overflow-hidden">
           <SidebarNav />
           <SidebarOnlineFriends />
         </SidebarContent>
