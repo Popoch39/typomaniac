@@ -4,6 +4,7 @@ import {
   type Rank,
   type Rating,
   type Standing,
+  stepOf,
   type Tier,
 } from "ranked";
 import { type Keystroke, paceDuels, paceOf, type Result } from "typing-engine";
@@ -109,8 +110,23 @@ export type RecentDuel = {
 // A finished Ranked Duel as the Form reads it: how it ended and the reader's wpm.
 export type RankedDuelRow = Pick<DuelRecord, "outcome" | "winnerId"> & { wpm: number };
 
-// A User of the Classement: their place in it, from 1, and their rank, never their MMR.
-export type LeaderboardRow = { userId: string; position: number; standing: Standing };
+// A User of the Leaderboard and their rank, never their MMR.
+export type LeaderboardRow = { userId: string; standing: Standing };
+
+// Where a User stands in the Leaderboard's order: their step (`stepOf` of the ranked package),
+// then their TP, then their User id, which tells apart the Users of the same rank.
+export type LeaderboardKey = { step: number; tp: number; userId: string };
+
+export const leaderboardKeyOf = ({ userId, standing }: LeaderboardRow): LeaderboardKey => ({
+  step: stepOf(standing),
+  tp: standing.tp,
+  userId,
+});
+
+// Negative when `a` stands above `b` in the Leaderboard: the higher step, then the more TP, then
+// the greater User id first. The Drizzle store sorts the same way.
+export const compareLeaderboardKeys = (a: LeaderboardKey, b: LeaderboardKey) =>
+  b.step - a.step || b.tp - a.tp || (a.userId < b.userId ? 1 : -Number(a.userId > b.userId));
 
 // A User with a Rating: their rank and the Ornament they chose, raw, to resolve by `ornamentOf`.
 export type OrnamentChoiceRow = { userId: string; rank: Rank; choice: OrnamentChoice };
@@ -132,11 +148,15 @@ export type DuelStore = {
   ornamentChoicesOf: (userIds: readonly string[]) => Promise<OrnamentChoiceRow[]>;
   // Writes the User's Ornament choice on their Rating, raw: nothing without a Rating.
   setOrnamentChoice: (userId: string, choice: OrnamentChoice) => Promise<void>;
-  // The first `limit` Users of the Classement, past Placement, in its order (`byStanding` of the
-  // ranked package, ties by User id).
-  leaderboard: (limit: number) => Promise<LeaderboardRow[]>;
-  // Where the User stands in that same order, from 1: null in Placement or without a Rating.
-  leaderboardPosition: (userId: string) => Promise<number | null>;
+  // The Leaderboard, the Users past Placement in `compareLeaderboardKeys` order. The `limit` Users
+  // right below `after`, from the first without it, the best first.
+  leaderboardAfter: (after: LeaderboardKey | null, limit: number) => Promise<LeaderboardRow[]>;
+  // The `limit` Users right above `before`, the best first.
+  leaderboardBefore: (before: LeaderboardKey, limit: number) => Promise<LeaderboardRow[]>;
+  // The Place of the User at `key`: 1 and the count of the Users above it.
+  leaderboardPlace: (key: LeaderboardKey) => Promise<number>;
+  // How many Users the Leaderboard holds.
+  leaderboardSize: () => Promise<number>;
   // The wpm of the last `count` Duels a User finished, the most recent first: those written before
   // the Score too.
   recentWpms: (userId: string, count: number) => Promise<number[]>;

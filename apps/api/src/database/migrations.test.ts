@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { PGlite } from "@electric-sql/pglite";
+import { type Standing, stepOf } from "ranked";
 
 const MIGRATIONS = `${import.meta.dir}/../../drizzle`;
 
@@ -128,6 +129,62 @@ describe(ENGLISH_TIERS, () => {
       { tier: "diamond", division: 3, tp: 12, shielded: false, ornament: "diamond" },
       { tier: "maniac", division: null, tp: 250, shielded: false, ornament: "platinum" },
       { tier: null, division: null, tp: 0, shielded: false, ornament: "none" },
+    ]);
+  });
+});
+
+const LEADERBOARD_INDEX = "0010_leaderboard_index.sql";
+
+// The step each of `standings` should get, for the Users `<prefix>-<index>`.
+const stepsOf = (prefix: string, standings: Standing[]) =>
+  standings.map((standing, index) => ({
+    user_id: `${prefix}-${index}`,
+    ladder_step: stepOf(standing),
+  }));
+
+describe(LEADERBOARD_INDEX, () => {
+  test("every Rating past Placement gets its step, the same as stepOf, and so does a new one", async () => {
+    const db = await migratedUpTo(LEADERBOARD_INDEX);
+
+    const before: Standing[] = [
+      { tier: "iron", division: 4, tp: 0, shielded: false },
+      { tier: "gold", division: 2, tp: 40, shielded: true },
+    ];
+
+    const after: Standing[] = [
+      { tier: "diamond", division: 1, tp: 99, shielded: false },
+      { tier: "maniac", tp: 250, shielded: false },
+    ];
+
+    const insert = async (id: string, standing: Standing) => {
+      await addUser(db, id);
+      await db.query(
+        `insert into ranked_rating (user_id, mmr, placements_played, tier, division, tp, shielded)
+         values ($1, 1000, 5, $2, $3, $4, false)`,
+        [id, standing.tier, "division" in standing ? standing.division : null, standing.tp],
+      );
+    };
+
+    await Promise.all(before.map((standing, index) => insert(`before-${index}`, standing)));
+
+    await addUser(db, "placement");
+    await db.exec(`
+      insert into ranked_rating (user_id, mmr, placements_played, tier, division, tp, shielded)
+      values ('placement', 600, 2, null, null, 0, false)
+    `);
+
+    await apply(db, [LEADERBOARD_INDEX]);
+
+    await Promise.all(after.map((standing, index) => insert(`after-${index}`, standing)));
+
+    const { rows } = await db.query<{ user_id: string; ladder_step: number | null }>(
+      "select user_id, ladder_step from ranked_rating order by user_id",
+    );
+
+    expect(rows).toEqual([
+      ...stepsOf("after", after),
+      ...stepsOf("before", before),
+      { user_id: "placement", ladder_step: null },
     ]);
   });
 });

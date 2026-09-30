@@ -1,0 +1,2 @@
+ALTER TABLE "ranked_rating" ADD COLUMN "ladder_step" integer GENERATED ALWAYS AS ((array_position(array['iron', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'maniac']::text[], tier) - 1) * 4 + coalesce(4 - division, 0)) STORED;--> statement-breakpoint
+CREATE INDEX "ranked_rating_leaderboard_idx" ON "ranked_rating" USING btree ("ladder_step","tp","user_id") WHERE placements_played >= 5;

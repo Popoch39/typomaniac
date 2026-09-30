@@ -237,6 +237,10 @@ _Avoid_ : promotion, level up, montée de rang
 La liste des Users Ranked hors Placement, triés par Tier, Division puis TP.
 _Avoid_ : classement, ladder, top
 
+**Place** :
+Le numéro d'un User dans le Leaderboard, 1 pour le premier. Deux Users n'ont jamais la même Place : à rang égal, l'un passe quand même devant l'autre. Le Leaderboard se lit par pages de 25 Places (1 à 25, 26 à 50…), et un User arrive sur celle qui contient la sienne.
+_Avoid_ : position, rang, classement
+
 ### Social
 
 **Friend** :

@@ -5,40 +5,23 @@ import { m } from "@/paraglide/messages";
 
 type LeaderboardListProps = {
   entries: LeaderboardEntry[];
-  // The place of the reader, if it is among the entries.
-  readerPosition: number | null;
-  // The reader's line when they stand further down than the entries, after a gap.
-  below: LeaderboardEntry | null;
+  // The reader's Place, their line marked if it is among the entries.
+  readerPlace: number | null;
 };
 
-// The Classement past the podium, from the 4th, the reader's line among them or below the list.
-export const LeaderboardList = ({ entries, readerPosition, below }: LeaderboardListProps) => {
+// The page's rows past the podium, the reader's line among them.
+export const LeaderboardList = ({ entries, readerPlace }: LeaderboardListProps) => {
   const locale = useLocale();
 
   return (
     <ol
-      start={entries[0]?.position}
+      start={entries[0]?.place}
       aria-label={m.leaderboard_list_label({}, { locale })}
       className="flex flex-col gap-2"
     >
       {entries.map((entry) => (
-        <LeaderboardRow
-          key={entry.position}
-          entry={entry}
-          mine={entry.position === readerPosition}
-        />
+        <LeaderboardRow key={entry.place} entry={entry} mine={entry.place === readerPlace} />
       ))}
-      {below === null ? null : (
-        <>
-          <li
-            aria-hidden
-            className="flex h-4.5 items-center justify-center tracking-[6px] text-faint"
-          >
-            ···
-          </li>
-          <LeaderboardRow entry={below} mine />
-        </>
-      )}
     </ol>
   );
 };

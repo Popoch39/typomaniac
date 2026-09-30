@@ -28,14 +28,14 @@ const standingIn = (tier: Tier, tp: number): Standing =>
 export const fakeLeaderboard = (): LeaderboardEntry[] =>
   TIER_COUNTS.flatMap(([tier, count]) => Array.from({ length: count }, () => tier)).map(
     (tier, index) => {
-      const position = index + 1;
+      const place = index + 1;
 
       return {
-        position,
-        handle: `joueur_${String(position).padStart(3, "0")}`,
+        place,
+        handle: `joueur_${String(place).padStart(3, "0")}`,
         image: null,
-        ornament: position % 7 === 0 ? null : tier,
-        rank: standingIn(tier, TOP_TP - position),
+        ornament: place % 7 === 0 ? null : tier,
+        rank: standingIn(tier, TOP_TP - place),
       };
     },
   );

@@ -7,10 +7,10 @@ import { m } from "@/paraglide/messages";
 // its left, the third at its right. A missing place leaves its column empty.
 const PODIUM_COLUMNS = ["col-start-2", "col-start-1", "col-start-3"];
 
-type LeaderboardPodiumProps = { entries: LeaderboardEntry[]; readerPosition: number | null };
+type LeaderboardPodiumProps = { entries: LeaderboardEntry[]; readerPlace: number | null };
 
-// The first three of the Classement, each on their card, the first raised in the middle.
-export const LeaderboardPodium = ({ entries, readerPosition }: LeaderboardPodiumProps) => {
+// The first three of the Leaderboard, each on their card, the first raised in the middle.
+export const LeaderboardPodium = ({ entries, readerPlace }: LeaderboardPodiumProps) => {
   const locale = useLocale();
 
   return (
@@ -20,9 +20,9 @@ export const LeaderboardPodium = ({ entries, readerPosition }: LeaderboardPodium
     >
       {entries.map((entry, index) => (
         <LeaderboardPodiumPlace
-          key={entry.position}
+          key={entry.place}
           entry={entry}
-          mine={entry.position === readerPosition}
+          mine={entry.place === readerPlace}
           first={index === 0}
           className={PODIUM_COLUMNS[index] ?? ""}
         />

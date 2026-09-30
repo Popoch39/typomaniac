@@ -48,7 +48,15 @@ const cacheFor = (reader: Me | null, friends: readonly Friend[]) => {
   // What /friends, /leaderboard and /duels load: nothing yet.
   queryClient.setQueryData(friendRequestsQueryOptions.queryKey, { received: [], sent: [] });
   queryClient.setQueryData(activityQueryOptions.queryKey, []);
-  queryClient.setQueryData(leaderboardQueryOptions.queryKey, { entries: [], me: null });
+  queryClient.setQueryData(leaderboardQueryOptions({}).queryKey, {
+    entries: [],
+    me: null,
+    firstPlace: 1,
+    lastPlace: 0,
+    total: 0,
+    previous: null,
+    next: null,
+  });
   queryClient.setQueryData(duelHistoryQueryOptions.queryKey, {
     pages: [{ duels: [], next: null }],
     pageParams: [null],

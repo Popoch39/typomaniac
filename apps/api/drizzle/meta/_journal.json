@@ -71,6 +71,13 @@
       "when": 1790678145436,
       "tag": "0009_english_tiers",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790760236184,
+      "tag": "0010_leaderboard_index",
+      "breakpoints": true
     }
   ]
 }

@@ -4,7 +4,7 @@ import { betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { testUtils } from "better-auth/plugins";
 import pino from "pino";
-import { byStanding, type OrnamentChoice, type Rating } from "ranked";
+import type { OrnamentChoice, Rating } from "ranked";
 import { currentWordListVersion, defaultPace } from "typing-engine";
 
 import type { AppConfig } from "./app";
@@ -21,14 +21,17 @@ import {
   type QueueStatus,
   type ServerMessage,
 } from "./modules/duel/model";
-import type {
-  DuelCursor,
-  DuelHistoryPlayer,
-  DuelHistoryRow,
-  DuelPlayerRecord,
-  DuelRecord,
-  DuelStore,
-  LeaderboardRow,
+import {
+  compareLeaderboardKeys,
+  type DuelCursor,
+  type DuelHistoryPlayer,
+  type DuelHistoryRow,
+  type DuelPlayerRecord,
+  type DuelRecord,
+  type DuelStore,
+  type LeaderboardKey,
+  leaderboardKeyOf,
+  type LeaderboardRow,
 } from "./modules/duel/store";
 import { type FriendMessage, FriendLiveModel, type Relation } from "./modules/friend/model";
 import { type Friendship, type FriendStore, orderedPair } from "./modules/friend/store";
@@ -180,18 +183,17 @@ export const memoryDuelStore = () => {
     return limit === null ? points : points.slice(-limit);
   };
 
-  // The Users past Placement in the Classement's order, as the Drizzle store sorts them.
-  const classement = (): LeaderboardRow[] =>
+  // The Users past Placement in the Leaderboard's order, as the Drizzle store sorts them.
+  const leaderboard = (): LeaderboardRow[] =>
     [...ratings]
       .flatMap(([userId, { rank }]) =>
         "placementsLeft" in rank || deleted.has(userId) ? [] : [{ userId, standing: rank }],
       )
-      .toSorted(
-        (a, b) =>
-          byStanding(a.standing, b.standing) ||
-          (a.userId < b.userId ? -1 : Number(a.userId > b.userId)),
-      )
-      .map(({ userId, standing }, index) => ({ userId, position: index + 1, standing }));
+      .toSorted((a, b) => compareLeaderboardKeys(leaderboardKeyOf(a), leaderboardKeyOf(b)));
+
+  // The rows above `key` in the Leaderboard, the best first.
+  const above = (key: LeaderboardKey) =>
+    leaderboard().filter((row) => compareLeaderboardKeys(leaderboardKeyOf(row), key) < 0);
 
   const store: DuelStore = {
     progression,
@@ -254,9 +256,13 @@ export const memoryDuelStore = () => {
         ornaments.set(userId, choice);
       }
     },
-    leaderboard: async (limit) => classement().slice(0, limit),
-    leaderboardPosition: async (userId) =>
-      classement().find((row) => row.userId === userId)?.position ?? null,
+    leaderboardAfter: async (after, limit) =>
+      leaderboard()
+        .filter((row) => after === null || compareLeaderboardKeys(leaderboardKeyOf(row), after) > 0)
+        .slice(0, limit),
+    leaderboardBefore: async (before, limit) => (limit === 0 ? [] : above(before).slice(-limit)),
+    leaderboardPlace: async (key) => above(key).length + 1,
+    leaderboardSize: async () => leaderboard().length,
     recentWpms: async (userId, count) =>
       saved
         .toSorted((a, b) => b.endedAt - a.endedAt)

@@ -2,11 +2,12 @@ import { isPlacement, type Rank, type Standing } from "ranked";
 
 import type { LeaderboardEntry } from "@/api/leaderboard";
 
-// Where the reader stands in the Classement: their place, and their rank.
-export type ReaderPlace = { position: number; standing: Standing };
+// Where the reader stands in the Leaderboard: their Place, and their rank.
+export type ReaderPlace = { place: number; standing: Standing };
 
-// The reader's place once they are in the Classement (its line, null before): the place from the
-// Classement, the rank from `/me`, as on their User card, the Classement's line until `/me` has it.
+// The reader's Place once they are in the Leaderboard (its line, null before): the Place from the
+// Leaderboard, the rank from `/me`, as on their User card, the Leaderboard's line until `/me` has
+// it.
 export const readerPlace = (
   line: LeaderboardEntry | null,
   rank: Rank | null,
@@ -14,6 +15,6 @@ export const readerPlace = (
   line === null
     ? null
     : {
-        position: line.position,
+        place: line.place,
         standing: rank !== null && !isPlacement(rank) ? rank : line.rank,
       };

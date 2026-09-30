@@ -4,7 +4,7 @@ import type { Rank, Standing } from "ranked";
 
 import { createApp } from "../../app";
 import { createTestAuth, memoryDuelStore, signIn, testConfig, testUsers } from "../../test-app";
-import { LEADERBOARD_LIMIT, LeaderboardModel } from "./model";
+import { LEADERBOARD_PAGE, type Leaderboard, LeaderboardModel } from "./model";
 
 const leaderboardBody = TypeCompiler.Compile(LeaderboardModel.leaderboard);
 
@@ -15,6 +15,21 @@ const gold = (division: 4 | 3 | 2 | 1, tp: number): Standing => ({
   shielded: false,
 });
 
+const maniac = (tp: number): Standing => ({ tier: "maniac", tp, shielded: false });
+
+const emptyPage = {
+  entries: [],
+  me: null,
+  firstPlace: 1,
+  lastPlace: 0,
+  total: 0,
+  previous: null,
+  next: null,
+};
+
+// A cursor as the API writes one, for a row's key written by hand.
+const cursorFor = (key: string) => Buffer.from(key).toString("base64url");
+
 // A fresh app per test: its Users and its Ratings are its own.
 const setup = () => {
   const auth = createTestAuth();
@@ -24,9 +39,9 @@ const setup = () => {
 
   let count = 0;
 
-  const leaderboardResponse = (cookie: string | null) =>
+  const leaderboardResponse = (cookie: string | null, search = "") =>
     app.handle(
-      new Request("http://localhost/api/leaderboard", {
+      new Request(`http://localhost/api/leaderboard${search}`, {
         headers: cookie === null ? undefined : { cookie },
       }),
     );
@@ -49,21 +64,48 @@ const setup = () => {
     return { id: user.id, cookie };
   };
 
-  const leaderboardOf = async (cookie: string) => {
-    const response = await leaderboardResponse(cookie);
+  const leaderboardOf = async (cookie: string, search = "") => {
+    const response = await leaderboardResponse(cookie, search);
 
     expect(response.status).toBe(200);
 
     const body = await response.json();
 
     if (!leaderboardBody.Check(body)) {
-      throw new Error(`Not a Classement: ${JSON.stringify(body)}`);
+      throw new Error(`Not a Leaderboard: ${JSON.stringify(body)}`);
     }
 
     return body;
   };
 
   return { duels, users, leaderboardResponse, newUser, leaderboardOf };
+};
+
+const placesOf = ({ entries }: Leaderboard) => entries.map(({ place, handle }) => [place, handle]);
+
+// `player-00` first, `player-59` last, each on their own TP.
+const handleAt = (index: number) => `player-${String(index).padStart(2, "0")}`;
+
+const expectedPlaces = (from: number, to: number) =>
+  Array.from({ length: to - from + 1 }, (_, index) => [from + index, handleAt(from + index - 1)]);
+
+// 60 Users, `player-00` first: pages of 1–25, 26–50 and 51–60. The reader is `player-<at>`.
+const sixty = async (at: number) => {
+  const context = setup();
+
+  const players = await Promise.all(
+    Array.from({ length: 60 }, (_, index) =>
+      context.newUser(handleAt(index), maniac(1000 - index)),
+    ),
+  );
+
+  const reader = players[at];
+
+  if (!reader) {
+    throw new Error(`No player ${at}`);
+  }
+
+  return { ...context, reader };
 };
 
 describe("GET /api/leaderboard", () => {
@@ -77,22 +119,22 @@ describe("GET /api/leaderboard", () => {
     const { newUser, leaderboardOf } = setup();
     const ada = await newUser("ada", { placementsLeft: 2 });
 
-    expect(await leaderboardOf(ada.cookie)).toEqual({ entries: [], me: null });
+    expect(await leaderboardOf(ada.cookie)).toEqual(emptyPage);
   });
 
   test("orders by Tier, then Division, then TP, Maniac by TP", async () => {
     const { newUser, leaderboardOf } = setup();
     const ada = await newUser("ada", gold(4, 90));
 
-    await newUser("alan", { tier: "maniac", tp: 10, shielded: false });
+    await newUser("alan", maniac(10));
     await newUser("grace", gold(3, 5));
     await newUser("linus", { tier: "platinum", division: 4, tp: 0, shielded: true });
-    await newUser("barbara", { tier: "maniac", tp: 320, shielded: false });
+    await newUser("barbara", maniac(320));
     await newUser("ken", gold(4, 20));
 
-    const { entries } = await leaderboardOf(ada.cookie);
+    const leaderboard = await leaderboardOf(ada.cookie);
 
-    expect(entries.map(({ position, handle }) => [position, handle])).toEqual([
+    expect(placesOf(leaderboard)).toEqual([
       [1, "barbara"],
       [2, "alan"],
       [3, "linus"],
@@ -100,13 +142,14 @@ describe("GET /api/leaderboard", () => {
       [5, "ada"],
       [6, "ken"],
     ]);
-    expect(entries[4]).toEqual({
-      position: 5,
+    expect(leaderboard.entries[4]).toEqual({
+      place: 5,
       handle: "ada",
       image: "https://example.com/1.png",
       ornament: "gold",
       rank: { tier: "gold", division: 4, tp: 90, shielded: false },
     });
+    expect(leaderboard).toMatchObject({ firstPlace: 1, total: 6, previous: null, next: null });
   });
 
   test("leaves out the Users in Placement and those who never joined the Queue", async () => {
@@ -116,7 +159,10 @@ describe("GET /api/leaderboard", () => {
     await newUser("alan", { placementsLeft: 1 });
     await newUser("grace");
 
-    expect((await leaderboardOf(ada.cookie)).entries.map((entry) => entry.handle)).toEqual(["ada"]);
+    const leaderboard = await leaderboardOf(ada.cookie);
+
+    expect(leaderboard.entries.map((entry) => entry.handle)).toEqual(["ada"]);
+    expect(leaderboard.total).toBe(1);
   });
 
   test("never shows the MMR, the name nor the email", async () => {
@@ -130,6 +176,117 @@ describe("GET /api/leaderboard", () => {
     expect(body).not.toContain("User 1");
   });
 
+  describe("its pages", () => {
+    test("start with the first 25 Places", async () => {
+      const { reader, leaderboardOf } = await sixty(0);
+      const first = await leaderboardOf(reader.cookie);
+
+      expect(placesOf(first)).toEqual(expectedPlaces(1, LEADERBOARD_PAGE));
+      expect(first).toMatchObject({ firstPlace: 1, total: 60, previous: null });
+      expect(first.next).not.toBeNull();
+    });
+
+    test("go on after a page, to the last one", async () => {
+      const { reader, leaderboardOf } = await sixty(0);
+      const first = await leaderboardOf(reader.cookie);
+      const second = await leaderboardOf(reader.cookie, `?after=${first.next}`);
+      const last = await leaderboardOf(reader.cookie, `?after=${second.next}`);
+
+      expect(placesOf(second)).toEqual(expectedPlaces(26, 50));
+      expect(second.firstPlace).toBe(26);
+      expect(second.previous).not.toBeNull();
+      expect(placesOf(last)).toEqual(expectedPlaces(51, 60));
+      expect(last).toMatchObject({ firstPlace: 51, lastPlace: 60, next: null });
+    });
+
+    test("go back before a page, to the first one", async () => {
+      const { reader, leaderboardOf } = await sixty(0);
+      const first = await leaderboardOf(reader.cookie);
+      const second = await leaderboardOf(reader.cookie, `?after=${first.next}`);
+      const last = await leaderboardOf(reader.cookie, `?after=${second.next}`);
+      const back = await leaderboardOf(reader.cookie, `?before=${last.previous}`);
+      const front = await leaderboardOf(reader.cookie, `?before=${back.previous}`);
+
+      expect(placesOf(back)).toEqual(expectedPlaces(26, 50));
+      expect(back.next).toBe(second.next);
+      expect(placesOf(front)).toEqual(expectedPlaces(1, LEADERBOARD_PAGE));
+      expect(front).toMatchObject({ firstPlace: 1, previous: null });
+    });
+
+    test("keep Users of the same rank apart, each on one page", async () => {
+      const { newUser, leaderboardOf } = setup();
+
+      const ada = await newUser("ada");
+
+      await Promise.all(
+        Array.from({ length: LEADERBOARD_PAGE + 1 }, (_, index) =>
+          newUser(handleAt(index), gold(2, 50)),
+        ),
+      );
+
+      const first = await leaderboardOf(ada.cookie);
+      const second = await leaderboardOf(ada.cookie, `?after=${first.next}`);
+      const handles = [...first.entries, ...second.entries].map((entry) => entry.handle);
+
+      expect(second.entries.map((entry) => entry.place)).toEqual([LEADERBOARD_PAGE + 1]);
+      expect(new Set(handles).size).toBe(LEADERBOARD_PAGE + 1);
+    });
+
+    test("fall back to the first page past the last row", async () => {
+      const { reader, leaderboardOf } = await sixty(0);
+      const first = await leaderboardOf(reader.cookie);
+
+      expect(placesOf(await leaderboardOf(reader.cookie, `?after=${cursorFor("0:0:a")}`))).toEqual(
+        placesOf(first),
+      );
+    });
+
+    describe("the reader's own page", () => {
+      test.each([
+        [0, 1],
+        [24, 1],
+        [25, 26],
+        [37, 26],
+        [59, 51],
+      ])("for `player-%i`, starts at Place %i", async (at, firstPlace) => {
+        const { reader, leaderboardOf } = await sixty(at);
+        const page = await leaderboardOf(reader.cookie, "?at=me");
+        const lastPlace = Math.min(firstPlace + LEADERBOARD_PAGE - 1, 60);
+
+        expect(placesOf(page)).toEqual(expectedPlaces(firstPlace, lastPlace));
+        expect(page.firstPlace).toBe(firstPlace);
+        expect(page.lastPlace).toBe(lastPlace);
+        expect(page.me?.place).toBe(at + 1);
+        expect(page.previous === null).toBe(firstPlace === 1);
+        expect(page.next === null).toBe(lastPlace === 60);
+      });
+
+      test("is the first page in Placement", async () => {
+        const { newUser, leaderboardOf } = setup();
+
+        await newUser("alan", gold(1, 0));
+
+        const ada = await newUser("ada", { placementsLeft: 3 });
+
+        expect(placesOf(await leaderboardOf(ada.cookie, "?at=me"))).toEqual([[1, "alan"]]);
+      });
+    });
+
+    test.each([
+      [`?after=${cursorFor("nope")}`],
+      [`?before=${cursorFor("1:x:ada")}`],
+      ["?before=1:2:ada"],
+      ["?at=you"],
+      [`?after=${cursorFor("1:2:a")}&before=${cursorFor("1:2:b")}`],
+      [`?after=${cursorFor("1:2:a")}&at=me`],
+    ])("refuses %s", async (search) => {
+      const { newUser, leaderboardResponse } = setup();
+      const ada = await newUser("ada", gold(4, 0));
+
+      expect((await leaderboardResponse(ada.cookie, search)).status).toBe(422);
+    });
+  });
+
   describe("the reader", () => {
     test("stands where they are, highlighted apart from the list", async () => {
       const { newUser, leaderboardOf } = setup();
@@ -139,7 +296,7 @@ describe("GET /api/leaderboard", () => {
       const ada = await newUser("ada", gold(4, 10));
 
       expect((await leaderboardOf(ada.cookie)).me).toEqual({
-        position: 2,
+        place: 2,
         handle: "ada",
         image: "https://example.com/2.png",
         ornament: "gold",
@@ -147,10 +304,10 @@ describe("GET /api/leaderboard", () => {
       });
     });
 
-    test("stands past the first Users shown", async () => {
+    test("stands past the page shown", async () => {
       const { duels, newUser, leaderboardOf } = setup();
 
-      for (let index = 0; index < LEADERBOARD_LIMIT; index += 1) {
+      for (let index = 0; index < LEADERBOARD_PAGE; index += 1) {
         duels.ratings.set(`strong-${index}`, { mmr: 1, rank: gold(1, index) });
       }
 
@@ -158,7 +315,7 @@ describe("GET /api/leaderboard", () => {
       const leaderboard = await leaderboardOf(ada.cookie);
 
       expect(leaderboard.entries).toHaveLength(0);
-      expect(leaderboard.me?.position).toBe(LEADERBOARD_LIMIT + 1);
+      expect(leaderboard.me?.place).toBe(LEADERBOARD_PAGE + 1);
     });
 
     test("is null in Placement", async () => {
@@ -172,7 +329,7 @@ describe("GET /api/leaderboard", () => {
     });
   });
 
-  test("keeps the place of a User without a Handle, left out of the list", async () => {
+  test("keeps the Place of a User without a Handle, left out of the list", async () => {
     const { duels, newUser, leaderboardOf } = setup();
 
     duels.ratings.set("handleless", { mmr: 1, rank: gold(1, 0) });
@@ -180,7 +337,7 @@ describe("GET /api/leaderboard", () => {
     const ada = await newUser("ada", gold(4, 0));
 
     expect((await leaderboardOf(ada.cookie)).entries).toEqual([
-      expect.objectContaining({ position: 2, handle: "ada" }),
+      expect.objectContaining({ place: 2, handle: "ada" }),
     ]);
   });
 
@@ -225,6 +382,9 @@ describe("GET /api/leaderboard", () => {
 
     duels.deleteUser(alan.id);
 
-    expect((await leaderboardOf(ada.cookie)).me?.position).toBe(1);
+    const leaderboard = await leaderboardOf(ada.cookie);
+
+    expect(leaderboard.me?.place).toBe(1);
+    expect(leaderboard.total).toBe(1);
   });
 });

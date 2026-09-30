@@ -10,7 +10,7 @@ export const AuraGalleryLeaderboard = () => (
     <h2 className="text-lg font-extrabold">Faux Classement</h2>
     <ol className="flex flex-col gap-2" aria-label="Faux Classement">
       {ENTRIES.map((entry) => (
-        <LeaderboardRow key={entry.position} entry={entry} mine={false} />
+        <LeaderboardRow key={entry.place} entry={entry} mine={false} />
       ))}
     </ol>
   </section>

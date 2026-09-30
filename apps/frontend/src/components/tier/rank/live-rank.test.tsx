@@ -1,9 +1,9 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, type QueryKey } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import type { ServerMessage } from "api";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
-import { leaderboardQueryOptions } from "@/api/leaderboard";
+import { type LeaderboardSearch, leaderboardQueryOptions } from "@/api/leaderboard";
 import { meQueryOptions } from "@/api/me";
 import { LiveRank } from "@/components/tier/rank/live-rank";
 import { useConnectionStore } from "@/stores/connection-store";
@@ -47,12 +47,27 @@ afterEach(() => {
   useConnectionStore.getState().close();
 });
 
-// `LiveRank` over a cache where the User and the Classement are already read.
+const firstPage: LeaderboardSearch = {};
+
+const readerPage: LeaderboardSearch = { at: "me" };
+
+const emptyLeaderboard = {
+  entries: [],
+  me: null,
+  firstPlace: 1,
+  lastPlace: 0,
+  total: 0,
+  previous: null,
+  next: null,
+};
+
+// `LiveRank` over a cache where the User and two pages of the Leaderboard are already read.
 const renderLiveRank = () => {
   const queryClient = new QueryClient();
 
   queryClient.setQueryData(meQueryOptions.queryKey, null);
-  queryClient.setQueryData(leaderboardQueryOptions.queryKey, { entries: [], me: null });
+  queryClient.setQueryData(leaderboardQueryOptions(firstPage).queryKey, emptyLeaderboard);
+  queryClient.setQueryData(leaderboardQueryOptions(readerPage).queryKey, emptyLeaderboard);
 
   render(
     <QueryClientProvider client={queryClient}>
@@ -60,17 +75,18 @@ const renderLiveRank = () => {
     </QueryClientProvider>,
   );
 
-  return (queryKey: readonly string[]) => queryClient.getQueryState(queryKey)?.isInvalidated;
+  return (queryKey: QueryKey) => queryClient.getQueryState(queryKey)?.isInvalidated;
 };
 
 describe("LiveRank", () => {
-  test("reads the User and the Classement again once a Ranked Duel ends", () => {
+  test("reads the User and every page of the Leaderboard again once a Ranked Duel ends", () => {
     const invalidated = renderLiveRank();
 
     sockets.server().receive(duelEnded({ tp: 18, previousRank: gold(24), rank: gold(42) }));
 
     expect(invalidated(meQueryOptions.queryKey)).toBe(true);
-    expect(invalidated(leaderboardQueryOptions.queryKey)).toBe(true);
+    expect(invalidated(leaderboardQueryOptions(firstPage).queryKey)).toBe(true);
+    expect(invalidated(leaderboardQueryOptions(readerPage).queryKey)).toBe(true);
   });
 
   test("leaves them be after a Challenge", () => {
@@ -79,6 +95,6 @@ describe("LiveRank", () => {
     sockets.server().receive(duelEnded(null));
 
     expect(invalidated(meQueryOptions.queryKey)).toBe(false);
-    expect(invalidated(leaderboardQueryOptions.queryKey)).toBe(false);
+    expect(invalidated(leaderboardQueryOptions(firstPage).queryKey)).toBe(false);
   });
 });

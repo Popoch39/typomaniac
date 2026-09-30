@@ -1,25 +1,18 @@
-import {
-  and,
-  asc,
-  count as countRows,
-  desc,
-  eq,
-  gte,
-  inArray,
-  lt,
-  max,
-  ne,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, asc, count as countRows, desc, eq, inArray, lt, max, ne, or, sql } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import { alias } from "drizzle-orm/pg-core";
 
 import type { Table } from "../../database/schema";
-import { DIVISIONS, PLACEMENT_DUELS, type Rating, TIERS } from "ranked";
+import { DIVISIONS, PLACEMENT_DUELS, type Rating } from "ranked";
 
-import { duel, duelPlayer, rankedRating } from "./schema";
-import type { DuelCursor, DuelPlayerRecord, DuelStore, PlayedDuelPlayer } from "./store";
+import { duel, duelPlayer, pastPlacementSql, rankedRating } from "./schema";
+import type {
+  DuelCursor,
+  DuelPlayerRecord,
+  DuelStore,
+  LeaderboardKey,
+  PlayedDuelPlayer,
+} from "./store";
 
 // A Rating as its row holds it: the Placement as a count of Duels played.
 const ratingRow = (userId: string, { mmr, rank }: Rating) => ({
@@ -54,15 +47,24 @@ const ratingOf = (row: typeof rankedRating.$inferSelect): Rating => {
   return { mmr, rank: { tier, division: known, tp, shielded } };
 };
 
-const pastPlacement = gte(rankedRating.placementsPlayed, PLACEMENT_DUELS);
+// Where a row stands in the Leaderboard, compared as one against a key: `compareLeaderboardKeys`,
+// read on `ranked_rating_leaderboard_idx`.
+const leaderboardTuple = sql`(${rankedRating.ladderStep}, ${rankedRating.tp}, ${rankedRating.userId})`;
 
-// `stepOf` of the ranked package in SQL: 4 steps per Tier, the Division within it, Maniac last.
-const tierList = sql.raw(`array[${TIERS.map((tier) => `'${tier}'`).join(", ")}]::text[]`);
+const keyTuple = ({ step, tp, userId }: LeaderboardKey) =>
+  sql`(${step}::integer, ${tp}::integer, ${userId}::text)`;
 
-const step = sql`(array_position(${tierList}, ${rankedRating.tier}) - 1) * 4 + coalesce(4 - ${rankedRating.division}, 0)`;
+const bestFirst = [desc(rankedRating.ladderStep), desc(rankedRating.tp), desc(rankedRating.userId)];
 
-// `byStanding` of the ranked package, ties by User id: the memory store sorts the same way.
-const classementOrder = [desc(step), desc(rankedRating.tp), asc(rankedRating.userId)];
+const worstFirst = [asc(rankedRating.ladderStep), asc(rankedRating.tp), asc(rankedRating.userId)];
+
+// The rows of the Leaderboard, all past Placement.
+const leaderboardRowsOf = (rows: (typeof rankedRating.$inferSelect)[]) =>
+  rows.flatMap((row) => {
+    const { rank } = ratingOf(row);
+
+    return "placementsLeft" in rank ? [] : [{ userId: row.userId, standing: rank }];
+  });
 
 const playerRow = (
   duelId: string,
@@ -176,40 +178,43 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
 
     return ratingOf(row);
   },
-  leaderboard: async (limit) => {
+  leaderboardAfter: async (after, limit) =>
+    leaderboardRowsOf(
+      await db
+        .select()
+        .from(rankedRating)
+        .where(
+          and(pastPlacementSql, after ? sql`${leaderboardTuple} < ${keyTuple(after)}` : undefined),
+        )
+        .orderBy(...bestFirst)
+        .limit(limit),
+    ),
+  leaderboardBefore: async (key, limit) => {
+    if (limit === 0) {
+      return [];
+    }
+
     const rows = await db
       .select()
       .from(rankedRating)
-      .where(pastPlacement)
-      .orderBy(...classementOrder)
+      .where(and(pastPlacementSql, sql`${leaderboardTuple} > ${keyTuple(key)}`))
+      .orderBy(...worstFirst)
       .limit(limit);
 
-    return rows.flatMap((row, index) => {
-      const { rank } = ratingOf(row);
-
-      return "placementsLeft" in rank
-        ? []
-        : [{ userId: row.userId, position: index + 1, standing: rank }];
-    });
+    return leaderboardRowsOf(rows.toReversed());
   },
-  leaderboardPosition: async (userId) => {
-    const classement = db
-      .select({
-        userId: rankedRating.userId,
-        position: sql<number>`row_number() over (order by ${sql.join(classementOrder, sql`, `)})`
-          .mapWith(Number)
-          .as("position"),
-      })
-      .from(rankedRating)
-      .where(pastPlacement)
-      .as("classement");
-
+  leaderboardPlace: async (key) => {
     const [row] = await db
-      .select({ position: classement.position })
-      .from(classement)
-      .where(eq(classement.userId, userId));
+      .select({ above: countRows() })
+      .from(rankedRating)
+      .where(and(pastPlacementSql, sql`${leaderboardTuple} > ${keyTuple(key)}`));
 
-    return row?.position ?? null;
+    return (row?.above ?? 0) + 1;
+  },
+  leaderboardSize: async () => {
+    const [row] = await db.select({ size: countRows() }).from(rankedRating).where(pastPlacementSql);
+
+    return row?.size ?? 0;
   },
   rankOf: async (userId) => {
     const [row] = await db.select().from(rankedRating).where(eq(rankedRating.userId, userId));

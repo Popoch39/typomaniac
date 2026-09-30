@@ -5,25 +5,28 @@ import { LeaderboardPodium } from "@/components/leaderboard/leaderboard-podium";
 // How many of the first stand on the podium.
 const PODIUM_PLACES = 3;
 
-type LeaderboardStandingsProps = { entries: LeaderboardEntry[]; me: LeaderboardEntry | null };
+type LeaderboardStandingsProps = {
+  entries: LeaderboardEntry[];
+  // The Place of the page's first row: the podium is on the first page only.
+  firstPlace: number;
+  // The reader's Place, wherever it is.
+  readerPlace: number | null;
+};
 
-// The Classement's first Users: the first three on the podium, the others in the list, the
-// reader's line among them, or below the list when they stand further down.
-export const LeaderboardStandings = ({ entries, me }: LeaderboardStandingsProps) => {
-  const readerPosition = me?.position ?? null;
-  const listed = entries.some((entry) => entry.position === readerPosition);
-  const below = me !== null && !listed ? me : null;
-  const podium = entries.slice(0, PODIUM_PLACES);
-  const rest = entries.slice(PODIUM_PLACES);
+// A page of the Leaderboard: on the first, the first three on the podium and the others in the
+// list; on the others, the list alone. The reader's line is marked wherever it is on the page.
+export const LeaderboardStandings = ({
+  entries,
+  firstPlace,
+  readerPlace,
+}: LeaderboardStandingsProps) => {
+  const podium = firstPlace === 1 ? entries.slice(0, PODIUM_PLACES) : [];
+  const rest = entries.slice(podium.length);
 
   return (
     <>
-      {podium.length > 0 ? (
-        <LeaderboardPodium entries={podium} readerPosition={readerPosition} />
-      ) : null}
-      {rest.length > 0 || below !== null ? (
-        <LeaderboardList entries={rest} readerPosition={readerPosition} below={below} />
-      ) : null}
+      {podium.length > 0 ? <LeaderboardPodium entries={podium} readerPlace={readerPlace} /> : null}
+      {rest.length > 0 ? <LeaderboardList entries={rest} readerPlace={readerPlace} /> : null}
     </>
   );
 };

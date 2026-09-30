@@ -13,15 +13,17 @@ export type LeaderboardModuleConfig = {
   users: Users;
 };
 
-// The Classement: the Users past Placement by Tier, Division then TP, seen by any signed-in User.
+// The Leaderboard: the Users past Placement by Tier, Division then TP, seen by any signed-in User.
 export const leaderboardModule = ({ auth, trustProxy, store, users }: LeaderboardModuleConfig) =>
   new Elysia({ name: "leaderboard", seed: store })
     .use(authentication(auth, { trustProxy }))
-    .get("/leaderboard", ({ user }) => leaderboardOf({ store, users }, user.id), {
+    .get("/leaderboard", ({ user, query }) => leaderboardOf({ store, users }, user.id, query), {
       auth: true,
+      query: LeaderboardModel.query,
       response: LeaderboardModel.leaderboard,
       detail: {
-        summary: "The Classement: its first Users, and where the signed-in User stands",
+        summary:
+          "A page of the Leaderboard, 25 Places, and where the signed-in User stands: the first page, the one after or before a cursor, or the User's own (at=me)",
         tags: ["Leaderboard"],
       },
     });

@@ -9,12 +9,12 @@ import { numberFormat, ordinalParts } from "@/locale/formats";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 
-// Where a ranked reader stands: their place in the Classement, their rank, and how far the next.
+// Where a ranked reader stands: their Place in the Leaderboard, their rank, and how far the next.
 export const LeaderboardPlaceRanked = ({ reader }: { reader: ReaderPlace }) => {
   const locale = useLocale();
-  const { position, standing } = reader;
+  const { standing } = reader;
   const progress = tpProgressOf(standing, locale);
-  const place = ordinalParts(locale, position);
+  const place = ordinalParts(locale, reader.place);
 
   return (
     <>

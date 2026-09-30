@@ -1,4 +1,5 @@
-import { ORNAMENT_CHOICES, TIERS } from "ranked";
+import { ORNAMENT_CHOICES, PLACEMENT_DUELS, TIERS } from "ranked";
+import { sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
@@ -38,26 +39,50 @@ export const duel = pgTable("duel", {
   ranked: boolean("ranked").notNull().default(false),
 });
 
+// `stepOf` of the ranked package in SQL: 4 steps per Tier, the Division within it, Maniac last.
+// Null in Placement.
+const tierList = TIERS.map((tier) => `'${tier}'`).join(", ");
+
+const ladderStep = sql.raw(
+  `(array_position(array[${tierList}]::text[], tier) - 1) * 4 + coalesce(4 - division, 0)`,
+);
+
+// Past Placement, written as a literal: the Leaderboard's index only serves the queries whose
+// filter is this very one, never a parameter.
+export const pastPlacementSql = sql.raw(`placements_played >= ${PLACEMENT_DUELS}`);
+
 // A User's Rating (ranked package): the hidden MMR and the visible rank. Created on their first
 // join of the Queue, from their Pace; moved by each ranked Duel, written with it.
-export const rankedRating = pgTable("ranked_rating", {
-  userId: text("user_id")
-    .primaryKey()
-    .references(() => user.id, { onDelete: "cascade" }),
-  mmr: integer("mmr").notNull(),
-  // Below PLACEMENT_DUELS, the User is in Placement: no Tier yet.
-  placementsPlayed: integer("placements_played").notNull(),
-  // Null in Placement.
-  tier: text("tier", { enum: TIERS }),
-  // Null in Placement and in Maniac.
-  division: integer("division"),
-  tp: integer("tp").notNull(),
-  // Just moved up: the next loss below 0 TP keeps the Division.
-  shielded: boolean("shielded").notNull(),
-  // The Ornament the User chose to wear (`OrnamentChoice`), resolved by `ornamentOf`: never sent
-  // as is for another User.
-  ornament: text("ornament", { enum: ORNAMENT_CHOICES }).notNull().default("follow"),
-});
+export const rankedRating = pgTable(
+  "ranked_rating",
+  {
+    userId: text("user_id")
+      .primaryKey()
+      .references(() => user.id, { onDelete: "cascade" }),
+    mmr: integer("mmr").notNull(),
+    // Below PLACEMENT_DUELS, the User is in Placement: no Tier yet.
+    placementsPlayed: integer("placements_played").notNull(),
+    // Null in Placement.
+    tier: text("tier", { enum: TIERS }),
+    // Null in Placement and in Maniac.
+    division: integer("division"),
+    tp: integer("tp").notNull(),
+    // Just moved up: the next loss below 0 TP keeps the Division.
+    shielded: boolean("shielded").notNull(),
+    // The Ornament the User chose to wear (`OrnamentChoice`), resolved by `ornamentOf`: never sent
+    // as is for another User.
+    ornament: text("ornament", { enum: ORNAMENT_CHOICES }).notNull().default("follow"),
+    // Where the rank stands, Tier and Division as one number: what the Leaderboard sorts on first.
+    ladderStep: integer("ladder_step").generatedAlwaysAs(ladderStep),
+  },
+  // The Leaderboard's order, the Users past Placement only: its pages, their Places and its size
+  // are all read on it (ADR 0015), backwards for the best first.
+  (table) => [
+    index("ranked_rating_leaderboard_idx")
+      .on(table.ladderStep, table.tp, table.userId)
+      .where(pastPlacementSql),
+  ],
+);
 
 // Each of the two players of a finished Duel: their Result and the Keystrokes the server accepted,
 // which replay to it.

@@ -19,8 +19,9 @@ export const LeaderboardRow = ({ entry, mine }: LeaderboardRowProps) => {
   return (
     <li
       aria-current={mine ? "true" : undefined}
+      tabIndex={mine ? -1 : undefined}
       className={cn(
-        "flex h-14 items-center gap-4 rounded-[18px] px-5",
+        "flex h-14 items-center gap-4 rounded-[18px] px-5 outline-none",
         mine ? MINE_PLACE_PAINT : "bg-card",
       )}
     >
@@ -30,7 +31,7 @@ export const LeaderboardRow = ({ entry, mine }: LeaderboardRowProps) => {
           mine ? "text-foreground" : "text-muted-foreground",
         )}
       >
-        {numberFormat(locale).format(entry.position)}
+        {numberFormat(locale).format(entry.place)}
       </span>
       <UserAvatar
         handle={entry.handle}

@@ -33,8 +33,9 @@ export const LeaderboardPodiumPlace = ({
   return (
     <li
       aria-current={mine ? "true" : undefined}
+      tabIndex={mine ? -1 : undefined}
       className={cn(
-        "row-start-1 flex flex-col items-center gap-3 rounded-card px-4 pb-5",
+        "row-start-1 flex flex-col items-center gap-3 rounded-card px-4 pb-5 outline-none",
         first ? "pt-7" : "pt-5.5",
         mine ? MINE_PLACE_PAINT : "bg-card",
         className,
@@ -52,7 +53,7 @@ export const LeaderboardPodiumPlace = ({
           first ? "text-[22px] text-primary" : "text-xl text-muted-foreground",
         )}
       >
-        {numberFormat(locale).format(entry.position)}
+        {numberFormat(locale).format(entry.place)}
       </span>
       <UserAvatar
         handle={entry.handle}
