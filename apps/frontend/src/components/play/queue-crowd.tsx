@@ -31,7 +31,7 @@ export const QueueCrowd = ({ overview }: { overview: QueueOverview }) => {
       ))}
       {more <= 0 ? null : (
         <span
-          className={`${PLACE_LOOK} flex items-center justify-center rounded-[33%] bg-on-brand font-extrabold text-primary`}
+          className={`${PLACE_LOOK} relative flex items-center justify-center rounded-[33%] bg-on-brand font-extrabold text-primary`}
         >
           +{numberFormat(locale).format(more)}
         </span>
