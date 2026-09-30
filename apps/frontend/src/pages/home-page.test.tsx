@@ -225,13 +225,17 @@ describe("the Ghost on the Training card", () => {
     expect(excerpt()).toHaveAttribute("aria-hidden", "true");
     // Words are set apart by their gap, not by a space.
     expect(excerpt()).toHaveTextContent(/^smallhelpwhilelate/);
-    expect(within(trainingCard()).getByText("Ton fantôme : 92 wpm · 30 s")).toBeVisible();
+    expect(
+      within(trainingCard()).getByText("Ton fantôme : ta meilleure Run, 92 wpm · 30 s"),
+    ).toBeVisible();
   });
 
   test("is told in English", async () => {
     await renderWithGhost("/en");
 
-    expect(within(card("Training")).getByText("Your ghost: 92 wpm · 30 s")).toBeVisible();
+    expect(
+      within(card("Training")).getByText("Your ghost: your best Run, 92 wpm · 30 s"),
+    ).toBeVisible();
   });
 
   test("follows the setting: another one without a Best Run shows the glimpse, no caption", async () => {
@@ -243,7 +247,9 @@ describe("the Ghost on the Training card", () => {
 
     act(() => useSettingsStore.getState().setSeconds(30));
 
-    expect(within(trainingCard()).getByText("Ton fantôme : 92 wpm · 30 s")).toBeVisible();
+    expect(
+      within(trainingCard()).getByText("Ton fantôme : ta meilleure Run, 92 wpm · 30 s"),
+    ).toBeVisible();
   });
 
   test("types at the pace of its Keystrokes, its Wrong words waved, then starts again after a pause", async () => {

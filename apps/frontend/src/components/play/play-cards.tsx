@@ -5,7 +5,8 @@ import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 
 // Jouer's cards, the board « A · Affiche »: the Training, the Ranked (wider, in the accent) and the
-// Duel with a Friend, side by side on the page's height, for a Visitor as for a User.
+// Duel with a Friend, side by side on the page's height, for a Visitor as for a User. Its title is
+// set as the Duel end's headline.
 export const PlayCards = () => {
   const locale = useLocale();
 
@@ -14,7 +15,7 @@ export const PlayCards = () => {
       <h1
         data-intro="part"
         data-search-leaves
-        className="text-[44px] leading-tight font-extrabold tracking-[-0.03em]"
+        className="font-display text-[64px] leading-[0.9] font-black tracking-[-0.03em] uppercase"
       >
         {m.play_cards_title({}, { locale })}
       </h1>

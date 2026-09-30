@@ -34,7 +34,7 @@ const wordsShown = (box: HTMLElement, words: HTMLElement) => {
 };
 
 // The start of a Text and one caret typing it, as in a Run: the Ghost lights its letters and waves
-// its Wrong words. As many whole lines as its zone holds (`cqh`), never one cut; the typing covers
+// its Wrong words. As many whole lines as its zone holds (`cqh`), three at most, never one cut; the typing covers
 // these lines only, then starts again. A drawing: hidden from screen readers. Where its caret
 // stands is on the excerpt (`data-caret`), for the tests: happy-dom lays nothing out.
 export const GhostExcerpt = ({ config, keystrokes, ghost }: GhostExcerptProps) => {
@@ -102,7 +102,7 @@ export const GhostExcerpt = ({ config, keystrokes, ghost }: GhostExcerptProps) =
         data-excerpt
         data-caret={`${wordIndex}:${letterIndex}`}
         aria-hidden="true"
-        className="relative max-h-[round(down,100cqh,1lh)] w-full overflow-hidden font-mono text-[26px] leading-relaxed font-bold"
+        className="relative max-h-[min(round(down,100cqh,1lh),3lh)] w-full overflow-hidden font-mono text-[26px] leading-relaxed font-bold"
       >
         <RunCaret ref={caretRef} tone={ghost ? "opponent" : "own"} />
         <div ref={wordsRef} className="flex flex-wrap gap-x-[1ch]">
