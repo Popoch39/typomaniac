@@ -79,8 +79,8 @@ export type PlayedDuel = Omit<DuelRecord, "players"> &
   };
 
 // The aggregates of a User's finished Duels, seen from them: their record (a Forfeit is a loss for
-// the one who did not win), their averages and their Records. The averages are null without a
-// Duel.
+// the one who did not win), their averages and their Records. The averages leave out the Forfeits,
+// as the Progression does: null without a Duel but Forfeits.
 export type DuelStats = {
   duels: number;
   record: { wins: number; losses: number; draws: number };

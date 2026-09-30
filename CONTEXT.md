@@ -176,7 +176,7 @@ Le graph d'un Duel terminé, seconde par seconde, pour chacun des deux Users : s
 _Avoid_ : graph, courbe, timeline
 
 **Stats** :
-Les agrégats des Duels terminés d'un User : son bilan (victoires, défaites, Draws), ses moyennes, ses Records et sa Progression. Les Runs n'y comptent pas.
+Les agrégats des Duels terminés d'un User : son bilan (victoires, défaites, Draws), ses moyennes, ses Records et sa Progression. Les Runs n'y comptent pas. Ses moyennes (wpm, accuracy) laissent de côté les Forfeits, comme la Progression.
 _Avoid_ : statistiques, Result, score
 
 **Record** :

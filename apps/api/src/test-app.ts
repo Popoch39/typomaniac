@@ -359,12 +359,16 @@ export const memoryDuelStore = () => {
       const wins = played.filter(({ record }) => winnerOf(record) === userId).length;
       const draws = played.filter(({ record }) => record.outcome === "draw").length;
 
+      const scored = played.flatMap(({ record, player }) =>
+        record.outcome === "forfeit" ? [] : [player.result],
+      );
+
       return {
         duels: played.length,
         record: { wins, losses: played.length - wins - draws, draws },
         averages: {
-          wpm: average(played.map(({ player }) => player.result.wpm)),
-          accuracy: average(played.map(({ player }) => player.result.accuracy)),
+          wpm: average(scored.map((result) => result.wpm)),
+          accuracy: average(scored.map((result) => result.accuracy)),
         },
         records: recordsOf(played.map(({ player }) => player)),
       };

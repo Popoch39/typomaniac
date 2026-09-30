@@ -3,7 +3,8 @@ import { t } from "elysia";
 import { DuelModel } from "../duel/model";
 
 // The aggregates of a User's finished Duels (Runs never count): their record, their averages and
-// their Records. The averages are null without a Duel.
+// their Records. The averages leave out the Forfeits, as the Progression does: null without a Duel
+// but Forfeits.
 const stats = t.Object({
   duels: t.Integer(),
   record: t.Object({ wins: t.Integer(), losses: t.Integer(), draws: t.Integer() }),

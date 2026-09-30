@@ -424,15 +424,21 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
     }));
   },
   // One pass over the User's player rows. A loss is neither a win nor a Draw: a deleted winner
-  // leaves `winner_id` null on a Duel that was not a Draw.
+  // leaves `winner_id` null on a Duel that was not a Draw. The averages leave out the Forfeits, as
+  // the Progression does.
   stats: async (userId) => {
     const [row] = await db
       .select({
         duels: countRows(),
         wins: sql<number>`count(*) filter (where ${duel.winnerId} = ${userId})`.mapWith(Number),
         draws: sql<number>`count(*) filter (where ${duel.outcome} = 'draw')`.mapWith(Number),
-        wpm: sql<number | null>`avg(${duelPlayer.wpm})`.mapWith(Number),
-        accuracy: sql<number | null>`avg(${duelPlayer.accuracy})`.mapWith(Number),
+        scored: sql<number>`count(*) filter (where ${duel.outcome} <> 'forfeit')`.mapWith(Number),
+        wpm: sql<
+          number | null
+        >`avg(${duelPlayer.wpm}) filter (where ${duel.outcome} <> 'forfeit')`.mapWith(Number),
+        accuracy: sql<
+          number | null
+        >`avg(${duelPlayer.accuracy}) filter (where ${duel.outcome} <> 'forfeit')`.mapWith(Number),
         ...bestColumns,
       })
       .from(duelPlayer)
@@ -442,14 +448,15 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
     const duels = row?.duels ?? 0;
     const wins = row?.wins ?? 0;
     const draws = row?.draws ?? 0;
+    const scored = row?.scored ?? 0;
 
     return {
       duels,
       record: { wins, losses: duels - wins - draws, draws },
       // `mapWith(Number)` would read the null average of no row as 0.
       averages: {
-        wpm: duels === 0 ? null : (row?.wpm ?? null),
-        accuracy: duels === 0 ? null : (row?.accuracy ?? null),
+        wpm: scored === 0 ? null : (row?.wpm ?? null),
+        accuracy: scored === 0 ? null : (row?.accuracy ?? null),
       },
       records: recordsOf(row),
     };

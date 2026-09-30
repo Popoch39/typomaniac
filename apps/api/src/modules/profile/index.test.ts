@@ -372,7 +372,7 @@ describe("GET /api/users/:handle/profile", () => {
     });
   });
 
-  test("the record seen from the User, Forfeits included", async () => {
+  test("the record and the Records seen from the User, Forfeits included, the averages without them", async () => {
     const { duels, newUser, profileOf } = setup();
     const ada = await newUser("ada");
     const alan = await newUser("alan");
@@ -393,7 +393,7 @@ describe("GET /api/users/:handle/profile", () => {
 
     expect(adaStats.duels).toBe(4);
     expect(adaStats.record).toEqual({ wins: 2, losses: 1, draws: 1 });
-    expect(adaStats.averages.wpm).toBe(62.5);
+    expect(adaStats.averages.wpm).toBe(85);
     expect(adaStats.records.wpm).toBe(90);
 
     expect((await profileOf(ada.cookie, "alan")).stats.record).toEqual({
@@ -401,6 +401,29 @@ describe("GET /api/users/:handle/profile", () => {
       losses: 2,
       draws: 1,
     });
+  });
+
+  test("no averages over Forfeits alone", async () => {
+    const { duels, newUser, profileOf } = setup();
+    const ada = await newUser("ada");
+    const alan = await newUser("alan");
+
+    duels.saved.push(
+      finishedDuel({
+        outcome: "forfeit",
+        winnerId: alan.id,
+        players: [
+          { userId: ada.id, wpm: 40, accuracy: 80, score: null },
+          { userId: alan.id, wpm: 60, score: null },
+        ],
+      }),
+    );
+
+    const { duels: count, averages, records } = (await profileOf(ada.cookie, "ada")).stats;
+
+    expect(count).toBe(1);
+    expect(averages).toEqual({ wpm: null, accuracy: null });
+    expect(records.wpm).toBe(40);
   });
 
   test("the best Score and Combo leave out the Duels before the Score", async () => {
