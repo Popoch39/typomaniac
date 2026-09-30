@@ -92,17 +92,19 @@ export const GhostExcerpt = ({ config, keystrokes, ghost }: GhostExcerptProps) =
   }, [wordIndex, letterIndex]);
 
   return (
-    // The height left in the live zone, whose lines `cqh` counts.
+    // Three of its lines high (`3lh`), less when the live zone is shorter: whose lines `cqh` counts.
+    // Never taller, so what follows it, the Ghost's caption, sits right under. The half pixel takes
+    // in the layout's rounding: three lines laid out in a zone three lines high stay three.
     <div
       ref={zoneRef}
-      className="flex min-h-0 w-full flex-1 flex-col justify-center [container-type:size]"
+      className="flex min-h-0 w-full flex-[0_1_3lh] flex-col justify-center font-mono text-[26px] leading-relaxed font-bold [container-type:size]"
     >
       <div
         ref={boxRef}
         data-excerpt
         data-caret={`${wordIndex}:${letterIndex}`}
         aria-hidden="true"
-        className="relative max-h-[min(round(down,100cqh,1lh),3lh)] w-full overflow-hidden font-mono text-[26px] leading-relaxed font-bold"
+        className="relative max-h-[round(down,100cqh_+_0.5px,1lh)] w-full overflow-hidden"
       >
         <RunCaret ref={caretRef} tone={ghost ? "opponent" : "own"} />
         <div ref={wordsRef} className="flex flex-wrap gap-x-[1ch]">
