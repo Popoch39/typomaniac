@@ -2,7 +2,7 @@ import type { Logger } from "pino";
 import type { Tier } from "ranked";
 
 import type { Clock } from "../../lib/clock";
-import type { Form } from "../duel/model";
+import type { Form, Records } from "../duel/model";
 import type { PacedUser, User } from "../duel/running-duel";
 import type { Connection } from "../duel/service";
 import type { FriendStore } from "../friend/store";
@@ -21,7 +21,7 @@ export const CHALLENGE_MS = 30_000;
 export type Seat = PacedUser & { connection: Connection };
 
 // What the Challenges need of the Duels: the Users' connections, who is in a Duel or a Match
-// proposal, their Pace, Form and Ornament, and starting one. The Duel Queue.
+// proposal, their Pace, Form, Ornament and Records, and starting one. The Duel Queue.
 export type ChallengeArena = {
   connectionsOf: (userId: string) => Connection[];
   connectionOf: (userId: string, connectionId: string) => Connection | undefined;
@@ -30,6 +30,7 @@ export type ChallengeArena = {
   readPace: (userId: string) => Promise<number>;
   readForm: (userId: string) => Promise<Form | null>;
   readOrnament: (userId: string) => Promise<Tier | null>;
+  readRecords: (userId: string) => Promise<Records | null>;
   // Out of the Queue if they were in it, the Duel played on the seats' connections.
   startDuel: (seats: readonly [Seat, Seat]) => void;
 };
@@ -354,8 +355,20 @@ export class Challenges {
       this.#arena.readForm(to.id),
       this.#arena.readOrnament(from.id),
       this.#arena.readOrnament(to.id),
+      this.#arena.readRecords(from.id),
+      this.#arena.readRecords(to.id),
     ]).then(
-      ([relations, fromPace, toPace, fromForm, toForm, fromOrnament, toOrnament]) => {
+      ([
+        relations,
+        fromPace,
+        toPace,
+        fromForm,
+        toForm,
+        fromOrnament,
+        toOrnament,
+        fromRecords,
+        toRecords,
+      ]) => {
         if (this.#challenges.get(challengeId) !== challenge) {
           return;
         }
@@ -386,6 +399,7 @@ export class Challenges {
             pace: fromPace,
             form: fromForm,
             ornament: fromOrnament,
+            records: fromRecords,
             rating: null,
             connection: fromConnection,
           },
@@ -394,6 +408,7 @@ export class Challenges {
             pace: toPace,
             form: toForm,
             ornament: toOrnament,
+            records: toRecords,
             rating: null,
             connection: toConnection,
           },

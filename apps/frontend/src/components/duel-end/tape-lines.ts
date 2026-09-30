@@ -1,5 +1,6 @@
 import type { CharCounts } from "typing-engine";
 
+import type { RecordId } from "@/components/duel-end/record-tiles";
 import { numberFormat } from "@/locale/formats";
 import type { Locale } from "@/locale/locales";
 import { m } from "@/paraglide/messages";
@@ -17,6 +18,8 @@ export type TapeLine = {
   mine: string;
   theirs: string;
   best: TapeBest;
+  // This User's value beat their Record: tagged « Record ».
+  record: boolean;
 };
 
 // One player's figures at the end of the Duel.
@@ -27,6 +30,8 @@ type Figure = {
   label: (locale: Locale) => string;
   value: (player: PlayerFigures) => number;
   percent: boolean;
+  // The Record the line's figure may beat.
+  record?: RecordId;
 };
 
 // The lines of the tale of the tape, in the board's order.
@@ -36,6 +41,7 @@ const FIGURES: Figure[] = [
     label: (locale) => m.run_stat_wpm({}, { locale }),
     value: (side) => side.result.wpm,
     percent: false,
+    record: "wpm",
   },
   {
     id: "accuracy",
@@ -48,6 +54,7 @@ const FIGURES: Figure[] = [
     label: (locale) => m.run_stat_best_combo({}, { locale }),
     value: (side) => side.score.bestCombo,
     percent: false,
+    record: "combo",
   },
   {
     id: "bursts",
@@ -84,8 +91,14 @@ const bestOf = (mine: number, theirs: number): TapeBest => {
   return mine > theirs ? "mine" : "theirs";
 };
 
-// Each figure of the Duel for both players, rounded and written in the Locale, with who did best.
-export const tapeLines = (me: PlayerFigures, opponent: PlayerFigures, locale: Locale): TapeLine[] =>
+// Each figure of the Duel for both players, rounded and written in the Locale, with who did best,
+// and whether it beat one of this User's Records (`beaten`).
+export const tapeLines = (
+  me: PlayerFigures,
+  opponent: PlayerFigures,
+  beaten: ReadonlySet<RecordId>,
+  locale: Locale,
+): TapeLine[] =>
   FIGURES.map((figure) => {
     const mine = Math.round(figure.value(me));
     const theirs = Math.round(figure.value(opponent));
@@ -96,6 +109,7 @@ export const tapeLines = (me: PlayerFigures, opponent: PlayerFigures, locale: Lo
       mine: written(mine, figure.percent, locale),
       theirs: written(theirs, figure.percent, locale),
       best: bestOf(mine, theirs),
+      record: typeof figure.record === "undefined" ? false : beaten.has(figure.record),
     };
   });
 

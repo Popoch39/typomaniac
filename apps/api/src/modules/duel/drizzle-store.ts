@@ -5,6 +5,7 @@ import { alias } from "drizzle-orm/pg-core";
 import type { Table } from "../../database/schema";
 import { DIVISIONS, PLACEMENT_DUELS, type Rating } from "ranked";
 
+import type { Records } from "./model";
 import { duel, duelPlayer, pastPlacementSql, rankedRating } from "./schema";
 import type {
   DuelCursor,
@@ -114,6 +115,23 @@ const playerOf = (row: typeof duelPlayer.$inferSelect): PlayedDuelPlayer => ({
 
 // The other player of the Duel, next to the one who reads their Duel history.
 const opponentPlayer = alias(duelPlayer, "opponent_player");
+
+// The Records over a User's player rows: the best wpm, Score and Combo, Challenges and Forfeits
+// included. The Score's are null on the rows written before it.
+const bestColumns = {
+  bestWpm: max(duelPlayer.wpm),
+  bestScore: max(duelPlayer.score),
+  bestCombo: max(duelPlayer.bestCombo),
+};
+
+// The Records of the row `bestColumns` aggregates, all null without a Duel.
+const recordsOf = (
+  row: { bestWpm: number | null; bestScore: number | null; bestCombo: number | null } | undefined,
+): Records => ({
+  wpm: row?.bestWpm ?? null,
+  score: row?.bestScore ?? null,
+  combo: row?.bestCombo ?? null,
+});
 
 // The Duels before the cursor, by end then by id: one ended earlier, or at the same instant with a
 // smaller id.
@@ -415,9 +433,7 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
         draws: sql<number>`count(*) filter (where ${duel.outcome} = 'draw')`.mapWith(Number),
         wpm: sql<number | null>`avg(${duelPlayer.wpm})`.mapWith(Number),
         accuracy: sql<number | null>`avg(${duelPlayer.accuracy})`.mapWith(Number),
-        bestWpm: max(duelPlayer.wpm),
-        bestScore: max(duelPlayer.score),
-        bestCombo: max(duelPlayer.bestCombo),
+        ...bestColumns,
       })
       .from(duelPlayer)
       .innerJoin(duel, eq(duel.id, duelPlayer.duelId))
@@ -435,11 +451,16 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
         wpm: duels === 0 ? null : (row?.wpm ?? null),
         accuracy: duels === 0 ? null : (row?.accuracy ?? null),
       },
-      records: {
-        wpm: row?.bestWpm ?? null,
-        score: row?.bestScore ?? null,
-        combo: row?.bestCombo ?? null,
-      },
+      records: recordsOf(row),
     };
+  },
+  // The same aggregate as the Stats' Records, alone.
+  records: async (userId) => {
+    const [row] = await db
+      .select(bestColumns)
+      .from(duelPlayer)
+      .where(eq(duelPlayer.userId, userId));
+
+    return recordsOf(row);
   },
 });

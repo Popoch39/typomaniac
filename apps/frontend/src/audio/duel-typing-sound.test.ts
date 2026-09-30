@@ -258,6 +258,7 @@ describe("typing sound in a Duel", () => {
       type: "duel-ended",
       duelId: "duel-1",
       ranked: null,
+      records: null,
       outcome: "draw",
       forfeit: false,
       result: noResult,

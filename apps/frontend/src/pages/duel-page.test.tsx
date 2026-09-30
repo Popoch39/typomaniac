@@ -85,6 +85,7 @@ const duelEnded: ServerMessage = {
   type: "duel-ended",
   duelId: null,
   ranked: null,
+  records: null,
   outcome: "draw",
   forfeit: true,
   result: noResult,

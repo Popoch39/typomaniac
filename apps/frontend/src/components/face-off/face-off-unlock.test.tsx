@@ -99,6 +99,7 @@ describe("the Face-off's sound, unlocked by the click that leads to it", () => {
           score: noScore,
           opponentScore: noScore,
           opponent: { handle: "alan", image: null },
+          records: null,
         }}
       />,
     );

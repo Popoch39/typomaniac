@@ -57,12 +57,14 @@ const ending = (
   ranked: DuelEnding["ranked"],
   issue: Issue,
   figures: Figures,
+  records: DuelEnding["records"],
 ): DuelEnding => ({
   ranked,
   duelId,
   ...issue,
   ...figures,
   opponent: { handle: "alan", image: null },
+  records,
 });
 
 const player = (handle: string) => ({
@@ -124,6 +126,8 @@ type RenderOptions = {
   aura?: AuraRuntime;
   issue?: Issue;
   figures?: Figures;
+  // The User's Records from before the Duel: unread (none shown) unless a test says otherwise.
+  records?: DuelEnding["records"];
   // The button the end screen is found by, in the Locale shown.
   newDuel?: string;
 };
@@ -149,6 +153,7 @@ const renderEnded = async ({
   aura = fakeAuraRuntime().runtime,
   issue = DRAW,
   figures = NO_FIGURES,
+  records = null,
   newDuel = "Nouveau Duel",
 }: RenderOptions = {}) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -162,7 +167,7 @@ const renderEnded = async ({
 
   const router = createRouter({
     routeTree: createRootRoute({
-      component: () => <DuelEnded ending={ending(duelId, ranked, issue, figures)} />,
+      component: () => <DuelEnded ending={ending(duelId, ranked, issue, figures, records)} />,
     }),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
@@ -452,9 +457,16 @@ describe("the Affiche", () => {
       duelId: "duel-1",
       cached: written,
       ranked: { tp: 12, previousRank: gold(3, 40), rank: gold(3, 52) },
+      records: { wpm: null, score: null, combo: null },
     });
 
-    for (const name of ["Score", "Rang", "Le Duel en chiffres", "Le Duel seconde par seconde"]) {
+    for (const name of [
+      "Score",
+      "Rang",
+      "Records",
+      "Le Duel en chiffres",
+      "Le Duel seconde par seconde",
+    ]) {
       expect(screen.getByRole("region", { name })).toBeInTheDocument();
     }
 
@@ -668,6 +680,121 @@ describe("the rank card", () => {
 });
 
 // The end screen in English, found by its English button.
+// The tile of one of the User's Records, by its name in the Locale shown.
+const recordTile = (name: string) => {
+  const tile = within(screen.getByRole("region", { name: "Records" }))
+    .getByText(name)
+    .closest("li");
+
+  expect(tile).not.toBeNull();
+
+  return tile ?? screen.getByRole("region", { name: "Records" });
+};
+
+// The Records before a Duel won at 68.2 wpm, 1 513 points and a best Combo of 12 (WON): the wpm
+// and the Score beaten, the Combo not.
+const BEATEN = { wpm: 64, score: 1200, combo: 19 };
+
+describe("the Records", () => {
+  test("a Record beaten: in the accent, « Nouveau record », this Duel's figure and by how much", async () => {
+    await renderEnded({ figures: WON, records: BEATEN });
+
+    expect(recordTile("meilleur wpm")).toHaveTextContent(
+      "meilleur wpmNouveau record68avant 64 · +4",
+    );
+    expect(recordTile("meilleur Score")).toHaveTextContent(
+      /^meilleur ScoreNouveau record1\s513avant 1\s200 · \+313$/u,
+    );
+  });
+
+  test("a Record not beaten: the Record, then this Duel's figure", async () => {
+    await renderEnded({ figures: WON, records: BEATEN });
+
+    expect(recordTile("meilleur Combo")).toHaveTextContent(/^meilleur Combo19ce Duel 12$/u);
+  });
+
+  test("a Record only equalled is not beaten", async () => {
+    await renderEnded({ figures: WON, records: { ...BEATEN, wpm: 68 } });
+
+    expect(recordTile("meilleur wpm")).toHaveTextContent(/^meilleur wpm68ce Duel 68$/u);
+  });
+
+  test("the figures compared are the rounded ones the Profile shows: 68.2 then 68.4 beats nothing", async () => {
+    await renderEnded({
+      figures: { ...WON, result: { ...WON.result, wpm: 68.4 } },
+      records: { ...BEATEN, wpm: 68.2 },
+    });
+
+    expect(recordTile("meilleur wpm")).toHaveTextContent(/^meilleur wpm68ce Duel 68$/u);
+  });
+
+  test("a first Duel sets all three", async () => {
+    await renderEnded({ figures: WON, records: { wpm: null, score: null, combo: null } });
+
+    expect(recordTile("meilleur wpm")).toHaveTextContent(
+      /^meilleur wpmNouveau record68premier Record$/u,
+    );
+    expect(recordTile("meilleur Score")).toHaveTextContent(/Nouveau record1\s513premier Record$/u);
+    expect(recordTile("meilleur Combo")).toHaveTextContent(/Nouveau record12premier Record$/u);
+  });
+
+  test("no Records read: no tile at all", async () => {
+    await renderEnded({ figures: WON });
+
+    expect(screen.queryByRole("region", { name: "Records" })).toBeNull();
+    expect(screen.queryByText("Record")).toBeNull();
+  });
+
+  test("a Score beaten stamps « Record » beside the User's Score in the band", async () => {
+    await renderEnded({ figures: WON, records: BEATEN });
+
+    expect(screen.getByRole("region", { name: "Score" })).toHaveTextContent(
+      /^Toi1\s513Record@alan441$/u,
+    );
+  });
+
+  test("a Score not beaten stamps nothing", async () => {
+    await renderEnded({ figures: WON, records: { ...BEATEN, score: 1513 } });
+
+    expect(screen.getByRole("region", { name: "Score" })).not.toHaveTextContent("Record");
+  });
+
+  test("a wpm or a Combo beaten tags its line of the tale of the tape", async () => {
+    await renderEnded({ figures: WON, records: { wpm: 64, score: 2000, combo: 10 } });
+
+    expect(tapeLine("wpm")).toHaveTextContent("Recordmeilleur68wpm61");
+    expect(tapeLine("meilleur combo")).toHaveTextContent("Record12meilleur combo12");
+    expect(tapeLine("bursts")).not.toHaveTextContent("Record");
+  });
+
+  test("a wpm or a Combo not beaten tags nothing", async () => {
+    // The wpm short of its Record, the Combo only equalling it.
+    await renderEnded({ figures: WON, records: { wpm: 70, score: 2000, combo: 12 } });
+
+    expect(tapeLine("wpm")).not.toHaveTextContent("Record");
+    expect(tapeLine("meilleur combo")).not.toHaveTextContent("Record");
+  });
+
+  test("a Record set in a Duel lost by Forfeit is celebrated all the same", async () => {
+    await renderEnded({
+      issue: { outcome: "loss", forfeit: true },
+      figures: WON,
+      records: { wpm: 100, score: 5000, combo: 5 },
+    });
+
+    expect(recordTile("meilleur Combo")).toHaveTextContent(
+      /^meilleur ComboNouveau record12avant 5 · \+7$/u,
+    );
+    expect(recordTile("meilleur wpm")).toHaveTextContent(/^meilleur wpm100ce Duel 68$/u);
+  });
+
+  test("a Challenge's Records are celebrated too", async () => {
+    await renderEnded({ ranked: null, figures: WON, records: BEATEN });
+
+    expect(recordTile("meilleur wpm")).toHaveTextContent("Nouveau record");
+  });
+});
+
 const renderInEnglish = (options: RenderOptions = {}) =>
   renderEnded({ newDuel: "New Duel", ...options });
 
@@ -707,6 +834,17 @@ describe("DuelEnded in English", () => {
       "href",
       "/duels/duel-1",
     );
+  });
+
+  test("the Records, beaten, not beaten and first, in the Locale", async () => {
+    await renderInEnglish({ figures: WON, records: { ...BEATEN, wpm: null } });
+
+    expect(recordTile("best wpm")).toHaveTextContent(/^best wpmNew record68first Record$/u);
+    expect(recordTile("best Score")).toHaveTextContent(
+      /^best ScoreNew record1,513before 1,200 · \+313$/u,
+    );
+    expect(recordTile("best Combo")).toHaveTextContent(/^best Combo19this Duel 12$/u);
+    expect(tapeLineIn("The Duel in figures", "wpm")).toHaveTextContent("Recordbest68wpm61");
   });
 
   test("names the Duel chart's loading state", async () => {

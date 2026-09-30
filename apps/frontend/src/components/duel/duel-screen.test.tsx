@@ -673,6 +673,7 @@ const duelEnded = ({
   type: "duel-ended",
   duelId: null,
   ranked: null,
+  records: null,
   outcome,
   forfeit,
   result: noResult,

@@ -374,6 +374,12 @@
   "duel_ended_best": "best",
   "duel_ended_chart": "The Duel second by second",
   "duel_ended_after": "After the Duel",
+  "duel_ended_records": "Records",
+  "duel_ended_record": "Record",
+  "duel_ended_new_record": "New record",
+  "duel_ended_record_before": "before {record} · +{gain}",
+  "duel_ended_first_record": "first Record",
+  "duel_ended_record_this_duel": "this Duel {value}",
   "duel_rank": "Rank",
   "duel_rank_placement": [
     {

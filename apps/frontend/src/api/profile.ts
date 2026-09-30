@@ -20,8 +20,12 @@ export type Stats = Profile["stats"];
 
 export type ProgressionPoint = Stats["progression"][number];
 
+// Every User's Profile: the prefix of all their entries.
+export const PROFILE_QUERY_KEY = ["profile"] as const;
+
 // Every window of one User's Profile: the prefix of their entries. A Handle has no case.
-export const profileQueryKey = (handle: string) => ["profile", handle.toLowerCase()] as const;
+export const profileQueryKey = (handle: string) =>
+  [...PROFILE_QUERY_KEY, handle.toLowerCase()] as const;
 
 // The window changes the Progression only: the rest of the Stats reads the default one. A Handle
 // has no case: `/u/Ada` and `/u/ada` share one entry.

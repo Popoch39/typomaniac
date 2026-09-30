@@ -14,7 +14,7 @@ import {
 
 import { type RankedOutcome, type Rating, rateDuel, type Stake, stakeOf, type Tier } from "ranked";
 
-import type { Duel, DuelScore, Form, ServerMessage } from "./model";
+import type { Duel, DuelScore, Form, Records, ServerMessage } from "./model";
 import type { DuelPlayerRecord, DuelRecord, RatedPlayer } from "./store";
 
 // How late past the end a Keystroke may still arrive: the network delay of the last ones.
@@ -27,14 +27,15 @@ const MAX_KEYSTROKES_PER_SECOND = 40;
 // the Queue. Only a User with a Handle plays.
 export type User = { id: string; handle: string; image: string | null };
 
-// A User paired into a Duel, with their Pace in wpm, their Form and the Ornament they wear, all
-// frozen for it, and their Rating when the Duel is ranked (from the Queue): null for a Challenge,
-// never ranked.
+// A User paired into a Duel, with their Pace in wpm, their Form, the Ornament they wear and their
+// Records (null when unread), all frozen for it, and their Rating when the Duel is ranked (from the
+// Queue): null for a Challenge, never ranked.
 export type PacedUser = {
   user: User;
   pace: number;
   form: Form | null;
   ornament: Tier | null;
+  records: Records | null;
   rating: Rating | null;
 };
 
@@ -239,6 +240,7 @@ export class RunningDuel {
         opponentScore: opponentSide.score,
         opponent: profileOf(opponent.user),
         ranked: rankedOf(rated),
+        records: player.records,
       },
     });
 

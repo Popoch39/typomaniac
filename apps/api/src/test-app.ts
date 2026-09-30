@@ -19,6 +19,7 @@ import {
   type DuelOutcome,
   type QueueOverview,
   type QueueStatus,
+  type Records,
   type ServerMessage,
 } from "./modules/duel/model";
 import {
@@ -141,6 +142,18 @@ const average = (values: number[]) =>
 
 const best = (values: number[]) => (values.length === 0 ? null : Math.max(...values));
 
+// The Records over a User's player rows, as the Drizzle store aggregates them: the Score and the
+// Combo only over the rows written since the Score.
+const recordsOf = (players: readonly DuelPlayerRecord[]): Records => {
+  const scores = players.flatMap(({ score }) => (score ? [score] : []));
+
+  return {
+    wpm: best(players.map(({ result }) => result.wpm)),
+    score: best(scores.map(({ score }) => score)),
+    combo: best(scores.map(({ bestCombo }) => bestCombo)),
+  };
+};
+
 // The finished Duels, kept in `saved` in the order they were written: a test can write past Duels
 // there too. `deleteUser` does what the cascade does in Postgres: that User's player rows go, and
 // they are no longer anyone's winner.
@@ -156,6 +169,10 @@ export const memoryDuelStore = () => {
 
   const playersOf = (record: DuelRecord) =>
     record.players.filter((player) => !deleted.has(player.userId));
+
+  // The player rows of `userId`, in every Duel they finished.
+  const playerRowsOf = (userId: string) =>
+    saved.flatMap((record) => playersOf(record).filter((player) => player.userId === userId));
 
   const winnerOf = ({ winnerId }: DuelRecord) =>
     winnerId === null || deleted.has(winnerId) ? null : winnerId;
@@ -341,24 +358,18 @@ export const memoryDuelStore = () => {
 
       const wins = played.filter(({ record }) => winnerOf(record) === userId).length;
       const draws = played.filter(({ record }) => record.outcome === "draw").length;
-      const wpms = played.map(({ player }) => player.result.wpm);
-
-      const scores = played.flatMap(({ player }) => (player.score ? [player.score] : []));
 
       return {
         duels: played.length,
         record: { wins, losses: played.length - wins - draws, draws },
         averages: {
-          wpm: average(wpms),
+          wpm: average(played.map(({ player }) => player.result.wpm)),
           accuracy: average(played.map(({ player }) => player.result.accuracy)),
         },
-        records: {
-          wpm: best(wpms),
-          score: best(scores.map((score) => score.score)),
-          combo: best(scores.map((score) => score.bestCombo)),
-        },
+        records: recordsOf(played.map(({ player }) => player)),
       };
     },
+    records: async (userId) => recordsOf(playerRowsOf(userId)),
   };
 
   const deleteUser = (userId: string) => {

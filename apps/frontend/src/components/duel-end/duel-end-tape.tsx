@@ -2,23 +2,30 @@ import { DuelEndTapeChars } from "@/components/duel-end/duel-end-tape-chars";
 import { DuelEndTapeHeader } from "@/components/duel-end/duel-end-tape-header";
 import { DuelEndTapeLine } from "@/components/duel-end/duel-end-tape-line";
 import { DUEL_END_CARD_PAINT } from "@/components/duel-end/duel-end-paint";
+import type { RecordId } from "@/components/duel-end/record-tiles";
 import { tapeLines } from "@/components/duel-end/tape-lines";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 import type { DuelEnding } from "@/stores/duel-store";
 
-type DuelEndTapeProps = { ending: DuelEnding; opponent: string };
+type DuelEndTapeProps = {
+  ending: DuelEnding;
+  opponent: string;
+  // The Records the Duel beat: the wpm's and the Combo's tag their lines.
+  beaten: ReadonlySet<RecordId>;
+};
 
 // The tale of the tape: each figure of the Duel, line by line, this User against the opponent,
 // then their characters. The columns are named for screen readers only; the rows stand 6 px
 // apart, as the board's, the edges' spacing taken back by the margins (the header row's too).
-export const DuelEndTape = ({ ending, opponent }: DuelEndTapeProps) => {
+export const DuelEndTape = ({ ending, opponent, beaten }: DuelEndTapeProps) => {
   const locale = useLocale();
   const title = m.duel_ended_tape({}, { locale });
 
   const lines = tapeLines(
     { result: ending.result, score: ending.score },
     { result: ending.opponentResult, score: ending.opponentScore },
+    beaten,
     locale,
   );
 

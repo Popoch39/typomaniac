@@ -1371,6 +1371,37 @@ describe("duel socket", () => {
     expect(saved).toHaveLength(1);
   });
 
+  test("each player is told their own Records from before the Duel, never those it sets", async () => {
+    const { ada, alan, found } = await pairedUsers({ adaWpms: [0.5] });
+
+    setNow(STARTS_AT + 5000);
+    ada.send({ type: "keystrokes", keystrokes: typed(firstWordOf(found), 1000) });
+    await alan.next();
+
+    setNow(ENDS_AT);
+
+    const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+    // The Duel beats all three: still, the Records told are those it was played against.
+    expect(resultOf(forAda).wpm).toBeGreaterThan(0.5);
+    expect(scoreOf(forAda).score).toBeGreaterThan(0);
+    expect(endedOf(forAda).records).toEqual({ wpm: 0.5, score: 0, combo: 0 });
+    // Alan has finished no Duel: none of his Records is set yet.
+    expect(endedOf(forAlan).records).toEqual({ wpm: null, score: null, combo: null });
+  });
+
+  test("the Records are read at the pairing, then frozen for the Duel", async () => {
+    const { ada, alan, adaId } = await pairedUsers();
+
+    // Written during the Duel: the Records told at its end do not move.
+    saved.push(pastDuel(adaId, 500, NOW + 1000));
+    setNow(ENDS_AT);
+
+    const [forAda] = await Promise.all([ada.next(), alan.next()]);
+
+    expect(endedOf(forAda).records).toEqual({ wpm: null, score: null, combo: null });
+  });
+
   test("the written Keystrokes replay on the Duel's Text to the written Results", async () => {
     const { ada, alan, found } = await pairedUsers({ adaWpms: [70] });
     const word = firstWordOf(found);
@@ -1546,6 +1577,7 @@ describe("duel socket", () => {
       history: () => Promise.reject(new Error("database down")),
       playedDuel: () => Promise.reject(new Error("database down")),
       stats: () => Promise.reject(new Error("database down")),
+      records: () => Promise.reject(new Error("database down")),
       progression: () => Promise.reject(new Error("database down")),
       recentDuelsOf: () => Promise.reject(new Error("database down")),
       recentRankedDuels: () => Promise.reject(new Error("database down")),
@@ -1578,16 +1610,29 @@ describe("duel socket", () => {
 
     setNow(ENDS_AT);
 
-    // Nothing written: nothing to replay, and no Rating moved (none was read: not ranked).
-    expect(await ada.next()).toMatchObject({ type: "duel-ended", duelId: null, ranked: null });
-    expect(await alan.next()).toMatchObject({ type: "duel-ended", duelId: null, ranked: null });
+    // Nothing written: nothing to replay, and no Rating moved (none was read: not ranked). No
+    // Records read: none to show.
+    expect(await ada.next()).toMatchObject({
+      type: "duel-ended",
+      duelId: null,
+      ranked: null,
+      records: null,
+    });
+    expect(await alan.next()).toMatchObject({
+      type: "duel-ended",
+      duelId: null,
+      ranked: null,
+      records: null,
+    });
     expect(logged.map((line) => JSON.parse(line))).toMatchObject([
       { msg: "pace not read", err: { message: "database down" } },
       { msg: "rating not read", err: { message: "database down" } },
+      { msg: "records not read", err: { message: "database down" } },
       { msg: "form not read", err: { message: "database down" } },
       { msg: "ornament not read", err: { message: "database down" } },
       { msg: "pace not read", err: { message: "database down" } },
       { msg: "rating not read", err: { message: "database down" } },
+      { msg: "records not read", err: { message: "database down" } },
       { msg: "form not read", err: { message: "database down" } },
       { msg: "ornament not read", err: { message: "database down" } },
       { msg: "finished duel not saved", err: { message: "database down" } },

@@ -6,8 +6,8 @@ import type { TapeLine } from "@/components/duel-end/tape-lines";
 // ruled under (on its cells: the table's borders are separate).
 export const DuelEndTapeLine = ({ line }: { line: TapeLine }) => (
   <tr className="h-[58px] *:border-b *:border-surface-2">
-    <DuelEndTapeValue side="mine" value={line.mine} best={line.best} />
+    <DuelEndTapeValue side="mine" value={line.mine} best={line.best} record={line.record} />
     <DuelEndTapeName>{line.label}</DuelEndTapeName>
-    <DuelEndTapeValue side="theirs" value={line.theirs} best={line.best} />
+    <DuelEndTapeValue side="theirs" value={line.theirs} best={line.best} record={false} />
   </tr>
 );

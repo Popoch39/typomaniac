@@ -789,14 +789,15 @@ export class DuelQueue implements ChallengeArena {
         this.#tellOthers(userId);
         this.#queueChanged();
         void this.readPace(userId).then(async (pace) => {
-          const [rating, form, ornament] = await Promise.all([
+          const [rating, form, ornament, records] = await Promise.all([
             this.#readRating(userId, pace),
             this.readForm(userId),
             this.readOrnament(userId),
+            this.readRecords(userId),
           ]);
 
           if (this.#queue.get(userId) === entry) {
-            entry.paced = { pace, form, ornament, rating };
+            entry.paced = { pace, form, ornament, records, rating };
             this.#pair();
           }
         });
@@ -849,6 +850,20 @@ export class DuelQueue implements ChallengeArena {
       return (await readRankAndOrnament(this.#store, userId)).ornament;
     } catch (error) {
       this.#logger.error({ err: error, userId }, "ornament not read");
+
+      return null;
+    }
+  }
+
+  // The User's Records from before the Duel, once their last Duel is written, as the Pace: the end
+  // tells which the Duel beats. Unreadable, null: the end shows none, the Duel is played.
+  async readRecords(userId: string) {
+    try {
+      await this.#saving.get(userId);
+
+      return await this.#store.records(userId);
+    } catch (error) {
+      this.#logger.error({ err: error, userId }, "records not read");
 
       return null;
     }
@@ -1089,7 +1104,7 @@ export class DuelQueue implements ChallengeArena {
     atFault: (userId: string) => boolean,
     reason: "declined" | "missed",
   ) {
-    for (const { user, pace, form, ornament, rating, joinedAt } of proposal.players) {
+    for (const { user, pace, form, ornament, records, rating, joinedAt } of proposal.players) {
       this.#proposals.delete(user.id);
 
       if (atFault(user.id)) {
@@ -1104,7 +1119,11 @@ export class DuelQueue implements ChallengeArena {
 
         this.#tellOthers(user.id);
       } else {
-        const entry: QueueEntry = { user, paced: { pace, form, ornament, rating }, joinedAt };
+        const entry: QueueEntry = {
+          user,
+          paced: { pace, form, ornament, records, rating },
+          joinedAt,
+        };
 
         this.#returning.set(user.id, entry);
         this.#send(user.id, { type: "proposal-ended", reason: `opponent-${reason}` });

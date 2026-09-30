@@ -172,8 +172,12 @@ Le graph d'un Duel terminé, seconde par seconde, pour chacun des deux Users : s
 _Avoid_ : graph, courbe, timeline
 
 **Stats** :
-Les agrégats des Duels terminés d'un User : son bilan (victoires, défaites, Draws), ses moyennes, ses records et sa Progression. Les Runs n'y comptent pas.
+Les agrégats des Duels terminés d'un User : son bilan (victoires, défaites, Draws), ses moyennes, ses Records et sa Progression. Les Runs n'y comptent pas.
 _Avoid_ : statistiques, Result, score
+
+**Record** :
+Le meilleur wpm, le meilleur Score ou le meilleur Combo d'un User sur ses Duels terminés, Challenges et Forfeits compris. Un Duel bat un Record en le dépassant ; le premier Duel les pose tous.
+_Avoid_ : PB, meilleur score, top
 
 **Progression** :
 L'évolution Duel après Duel du wpm, du raw, de l'accuracy et de la consistency d'un User. Les Duels terminés par un Forfeit n'y figurent pas, parce que leur Result ne couvre pas tout le temps.

@@ -27,7 +27,8 @@ type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
 
 // How the Duel ended for this User: their outcome, whether it was a Forfeit, their Result and
 // Score and the opponent's, computed by the server from the Keystrokes it accepted. `duelId` is the
-// Duel to replay, null if the server could not write it.
+// Duel to replay, null if the server could not write it; `records`, the User's Records from before
+// the Duel, null if the server could not read them.
 export type DuelEnding = Omit<DuelEnded, "type">;
 
 // A Duel as this tab plays it. Both Runs and both Scores are replayed by the engine: this User's
@@ -499,6 +500,7 @@ const endingOf = ({
   opponentScore,
   opponent,
   ranked,
+  records,
 }: DuelEnded): DuelEnding => ({
   duelId,
   outcome,
@@ -509,6 +511,7 @@ const endingOf = ({
   opponentScore,
   opponent,
   ranked,
+  records,
 });
 
 // The server ends the Duel, possibly before this tab's time is up: nothing typed here counts

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { type LeaderboardSearch, leaderboardQueryOptions } from "@/api/leaderboard";
 import { meQueryOptions } from "@/api/me";
+import { type Profile, profileQueryOptions } from "@/api/profile";
 import { LiveRank } from "@/components/tier/rank/live-rank";
 import { useConnectionStore } from "@/stores/connection-store";
 import { fakeServer, idle } from "@/test/fake-socket";
@@ -33,6 +34,7 @@ const duelEnded = (ranked: Extract<ServerMessage, { type: "duel-ended" }>["ranke
   score: noScore,
   opponentScore: noScore,
   opponent: { handle: "alan", image: null, ornament: null },
+  records: { wpm: 64, score: 488, combo: 19 },
 });
 
 let sockets = fakeServer();
@@ -61,6 +63,21 @@ const emptyLeaderboard = {
   next: null,
 };
 
+// A Profile without a Duel yet.
+const adaProfile: Profile = {
+  handle: "ada",
+  image: null,
+  rank: null,
+  ornament: null,
+  stats: {
+    duels: 0,
+    record: { wins: 0, losses: 0, draws: 0 },
+    averages: { wpm: null, accuracy: null },
+    records: { wpm: null, score: null, combo: null },
+    progression: [],
+  },
+};
+
 // `LiveRank` over a cache where the User and two pages of the Leaderboard are already read.
 const renderLiveRank = () => {
   const queryClient = new QueryClient();
@@ -68,6 +85,8 @@ const renderLiveRank = () => {
   queryClient.setQueryData(meQueryOptions.queryKey, null);
   queryClient.setQueryData(leaderboardQueryOptions(firstPage).queryKey, emptyLeaderboard);
   queryClient.setQueryData(leaderboardQueryOptions(readerPage).queryKey, emptyLeaderboard);
+  queryClient.setQueryData(profileQueryOptions("ada").queryKey, adaProfile);
+  queryClient.setQueryData(profileQueryOptions("ada", "all").queryKey, adaProfile);
 
   render(
     <QueryClientProvider client={queryClient}>
@@ -96,5 +115,17 @@ describe("LiveRank", () => {
 
     expect(invalidated(meQueryOptions.queryKey)).toBe(false);
     expect(invalidated(leaderboardQueryOptions(firstPage).queryKey)).toBe(false);
+  });
+
+  test.each([
+    ["a Ranked Duel", { tp: 18, previousRank: gold(24), rank: gold(42) }],
+    ["a Challenge", null],
+  ])("reads every window of the Profiles again after %s: its Records moved", (_, ranked) => {
+    const invalidated = renderLiveRank();
+
+    sockets.server().receive(duelEnded(ranked));
+
+    expect(invalidated(profileQueryOptions("ada").queryKey)).toBe(true);
+    expect(invalidated(profileQueryOptions("ada", "all").queryKey)).toBe(true);
   });
 });

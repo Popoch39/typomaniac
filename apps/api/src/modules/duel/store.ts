@@ -9,7 +9,7 @@ import {
 } from "ranked";
 import { type Keystroke, paceDuels, paceOf, type Result } from "typing-engine";
 
-import type { Duel, DuelScore, Form } from "./model";
+import type { Duel, DuelScore, Form, Records } from "./model";
 
 // A player of a finished Duel: their Result, their Pace and Score and the Keystrokes the server
 // accepted from them, which replay to both on the Duel's Text.
@@ -79,13 +79,13 @@ export type PlayedDuel = Omit<DuelRecord, "players"> &
   };
 
 // The aggregates of a User's finished Duels, seen from them: their record (a Forfeit is a loss for
-// the one who did not win), their averages and their bests. The averages and the best wpm are null
-// without a Duel; the best Score and Combo also without a Duel written since the Score.
+// the one who did not win), their averages and their Records. The averages are null without a
+// Duel.
 export type DuelStats = {
   duels: number;
   record: { wins: number; losses: number; draws: number };
   averages: { wpm: number | null; accuracy: number | null };
-  records: { wpm: number | null; score: number | null; combo: number | null };
+  records: Records;
 };
 
 // A point of the Progression: one finished Duel of a User, not a Forfeit.
@@ -174,6 +174,9 @@ export type DuelStore = {
   playedDuel: (userId: string, duelId: string) => Promise<PlayedDuel | null>;
   // The Stats of a User's finished Duels, those whose opponent was deleted too.
   stats: (userId: string) => Promise<DuelStats>;
+  // The Records of a User, as their Stats count them: without the rest of the Stats, for the
+  // end of a Duel.
+  records: (userId: string) => Promise<Records>;
   // The Progression of a User: their last `limit` finished Duels but the Forfeits (all of them when
   // null), the oldest first.
   progression: (userId: string, limit: number | null) => Promise<ProgressionPoint[]>;

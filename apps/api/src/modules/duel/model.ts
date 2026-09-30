@@ -77,6 +77,17 @@ const DuelScore = t.Object({
 
 export type DuelScore = typeof DuelScore.static;
 
+// A User's Records over their finished Duels, Challenges and Forfeits included: their best wpm,
+// Score and Combo, each null until a Duel sets it (the Score and the Combo, a Duel written since the
+// Score).
+const Records = t.Object({
+  wpm: t.Nullable(t.Number()),
+  score: t.Nullable(t.Integer()),
+  combo: t.Nullable(t.Integer()),
+});
+
+export type Records = typeof Records.static;
+
 // What a player sees of the other: their Handle of the moment and their avatar, never their name.
 const DuelOpponent = t.Object({ handle: t.String(), image: t.Nullable(t.String()) });
 
@@ -306,6 +317,9 @@ const ServerMessage = t.Union([
     // The User's rank moved by a Duel of the Queue; null for a Challenge (never ranked) and when
     // the Duel was not written (nothing moved).
     ranked: t.Nullable(DuelRanked),
+    // The User's Records from before this Duel, read at the pairing: the end tells which it beats.
+    // Null when they could not be read. Never the opponent's.
+    records: t.Nullable(Records),
   }),
   t.Object({ type: t.Literal("invalid-message") }),
   // The same socket tells the User of their Friends: Presence, Friend requests, Friends.
@@ -330,6 +344,7 @@ export const DuelModel = {
   keystroke: Keystroke,
   result: Result,
   score: DuelScore,
+  records: Records,
   rank: Rank,
   standing: Standing,
   tier: Tier,

@@ -3,17 +3,12 @@ import { t } from "elysia";
 import { DuelModel } from "../duel/model";
 
 // The aggregates of a User's finished Duels (Runs never count): their record, their averages and
-// their bests. The averages and the best wpm are null without a Duel; the best Score and Combo
-// also without a Duel played since the Score.
+// their Records. The averages are null without a Duel.
 const stats = t.Object({
   duels: t.Integer(),
   record: t.Object({ wins: t.Integer(), losses: t.Integer(), draws: t.Integer() }),
   averages: t.Object({ wpm: t.Nullable(t.Number()), accuracy: t.Nullable(t.Number()) }),
-  records: t.Object({
-    wpm: t.Nullable(t.Number()),
-    score: t.Nullable(t.Integer()),
-    combo: t.Nullable(t.Integer()),
-  }),
+  records: DuelModel.records,
   // The Progression: the Duels of the window but the Forfeits, the oldest first.
   progression: t.Array(
     t.Object({
