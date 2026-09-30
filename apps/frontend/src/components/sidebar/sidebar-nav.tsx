@@ -11,6 +11,7 @@ import {
 import { meQueryOptions } from "@/api/me";
 import { FriendRequestsBadge } from "@/components/friends/friend-requests-badge";
 import { QueueWaitBadge } from "@/components/sidebar/queue-wait-badge";
+import { QueueWaitHint } from "@/components/sidebar/queue-wait-hint";
 import { SidebarNavLink } from "@/components/sidebar/sidebar-nav-link";
 import { SidebarGroup, SidebarMenu } from "@/components/ui/sidebar";
 import { useLocale } from "@/locale/use-locale";
@@ -35,6 +36,7 @@ export const SidebarNav = () => {
           icon={KeyboardIcon}
           label={m.sidebar_nav_play({}, { locale })}
           badge={me === null ? null : <QueueWaitBadge />}
+          hint={me === null ? null : <QueueWaitHint />}
         />
         <SidebarNavLink
           to="/ranked"

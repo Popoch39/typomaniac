@@ -8,9 +8,10 @@ import { atHandle } from "@/lib/at-handle";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 
-const FACE_LOOK = "size-22";
+// 88 px, less in a narrow card (its width, `cqi`): the two faces and « vs » always fit in it.
+const FACE_LOOK = "size-[min(5.5rem,27cqi)]";
 
-const INITIALS_LOOK = "text-4xl font-extrabold";
+const INITIALS_LOOK = "text-[min(2.25rem,11cqi)] font-extrabold";
 
 // The User facing their first Friend online, avatar to avatar: an empty one where there is none
 // (a Visitor, no Friend online, or their Presences not told yet). Screen readers hear who it is.

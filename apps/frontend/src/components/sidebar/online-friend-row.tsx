@@ -1,10 +1,8 @@
-import { cn } from "cn";
-
 import { ChallengeButton } from "@/components/challenge/challenge-button";
 import type { PresentFriend } from "@/components/friends/online-friends";
-import { PRESENCE_DOTS, presenceLabel } from "@/components/friends/presence-paint";
+import { presenceLabel } from "@/components/friends/presence-paint";
 import { HandleLink } from "@/components/handle/handle-link";
-import { UserAvatar } from "@/components/user-avatar/user-avatar";
+import { FriendAvatar } from "@/components/sidebar/friend-avatar";
 import { useLocale } from "@/locale/use-locale";
 
 // A Friend who is there, in the sidebar: avatar with their Ornament and the dot of their
@@ -15,16 +13,7 @@ export const OnlineFriendRow = ({ friend }: { friend: PresentFriend }) => {
 
   return (
     <li className="flex h-12 items-center gap-2.5 pl-2.5">
-      <span className="relative flex shrink-0">
-        <UserAvatar handle={friend.handle} image={friend.image} ornament={friend.ornament} />
-        <span
-          aria-hidden
-          className={cn(
-            "absolute -right-0.75 -bottom-0.75 size-2.5 rounded-full ring-2 ring-sidebar",
-            PRESENCE_DOTS[friend.presence],
-          )}
-        />
-      </span>
+      <FriendAvatar friend={friend} />
       {/* Positioned after the avatar: drawn over the Ornament's overflow, never under it. */}
       <span className="relative flex min-w-0 flex-1 flex-col">
         <HandleLink handle={friend.handle} className="truncate text-sm font-semibold" />

@@ -88,6 +88,29 @@ describe("Jouer's cards", () => {
 
 describe("the Training card", () => {
   test.each([
+    ["time 30", "30 s"],
+    ["words 50", "50 mots"],
+    ["time 60", "60 s"],
+  ])("%s reads short, « %s », its name said again in a tooltip", async (preset, short) => {
+    const { user } = await renderAppFor("/fr", { reader: null, openSocket: sockets.open });
+    const link = within(card("Entraînement")).getByRole("button", { name: preset });
+
+    expect(link).toHaveTextContent(short);
+
+    await user.hover(link);
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(preset);
+  });
+
+  test("reads short in English too", async () => {
+    await renderAppFor("/en", { reader: null, openSocket: sockets.open });
+
+    expect(within(card("Training")).getByRole("button", { name: "words 50" })).toHaveTextContent(
+      "50 words",
+    );
+  });
+
+  test.each([
     ["time 30", "time", "30"],
     ["words 50", "words", "50"],
     ["time 60", "time", "60"],

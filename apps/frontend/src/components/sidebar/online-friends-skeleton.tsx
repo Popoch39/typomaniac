@@ -17,9 +17,12 @@ export const OnlineFriendsSkeleton = () => {
       className="gap-0 pt-5"
     >
       {SKELETON_ROWS.map((row) => (
-        <div key={row} className="flex h-12 items-center gap-2.5 pl-2.5">
+        <div
+          key={row}
+          className="flex h-12 items-center gap-2.5 pl-2.5 rail:justify-center rail:gap-0 rail:pl-0"
+        >
           <Skeleton className="size-8 rounded-[33%]" />
-          <Skeleton className="h-3.5 w-24" />
+          <Skeleton className="h-3.5 w-24 rail:hidden" />
         </div>
       ))}
     </LoadingRegion>

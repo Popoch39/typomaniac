@@ -12,6 +12,8 @@ export const BrandMark = () => (
     className="flex items-center gap-1.5 rounded-2xl text-xl font-extrabold tracking-[-0.03em] outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
   >
     <LogoSymbol className="size-9" />
-    <span data-intro="brand-word">typomaniac</span>
+    <span data-intro="brand-word" className="rail:sr-only">
+      typomaniac
+    </span>
   </Link>
 );

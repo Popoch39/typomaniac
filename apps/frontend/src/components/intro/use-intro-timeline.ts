@@ -88,7 +88,8 @@ const shellIn = (document: Document): ShellTargets | null => {
   return {
     sidebar,
     brandLogo,
-    brandWord,
+    // The Rail writes the word for screen readers only: the Logo lands there alone.
+    brandWord: sidebar.hasAttribute("data-rail") ? null : brandWord,
     brandWave,
     nav: elementsIn(sidebar, "nav"),
     lower: [...elementsIn(sidebar, "online"), foot],
@@ -112,7 +113,7 @@ const measure = (
   logoTop: logo.offsetTop,
   sidebar: boxOf(sidebar),
   brandLogo: boxOf(brandLogo),
-  brandWord: boxOf(brandWord),
+  brandWord: brandWord === null ? null : boxOf(brandWord),
 });
 
 // What the typing needs of the word's layout: each letter's width, the typo's too, for the caret

@@ -8,6 +8,7 @@ import { usePlayStore } from "@/stores/play-store";
 import { fakeServer, idle, queueElsewhere } from "@/test/fake-socket";
 import { holdGsapClock } from "@/test/gsap-clock";
 import { ada, friend, renderAppFor } from "@/test/render-app";
+import { setViewportWidth } from "@/test/viewport";
 
 // The Queue lives across the app (ADR 0012): joined by a gesture, left by Annuler, never by going
 // to another page.
@@ -166,6 +167,25 @@ describe("the sidebar's Jouer", () => {
     receive(idle());
 
     expect(sidebarWait()).not.toBeInTheDocument();
+  });
+
+  test("in the Rail, a dot on its icon, the wait said in its tooltip", async () => {
+    setViewportWidth(1280);
+
+    try {
+      const { user } = await renderQueue();
+
+      expect(sidebarWait()).toHaveAccessibleName("Dans la Queue depuis 0:07");
+
+      await user.hover(sidebarLink(/^Jouer/));
+
+      const tooltip = await screen.findByRole("tooltip");
+
+      expect(tooltip).toHaveTextContent("Jouer");
+      expect(tooltip).toHaveTextContent("Dans la Queue depuis 0:07");
+    } finally {
+      setViewportWidth(1440);
+    }
   });
 
   test("shows it in English too", async () => {

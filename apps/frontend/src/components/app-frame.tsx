@@ -7,7 +7,7 @@ import { useSoloRunTyping } from "@/components/run/use-solo-run-typing";
 import { duelOf, isChallenge, useDuelStore } from "@/stores/duel-store";
 import { useIntroStore } from "@/stores/intro-store";
 
-// The app's frame, drawn as the Duel's scene while this tab plays a Duel, its sidebar faded while
+// The app's frame, drawn as the Duel's scene while this tab plays a Duel, its sidebar gone while
 // a Solo Run is typed, inert while the Intro plays over it. Each part of the Duel's format is read
 // on its own: a Keystroke never renders the frame again.
 export const AppFrame = ({ children }: { children: ReactNode }) => {

@@ -92,7 +92,8 @@ export type IntroTargets = {
 export type ShellTargets = {
   sidebar: HTMLElement;
   brandLogo: SVGElement;
-  brandWord: HTMLElement;
+  // None in the Rail, where the brand is its Logo alone.
+  brandWord: HTMLElement | null;
   brandWave: SVGElement;
   // The items of nav there for this User or Visitor: 3 or 6.
   nav: HTMLElement[];
@@ -222,20 +223,27 @@ export const fadeOutTimeline = ({ overlay }: IntroTargets) =>
 // their own eases) onto the sidebar's brand as its wave undraws; the sidebar grows out of the
 // brand's footprint; the brand takes over from the lockup and its wave draws itself again; then
 // the nav, the page's parts, the Friends online and the foot come in. As it starts, in the same
-// frame, the overlay lets the ink through and the shell is hidden. The sidebar's own fade (a CSS
-// transition on its opacity) is off meanwhile; reverting the timeline gives the shell back its
-// classes alone.
+// frame, the overlay lets the ink through and the shell is hidden; reverting the timeline gives the
+// shell back its classes alone. Into the Rail, the word fades as the lockup dives: its Logo lands
+// alone.
 export const landingTimeline = (
-  { overlay, lockup, logo, wave }: IntroTargets,
+  { overlay, lockup, logo, wave, letters, typo, caret }: IntroTargets,
   { sidebar, brandLogo, brandWord, brandWave, nav, lower, parts }: ShellTargets,
   { dive, clipFrom, clipTo }: Landing,
 ) => {
-  const brand = [brandLogo, brandWord];
+  const brand = brandWord === null ? [brandLogo] : [brandLogo, brandWord];
+  const timeline = gsap.timeline();
+
+  if (brandWord === null) {
+    timeline.to(
+      [...letters, ...typo, caret],
+      { opacity: 0, duration: 0.3, ease: "power2.in" },
+      DIVE_AT,
+    );
+  }
 
   return (
-    gsap
-      .timeline()
-      .set(sidebar, { transition: "none", immediateRender: true }, 0)
+    timeline
       .set(overlay, { backgroundColor: "transparent", immediateRender: true }, 0)
       .set(sidebar, { autoAlpha: 0, clipPath: clipFrom, immediateRender: true }, 0)
       .set(brand, { opacity: 0, immediateRender: true }, 0)

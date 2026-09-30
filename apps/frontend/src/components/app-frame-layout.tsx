@@ -10,7 +10,7 @@ import { AppSidebar } from "@/components/sidebar/app-sidebar";
 type AppFrameLayoutProps = {
   // The Duel whose scene the frame is; null for the app's own layout.
   duelFormat: DuelFormat | null;
-  // A Solo Run is being typed: the sidebar fades.
+  // A Solo Run is being typed: the sidebar leaves the window.
   soloTyping: boolean;
   // While the Intro plays over it: out of reach, nothing takes the focus.
   inert: boolean;
@@ -35,7 +35,7 @@ export const AppFrameLayout = ({
       data-duel-scene={inDuelScene ? "" : undefined}
       className="flex min-h-svh w-full items-start gap-3 p-3"
     >
-      <AppSidebar hidden={inDuelScene} faded={soloTyping} />
+      <AppSidebar hidden={inDuelScene} retreated={soloTyping} />
       <div
         ref={inDuelScene ? fitDuelScene : null}
         style={inDuelScene ? DUEL_SCENE : undefined}

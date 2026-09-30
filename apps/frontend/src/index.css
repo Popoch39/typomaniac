@@ -9,6 +9,9 @@
 /* Inside the Duel's scene (AppFrame), from the Countdown to the end of the Duel. */
 @custom-variant duel-scene (&:where([data-duel-scene] *));
 
+/* The sidebar folded into its Rail, below 1440 px (useSidebarRail): the sidebar and what is in it. */
+@custom-variant rail (&:where([data-rail], [data-rail] *));
+
 @theme inline {
   --font-sans: "Onest Variable", ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-sans);

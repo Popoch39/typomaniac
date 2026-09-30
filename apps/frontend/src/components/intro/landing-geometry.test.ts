@@ -37,4 +37,20 @@ describe("where the lockup lands, and where the sidebar grows from", () => {
     expect(clipFrom).toBe("inset(14px 70px 814px 12px round 14px)");
     expect(clipTo).toBe("inset(0px 0px 0px 0px round 28px)");
   });
+
+  test("the Rail, without the word, grows from the Logo's footprint alone, 6 px of air around", () => {
+    const rail = {
+      ...measures,
+      sidebar: { left: 12, top: 12, width: 68, height: 876 },
+      brandLogo: { left: 28, top: 32, width: 36, height: 36 },
+      brandWord: null,
+    };
+
+    const { clipFrom, dive } = landingGeometry(rail);
+
+    // Top 32 − 12 − 6, right 68 − (28 − 12 + 36 + 6), bottom 876 − (32 − 12 + 36 + 6), left
+    // 28 − 12 − 6.
+    expect(clipFrom).toBe("inset(14px 10px 814px 10px round 14px)");
+    expect(measures.lockup.left + dive.x).toBe(28);
+  });
 });

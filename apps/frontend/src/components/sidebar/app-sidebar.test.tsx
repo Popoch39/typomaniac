@@ -31,6 +31,8 @@ import { useRunStore } from "@/stores/run-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useThemeStore } from "@/stores/theme-store";
 import { fakeServer, idle } from "@/test/fake-socket";
+import { holdGsapClock } from "@/test/gsap-clock";
+import { setViewportWidth } from "@/test/viewport";
 
 const ada: Me = {
   id: "ada-id",
@@ -777,33 +779,211 @@ describe("the Locale switch", () => {
   });
 });
 
+describe("the Rail, below 1440 px", () => {
+  beforeEach(() => setViewportWidth(1280));
+
+  afterEach(() => setViewportWidth(1440));
+
+  test("folds the sidebar, its entries still named, each named again in a tooltip", async () => {
+    const { user } = await renderApp(ada);
+
+    expect(sidebar()).toHaveAttribute("data-rail");
+    expect(navLinks()).toEqual(["Jouer", "Ranked", "Classement", "Duels", "Friends", "Profil"]);
+
+    await user.hover(within(nav()).getByRole("link", { name: "Classement" }));
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Classement");
+  });
+
+  test("unfolds once the window is 1440 px wide, and folds again below", async () => {
+    await renderApp(ada);
+
+    setViewportWidth(1440);
+    expect(sidebar()).not.toHaveAttribute("data-rail");
+
+    setViewportWidth(1439);
+    expect(sidebar()).toHaveAttribute("data-rail");
+  });
+
+  test("the brand keeps its name, the symbol alone", async () => {
+    await renderApp(ada);
+
+    expect(within(sidebar()).getByRole("link", { name: "typomaniac" })).toHaveAttribute(
+      "href",
+      "/",
+    );
+  });
+
+  test("the Friends online as avatars, each named in its tooltip, then how many more", async () => {
+    const handles = ["a1", "a2", "a3", "a4", "a5", "a6", "a7"];
+    const { user } = await renderApp(ada, "/leaderboard", [...handles, "off"].map(friend));
+
+    tellPresences(handles.map((handle) => [handle, "online"]));
+
+    expect(onlineSection()).toHaveAccessibleName("En ligne · 7");
+    expect(within(onlineSection()).getAllByRole("listitem")).toHaveLength(5);
+    expect(within(onlineSection()).queryByRole("button", { name: /Défier/ })).toBeNull();
+
+    const more = within(onlineSection()).getByRole("link", { name: "Tous tes Friends · 8" });
+
+    expect(more).toHaveTextContent("+2");
+    expect(more).toHaveAttribute("href", "/friends");
+
+    const first = within(onlineSection()).getByRole("link", { name: "@a1" });
+
+    expect(first).toHaveAttribute("href", "/u/a1");
+
+    await user.hover(first);
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("@a1 · en ligne");
+  });
+
+  test("no more to count, no count", async () => {
+    await renderApp(ada, "/leaderboard", [friend("grace"), friend("off")]);
+    tellPresences([["grace", "in-duel"]]);
+
+    expect(within(onlineSection()).getAllByRole("listitem")).toHaveLength(1);
+    expect(within(onlineSection()).queryByRole("link", { name: /Tous tes Friends/ })).toBeNull();
+  });
+
+  test("the Locale, the Theme and the User's menu keep their names", async () => {
+    const { user } = await renderApp(ada);
+
+    expect(
+      within(sidebar()).getByRole("button", { name: "Langue : Français. Passer en English" }),
+    ).toBeInTheDocument();
+    expect(within(sidebar()).getByRole("link", { name: /^Thème/ })).toHaveAttribute(
+      "href",
+      "/themes",
+    );
+
+    await user.click(within(sidebar()).getByRole("button", { name: "Menu de Ada Lovelace" }));
+
+    expect(await screen.findByRole("menuitem", { name: "Mon Profile" })).toBeInTheDocument();
+  });
+
+  test("the User's menu opens from their avatar, wearing their Ornament", async () => {
+    await renderApp({ ...ada, ornament: "gold", ornamentChoice: "follow" });
+
+    const menu = within(sidebar()).getByRole("button", { name: "Menu de Ada Lovelace" });
+
+    expect(within(menu).getByText("A")).toBeInTheDocument();
+    expect(menu.querySelector("[data-ornament]")).not.toBeNull();
+  });
+
+  test("a Visitor signs in from an icon, named", async () => {
+    const { user } = await renderApp(null);
+
+    await user.click(within(sidebar()).getByRole("button", { name: "Se connecter" }));
+
+    expect(useAuthStore.getState().signInOpen).toBe(true);
+  });
+
+  test("the whole sidebar has no tooltip", async () => {
+    setViewportWidth(1440);
+    const { user } = await renderApp(ada);
+
+    await user.hover(within(nav()).getByRole("link", { name: "Classement" }));
+
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+});
+
+// The sidebar out of reach and out of sight, found all the same, by its name.
+const typedSidebar = () => screen.getByLabelText("Barre latérale");
+
+// Once it has left: hidden, slid out of the window, its slot in the frame given to the page.
+const leftAside = (aside: HTMLElement) => ({
+  visibility: aside.style.visibility,
+  gone: aside.style.marginRight !== "" && aside.style.transform !== "",
+});
+
 describe("the sidebar during a Solo Run", () => {
+  let gsapClock: ReturnType<typeof holdGsapClock>;
+
   beforeEach(() => {
     useRunStore.getState().start(words10);
+    gsapClock = holdGsapClock();
+  });
+
+  afterEach(() => {
+    gsapClock.release();
+    vi.restoreAllMocks();
   });
 
   test("is whole before the first Keystroke", async () => {
     await renderApp(null, "/run");
 
     expect(sidebar()).not.toHaveAttribute("inert");
-    expect(sidebar()).not.toHaveAttribute("data-faded");
+    expect(sidebar()).not.toHaveAttribute("data-retreated");
   });
 
-  test("fades and goes inert while the Run is typed, then comes back at its end", async () => {
+  test("leaves the window at the first Keystroke, out of reach, then comes back at the Result", async () => {
     const { user } = await renderApp(null, "/run");
 
     await user.keyboard("s");
 
-    const typed = screen.getByRole("complementary", { name: "Barre latérale", hidden: true });
+    expect(typedSidebar()).toHaveAttribute("inert");
+    expect(typedSidebar()).toHaveAttribute("data-retreated");
+    expect(typedSidebar().style.visibility).not.toBe("hidden");
 
-    expect(typed).toHaveAttribute("inert");
-    expect(typed).toHaveAttribute("data-faded");
+    gsapClock.advance(0.35);
+
+    expect(leftAside(typedSidebar())).toEqual({ visibility: "hidden", gone: true });
 
     await user.keyboard(text.slice(1));
 
     expect(await screen.findByRole("button", { name: /Rejouer/ })).toBeInTheDocument();
-    expect(sidebar()).not.toHaveAttribute("inert");
-    expect(sidebar()).not.toHaveAttribute("data-faded");
+    expect(typedSidebar()).not.toHaveAttribute("inert");
+    expect(typedSidebar()).not.toHaveAttribute("data-retreated");
+
+    gsapClock.advance(0.35);
+
+    expect(typedSidebar().getAttribute("style") ?? "").toBe("");
+  });
+
+  test("comes back as the Run is dropped for the next one, Tab then Enter", async () => {
+    const { user } = await renderApp(null, "/run");
+
+    await user.keyboard("s");
+    gsapClock.advance(0.35);
+
+    expect(typedSidebar()).toHaveAttribute("data-retreated");
+
+    await user.keyboard("{Tab}{Enter}");
+
+    expect(typedSidebar()).not.toHaveAttribute("data-retreated");
+    expect(typedSidebar()).not.toHaveAttribute("inert");
+
+    gsapClock.advance(0.35);
+
+    expect(typedSidebar().getAttribute("style") ?? "").toBe("");
+  });
+
+  test("under reduced motion, leaves and comes back at once", async () => {
+    vi.spyOn(window, "matchMedia").mockImplementation((media) => ({
+      matches: media === "(prefers-reduced-motion: reduce)",
+      media,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => true,
+    }));
+
+    const { user } = await renderApp(null, "/run");
+
+    await user.keyboard("s");
+    gsapClock.advance(0);
+
+    expect(typedSidebar().style.visibility).toBe("hidden");
+
+    await user.keyboard(text.slice(1));
+    await screen.findByRole("button", { name: /Rejouer/ });
+    gsapClock.advance(0);
+
+    expect(sidebar().getAttribute("style") ?? "").toBe("");
   });
 
   test("stays whole on another page, a Run left there unfinished", async () => {

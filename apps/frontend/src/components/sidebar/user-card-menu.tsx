@@ -1,4 +1,6 @@
 import { Link } from "@tanstack/react-router";
+import { cn } from "cn";
+import type { ReactNode } from "react";
 import { AtSignIcon, EllipsisVerticalIcon, LogOutIcon, UserRoundIcon } from "lucide-react";
 
 import type { Me } from "@/api/me";
@@ -17,9 +19,15 @@ import { atHandle } from "@/lib/at-handle";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 
+type UserCardMenuProps = {
+  me: Me;
+  // What opens it, the ⋯ by default; the User's avatar in the Rail.
+  trigger?: ReactNode;
+};
+
 // The ⋯ of the User's card: their public Profile (once they have a Handle), the Handle's
 // settings, and signing out.
-export const UserCardMenu = ({ me }: { me: Me }) => {
+export const UserCardMenu = ({ me, trigger }: UserCardMenuProps) => {
   const signOut = useSignOut();
   const locale = useLocale();
 
@@ -31,13 +39,20 @@ export const UserCardMenu = ({ me }: { me: Me }) => {
             variant="ghost"
             size="icon"
             aria-label={m.sidebar_menu_label({ name: me.name }, { locale })}
-            className="rounded-[14px] text-muted-foreground"
+            className={cn(
+              "rounded-[14px] text-muted-foreground",
+              trigger === undefined ? null : "size-11 rounded-[33%] p-0",
+            )}
           />
         }
       >
-        <EllipsisVerticalIcon aria-hidden="true" />
+        {trigger ?? <EllipsisVerticalIcon aria-hidden="true" />}
       </DropdownMenuTrigger>
-      <DropdownMenuContent side="top" align="end" className="min-w-56">
+      <DropdownMenuContent
+        side={trigger === undefined ? "top" : "right"}
+        align="end"
+        className="min-w-56"
+      >
         <DropdownMenuGroup>
           <DropdownMenuLabel className="flex flex-col gap-0.5">
             <span className="text-foreground">{me.handle ? atHandle(me.handle) : me.name}</span>

@@ -11,4 +11,5 @@ typomaniac se joue au clavier physique : le front ne fait aucune mise en page mo
 ## Consequences
 
 - Aucune variante `sm:` / `md:` pour replier une mise en page ; les grilles supposent la largeur desktop.
+- Sous 1440 px, la barre latérale se replie en Rail pour laisser la place aux pages (ADR 0013).
 - Un Duel ne peut pas être lancé depuis un téléphone, même via un Challenge.

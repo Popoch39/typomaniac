@@ -22,16 +22,17 @@ export type LandingMeasures = {
   lockup: { left: number; top: number };
   // How low its Logo sits inside it.
   logoTop: number;
-  // The sidebar, its brand's Logo and its word, in the window.
+  // The sidebar, its brand's Logo and its word, in the window; no word in the Rail.
   sidebar: Box;
   brandLogo: Box;
-  brandWord: Box;
+  brandWord: Box | null;
 };
 
 export type Landing = ReturnType<typeof landingGeometry>;
 
 // The lockup's dive, scaled from its top left corner, down onto the brand's Logo; and the
-// sidebar's clip, from the brand's footprint to the whole sidebar.
+// sidebar's clip, from the brand's footprint to the whole sidebar. In the Rail, the footprint is
+// the Logo's alone.
 export const landingGeometry = ({
   lockup,
   logoTop,
@@ -41,7 +42,13 @@ export const landingGeometry = ({
 }: LandingMeasures) => {
   const top = brandLogo.top - sidebar.top - AIR_PX;
   const left = brandLogo.left - sidebar.left - AIR_PX;
-  const right = sidebar.width - (brandWord.left - sidebar.left + brandWord.width + AIR_RIGHT_PX);
+
+  const rightEdge =
+    brandWord === null
+      ? brandLogo.left + brandLogo.width + AIR_PX
+      : brandWord.left + brandWord.width + AIR_RIGHT_PX;
+
+  const right = sidebar.width - (rightEdge - sidebar.left);
   const bottom = sidebar.height - (brandLogo.top - sidebar.top + brandLogo.height + AIR_PX);
 
   return {

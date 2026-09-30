@@ -30,3 +30,13 @@ export const trainingPresetLabel = (preset: TrainingPreset, locale: Locale) => {
     ? m.play_preset_time({ seconds: count }, { locale })
     : m.play_preset_words({ words: count }, { locale });
 };
+
+// What its pill writes, short enough for the three to hold on one line of a narrow card: « 30 s »,
+// « 50 mots ».
+export const trainingPresetShortLabel = (preset: TrainingPreset, locale: Locale) => {
+  const count = numberFormat(locale).format(countOf(preset));
+
+  return preset.mode === "time"
+    ? m.play_preset_time_short({ seconds: count }, { locale })
+    : m.play_preset_words_short({ words: count }, { locale });
+};

@@ -17,7 +17,9 @@ type PlayCardProps = {
 };
 
 // One of Jouer's cards, named by its title: what fills it, its title and pitch, then its actions.
-// A part the Intro brings in; it fades out as the search is launched.
+// A part the Intro brings in; it fades out as the search is launched. A container: its padding and
+// its title follow its width (`cqi`), from a 1024 px window to a wide one, and what fills it gives
+// up its height first, never pushing the page past the window.
 export const PlayCard = ({
   title,
   pitch,
@@ -38,16 +40,23 @@ export const PlayCard = ({
       data-flip-id={search ? "search-surface" : undefined}
       data-search-leaves
       className={cn(
-        "flex min-w-0 flex-1 flex-col gap-3.5 rounded-card p-8 shadow-[0_0_0_rgb(0_0_0/0)]",
+        "@container flex min-w-0 flex-1 flex-col rounded-card shadow-[0_0_0_rgb(0_0_0/0)]",
         className,
       )}
     >
-      <div className="flex min-h-0 flex-1 items-center justify-center">{visual}</div>
-      <h2 id={titleId} className="text-[32px] leading-tight font-extrabold tracking-[-0.02em]">
-        {title}
-      </h2>
-      <p className={cn("leading-normal", pitchClassName)}>{pitch}</p>
-      {children}
+      <div className="flex min-h-0 flex-1 flex-col gap-3.5 p-[min(2rem,7cqi)]">
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden">
+          {visual}
+        </div>
+        <h2
+          id={titleId}
+          className="text-[min(32px,12cqi)] leading-tight font-extrabold tracking-[-0.02em]"
+        >
+          {title}
+        </h2>
+        <p className={cn("leading-normal", pitchClassName)}>{pitch}</p>
+        {children}
+      </div>
     </section>
   );
 };

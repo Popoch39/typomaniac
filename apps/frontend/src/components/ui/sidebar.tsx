@@ -5,8 +5,9 @@ import type { ComponentProps } from "react";
 
 import { sidebarMenuButtonVariants } from "@/components/ui/sidebar-variants";
 
-// shadcn's sidebar, cut down to what a desktop-only app (ADR 0009) with a sidebar that never folds
-// uses: no provider, no mobile sheet, no rail nor trigger. Floating: a card of its own, 256px wide.
+// shadcn's sidebar, cut down to what a desktop-only app (ADR 0009) uses: no provider, no mobile
+// sheet, no trigger. Floating: a card of its own, 256px wide; its Rail below 1440 px (ADR 0013) is
+// the app's own, the `rail:` variant on `data-rail`.
 
 function Sidebar({ className, ...props }: ComponentProps<"aside">) {
   return (
@@ -113,13 +114,14 @@ function SidebarMenuButton({
 }
 
 // A count at the end of an entry, inside its button: in the accent, inverted on the current page.
+// In the Rail, smaller, at the icon's corner.
 function SidebarMenuBadge({ className, ...props }: ComponentProps<"span">) {
   return (
     <span
       data-slot="sidebar-menu-badge"
       data-sidebar="menu-badge"
       className={cn(
-        "ml-auto flex h-5.5 min-w-5.5 items-center justify-center rounded-full bg-sidebar-primary px-1.75 text-xs font-bold text-sidebar-primary-foreground tabular-nums select-none group-aria-[current=page]/menu-button:bg-sidebar-primary-foreground group-aria-[current=page]/menu-button:text-sidebar-primary",
+        "ml-auto flex h-5.5 min-w-5.5 items-center justify-center rounded-full bg-sidebar-primary px-1.75 text-xs font-bold text-sidebar-primary-foreground tabular-nums select-none group-aria-[current=page]/menu-button:bg-sidebar-primary-foreground group-aria-[current=page]/menu-button:text-sidebar-primary rail:absolute rail:top-0.5 rail:right-0.5 rail:h-4.5 rail:min-w-4.5 rail:px-1 rail:text-[0.65rem]",
         className,
       )}
       {...props}

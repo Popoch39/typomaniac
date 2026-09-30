@@ -26,7 +26,9 @@ import { toast } from "@/lib/toast";
 import { HomePage } from "@/pages/home-page";
 import { RunPage } from "@/pages/run-page";
 import { useIntroStore } from "@/stores/intro-store";
+import { useRunStore } from "@/stores/run-store";
 import { holdGsapClock } from "@/test/gsap-clock";
+import { setViewportWidth } from "@/test/viewport";
 
 const ada: Me = {
   id: "ada-id",
@@ -53,6 +55,8 @@ beforeEach(() => {
 afterEach(() => {
   gsapClock.release();
   useIntroStore.setState(useIntroStore.getInitialState());
+  // A Run typed in a test is not being typed as the next page starts.
+  useRunStore.setState(useRunStore.getInitialState());
 });
 
 type AppOptions = {
@@ -419,7 +423,7 @@ describe("the Intro's landing into the sidebar", () => {
     expect(leftInline()).toEqual(nothingInline());
   });
 
-  test("once landed, the sidebar and the page are theirs again, the sidebar fading while a Run is typed", async () => {
+  test("once landed, the sidebar and the page are theirs again, the sidebar leaving while a Run is typed", async () => {
     const user = userEvent.setup();
 
     renderApp();
@@ -431,7 +435,41 @@ describe("the Intro's landing into the sidebar", () => {
 
     await user.keyboard("s");
 
-    expect(sidebar()).toHaveAttribute("data-faded");
+    expect(sidebar()).toHaveAttribute("data-retreated");
+  });
+
+  test("into the Rail, the word fades as the lockup dives, its Logo alone landing on the brand's", async () => {
+    setViewportWidth(1280);
+
+    try {
+      renderApp();
+      await fontsLoaded();
+      await screen.findByLabelText("Zone de frappe");
+      gsapClock.advance(2.62 + 0.1);
+
+      expect(sidebar()).toHaveAttribute("data-rail");
+      expect(typed()).toBe("typomaniac");
+
+      gsapClock.advance(0.5);
+
+      expect(typed()).toBe("");
+
+      gsapClock.advance(LANDING_S);
+
+      expect(intro()).not.toBeInTheDocument();
+      expect(leftInline()).toEqual(nothingInline());
+    } finally {
+      setViewportWidth(1440);
+    }
+  });
+
+  test("into the whole sidebar, the word lands with the Logo", async () => {
+    renderApp();
+    await fontsLoaded();
+    await screen.findByLabelText("Zone de frappe");
+    gsapClock.advance(2.62 + 0.6);
+
+    expect(typed()).toBe("typomaniac");
   });
 
   test("the window resized during the landing, the Intro jumps to its end", async () => {

@@ -2,6 +2,7 @@ import { cn } from "cn";
 import { LanguagesIcon } from "lucide-react";
 
 import { useInDuelScene } from "@/components/duel-scene/use-in-duel-scene";
+import { RailTooltip } from "@/components/sidebar/rail-tooltip";
 import { SidebarMenuButton } from "@/components/ui/sidebar";
 import { LOCALE_NAMES, type Locale, otherLocale } from "@/locale/locales";
 import { useLocale } from "@/locale/use-locale";
@@ -20,28 +21,32 @@ export const LocaleButton = () => {
   const inDuel = useInDuelScene();
   const next = otherLocale(locale);
 
+  const label = m.sidebar_locale_label(
+    { current: LOCALE_NAMES[locale], next: LOCALE_NAMES[next] },
+    { locale },
+  );
+
   return (
-    <SidebarMenuButton
-      onClick={() => switchLocale(next)}
-      disabled={inDuel}
-      aria-label={m.sidebar_locale_label(
-        { current: LOCALE_NAMES[locale], next: LOCALE_NAMES[next] },
-        { locale },
-      )}
-      className="gap-2.5 rounded-2xl pr-3 text-sm [&_svg]:size-4.5"
-    >
-      <LanguagesIcon aria-hidden="true" />
-      <span className="flex gap-2">
-        {ORDER.map((code) => (
-          <span
-            key={code}
-            lang={code}
-            className={cn(code === locale ? "text-foreground" : "font-medium text-faint")}
-          >
-            {LOCALE_NAMES[code]}
-          </span>
-        ))}
-      </span>
-    </SidebarMenuButton>
+    <RailTooltip label={label}>
+      <SidebarMenuButton
+        onClick={() => switchLocale(next)}
+        disabled={inDuel}
+        aria-label={label}
+        className="gap-2.5 rounded-2xl pr-3 text-sm rail:rounded-full [&_svg]:size-4.5"
+      >
+        <LanguagesIcon aria-hidden="true" />
+        <span className="flex gap-2 rail:hidden">
+          {ORDER.map((code) => (
+            <span
+              key={code}
+              lang={code}
+              className={cn(code === locale ? "text-foreground" : "font-medium text-faint")}
+            >
+              {LOCALE_NAMES[code]}
+            </span>
+          ))}
+        </span>
+      </SidebarMenuButton>
+    </RailTooltip>
   );
 };
