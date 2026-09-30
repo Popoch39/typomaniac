@@ -321,7 +321,7 @@ describe("a Match proposal during a Run", () => {
 
     // The Run is no longer being typed, a new one waits in its place: the sidebar and the
     // settings are back, and no Result is shown.
-    expect(screen.getByLabelText("Barre latérale")).not.toHaveAttribute("data-retreated");
+    expect(screen.getByLabelText("Barre latérale")).not.toHaveAttribute("data-rail");
     expect(screen.getByRole("group", { name: "Réglages" })).toBeInTheDocument();
     expect(screen.getByLabelText("Zone de frappe")).toBeInTheDocument();
 

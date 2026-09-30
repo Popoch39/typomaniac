@@ -33,7 +33,6 @@ export const DuelHudDevStage = ({ t, clock }: DuelHudDevStageProps) => {
     <div className="fixed inset-0 bg-background">
       <AppFrameLayout
         duelFormat={{ challenge: model.challenge, seconds: model.seconds, language: DUEL_LANGUAGE }}
-        soloTyping={false}
         inert={false}
       >
         <ClockContext value={clock}>

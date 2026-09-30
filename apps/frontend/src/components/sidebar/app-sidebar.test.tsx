@@ -19,6 +19,7 @@ import { type Me, meQueryOptions } from "@/api/me";
 import { paceQueryOptions } from "@/api/pace";
 import { AppFrame } from "@/components/app-frame";
 import { ClockContext } from "@/components/run/clock-context";
+import { FOLD_SECONDS } from "@/components/sidebar/use-sidebar-fold";
 import { Toaster } from "@/components/ui/sonner";
 import { HomePage } from "@/pages/home-page";
 import { RunPage } from "@/pages/run-page";
@@ -889,15 +890,6 @@ describe("the Rail, below 1440 px", () => {
   });
 });
 
-// The sidebar out of reach and out of sight, found all the same, by its name.
-const typedSidebar = () => screen.getByLabelText("Barre latérale");
-
-// Once it has left: hidden, slid out of the window, its slot in the frame given to the page.
-const leftAside = (aside: HTMLElement) => ({
-  visibility: aside.style.visibility,
-  gone: aside.style.marginRight !== "" && aside.style.transform !== "",
-});
-
 describe("the sidebar during a Solo Run", () => {
   let gsapClock: ReturnType<typeof holdGsapClock>;
 
@@ -914,53 +906,68 @@ describe("the sidebar during a Solo Run", () => {
   test("is whole before the first Keystroke", async () => {
     await renderApp(null, "/run");
 
-    expect(sidebar()).not.toHaveAttribute("inert");
-    expect(sidebar()).not.toHaveAttribute("data-retreated");
+    expect(sidebar()).not.toHaveAttribute("data-rail");
   });
 
-  test("leaves the window at the first Keystroke, out of reach, then comes back at the Result", async () => {
+  test("folds into its Rail at the first Keystroke, its icons still there, then unfolds at the Result", async () => {
     const { user } = await renderApp(null, "/run");
 
     await user.keyboard("s");
 
-    expect(typedSidebar()).toHaveAttribute("inert");
-    expect(typedSidebar()).toHaveAttribute("data-retreated");
-    expect(typedSidebar().style.visibility).not.toBe("hidden");
+    expect(sidebar()).toHaveAttribute("data-rail");
+    expect(sidebar()).not.toHaveAttribute("inert");
+    expect(within(nav()).getByRole("link", { name: "Classement" })).toBeInTheDocument();
+    // Its width shrinks to the Rail's.
+    expect(sidebar().style.width).not.toBe("");
 
-    gsapClock.advance(0.35);
+    gsapClock.advance(FOLD_SECONDS);
 
-    expect(leftAside(typedSidebar())).toEqual({ visibility: "hidden", gone: true });
+    expect(sidebar().getAttribute("style") ?? "").toBe("");
 
     await user.keyboard(text.slice(1));
 
     expect(await screen.findByRole("button", { name: /Rejouer/ })).toBeInTheDocument();
-    expect(typedSidebar()).not.toHaveAttribute("inert");
-    expect(typedSidebar()).not.toHaveAttribute("data-retreated");
+    expect(sidebar()).not.toHaveAttribute("data-rail");
+    expect(sidebar().style.width).not.toBe("");
 
-    gsapClock.advance(0.35);
+    gsapClock.advance(FOLD_SECONDS);
 
-    expect(typedSidebar().getAttribute("style") ?? "").toBe("");
+    expect(sidebar().getAttribute("style") ?? "").toBe("");
   });
 
-  test("comes back as the Run is dropped for the next one, Tab then Enter", async () => {
+  test("unfolds as the Run is dropped for the next one, Tab then Enter", async () => {
     const { user } = await renderApp(null, "/run");
 
     await user.keyboard("s");
-    gsapClock.advance(0.35);
+    gsapClock.advance(FOLD_SECONDS);
 
-    expect(typedSidebar()).toHaveAttribute("data-retreated");
+    expect(sidebar()).toHaveAttribute("data-rail");
 
     await user.keyboard("{Tab}{Enter}");
 
-    expect(typedSidebar()).not.toHaveAttribute("data-retreated");
-    expect(typedSidebar()).not.toHaveAttribute("inert");
+    expect(sidebar()).not.toHaveAttribute("data-rail");
 
-    gsapClock.advance(0.35);
+    gsapClock.advance(FOLD_SECONDS);
 
-    expect(typedSidebar().getAttribute("style") ?? "").toBe("");
+    expect(sidebar().getAttribute("style") ?? "").toBe("");
   });
 
-  test("under reduced motion, leaves and comes back at once", async () => {
+  test("below 1440 px, stays the Rail it is, without moving", async () => {
+    setViewportWidth(1280);
+
+    try {
+      const { user } = await renderApp(null, "/run");
+
+      await user.keyboard("s");
+
+      expect(sidebar()).toHaveAttribute("data-rail");
+      expect(sidebar().getAttribute("style") ?? "").toBe("");
+    } finally {
+      setViewportWidth(1440);
+    }
+  });
+
+  test("under reduced motion, folds and unfolds at once", async () => {
     vi.spyOn(window, "matchMedia").mockImplementation((media) => ({
       matches: media === "(prefers-reduced-motion: reduce)",
       media,
@@ -975,14 +982,14 @@ describe("the sidebar during a Solo Run", () => {
     const { user } = await renderApp(null, "/run");
 
     await user.keyboard("s");
-    gsapClock.advance(0);
 
-    expect(typedSidebar().style.visibility).toBe("hidden");
+    expect(sidebar()).toHaveAttribute("data-rail");
+    expect(sidebar().getAttribute("style") ?? "").toBe("");
 
     await user.keyboard(text.slice(1));
     await screen.findByRole("button", { name: /Rejouer/ });
-    gsapClock.advance(0);
 
+    expect(sidebar()).not.toHaveAttribute("data-rail");
     expect(sidebar().getAttribute("style") ?? "").toBe("");
   });
 
@@ -990,6 +997,6 @@ describe("the sidebar during a Solo Run", () => {
     useRunStore.getState().press({ kind: "char", char: "s" }, 1_000, defaultPace);
     await renderApp(null, "/leaderboard");
 
-    expect(sidebar()).not.toHaveAttribute("inert");
+    expect(sidebar()).not.toHaveAttribute("data-rail");
   });
 });

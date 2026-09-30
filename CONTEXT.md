@@ -278,9 +278,5 @@ L'arrivée dans l'app au chargement d'une page, quelle qu'elle soit : le Logo de
 _Avoid_ : splash, animation de démarrage, loader
 
 **Rail** :
-La barre latérale repliée, sous 1440 px de large : une colonne d'icônes, chacune nommée au survol, qui laisse la place aux pages. Elle garde tout ce que montre la barre entière : la nav, l'attente dans la Queue (un point sur Jouer), les Friends en ligne (leurs avatars), la Locale, le Theme et le User (son avatar ouvre son menu). C'est la largeur de la fenêtre seule qui décide, jamais un réglage.
-_Avoid_ : sidebar réduite, mini-sidebar, mode compact
-
-**Retrait** :
-La barre latérale qui sort de la fenêtre pendant qu'un Run solo est tapé, du premier Keystroke au Result : le Text a toute la largeur, et rien ne la rappelle tant que le Run n'est pas fini ou abandonné. En scène du Duel, elle est simplement masquée.
-_Avoid_ : fondu, barre estompée, mode focus
+La barre latérale repliée : une colonne d'icônes, chacune nommée au survol, qui laisse la place aux pages. Elle garde tout ce que montre la barre entière : la nav, l'attente dans la Queue (un point sur Jouer), les Friends en ligne (leurs avatars), la Locale, le Theme et le User (son avatar ouvre son menu). Elle l'est sous 1440 px de large, et pendant qu'un Run solo est tapé, du premier Keystroke au Result : elle s'y replie alors en un mouvement et se déplie au Result. Jamais un réglage. En scène du Duel, la barre est simplement masquée.
+_Avoid_ : sidebar réduite, mini-sidebar, mode compact, Retrait

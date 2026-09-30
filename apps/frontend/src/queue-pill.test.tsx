@@ -166,20 +166,20 @@ describe("the Queue pill", () => {
     expect(url()).toBe("/fr/run");
     expect(screen.getByLabelText("Zone de frappe")).toBeInTheDocument();
     // Still being typed: the Run was neither ended nor drawn again.
-    expect(screen.getByLabelText("Barre latérale")).toHaveAttribute("data-retreated");
+    expect(screen.getByLabelText("Barre latérale")).toHaveAttribute("data-rail");
     expect(screen.queryByRole("group", { name: "Réglages" })).not.toBeInTheDocument();
   });
 
-  test("stays whole while the sidebar is gone during a Run", async () => {
+  test("stays whole while the sidebar is folded into its Rail during a Run", async () => {
     const { user } = await renderQueue();
 
     await user.click(screen.getByRole("button", { name: "S'entraîner" }));
     await screen.findByLabelText("Zone de frappe");
     await user.keyboard("a");
 
-    expect(screen.getByLabelText("Barre latérale")).toHaveAttribute("data-retreated");
+    expect(screen.getByLabelText("Barre latérale")).toHaveAttribute("data-rail");
     expect(pill()).toBeInTheDocument();
-    expect(pill().closest("[data-retreated], [inert]")).toBeNull();
+    expect(pill().closest("[data-rail], [inert]")).toBeNull();
     expect(within(pill()).getByRole("button", { name: "Annuler la recherche" })).toBeEnabled();
   });
 

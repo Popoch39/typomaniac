@@ -423,7 +423,7 @@ describe("the Intro's landing into the sidebar", () => {
     expect(leftInline()).toEqual(nothingInline());
   });
 
-  test("once landed, the sidebar and the page are theirs again, the sidebar leaving while a Run is typed", async () => {
+  test("once landed, the sidebar and the page are theirs again, the sidebar folding while a Run is typed", async () => {
     const user = userEvent.setup();
 
     renderApp();
@@ -435,7 +435,7 @@ describe("the Intro's landing into the sidebar", () => {
 
     await user.keyboard("s");
 
-    expect(sidebar()).toHaveAttribute("data-retreated");
+    expect(sidebar()).toHaveAttribute("data-rail");
   });
 
   test("into the Rail, the word fades as the lockup dives, its Logo alone landing on the brand's", async () => {
