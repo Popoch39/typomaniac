@@ -183,7 +183,7 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
     expect(settings()).not.toBeInTheDocument();
   });
 
-  test("the Match proposal opens over the page, the sidebar still there", async () => {
+  test("the Match proposal is in the page, the sidebar still there", async () => {
     await renderPlayPage();
     receive({
       type: "match-proposed",
@@ -198,7 +198,7 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
       dodgeLock: null,
     });
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByRole("region", { name: "Adversaire trouvé !" })).toBeInTheDocument();
     expect(sidebar()).not.toHaveAttribute("hidden");
     expect(screen.queryByRole("banner")).not.toBeInTheDocument();
   });

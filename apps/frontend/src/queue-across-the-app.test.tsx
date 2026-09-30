@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { act, screen, within } from "@testing-library/react";
 import type { ServerMessage } from "api";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -27,28 +27,6 @@ const matchProposed: ServerMessage = {
   selfAccepted: false,
   opponentAccepted: false,
   dodgeLock: null,
-};
-
-const duelFound: ServerMessage = {
-  type: "duel-found",
-  duel: {
-    id: "duel-1",
-    seed: 42,
-    language: "en",
-    wordListVersion: 1,
-    seconds: 30,
-    startsAt: 4_500,
-  },
-  opponent,
-  selfOrnament: null,
-  serverTime: 0,
-  pace: 50,
-  opponentPace: 50,
-  selfRank: placement,
-  opponentRank: placement,
-  selfForm: null,
-  opponentForm: null,
-  selfStake: null,
 };
 
 let sockets = fakeServer();
@@ -156,14 +134,8 @@ describe("the sidebar's Jouer", () => {
   test("keeps showing it while a Match proposal waits for an answer, as the other tabs do", async () => {
     await renderQueue();
     receive(matchProposed);
-    await screen.findByRole("dialog");
 
-    // Under the modal proposal, the sidebar is out of the accessibility tree.
-    const hiddenSidebar = screen.getByLabelText("Barre latérale");
-
-    expect(within(hiddenSidebar).getByRole("timer", { hidden: true })).toHaveAccessibleName(
-      "Dans la Queue depuis 0:07",
-    );
+    expect(sidebarWait()).toHaveAccessibleName("Dans la Queue depuis 0:07");
   });
 
   test("shows none outside the Queue, nor once it is left", async () => {
@@ -204,44 +176,6 @@ describe("the sidebar's Jouer", () => {
     expect(
       await within(screen.getByRole("complementary", { name: "Sidebar" })).findByRole("timer"),
     ).toHaveAccessibleName("In the Queue for 0:07");
-  });
-});
-
-describe("a Match proposal on another page", () => {
-  test("opens there, and accepting it leads to /duel", async () => {
-    const { user, url } = await renderQueue();
-
-    await user.click(sidebarLink("Ranked"));
-    receive(matchProposed);
-
-    const dialog = await screen.findByRole("dialog");
-
-    expect(url()).toBe("/fr/ranked");
-    expect(within(dialog).getByText("kzr_")).toBeInTheDocument();
-
-    await user.click(within(dialog).getByRole("button", { name: /^Accepter/ }));
-
-    expect(sent()).toContainEqual({ type: "accept-proposal" });
-
-    receive({ type: "proposal-ended", reason: "accepted" });
-    receive(duelFound);
-
-    await waitFor(() => expect(url()).toBe("/fr/duel"));
-    expect(sent()).not.toContainEqual({ type: "leave-queue" });
-  });
-
-  test("declined there, the User is out of the Queue and back to Solo stays on that page", async () => {
-    const { user, url } = await renderQueue();
-
-    await user.click(sidebarLink("Ranked"));
-    receive(matchProposed);
-    await user.click(await screen.findByRole("button", { name: /^Refuser/ }));
-    receive({ type: "proposal-ended", reason: "declined", queueLockedUntil: null });
-    await user.click(await screen.findByRole("button", { name: "Retour au Solo" }));
-
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(url()).toBe("/fr/ranked");
-    expect(sent()).toEqual([{ type: "join-queue" }, { type: "decline-proposal" }]);
   });
 });
 

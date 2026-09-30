@@ -734,6 +734,10 @@ export const waitingQueueOf = (state: DuelState) =>
     ? state.queue
     : null;
 
+// The Match proposal waiting for the User's answer, or telling how it ended; null outside of it.
+export const proposalOf = (state: DuelState) =>
+  state.phase === "proposed" ? state.proposal : null;
+
 // The Queue's place, or on the way to it: waiting in the Queue or its Match proposal.
 const inQueuePlace = (state: DuelState) =>
   state.phase === "queued" ||

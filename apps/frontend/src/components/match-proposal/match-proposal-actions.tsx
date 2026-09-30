@@ -1,4 +1,3 @@
-import type { Ref } from "react";
 import { CheckIcon } from "lucide-react";
 
 import { QueueLockButton } from "@/components/duel/queue-lock-button";
@@ -24,7 +23,6 @@ type MatchProposalActionsProps = MatchProposalHandlers & {
   dodgeLock: number | null;
   // The end of the Queue lock the User's Dodge imposed, on the tab's clock; null without one.
   queueLockedUntil: number | null;
-  acceptRef: Ref<HTMLButtonElement>;
 };
 
 // The mock-up's actions: 56px tall, rounder than the app's buttons.
@@ -36,16 +34,16 @@ const SECONDARY = `${ACTION} bg-muted text-base font-bold`;
 
 const KEY = "rounded-md px-1.75 py-0.75 font-mono text-[0.6875rem] font-medium";
 
-// What the User can do at each stage: decline (Échap) or accept (Entrée) while it is theirs to
-// answer, warned under them when declining would lock the Queue; wait for the opponent, go to the
-// Face-off; once out of the Queue, search again (once the Queue lock is over) or go back to Solo;
-// once the opponent was at fault, search again without waiting for the server to.
+// What the User can do at each stage: decline (a click only: no key declines) or accept (Entrée)
+// while it is theirs to answer, warned under them when declining would lock the Queue; wait for
+// the opponent, go to the Face-off; once out of the Queue, search again (once the Queue lock is
+// over) or go back to Solo; once the opponent was at fault, search again without waiting for the
+// server to.
 export const MatchProposalActions = ({
   stage,
   opponent,
   dodgeLock,
   queueLockedUntil,
-  acceptRef,
   onAccept,
   onDecline,
   onSearchAgain,
@@ -60,16 +58,12 @@ export const MatchProposalActions = ({
           <div className="grid w-full grid-cols-[1fr_1.6fr] gap-3">
             <Button variant="secondary" onClick={onDecline} className={SECONDARY}>
               {m.proposal_decline({}, { locale })}
-              <kbd className={`${KEY} bg-card text-muted-foreground`}>
-                {m.proposal_key_escape({}, { locale })}
-              </kbd>
             </Button>
             <Button
-              ref={acceptRef}
               onClick={onAccept}
               className={`${PRIMARY} shadow-[0_10px_30px_-8px_var(--brand)]`}
             >
-              {m.proposal_accept({}, { locale })}
+              {m.proposal_accept_duel({}, { locale })}
               <kbd className={`${KEY} bg-primary-foreground/18`}>
                 {m.proposal_key_enter({}, { locale })}
               </kbd>

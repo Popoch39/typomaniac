@@ -1,40 +1,31 @@
-import { useSearchDuel } from "@/components/duel/use-search-duel";
-import { useFaceOffSounds } from "@/components/face-off/face-off-sounds-context";
 import { proposalTabTitle } from "@/components/match-proposal/match-proposal-copy";
-import { MatchProposalDialog } from "@/components/match-proposal/match-proposal-dialog";
+import { MatchProposalAnnouncer } from "@/components/match-proposal/match-proposal-announcer";
+import { useAcceptOnEnter } from "@/components/match-proposal/use-accept-on-enter";
 import { useBlinkingTitle } from "@/components/match-proposal/use-blinking-title";
+import { useProposalAnswers } from "@/components/match-proposal/use-proposal-answers";
 import { useProposalArrival } from "@/components/match-proposal/use-proposal-arrival";
 import { useLocale } from "@/locale/use-locale";
-import { type ProposalView, useDuelStore } from "@/stores/duel-store";
-import { usePlayStore } from "@/stores/play-store";
+import type { ProposalView } from "@/stores/duel-store";
 
-// The Match proposal of the Queue, over its screen: accepting (a click or Entrée) lets the
-// Face-off sound; once ended without a Duel, back to the Queue (joining it again lets the sound
-// too) or to Solo. A User looking elsewhere hears it arrive, sees the tab's title blink while it
-// waits for an answer, and gets a notification when the tab is hidden.
+// The Match proposal wherever the search is shown, card or Queue pill, which carry it: Entrée
+// accepts it from anywhere, a Run being typed included, while no key declines it. A User looking
+// elsewhere hears it arrive, sees the tab's title blink while it waits for an answer, and gets a
+// notification when the tab is hidden; screen readers are told each stage.
 export const MatchProposal = ({ proposal }: { proposal: ProposalView }) => {
-  const acceptProposal = useDuelStore((store) => store.acceptProposal);
-  const declineProposal = useDuelStore((store) => store.declineProposal);
-  const setPlay = usePlayStore((state) => state.setPlay);
-  const { unlock } = useFaceOffSounds();
-  const searchDuel = useSearchDuel();
+  const { onAccept } = useProposalAnswers();
   const locale = useLocale();
+  const { stage, opponent, dodgeLock, queueLock } = proposal;
 
-  useProposalArrival(proposal.stage, proposal.opponent.handle);
-  useBlinkingTitle(proposal.stage === "pending", proposalTabTitle(locale));
-
-  const accept = () => {
-    unlock();
-    acceptProposal();
-  };
+  useProposalArrival(stage, opponent.handle);
+  useBlinkingTitle(stage === "pending", proposalTabTitle(locale));
+  useAcceptOnEnter(stage === "pending", onAccept);
 
   return (
-    <MatchProposalDialog
-      proposal={proposal}
-      onAccept={accept}
-      onDecline={declineProposal}
-      onSearchAgain={searchDuel}
-      onSolo={() => setPlay("solo")}
+    <MatchProposalAnnouncer
+      stage={stage}
+      opponent={opponent.handle}
+      dodgeLock={dodgeLock}
+      queueLock={queueLock}
     />
   );
 };

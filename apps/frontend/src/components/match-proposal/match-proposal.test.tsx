@@ -109,7 +109,7 @@ describe("a Match proposal, for a User looking elsewhere", () => {
     rerender(within(<MatchProposal proposal={at("accepted")} />));
     rerender(within(<MatchProposal proposal={at("ready")} />));
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByRole("status")).toBeInTheDocument();
     expect(tab.played).toEqual(["proposal"]);
   });
 
@@ -119,7 +119,7 @@ describe("a Match proposal, for a User looking elsewhere", () => {
 
     render(within(<MatchProposal proposal={pending} />));
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByRole("status")).toBeInTheDocument();
     expect(tab.played).toEqual([]);
   });
 
@@ -128,7 +128,7 @@ describe("a Match proposal, for a User looking elsewhere", () => {
 
     render(within(<MatchProposal proposal={at("accepted")} />));
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByRole("status")).toBeInTheDocument();
     expect(tab.played).toEqual([]);
   });
 
@@ -165,7 +165,7 @@ describe("a Match proposal, for a User looking elsewhere", () => {
 
     render(within(<MatchProposal proposal={pending} />));
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByRole("status")).toBeInTheDocument();
     expect(tab.notified).toEqual([
       { title: "Adversaire trouvé", body: "kaelis t'attend : 10 secondes pour accepter." },
     ]);
@@ -181,7 +181,7 @@ describe("a Match proposal, for a User looking elsewhere", () => {
 
     render(within(<MatchProposal proposal={pending} />));
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByRole("status")).toBeInTheDocument();
     expect(tab.notified).toEqual([]);
   });
 
@@ -231,7 +231,7 @@ describe("a Match proposal in English, for a User looking elsewhere", () => {
 
     render(within(<MatchProposal proposal={pending} />));
 
-    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(await screen.findByRole("status")).toBeInTheDocument();
     expect(tab.notified).toEqual([
       { title: "Opponent found", body: "kaelis is waiting: 10 seconds to accept." },
     ]);

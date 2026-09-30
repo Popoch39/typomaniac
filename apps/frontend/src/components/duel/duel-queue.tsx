@@ -1,12 +1,14 @@
 import { QueueLocked } from "@/components/duel/queue-locked";
 import { QueueSearch } from "@/components/duel/queue-search";
 import { QueueTip } from "@/components/duel/queue-tip";
-import { useDuelStore } from "@/stores/duel-store";
+import { UnfoldedProposal } from "@/components/match-proposal/unfolded-proposal";
+import { proposalOf, useDuelStore } from "@/stores/duel-store";
 import { usePlayStore } from "@/stores/play-store";
 
 // Waiting in the Queue for an opponent, one card in the middle of the page; the Friends to
 // challenge meanwhile are in the sidebar. Annuler goes back to Solo, which leaves the Queue.
-// Refused it during a Queue lock, the search waits for its end.
+// A Match proposal takes the search's place in the card; refused the Queue during a Queue lock,
+// the search waits for its end.
 export const DuelQueue = () => {
   const setPlay = usePlayStore((state) => state.setPlay);
 
@@ -14,11 +16,21 @@ export const DuelQueue = () => {
     store.state.phase === "queued" ? store.state.queue : null,
   );
 
+  const proposal = useDuelStore((store) => proposalOf(store.state));
+
   const lockedUntil = useDuelStore((store) =>
     store.state.phase === "locked" ? store.state.until : null,
   );
 
   const solo = () => setPlay("solo");
+
+  if (proposal !== null) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center">
+        <UnfoldedProposal proposal={proposal} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-5.5">
