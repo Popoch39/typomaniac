@@ -12,7 +12,7 @@ export const UserProfilePendingPage = () => {
     <section className="flex flex-col gap-8">
       <LoadingRegion label={m.profile_loading({}, { locale })}>
         <div className="flex items-center gap-6">
-          <Skeleton className="size-24 rounded-[33%]" />
+          <Skeleton className="size-22 rounded-[33%]" />
           <div className="flex flex-1 flex-col gap-2">
             <Skeleton className="h-10 w-48" />
             <Skeleton className="h-5 w-20" />
