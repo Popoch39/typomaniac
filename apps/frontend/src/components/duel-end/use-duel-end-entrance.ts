@@ -27,20 +27,37 @@ const PRESSED = { opacity: 1, scale: 1, ease: "back.out(2)", clearProps: "opacit
 // How long after one Record's tile the next one comes in, in seconds: the last in at 1.1 s.
 const TILE_STEP = 0.05;
 
+// The rest of the Duel end (the rank card and all under it) comes in from this far into the
+// entrance, while the band still comes.
+const REST_AT = 0.5;
+
+// The outcome and the band are in, its « Record » stamped: a Tier-up opens here, the rest waits
+// for it to close.
+export const TIER_UP_AT = 0.95;
+
+// A Tier-up to open over the Duel end, `ahead` of it as it mounts: `open` opens it once the band
+// and the outcome are in.
+type TierUpCue = { ahead: boolean; open: () => void };
+
 // The entrance of the Duel end, about 1.4 s, each block by its `data-entrance` (the stamps by
 // `data-record-stamp`, the TP moved by `data-tp-part`): the outcome fades in, the band comes and
 // its slant slides from the middle to the User's share (`--share-in`, 0 to 1), its « Record »
 // stamped; or, when the HUD's band was recorded as the Duel ended, the band grows and slides out
-// of it instead, its slant from the Lead's split (morphBand), the HUD's figures faded out; the rank card, its TP popping and the part moved filling up; the Records' tiles one
-// after the other, « Nouveau record » stamped; the tale of the tape's lines, then the chart and
-// the buttons. Only opacity, transforms and that variable, gone once in; every start is written
-// as it mounts (not lazy), so no block flashes in whole. Built paused, it plays once nothing
-// `holds` it (a Tier-up over the screen, which stays hidden under it). Under reduced motion,
-// nothing moves: the Duel end is there at once, the HUD's figures fading out over it. The buttons answer all along: only seen fading.
-export const useDuelEndEntrance = (screenRef: RefObject<HTMLElement | null>, holds: boolean) => {
+// of it instead, its slant from the Lead's split (morphBand), the HUD's figures faded out. Then
+// the rank card, its TP popping and the part moved filling up; the Records' tiles one after the
+// other, « Nouveau record » stamped; the tale of the tape's lines, then the chart and the buttons.
+// Only opacity, transforms and those variables, gone once in; every start is written as it mounts
+// (not lazy), so no block flashes in whole. With a Tier-up ahead, the entrance stops once the band
+// and the outcome are in and opens it: the rest comes in when the function returned is called (at
+// its close). Under reduced motion, nothing moves: the Duel end is there at once, the HUD's
+// figures fading out over it, and a Tier-up opens at once. The buttons answer all along: only
+// seen fading.
+export const useDuelEndEntrance = (screenRef: RefObject<HTMLElement | null>, tierUp: TierUpCue) => {
   const entrance = useRef<gsap.core.Timeline | null>(null);
-  // Whether it is held right now, read when the timeline is built again.
-  const holding = useRef(holds);
+  // Whether a Tier-up was ahead as the Duel end mounted: the entrance is laid out for it.
+  const tierUpAhead = useRef(tierUp.ahead);
+  // Only sets the Duel end's state: the one of the first render opens it as well as any.
+  const openTierUp = tierUp.open;
 
   useGSAP(
     () => {
@@ -52,13 +69,22 @@ export const useDuelEndEntrance = (screenRef: RefObject<HTMLElement | null>, hol
 
       const morph = bandMorphFor(screen);
 
-      gsap.matchMedia().add(STILL, () => (morph === null ? undefined : fadeBandGhost(morph)));
+      gsap.matchMedia().add(STILL, () => {
+        if (tierUpAhead.current) {
+          openTierUp();
+        }
+
+        return morph === null ? undefined : fadeBandGhost(morph);
+      });
 
       gsap.matchMedia().add(MOVING, () => {
         const timeline = gsap.timeline({
           paused: true,
           defaults: { ease: "power2.out", lazy: false, immediateRender: true },
         });
+
+        // The rest comes in after the Tier-up, if one is ahead.
+        const rest = (at: number) => at + (tierUpAhead.current ? TIER_UP_AT - REST_AT : 0);
 
         // A missing block (no rank, no Records, no chart) leaves its place empty.
         const enter = (selector: string, from: gsap.TweenVars, to: gsap.TweenVars, at: number) => {
@@ -93,22 +119,27 @@ export const useDuelEndEntrance = (screenRef: RefObject<HTMLElement | null>, hol
           { ...PRESSED, duration: 0.25 },
           0.7,
         );
-        fadeIn("[data-entrance=rank]", 0.35, 0.5);
+
+        if (tierUpAhead.current) {
+          timeline.addPause(TIER_UP_AT, openTierUp);
+        }
+
+        fadeIn("[data-entrance=rank]", 0.35, rest(0.5));
         enter(
           "[data-entrance=tp]",
           { ...LIFTED, y: 8, scale: 0.8 },
           { ...PRESSED, y: 0, duration: 0.4 },
-          0.6,
+          rest(0.6),
         );
         enter(
           "[data-tp-part=gained], [data-tp-part=lost]",
           { scaleX: 0 },
           { scaleX: 1, duration: 0.4, clearProps: "transform" },
-          0.6,
+          rest(0.6),
         );
         // The tiles one after the other, each stamped as it lands.
         gsap.utils.toArray<HTMLElement>("[data-entrance=tile]", screen).forEach((tile, index) => {
-          const at = 0.8 + index * TILE_STEP;
+          const at = rest(0.8 + index * TILE_STEP);
 
           timeline.fromTo(tile, FADED_OUT, { ...FADED_IN, duration: 0.2 }, at);
 
@@ -122,17 +153,13 @@ export const useDuelEndEntrance = (screenRef: RefObject<HTMLElement | null>, hol
           "[data-entrance=tape] tbody tr",
           FADED_OUT,
           { ...FADED_IN, duration: 0.25, stagger: { amount: 0.15 } },
-          0.9,
+          rest(0.9),
         );
-        fadeIn("[data-entrance=chart]", 0.3, 1);
-        fadeIn("[data-entrance=actions]", 0.3, 1.1);
+        fadeIn("[data-entrance=chart]", 0.3, rest(1));
+        fadeIn("[data-entrance=actions]", 0.3, rest(1.1));
 
         entrance.current = timeline;
-
-        // Built again as the motion preference comes back: nothing holds it any more, it plays.
-        if (!holding.current) {
-          timeline.play();
-        }
+        timeline.play();
 
         return () => {
           entrance.current = null;
@@ -143,14 +170,6 @@ export const useDuelEndEntrance = (screenRef: RefObject<HTMLElement | null>, hol
     { scope: screenRef },
   );
 
-  useGSAP(
-    () => {
-      holding.current = holds;
-
-      if (!holds) {
-        entrance.current?.play();
-      }
-    },
-    { dependencies: [holds], scope: screenRef },
-  );
+  // The Tier-up closed: the rest comes in.
+  return () => entrance.current?.play();
 };

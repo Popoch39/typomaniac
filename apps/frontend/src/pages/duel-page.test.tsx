@@ -255,7 +255,33 @@ describe("/duel without a Duel", () => {
 // The copy of the HUD's figures, fading out over the Duel end.
 const ghost = () => document.querySelector("[data-band-ghost]");
 
+// Won into Gold: the Duel end opens a Tier-up.
+const intoGold: ServerMessage = {
+  ...duelEnded,
+  outcome: "win",
+  forfeit: false,
+  ranked: {
+    tp: 25,
+    previousRank: { tier: "silver", division: 1, tp: 90, shielded: false },
+    rank: { tier: "gold", division: 4, tp: 15, shielded: true },
+  },
+};
+
 describe("the end of the Duel", () => {
+  test("a Tier-up opens only once the outcome and the band are in", async () => {
+    await renderDuel();
+
+    receive(intoGold);
+
+    expect(await screen.findByRole("region", { name: "Score" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Victoire" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await gsapClock.advance(1);
+
+    expect(await screen.findByText("Nouveau palier")).toBeInTheDocument();
+  });
+
   test("the HUD's band turns into the Duel end's, complete once its entrance is over", async () => {
     await renderDuel();
 

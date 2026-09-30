@@ -17,7 +17,8 @@ import type { FaceOffSound, FaceOffSounds } from "@/audio/face-off-sounds";
 import { AuraRuntimeContext } from "@/components/aura/aura-runtime-context";
 import { DuelEnded } from "@/components/duel/duel-ended";
 import { forgetBandMorph, recordBandMorph } from "@/components/duel-end/band-morph";
-import type { DuelRanked } from "@/components/duel/rank-change";
+import { type DuelRanked, rankChange, tierReached } from "@/components/duel/rank-change";
+import { TIER_UP_AT } from "@/components/duel-end/use-duel-end-entrance";
 import { FaceOffSoundsContext } from "@/components/face-off/face-off-sounds-context";
 import { stageScale } from "@/components/tier-up/stage/stage-scale";
 import type { AuraRuntime } from "@/lib/aura-runtime";
@@ -132,6 +133,8 @@ type RenderOptions = {
   records?: DuelEnding["records"];
   // The button the end screen is found by, in the Locale shown.
   newDuel?: string;
+  // With a Tier-up to open: the entrance played up to it (by default), or left at its start.
+  untilTierUp?: boolean;
 };
 
 const ada: Me = {
@@ -157,6 +160,7 @@ const renderEnded = async ({
   figures = NO_FIGURES,
   records = null,
   newDuel = "Nouveau Duel",
+  untilTierUp = true,
 }: RenderOptions = {}) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -189,6 +193,17 @@ const renderEnded = async ({
   );
   // Found by its text: behind a Tier-up, the end screen is out of reach.
   await screen.findByText(newDuel);
+
+  // A Tier-up opens once the outcome and the band are in, at once under reduced motion.
+  const reached = ranked === null ? null : tierReached(rankChange(ranked));
+
+  if (
+    untilTierUp &&
+    reached !== null &&
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  ) {
+    await clock.advance(TIER_UP_AT + 0.01);
+  }
 };
 
 const standing = <T extends DuelRanked["rank"]>(rank: T) => rank;
@@ -2076,6 +2091,11 @@ const ENTRANCE: EntranceBlock[] = [
 // The whole entrance, over.
 const ENTRANCE_END = 1.4;
 
+// What comes in after the outcome and the band: all that a Tier-up holds back.
+const RESTING = ENTRANCE.filter(
+  ({ name }) => name !== "the outcome" && !name.startsWith("the band"),
+);
+
 const blocksOfAll = () => ENTRANCE.flatMap(({ blocksOf }) => blocksOf());
 
 describe("the entrance", () => {
@@ -2117,25 +2137,64 @@ describe("the entrance", () => {
     expect(screen.getByRole("button", { name: "Revoir" })).toHaveAttribute("href", "/duels/duel-1");
   });
 
-  test("waits under a Tier-up, hidden, and plays once it is closed", async () => {
+  test("a Tier-up opens once the outcome and the band are in, the rest waiting under it", async () => {
     await renderEnded({ ...AFFICHE, ranked: intoGold });
 
-    const blocks = ENTRANCE.flatMap(({ blocksOf, entrance }) =>
+    const first = [outcomeBlock(), regionOf("Score")];
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(first.map(arrived)).toEqual(first.map(() => true));
+
+    const rest = RESTING.flatMap(({ blocksOf, entrance }) =>
       blocksOf().map((block) => ({ block, entrance })),
     );
 
-    const waiting = () => blocks.map(({ block, entrance }) => STARTS[entrance](block));
+    const waiting = () => rest.map(({ block, entrance }) => STARTS[entrance](block));
 
     await clock.advance(10);
-    expect(waiting()).toEqual(blocks.map(() => true));
+    expect(waiting()).toEqual(rest.map(() => true));
+  });
 
+  test("the rest comes in only as the Tier-up closes, the focus back on the screen", async () => {
+    await renderEnded({ ...AFFICHE, ranked: intoGold });
+
+    const rest = RESTING.flatMap(({ blocksOf, entrance }) =>
+      blocksOf().map((block) => ({ block, entrance })),
+    );
+
+    await clock.advance(10);
     await userEvent.click(continueButton());
     await waitFor(() => expect(endScreen()).toHaveFocus());
-    expect(waiting()).toEqual(blocks.map(() => true));
+    expect(rest.map(({ block, entrance }) => STARTS[entrance](block))).toEqual(
+      rest.map(() => true),
+    );
 
-    await clock.advance(ENTRANCE_END + 0.02);
-    expect(blocks.map(({ block }) => arrived(block))).toEqual(blocks.map(() => true));
+    await clock.advance(ENTRANCE_END);
+    expect(rest.map(({ block }) => arrived(block))).toEqual(rest.map(() => true));
     expect(regionOf("Rang")).toHaveTextContent("+25 TP");
+  });
+
+  test("never opens a Tier-up before the band and the outcome are in", async () => {
+    await renderEnded({ ...AFFICHE, ranked: intoGold, untilTierUp: false });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await clock.advance(TIER_UP_AT - 0.05);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await clock.advance(0.06);
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  test("under reduced motion, a Tier-up opens at once over the Duel end, there whole", async () => {
+    reduceMotion();
+
+    await renderEnded({ ...AFFICHE, ranked: intoGold });
+
+    const blocks = blocksOfAll();
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(blocks.map(arrived)).toEqual(blocks.map(() => true));
   });
 
   test("leaves nothing behind once gone", async () => {
