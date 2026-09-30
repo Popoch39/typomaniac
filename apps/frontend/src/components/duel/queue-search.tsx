@@ -18,12 +18,14 @@ type QueueSearchProps = {
 };
 
 // The search for an opponent: the ring, the format, the wait, S'entraîner, which folds it into the
-// Queue pill for a Run on the last settings, and Annuler.
+// Queue pill for a Run on the last settings, and Annuler. The search's form on Jouer: it comes from
+// the Ranked card as the search is launched, from the Queue pill as it unfolds.
 export const QueueSearch = ({ queue, onCancel }: QueueSearchProps) => {
   const locale = useLocale();
 
   return (
     <QueueCard
+      search
       title={m.queue_search_title({}, { locale })}
       subtitle={queueDuelFormatLine(locale)}
       before={<QueueRing />}

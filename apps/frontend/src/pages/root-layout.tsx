@@ -17,6 +17,7 @@ import { QueueProposal } from "@/components/match-proposal/queue-proposal";
 import { DocumentLocale } from "@/components/locale/document-locale";
 import { QueuePill } from "@/components/queue-pill/queue-pill";
 import { RealtimeConnection } from "@/components/realtime-connection";
+import { SearchFormRecorder } from "@/components/search-morph/search-form-recorder";
 import { DocumentTheme } from "@/components/theme/document-theme";
 import { LiveRank } from "@/components/tier/rank/live-rank";
 import { TierSprite } from "@/components/tier/sprite/tier-sprite";
@@ -40,6 +41,7 @@ export const RootLayout = () => (
     <WaitingChallenges />
     <ChallengeNotices />
     <DuelPlace />
+    <SearchFormRecorder />
     <QueuePill />
     <QueueProposal />
     <DuelOnItsUrl />

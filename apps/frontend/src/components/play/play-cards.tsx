@@ -11,7 +11,11 @@ export const PlayCards = () => {
 
   return (
     <>
-      <h1 data-intro="part" className="text-[44px] leading-tight font-extrabold tracking-[-0.03em]">
+      <h1
+        data-intro="part"
+        data-search-leaves
+        className="text-[44px] leading-tight font-extrabold tracking-[-0.03em]"
+      >
         {m.play_cards_title({}, { locale })}
       </h1>
       <div className="flex min-h-0 flex-1 gap-6">

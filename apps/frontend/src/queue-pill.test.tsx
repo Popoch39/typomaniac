@@ -2,6 +2,7 @@ import { act, screen, within } from "@testing-library/react";
 import type { ServerMessage } from "api";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { PILL_CANCEL_SECONDS } from "@/components/search-morph/search-morph-timing";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
 import { usePlayStore } from "@/stores/play-store";
@@ -157,6 +158,10 @@ describe("the Queue pill", () => {
     await user.click(within(pill()).getByRole("button", { name: "Annuler la recherche" }));
 
     expect(sent()).toEqual([{ type: "join-queue" }, { type: "leave-queue" }]);
+
+    // It fades out where it is.
+    gsapClock.advance(PILL_CANCEL_SECONDS);
+
     expect(queryPill()).not.toBeInTheDocument();
     expect(url()).toBe("/fr/run");
     expect(screen.getByLabelText("Zone de frappe")).toBeInTheDocument();

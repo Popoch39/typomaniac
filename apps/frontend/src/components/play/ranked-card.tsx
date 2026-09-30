@@ -11,13 +11,15 @@ import { m } from "@/paraglide/messages";
 
 // The Ranked card, wider and in the accent: the User's Crest, their rank and its bar, then the way
 // into the Queue, with how many wait in it. A Visitor sees the Ranked too, without a rank nor the
-// Queue's figures (no socket).
+// Queue's figures (no socket). The search comes out of it: it slides to the middle of the page and
+// takes the size of the search's card.
 export const RankedCard = () => {
   const locale = useLocale();
   const { data: me } = useSuspenseQuery(meQueryOptions);
 
   return (
     <PlayCard
+      search
       title={m.play_ranked_title({}, { locale })}
       pitch={m.play_ranked_pitch({}, { locale })}
       visual={<RankedCardCrest rank={me?.rank ?? null} />}

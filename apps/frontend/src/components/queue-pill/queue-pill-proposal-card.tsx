@@ -4,6 +4,7 @@ import type { MatchProposalHandlers } from "@/components/match-proposal/match-pr
 import { proposalHeadline } from "@/components/match-proposal/match-proposal-copy";
 import { QueuePillCountdown } from "@/components/queue-pill/queue-pill-countdown";
 import { QueuePillProposalActions } from "@/components/queue-pill/queue-pill-proposal-actions";
+import { SearchAccent } from "@/components/search-morph/search-accent";
 import { rankLabel } from "@/components/tier/rank/rank-label";
 import { UserAvatar } from "@/components/user-avatar/user-avatar";
 import { useLocale } from "@/locale/use-locale";
@@ -13,7 +14,8 @@ type QueuePillProposalCardProps = MatchProposalHandlers & { proposal: ProposalVi
 
 // The Queue pill carrying the Match proposal, in the accent, bottom right and as wide as the
 // search it folds, so it never covers the Text of a Run: the opponent, their rank and the time
-// left, then the answers; once answered, what the stage says under them.
+// left, then the answers; once answered, what the stage says under them. The accent fades in over
+// the pill's surface.
 export const QueuePillProposalCard = ({ proposal, ...handlers }: QueuePillProposalCardProps) => {
   const locale = useLocale();
   const titleId = useId();
@@ -23,8 +25,13 @@ export const QueuePillProposalCard = ({ proposal, ...handlers }: QueuePillPropos
   return (
     <section
       aria-labelledby={titleId}
-      className="fixed right-6 bottom-6 z-40 flex w-98 flex-col gap-3 rounded-[30px] bg-primary py-4 pr-4 pl-5 text-primary-foreground shadow-[0_22px_56px_rgb(0_0_0/0.6)]"
+      className="fixed right-6 bottom-6 z-40 flex w-98 flex-col gap-3 py-4 pr-4 pl-5 text-primary-foreground"
     >
+      <div
+        aria-hidden
+        className="absolute inset-0 -z-10 rounded-[30px] bg-surface-2 shadow-[0_22px_56px_rgb(0_0_0/0.6)]"
+      />
+      <SearchAccent className="rounded-[30px] bg-primary" />
       <div className="flex items-center gap-3">
         <UserAvatar
           handle={opponent.handle}
