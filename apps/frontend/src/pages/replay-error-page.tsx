@@ -17,7 +17,7 @@ export const ReplayErrorPage = () => {
         happened={m.replay_error_happened({}, { locale })}
         cost={m.replay_error_cost({}, { locale })}
         action={
-          <Button variant="outline" nativeButton={false} render={<Link to="/duels" />}>
+          <Button variant="outline" nativeButton={false} render={<Link to="/history" />}>
             {m.replay_error_action({}, { locale })}
           </Button>
         }

@@ -318,7 +318,10 @@ describe("DuelEnded", () => {
     await renderEnded({ duelId: "duel-1", cached: written });
 
     // A link styled as a button: Base UI gives it the button role.
-    expect(screen.getByRole("button", { name: "Revoir" })).toHaveAttribute("href", "/duels/duel-1");
+    expect(screen.getByRole("button", { name: "Revoir" })).toHaveAttribute(
+      "href",
+      "/history/duel-1",
+    );
   });
 
   test("a written Duel shows its Duel chart", async () => {
@@ -853,7 +856,7 @@ describe("DuelEnded in English", () => {
     expect(screen.getByRole("button", { name: "New Duel" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Watch the Replay" })).toHaveAttribute(
       "href",
-      "/duels/duel-1",
+      "/history/duel-1",
     );
   });
 
@@ -2152,7 +2155,10 @@ describe("the entrance", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Retour au Solo" }));
     expect(usePlayStore.getState().play).toBe("solo");
-    expect(screen.getByRole("button", { name: "Revoir" })).toHaveAttribute("href", "/duels/duel-1");
+    expect(screen.getByRole("button", { name: "Revoir" })).toHaveAttribute(
+      "href",
+      "/history/duel-1",
+    );
   });
 
   test("a Tier-up opens once the outcome and the band are in, the rest waiting under it", async () => {

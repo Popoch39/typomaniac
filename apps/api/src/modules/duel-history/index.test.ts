@@ -1,14 +1,19 @@
 import { describe, expect, test } from "bun:test";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
 import type { Rating } from "ranked";
-import { currentWordListVersion, defaultPace, type Keystroke } from "typing-engine";
+import { currentWordListVersion, defaultPace, generateText, type Keystroke } from "typing-engine";
 
 import { createApp } from "../../app";
 import { createTestAuth, memoryDuelStore, signIn, testConfig, testUsers } from "../../test-app";
 import type { DuelPlayerRecord, DuelRecord } from "../duel/store";
 import { DuelHistoryModel } from "./model";
 
-const historyPage = TypeCompiler.Compile(DuelHistoryModel.page);
+const historyWeek = TypeCompiler.Compile(DuelHistoryModel.week);
+
+const historyActivity = TypeCompiler.Compile(DuelHistoryModel.activity);
+
+// A week from the epoch: the Duels of these tests end in it unless they say otherwise.
+const FIRST_WEEK = `?from=0&to=${7 * 24 * 3600 * 1000}`;
 
 const replayedDuel = TypeCompiler.Compile(DuelHistoryModel.duel);
 
@@ -30,12 +35,15 @@ const RATING: Rating = {
 const finishedDuel = ({
   id = crypto.randomUUID(),
   endedAt,
+  lasted = 30_000,
   outcome = "win",
   winnerId = null,
   players: [first, second],
 }: {
   id?: string;
   endedAt: number;
+  // From its start to its end: shorter than its 30 s for a Forfeit.
+  lasted?: number;
   outcome?: DuelRecord["outcome"];
   winnerId?: string | null;
   players: [Side, Side];
@@ -61,7 +69,7 @@ const finishedDuel = ({
     language: "en",
     wordListVersion: currentWordListVersion.en,
     seconds: 30,
-    startsAt: endedAt - 30_000,
+    startsAt: endedAt - lasted,
     mode: "time",
     endedAt,
     outcome,
@@ -78,9 +86,10 @@ const setup = () => {
 
   let users = 0;
 
-  const history = (cookie: string | null, query = "") =>
+  // `path` under `/api/duels`, its query included.
+  const history = (cookie: string | null, path = FIRST_WEEK) =>
     app.handle(
-      new Request(`http://localhost/api/duels${query}`, {
+      new Request(`http://localhost/api/duels${path}`, {
         headers: cookie === null ? undefined : { cookie },
       }),
     );
@@ -97,15 +106,31 @@ const setup = () => {
       handle,
     });
 
-    const page = async (query = "") => {
+    // Their Duels of a week, the first one from the epoch unless `query` says otherwise.
+    const week = async (query = FIRST_WEEK) => {
       const response = await history(cookie, query);
 
       expect(response.status).toBe(200);
 
       const body = await response.json();
 
-      if (!historyPage.Check(body)) {
-        throw new Error(`Not a page of the Duel history: ${JSON.stringify(body)}`);
+      if (!historyWeek.Check(body)) {
+        throw new Error(`Not a week of the Duel history: ${JSON.stringify(body)}`);
+      }
+
+      return body;
+    };
+
+    // Their Activity, `query` given whole.
+    const activity = async (query: string) => {
+      const response = await history(cookie, `/activity${query}`);
+
+      expect(response.status).toBe(200);
+
+      const body = await response.json();
+
+      if (!historyActivity.Check(body)) {
+        throw new Error(`Not an Activity: ${JSON.stringify(body)}`);
       }
 
       return body;
@@ -126,7 +151,7 @@ const setup = () => {
       return body;
     };
 
-    return { id: user.id, image, cookie, page, replay };
+    return { id: user.id, image, cookie, week, activity, replay };
   };
 
   const duelResponse = (cookie: string | null, duelId: string) =>
@@ -157,7 +182,7 @@ describe("GET /api/duels", () => {
       }),
     );
 
-    expect(await ada.page()).toEqual({
+    expect(await ada.week()).toEqual({
       duels: [
         {
           id: "duel-1",
@@ -171,10 +196,56 @@ describe("GET /api/duels", () => {
           opponentWpm: 70,
           tp: null,
           ranked: false,
+          // Neither typed: 30 seconds at 0 wpm.
+          wpmBySecond: Array.from({ length: 30 }, () => 0),
+          opponentWpmBySecond: Array.from({ length: 30 }, () => 0),
         },
       ],
-      next: null,
     });
+  });
+
+  test("each side's wpm of each second, replayed from their Keystrokes, up to the Forfeit", async () => {
+    const { duels, newUser } = setup();
+    const ada = await newUser("ada");
+    const alan = await newUser("alan");
+
+    // Ada types her Text at 100 ms a character; Alan at 200 ms, until he forfeits at 10 s.
+    const text = generateText(1, "en", currentWordListVersion.en, 100).join(" ");
+
+    const typing = (every: number, until: number) =>
+      [...text]
+        .slice(0, Math.floor(until / every))
+        .map((char, index): Keystroke => ({ kind: "char", char, at: (index + 1) * every }));
+
+    duels.saved.push(
+      finishedDuel({
+        id: "full",
+        endedAt: 1_000_000,
+        winnerId: ada.id,
+        players: [
+          { userId: ada.id, wpm: 90, score: 1200, keystrokes: typing(100, 30_000) },
+          { userId: alan.id, wpm: 50, score: 400, keystrokes: typing(200, 30_000) },
+        ],
+      }),
+      finishedDuel({
+        id: "forfeited",
+        lasted: 10_000,
+        endedAt: 2_000_000,
+        outcome: "forfeit",
+        winnerId: ada.id,
+        players: [
+          { userId: ada.id, wpm: 90, score: 1200, keystrokes: typing(100, 10_000) },
+          { userId: alan.id, wpm: 50, score: 400, keystrokes: typing(200, 10_000) },
+        ],
+      }),
+    );
+
+    const [forfeited, full] = (await ada.week()).duels;
+
+    expect(full?.wpmBySecond).toHaveLength(30);
+    expect(full?.wpmBySecond.at(-1)).toBeGreaterThan(full?.opponentWpmBySecond?.at(-1) ?? 0);
+    expect(forfeited?.wpmBySecond).toHaveLength(10);
+    expect(forfeited?.opponentWpmBySecond).toHaveLength(10);
   });
 
   test("a ranked Duel shows the TP it moved for the reader, not for a Challenge nor in Placement", async () => {
@@ -213,7 +284,7 @@ describe("GET /api/duels", () => {
     );
 
     const tps = async (user: typeof ada) =>
-      (await user.page()).duels.map(({ id, tp }) => ({ id, tp }));
+      (await user.week()).duels.map(({ id, tp }) => ({ id, tp }));
 
     expect(await tps(ada)).toEqual([
       { id: "ranked", tp: 18 },
@@ -263,7 +334,7 @@ describe("GET /api/duels", () => {
     );
 
     const kinds = async (user: typeof ada) =>
-      (await user.page()).duels.map(({ id, ranked }) => ({ id, ranked }));
+      (await user.week()).duels.map(({ id, ranked }) => ({ id, ranked }));
 
     const expected = [
       { id: "ranked", ranked: true },
@@ -300,79 +371,50 @@ describe("GET /api/duels", () => {
       }),
     );
 
-    expect(await ada.page()).toEqual({ duels: [], next: null });
+    expect(await ada.week()).toEqual({ duels: [] });
   });
 
-  test("pages of 20, the most recent first, then by id at the same end", async () => {
+  test("only the Duels that ended in [from, to), the most recent first, then by id at the same end", async () => {
     const { duels, newUser } = setup();
     const ada = await newUser("ada");
     const alan = await newUser("alan");
 
-    // 45 Duels: pairs ending at the same instant, written in no particular order.
-    const ids = Array.from({ length: 45 }, (_, index) => `duel-${String(index).padStart(2, "0")}`);
+    const duelAt = (id: string, endedAt: number) =>
+      finishedDuel({
+        id,
+        endedAt,
+        outcome: "draw",
+        players: [
+          { userId: ada.id, wpm: 80, score: 10 },
+          { userId: alan.id, wpm: 80, score: 10 },
+        ],
+      });
 
     duels.saved.push(
-      ...ids.toReversed().map((id, index) =>
-        finishedDuel({
-          id,
-          endedAt: 1_000_000 + Math.floor((ids.length - 1 - index) / 2) * 1000,
-          outcome: "draw",
-          players: [
-            { userId: ada.id, wpm: 80, score: 10 },
-            { userId: alan.id, wpm: 80, score: 10 },
-          ],
-        }),
-      ),
+      duelAt("before", 99_999),
+      duelAt("first", 100_000),
+      duelAt("same-a", 150_000),
+      duelAt("same-b", 150_000),
+      duelAt("last", 199_999),
+      duelAt("after", 200_000),
     );
 
-    const newestFirst = ids.toReversed();
+    const ids = (await ada.week("?from=100000&to=200000")).duels.map(({ id }) => id);
 
-    const first = await ada.page();
-
-    expect(first.duels.map((entry: { id: string }) => entry.id)).toEqual(newestFirst.slice(0, 20));
-    expect(first.next).toBeString();
-
-    const second = await ada.page(`?before=${first.next}`);
-
-    expect(second.duels.map((entry: { id: string }) => entry.id)).toEqual(
-      newestFirst.slice(20, 40),
-    );
-
-    const last = await ada.page(`?before=${second.next}`);
-
-    expect(last.duels.map((entry: { id: string }) => entry.id)).toEqual(newestFirst.slice(40));
-    expect(last.next).toBeNull();
+    expect(ids).toEqual(["last", "same-b", "same-a", "first"]);
   });
 
-  test("a page that ends exactly on the last Duel has no next", async () => {
-    const { duels, newUser } = setup();
-    const ada = await newUser("ada");
-    const alan = await newUser("alan");
-
-    duels.saved.push(
-      ...Array.from({ length: 20 }, (_, index) =>
-        finishedDuel({
-          endedAt: 1000 * (index + 1),
-          outcome: "draw",
-          players: [
-            { userId: ada.id, wpm: 80, score: 10 },
-            { userId: alan.id, wpm: 80, score: 10 },
-          ],
-        }),
-      ),
-    );
-
-    const page = await ada.page();
-
-    expect(page.duels).toHaveLength(20);
-    expect(page.next).toBeNull();
-  });
-
-  test("refuses a malformed cursor", async () => {
+  test.each([
+    ["no range", ""],
+    ["`to` before `from`", "?from=2000&to=1000"],
+    ["an empty range", "?from=1000&to=1000"],
+    ["more than a week and its hour", `?from=0&to=${8 * 24 * 3600 * 1000 + 1}`],
+    ["a range that is not numbers", "?from=monday&to=sunday"],
+  ])("refuses %s", async (_, query) => {
     const { newUser, history } = setup();
     const ada = await newUser("ada");
 
-    const response = await history(ada.cookie, "?before=yesterday");
+    const response = await history(ada.cookie, query);
 
     expect(response.status).toBe(422);
   });
@@ -400,7 +442,7 @@ describe("GET /api/duels", () => {
     );
 
     const seen = async (user: typeof ada) =>
-      (await user.page()).duels.map(
+      (await user.week()).duels.map(
         ({ id, outcome, forfeit }: { id: string; outcome: string; forfeit: boolean }) => ({
           id,
           outcome,
@@ -436,7 +478,7 @@ describe("GET /api/duels", () => {
       }),
     );
 
-    const [entry] = (await ada.page()).duels;
+    const [entry] = (await ada.week()).duels;
 
     expect(entry).toMatchObject({
       outcome: "loss",
@@ -467,7 +509,7 @@ describe("GET /api/duels", () => {
     await (await auth.$context).internalAdapter.deleteUser(alan.id);
     duels.deleteUser(alan.id);
 
-    expect(await ada.page()).toEqual({
+    expect(await ada.week()).toEqual({
       duels: [
         {
           id: "duel-1",
@@ -481,9 +523,10 @@ describe("GET /api/duels", () => {
           opponentScore: null,
           wpm: 60,
           opponentWpm: null,
+          wpmBySecond: Array.from({ length: 30 }, () => 0),
+          opponentWpmBySecond: null,
         },
       ],
-      next: null,
     });
   });
 
@@ -505,11 +548,105 @@ describe("GET /api/duels", () => {
 
     await testUsers(auth).setHandle(alan.id, "turing");
 
-    const [entry] = (await ada.page()).duels;
+    const [entry] = (await ada.week()).duels;
 
     expect(entry?.opponent).toEqual({ handle: "turing", image: alan.image });
     expect(JSON.stringify(entry)).not.toContain("User 2");
     expect(JSON.stringify(entry)).not.toContain("@example.com");
+  });
+});
+
+const at = (iso: string) => Date.parse(iso);
+
+const range = (from: string, to: string, timeZone: string) =>
+  `?from=${at(from)}&to=${at(to)}&timeZone=${encodeURIComponent(timeZone)}`;
+
+// Ada's Duels against Alan at those instants, and one between Alan and Grace.
+const withActivity = async (ends: string[]) => {
+  const context = setup();
+  const ada = await context.newUser("ada");
+  const alan = await context.newUser("alan");
+  const grace = await context.newUser("grace");
+
+  context.duels.saved.push(
+    ...ends.map((end) =>
+      finishedDuel({
+        endedAt: at(end),
+        outcome: "draw",
+        players: [
+          { userId: ada.id, wpm: 80, score: 10 },
+          { userId: alan.id, wpm: 80, score: 10 },
+        ],
+      }),
+    ),
+    finishedDuel({
+      endedAt: at("2026-09-20T12:00:00Z"),
+      outcome: "draw",
+      players: [
+        { userId: alan.id, wpm: 80, score: 10 },
+        { userId: grace.id, wpm: 80, score: 10 },
+      ],
+    }),
+  );
+
+  return { ...context, ada };
+};
+
+describe("GET /api/duels/activity", () => {
+  test("counts the User's Duels by day of their time zone, the oldest first, and says when the first ended", async () => {
+    const { ada } = await withActivity([
+      "2026-08-01T10:00:00Z",
+      "2026-09-21T09:00:00Z",
+      "2026-09-21T18:00:00Z",
+      // 00:30 on the 29th in Paris, still the 28th in UTC.
+      "2026-09-28T22:30:00Z",
+    ]);
+
+    const september = range("2026-09-01T00:00:00Z", "2026-10-01T00:00:00Z", "Europe/Paris");
+
+    expect(await ada.activity(september)).toEqual({
+      days: [
+        { day: "2026-09-21", duels: 2 },
+        { day: "2026-09-29", duels: 1 },
+      ],
+      first: at("2026-08-01T10:00:00Z"),
+    });
+
+    expect(
+      (await ada.activity(range("2026-09-01T00:00:00Z", "2026-10-01T00:00:00Z", "UTC"))).days,
+    ).toEqual([
+      { day: "2026-09-21", duels: 2 },
+      { day: "2026-09-28", duels: 1 },
+    ]);
+  });
+
+  test("a User without any Duel has no day and no first Duel", async () => {
+    const { ada } = await withActivity([]);
+
+    expect(
+      await ada.activity(range("2026-09-01T00:00:00Z", "2026-10-01T00:00:00Z", "UTC")),
+    ).toEqual({ days: [], first: null });
+  });
+
+  test.each([
+    ["an unknown time zone", range("2026-09-01T00:00:00Z", "2026-10-01T00:00:00Z", "Mars/Olympus")],
+    ["no time zone", `?from=0&to=1000`],
+    ["more than 120 days", range("2026-01-01T00:00:00Z", "2026-06-01T00:00:00Z", "UTC")],
+    ["`to` before `from`", range("2026-10-01T00:00:00Z", "2026-09-01T00:00:00Z", "UTC")],
+  ])("refuses %s", async (_, query) => {
+    const { ada, history } = await withActivity([]);
+
+    const response = await history(ada.cookie, `/activity${query}`);
+
+    expect(response.status).toBe(422);
+  });
+
+  test("a Visitor gets 401", async () => {
+    const { history } = setup();
+
+    const response = await history(null, `/activity${range("2026-09-01", "2026-10-01", "UTC")}`);
+
+    expect(response.status).toBe(401);
   });
 });
 

@@ -1,6 +1,18 @@
-import { and, asc, count as countRows, desc, eq, inArray, lt, max, ne, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count as countRows,
+  desc,
+  eq,
+  gte,
+  inArray,
+  lt,
+  max,
+  min,
+  ne,
+  sql,
+} from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
-import { alias } from "drizzle-orm/pg-core";
 
 import type { Table } from "../../database/schema";
 import { DIVISIONS, PLACEMENT_DUELS, type Rating } from "ranked";
@@ -8,10 +20,11 @@ import { DIVISIONS, PLACEMENT_DUELS, type Rating } from "ranked";
 import type { Records } from "./model";
 import { duel, duelPlayer, pastPlacementSql, rankedRating } from "./schema";
 import type {
-  DuelCursor,
   DuelPlayerRecord,
   DuelStore,
+  HistoryRange,
   LeaderboardKey,
+  PlayedDuel,
   PlayedDuelPlayer,
 } from "./store";
 
@@ -113,9 +126,6 @@ const playerOf = (row: typeof duelPlayer.$inferSelect): PlayedDuelPlayer => ({
   keystrokes: row.keystrokes,
 });
 
-// The other player of the Duel, next to the one who reads their Duel history.
-const opponentPlayer = alias(duelPlayer, "opponent_player");
-
 // The Records over a User's player rows: the best wpm, Score and Combo, Challenges and Forfeits
 // included. The Score's are null on the rows written before it.
 const bestColumns = {
@@ -133,13 +143,31 @@ const recordsOf = (
   combo: row?.bestCombo ?? null,
 });
 
-// The Duels before the cursor, by end then by id: one ended earlier, or at the same instant with a
-// smaller id.
-const before = ({ endedAt, id }: DuelCursor) => {
-  const at = new Date(endedAt);
+// The Duels that ended in the range.
+const endedIn = ({ from, to }: HistoryRange) =>
+  and(gte(duel.endedAt, new Date(from)), lt(duel.endedAt, new Date(to)));
 
-  return or(lt(duel.endedAt, at), and(eq(duel.endedAt, at), lt(duel.id, id)));
-};
+// The Duel as one of its Users played it, with the other's row when their User is still there.
+const playedOf = (
+  played: typeof duel.$inferSelect,
+  own: typeof duelPlayer.$inferSelect,
+  opponent: typeof duelPlayer.$inferSelect | undefined,
+): PlayedDuel => ({
+  id: played.id,
+  seed: played.seed,
+  language: played.language,
+  wordListVersion: played.wordListVersion,
+  mode: played.mode,
+  seconds: played.seconds,
+  startsAt: played.startedAt.getTime(),
+  endedAt: played.endedAt.getTime(),
+  outcome: played.outcome,
+  winnerId: played.winnerId,
+  player: playerOf(own),
+  opponent: opponent ? playerOf(opponent) : null,
+  tp: own.tpDelta,
+  ranked: played.ranked,
+});
 
 // The production DuelStore: a finished Duel and its two players, in one transaction.
 export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
@@ -281,45 +309,56 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
       .where(and(eq(duelPlayer.userId, userId), eq(duel.ranked, true)))
       .orderBy(desc(duel.endedAt), desc(duel.id))
       .limit(count),
-  // Served by the player index on the User: a User's Duels are few enough to sort.
-  history: async (userId, page) => {
-    const rows = await db
-      .select({
-        id: duel.id,
-        endedAt: duel.endedAt,
-        outcome: duel.outcome,
-        winnerId: duel.winnerId,
-        wpm: duelPlayer.wpm,
-        score: duelPlayer.score,
-        tp: duelPlayer.tpDelta,
-        ranked: duel.ranked,
-        opponentId: opponentPlayer.userId,
-        opponentWpm: opponentPlayer.wpm,
-        opponentScore: opponentPlayer.score,
-      })
+  // Served by the player index on the User, then the other player rows of those Duels.
+  historyBetween: async (userId, range, limit) => {
+    const own = await db
+      .select()
       .from(duelPlayer)
       .innerJoin(duel, eq(duel.id, duelPlayer.duelId))
-      .leftJoin(
-        opponentPlayer,
-        and(eq(opponentPlayer.duelId, duel.id), ne(opponentPlayer.userId, userId)),
-      )
-      .where(and(eq(duelPlayer.userId, userId), page.before ? before(page.before) : undefined))
+      .where(and(eq(duelPlayer.userId, userId), endedIn(range)))
       .orderBy(desc(duel.endedAt), desc(duel.id))
-      .limit(page.limit);
+      .limit(limit);
 
-    return rows.map((row) => ({
-      id: row.id,
-      endedAt: row.endedAt.getTime(),
-      outcome: row.outcome,
-      winnerId: row.winnerId,
-      player: { userId, wpm: row.wpm, score: row.score },
-      opponent:
-        row.opponentId === null || row.opponentWpm === null
-          ? null
-          : { userId: row.opponentId, wpm: row.opponentWpm, score: row.opponentScore },
-      tp: row.tp,
-      ranked: row.ranked,
-    }));
+    const opponents =
+      own.length === 0
+        ? []
+        : await db
+            .select()
+            .from(duelPlayer)
+            .where(
+              and(
+                inArray(
+                  duelPlayer.duelId,
+                  own.map((row) => row.duel.id),
+                ),
+                ne(duelPlayer.userId, userId),
+              ),
+            );
+
+    const opponentOf = new Map(opponents.map((row) => [row.duelId, row]));
+
+    return own.map((row) => playedOf(row.duel, row.duel_player, opponentOf.get(row.duel.id)));
+  },
+  // Counted by day of the User's time zone: `ended_at` holds UTC.
+  activity: async (userId, range, timeZone) => {
+    const day = sql<string>`to_char((${duel.endedAt} at time zone 'UTC') at time zone ${timeZone}, 'YYYY-MM-DD')`;
+
+    return db
+      .select({ day, duels: countRows() })
+      .from(duelPlayer)
+      .innerJoin(duel, eq(duel.id, duelPlayer.duelId))
+      .where(and(eq(duelPlayer.userId, userId), endedIn(range)))
+      .groupBy(sql`1`)
+      .orderBy(sql`1`);
+  },
+  firstDuelAt: async (userId) => {
+    const [row] = await db
+      .select({ first: min(duel.endedAt) })
+      .from(duelPlayer)
+      .innerJoin(duel, eq(duel.id, duelPlayer.duelId))
+      .where(eq(duelPlayer.userId, userId));
+
+    return row?.first ? row.first.getTime() : null;
   },
   // The Duel and its player rows, one per User still there.
   playedDuel: async (userId, duelId) => {
@@ -336,24 +375,8 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
     }
 
     const opponent = rows.find((row) => row.duel_player.userId !== userId);
-    const { duel: played } = own;
 
-    return {
-      id: played.id,
-      seed: played.seed,
-      language: played.language,
-      wordListVersion: played.wordListVersion,
-      mode: played.mode,
-      seconds: played.seconds,
-      startsAt: played.startedAt.getTime(),
-      endedAt: played.endedAt.getTime(),
-      outcome: played.outcome,
-      winnerId: played.winnerId,
-      player: playerOf(own.duel_player),
-      opponent: opponent ? playerOf(opponent.duel_player) : null,
-      tp: own.duel_player.tpDelta,
-      ranked: played.ranked,
-    };
+    return playedOf(own.duel, own.duel_player, opponent?.duel_player);
   },
   // The last Duels read newest first, then turned around.
   progression: async (userId, limit) => {

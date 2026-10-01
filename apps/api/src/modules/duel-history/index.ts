@@ -5,7 +5,7 @@ import type { LastDuelWritten } from "../duel/service";
 import type { DuelStore } from "../duel/store";
 import type { Users } from "../user/users";
 import { DuelHistoryModel } from "./model";
-import { duelHistory, replayedDuel } from "./service";
+import { historyActivity, historyWeek, replayedDuel } from "./service";
 
 export type DuelHistoryModuleConfig = {
   auth: AuthHandler;
@@ -31,14 +31,32 @@ export const duelHistoryModule = ({
       async ({ user, query }) => {
         await lastDuelWritten(user.id);
 
-        return duelHistory({ store, users }, user.id, query.before);
+        return historyWeek({ store, users }, user.id, query);
       },
       {
         auth: true,
-        query: DuelHistoryModel.query,
-        response: DuelHistoryModel.page,
+        query: DuelHistoryModel.weekQuery,
+        response: DuelHistoryModel.week,
         detail: {
-          summary: "The signed-in User's Duel history, the most recent first, 20 per page",
+          summary:
+            "The signed-in User's Duels that ended in [from, to), a week at most, the most recent first",
+          tags: ["Duel"],
+        },
+      },
+    )
+    .get(
+      "/duels/activity",
+      async ({ user, query: { from, to, timeZone } }) => {
+        await lastDuelWritten(user.id);
+
+        return historyActivity({ store }, user.id, { from, to }, timeZone);
+      },
+      {
+        auth: true,
+        query: DuelHistoryModel.activityQuery,
+        response: DuelHistoryModel.activity,
+        detail: {
+          summary: "How many Duels the signed-in User finished on each day of their time zone",
           tags: ["Duel"],
         },
       },

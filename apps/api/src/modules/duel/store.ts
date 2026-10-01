@@ -43,40 +43,26 @@ export type DuelRecord = Duel & {
   players: readonly [DuelPlayerRecord, DuelPlayerRecord];
 };
 
-// Where a page of the Duel history starts: past the Duel that ended at `endedAt` with that id, the
-// id telling apart the Duels that ended at the same instant.
-export type DuelCursor = { endedAt: number; id: string };
+// A stretch `[from, to)` of a User's Duel history, by the end of its Duels, in ms since the epoch.
+export type HistoryRange = { from: number; to: number };
 
-// A player of a Duel as the Duel history shows them.
-export type DuelHistoryPlayer = { userId: string; wpm: number; score: number | null };
-
-// A finished Duel of the Duel history, seen from the User who reads it (`player`). `opponent` is
-// null once their User is deleted: their player row goes with it.
-export type DuelHistoryRow = {
-  id: string;
-  endedAt: number;
-  outcome: DuelRecord["outcome"];
-  winnerId: string | null;
-  player: DuelHistoryPlayer;
-  opponent: DuelHistoryPlayer | null;
-  // The TP the Duel moved for the reader: null for a Challenge, in Placement and before the ranked.
-  tp: number | null;
-  // A Ranked Duel, Placement included: false for a Challenge and before the ranked.
-  ranked: boolean;
-};
+// How many Duels a User finished on a day of their time zone, `YYYY-MM-DD`.
+export type ActivityDayRow = { day: string; duels: number };
 
 // A player of a finished Duel as it is read back: their Pace is null for the Duels written before
 // it came from the history.
 export type PlayedDuelPlayer = Omit<DuelPlayerRecord, "pace" | "rated"> & { pace: number | null };
 
 // A finished Duel read back for one of its two Users (`player`), to replay it. `opponent` is null
-// once their User is deleted: their player row goes with it. `tp` and `ranked` as in the Duel
-// history.
-export type PlayedDuel = Omit<DuelRecord, "players"> &
-  Pick<DuelHistoryRow, "tp" | "ranked"> & {
-    player: PlayedDuelPlayer;
-    opponent: PlayedDuelPlayer | null;
-  };
+// once their User is deleted: their player row goes with it.
+export type PlayedDuel = Omit<DuelRecord, "players"> & {
+  player: PlayedDuelPlayer;
+  opponent: PlayedDuelPlayer | null;
+  // The TP the Duel moved for the reader: null for a Challenge, in Placement and before the ranked.
+  tp: number | null;
+  // A Ranked Duel, Placement included: false for a Challenge and before the ranked.
+  ranked: boolean;
+};
 
 // The aggregates of a User's finished Duels, seen from them: their record (a Forfeit is a loss for
 // the one who did not win), their averages and their Records. The averages leave out the Forfeits,
@@ -164,12 +150,14 @@ export type DuelStore = {
   // The last `count` Ranked Duels a User finished, the most recent first (by end, then by id):
   // neither the Challenges nor the Duels played before ranked existed.
   recentRankedDuels: (userId: string, count: number) => Promise<RankedDuelRow[]>;
-  // A page of a User's Duel history: at most `limit` of their Duels, the most recent first (by end,
-  // then by id), those before `before` when given.
-  history: (
-    userId: string,
-    page: { before: DuelCursor | null; limit: number },
-  ) => Promise<DuelHistoryRow[]>;
+  // The User's Duels that ended in `range`, whole, as `playedDuel` reads them: at most `limit`, the
+  // most recent first (by end, then by id).
+  historyBetween: (userId: string, range: HistoryRange, limit: number) => Promise<PlayedDuel[]>;
+  // How many Duels the User finished on each day of `timeZone` (an IANA name) in `range`: only the
+  // days with one, the oldest first.
+  activity: (userId: string, range: HistoryRange, timeZone: string) => Promise<ActivityDayRow[]>;
+  // When the User finished their first Duel, null without one.
+  firstDuelAt: (userId: string) => Promise<number | null>;
   // The Duel `duelId` as `userId` played it, whole: null when there is no such Duel or when that
   // User did not play it.
   playedDuel: (userId: string, duelId: string) => Promise<PlayedDuel | null>;

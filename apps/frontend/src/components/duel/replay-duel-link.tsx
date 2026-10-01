@@ -14,7 +14,7 @@ export const ReplayDuelLink = ({ duelId, className }: { duelId: string; classNam
       variant="secondary"
       className={className}
       nativeButton={false}
-      render={<Link to="/duels/$duelId" params={{ duelId }} />}
+      render={<Link to="/history/$duelId" params={{ duelId }} />}
     >
       <RotateCcw aria-hidden="true" strokeWidth={2.2} />
       {m.duel_ended_replay({}, { locale })}

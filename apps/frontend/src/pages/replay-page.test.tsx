@@ -95,7 +95,7 @@ const renderReplay = async (duel: ReplayedDuel) => {
   // On a router of its own: the opponent's Handle is a link.
   const router = createRouter({
     routeTree: createRootRoute({ component: () => <DuelReplay duelId={duel.id} /> }),
-    history: createMemoryHistory({ initialEntries: [`/duels/${duel.id}`] }),
+    history: createMemoryHistory({ initialEntries: [`/history/${duel.id}`] }),
   });
 
   await router.load();
@@ -581,7 +581,7 @@ describe("DuelReplay", () => {
 const renderError = async () => {
   const router = createRouter({
     routeTree: createRootRoute({ component: ReplayErrorPage }),
-    history: createMemoryHistory({ initialEntries: ["/duels/gone"] }),
+    history: createMemoryHistory({ initialEntries: ["/history/gone"] }),
   });
 
   await router.load();
@@ -589,13 +589,13 @@ const renderError = async () => {
 };
 
 describe("ReplayErrorPage", () => {
-  test("says the Duel cannot be found, and leads back to the Duel history", async () => {
+  test("says the Duel cannot be found, and leads back to the History", async () => {
     await renderError();
 
     expect(await screen.findByRole("heading", { name: "Duel introuvable" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Retour à la Duel history" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Retour à l'historique" })).toHaveAttribute(
       "href",
-      "/duels",
+      "/history",
     );
   });
 
@@ -607,9 +607,9 @@ describe("ReplayErrorPage", () => {
     expect(
       screen.getByText("This Duel doesn't exist, or you didn't play in it."),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Back to Duel history" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "Back to History" })).toHaveAttribute(
       "href",
-      "/duels",
+      "/history",
     );
   });
 });

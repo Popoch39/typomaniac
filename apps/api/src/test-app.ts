@@ -26,15 +26,14 @@ import {
 } from "./modules/duel/model";
 import {
   compareLeaderboardKeys,
-  type DuelCursor,
-  type DuelHistoryPlayer,
-  type DuelHistoryRow,
   type DuelPlayerRecord,
   type DuelRecord,
   type DuelStore,
+  type HistoryRange,
   type LeaderboardKey,
   leaderboardKeyOf,
   type LeaderboardRow,
+  type PlayedDuel,
 } from "./modules/duel/store";
 import { type FriendMessage, FriendLiveModel, type Relation } from "./modules/friend/model";
 import { type Friendship, type FriendStore, orderedPair } from "./modules/friend/store";
@@ -110,24 +109,29 @@ export const manualClock = (start: number) => {
   return { clock, set };
 };
 
-const historyPlayer = ({ userId, result, score }: DuelPlayerRecord): DuelHistoryPlayer => ({
-  userId,
-  wpm: result.wpm,
-  score: score === null ? null : score.score,
-});
-
 // Whether the Duel was Ranked and the TP it moved for `player`, as the Drizzle store writes them:
 // a Ranked Duel rated both players.
 const rankingOf = (
   record: DuelRecord,
   player: DuelPlayerRecord,
-): Pick<DuelHistoryRow, "tp" | "ranked"> => ({
+): Pick<PlayedDuel, "tp" | "ranked"> => ({
   tp: player.rated?.tp ?? null,
   ranked: record.players.every(({ rated }) => rated !== null),
 });
 
+// The day of `at` in `timeZone`, `YYYY-MM-DD`, as Postgres's `to_char` writes it.
+const dayIn = (at: number, timeZone: string) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(at);
+
+type Ended = Pick<DuelRecord, "endedAt" | "id">;
+
 // Most recent first, by end then by id, the way Postgres orders the Duel history.
-const byNewestDuel = (a: DuelCursor, b: DuelCursor) => {
+const byNewestDuel = (a: Ended, b: Ended) => {
   if (a.endedAt !== b.endedAt) {
     return b.endedAt - a.endedAt;
   }
@@ -178,6 +182,35 @@ export const memoryDuelStore = () => {
 
   const winnerOf = ({ winnerId }: DuelRecord) =>
     winnerId === null || deleted.has(winnerId) ? null : winnerId;
+
+  // The Duels `userId` played that ended in the range.
+  const ownDuelsIn = (userId: string, { from, to }: HistoryRange) =>
+    saved.filter(
+      (record) =>
+        record.endedAt >= from &&
+        record.endedAt < to &&
+        playersOf(record).some((player) => player.userId === userId),
+    );
+
+  // The Duel as `userId` played it, null when they did not.
+  const playedBy = (userId: string, record: DuelRecord): PlayedDuel | null => {
+    const players = playersOf(record);
+    const player = players.find((candidate) => candidate.userId === userId);
+
+    if (!player) {
+      return null;
+    }
+
+    const { players: _, ...duel } = record;
+
+    return {
+      ...duel,
+      winnerId: winnerOf(record),
+      player,
+      opponent: players.find((candidate) => candidate.userId !== userId) ?? null,
+      ...rankingOf(record, player),
+    };
+  };
 
   const progression: DuelStore["progression"] = async (userId, limit) => {
     const points = saved
@@ -304,56 +337,37 @@ export const memoryDuelStore = () => {
             : [];
         })
         .slice(0, count),
-    history: async (userId, { before, limit }) =>
-      saved
-        .filter((record) => before === null || byNewestDuel(before, record) < 0)
+    historyBetween: async (userId, range, limit) =>
+      ownDuelsIn(userId, range)
         .toSorted(byNewestDuel)
         .flatMap((record) => {
-          const players = playersOf(record);
-          const player = players.find((candidate) => candidate.userId === userId);
+          const played = playedBy(userId, record);
 
-          if (!player) {
-            return [];
-          }
-
-          const opponent = players.find((candidate) => candidate.userId !== userId);
-
-          return [
-            {
-              id: record.id,
-              endedAt: record.endedAt,
-              outcome: record.outcome,
-              winnerId: winnerOf(record),
-              player: historyPlayer(player),
-              opponent: opponent ? historyPlayer(opponent) : null,
-              ...rankingOf(record, player),
-            },
-          ];
+          return played ? [played] : [];
         })
         .slice(0, limit),
+    activity: async (userId, range, timeZone) => {
+      const days = new Map<string, number>();
+
+      for (const record of ownDuelsIn(userId, range)) {
+        const day = dayIn(record.endedAt, timeZone);
+
+        days.set(day, (days.get(day) ?? 0) + 1);
+      }
+
+      return [...days]
+        .map(([day, duels]) => ({ day, duels }))
+        .toSorted((a, b) => (a.day < b.day ? -1 : 1));
+    },
+    firstDuelAt: async (userId) => {
+      const ended = ownDuelsIn(userId, { from: 0, to: Infinity }).map((record) => record.endedAt);
+
+      return ended.length === 0 ? null : Math.min(...ended);
+    },
     playedDuel: async (userId, duelId) => {
       const record = saved.find((candidate) => candidate.id === duelId);
 
-      if (!record) {
-        return null;
-      }
-
-      const players = playersOf(record);
-      const player = players.find((candidate) => candidate.userId === userId);
-
-      if (!player) {
-        return null;
-      }
-
-      const { players: _, ...duel } = record;
-
-      return {
-        ...duel,
-        winnerId: winnerOf(record),
-        player,
-        opponent: players.find((candidate) => candidate.userId !== userId) ?? null,
-        ...rankingOf(record, player),
-      };
+      return record ? playedBy(userId, record) : null;
     },
     stats: async (userId) => {
       const played = saved.flatMap((record) => {

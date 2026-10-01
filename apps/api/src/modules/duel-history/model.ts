@@ -2,8 +2,11 @@ import { t } from "elysia";
 
 import { DuelModel } from "../duel/model";
 
-// Where a page starts: `<endedAt>:<id>` of the last Duel of the page before, as `next` gives it.
-const cursor = t.String({ pattern: "^\\d+:.+$", maxLength: 200 });
+// An instant in ms since the epoch, as the client asks for a stretch of the Duel history.
+const instant = t.Integer({ minimum: 0 });
+
+// The stretch `[from, to)` of the Duel history the client asks for: a week in its time zone.
+const range = t.Object({ from: instant, to: instant });
 
 // A finished Duel of the User's Duel history, seen from them.
 const duelHistoryEntry = t.Object({
@@ -26,9 +29,19 @@ const duelHistoryEntry = t.Object({
   tp: t.Nullable(t.Integer()),
   // A Ranked Duel, Placement included: false for a Challenge and for a Duel played before the ranked.
   ranked: t.Boolean(),
+  // The wpm of each second of the reader's Run, replayed from their Keystrokes, rounded; up to the
+  // Forfeit when there was one.
+  wpmBySecond: t.Array(t.Integer()),
+  // The opponent's the same way; null once their User is deleted.
+  opponentWpmBySecond: t.Nullable(t.Array(t.Integer())),
 });
 
 export type DuelHistoryEntry = typeof duelHistoryEntry.static;
+
+// A day of the User's Activity in their time zone, `YYYY-MM-DD`, and how many Duels they finished.
+const activityDay = t.Object({ day: t.String(), duels: t.Integer() });
+
+export type ActivityDay = typeof activityDay.static;
 
 // One of the two Users of a replayed Duel: their Handle and avatar of today, and what replays their
 // side (the Keystrokes the server accepted, their Pace) to the Result and Score they got.
@@ -65,11 +78,18 @@ const replayedDuel = t.Composite([
 export type ReplayedDuel = typeof replayedDuel.static;
 
 export const DuelHistoryModel = {
-  query: t.Object({ before: t.Optional(cursor) }),
-  // The most recent first; `next` is where the next page starts, null on the last one.
-  page: t.Object({ duels: t.Array(duelHistoryEntry), next: t.Nullable(cursor) }),
+  weekQuery: range,
+  // The Duels of the week, the most recent first.
+  week: t.Object({ duels: t.Array(duelHistoryEntry) }),
+  // An IANA time zone (`Europe/Paris`), checked by the service: the days are counted in it.
+  activityQuery: t.Composite([range, t.Object({ timeZone: t.String({ maxLength: 64 }) })]),
+  // The days with at least one Duel, the oldest first, and when the User finished their first Duel
+  // (null without one): no week before it holds any.
+  activity: t.Object({ days: t.Array(activityDay), first: t.Nullable(t.Number()) }),
   duelParams: t.Object({ duelId: t.String({ maxLength: 200 }) }),
   duel: replayedDuel,
 };
 
-export type DuelHistoryPage = typeof DuelHistoryModel.page.static;
+export type DuelHistoryWeek = typeof DuelHistoryModel.week.static;
+
+export type DuelHistoryActivity = typeof DuelHistoryModel.activity.static;

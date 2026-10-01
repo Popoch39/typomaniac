@@ -80,7 +80,7 @@ afterEach(() => {
 const PAGES = [
   ["/ranked", "Ranked"],
   ["/leaderboard", "Classement"],
-  ["/duels", "Duels"],
+  ["/history", "Historique"],
   ["/friends", "Friends"],
   ["/profile", "Profil"],
   ["/themes", "Thèmes"],
@@ -167,10 +167,17 @@ describe("the sidebar's nav", () => {
     expect(navLinks()).toEqual(["Jouer", "Ranked", "Classement"]);
   });
 
-  test("a User also has Duels, Friends and Profil, and Thèmes is no longer in it", async () => {
+  test("a User also has Historique, Friends and Profil, and Thèmes is no longer in it", async () => {
     await renderApp(ada);
 
-    expect(navLinks()).toEqual(["Jouer", "Ranked", "Classement", "Duels", "Friends", "Profil"]);
+    expect(navLinks()).toEqual([
+      "Jouer",
+      "Ranked",
+      "Classement",
+      "Historique",
+      "Friends",
+      "Profil",
+    ]);
     expect(within(nav()).queryByRole("link", { name: /Thème/ })).not.toBeInTheDocument();
   });
 
@@ -184,9 +191,9 @@ describe("the sidebar's nav", () => {
   });
 
   test("the current page's entry is marked, and only it", async () => {
-    await renderApp(ada, "/duels");
+    await renderApp(ada, "/history");
 
-    expect(within(nav()).getByRole("link", { name: "Duels" })).toHaveAttribute(
+    expect(within(nav()).getByRole("link", { name: "Historique" })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -706,7 +713,7 @@ describe("the sidebar in English", () => {
       within(englishNav)
         .getAllByRole("link")
         .map((link) => link.textContent),
-    ).toEqual(["Play", "Ranked", "Leaderboard", "Duels", "Friends", "Profile"]);
+    ).toEqual(["Play", "Ranked", "Leaderboard", "History", "Friends", "Profile"]);
 
     act(() =>
       sockets.server().receive({ type: "friends-snapshot", presences: [], requestsReceived: 1 }),
@@ -869,7 +876,14 @@ describe("the Rail, below 1440 px", () => {
     const { user } = await renderApp(ada);
 
     expect(sidebar()).toHaveAttribute("data-rail");
-    expect(navLinks()).toEqual(["Jouer", "Ranked", "Classement", "Duels", "Friends", "Profil"]);
+    expect(navLinks()).toEqual([
+      "Jouer",
+      "Ranked",
+      "Classement",
+      "Historique",
+      "Friends",
+      "Profil",
+    ]);
 
     await user.hover(within(nav()).getByRole("link", { name: "Classement" }));
 

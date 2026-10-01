@@ -1,78 +1,128 @@
+import { computeTimeline, type RunConfig } from "typing-engine";
+
 import { ApiError } from "../../lib/errors";
 import {
-  type DuelCursor,
-  type DuelHistoryRow,
   type DuelStore,
+  type HistoryRange,
   outcomeFor,
+  type PlayedDuel,
   type PlayedDuelPlayer,
 } from "../duel/store";
 import type { HandleMatch, Users } from "../user/users";
-import type { DuelHistoryEntry, DuelHistoryPage, ReplayedDuel, ReplayedPlayer } from "./model";
+import type {
+  DuelHistoryActivity,
+  DuelHistoryEntry,
+  DuelHistoryWeek,
+  ReplayedDuel,
+  ReplayedPlayer,
+} from "./model";
 
-// How many Duels a page of the Duel history holds.
-export const DUEL_HISTORY_PAGE = 20;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// The longest week the client may ask for: seven days, and the hour a change of time gives one.
+export const MAX_WEEK_MS = 8 * DAY_MS;
+
+// The longest stretch of Activity: the 16 weeks the page shows, and some.
+export const MAX_ACTIVITY_MS = 120 * DAY_MS;
+
+// The most Duels a week shows: each one is replayed for its wpm by second.
+export const WEEK_DUELS_LIMIT = 300;
 
 export type DuelHistoryDeps = { store: DuelStore; users: Users };
 
-const cursorOf = ({ endedAt, id }: DuelCursor) => `${endedAt}:${id}`;
-
-// `<endedAt>:<id>`, its shape already checked by the query's schema.
-const parseCursor = (cursor: string): DuelCursor => {
-  const colon = cursor.indexOf(":");
-  const endedAt = Number(cursor.slice(0, colon));
-
-  if (!Number.isSafeInteger(endedAt)) {
-    throw new ApiError("VALIDATION_FAILED", "Invalid cursor");
+// The range as asked: `from` before `to`, at most `longest` apart.
+const checkedRange = (range: HistoryRange, longest: number): HistoryRange => {
+  if (range.to <= range.from || range.to - range.from > longest) {
+    throw new ApiError("VALIDATION_FAILED", "Invalid range");
   }
 
-  return { endedAt, id: cursor.slice(colon + 1) };
+  return range;
+};
+
+// An IANA time zone that this runtime knows: the same names as Postgres's.
+const checkedTimeZone = (timeZone: string) => {
+  try {
+    return new Intl.DateTimeFormat("en", { timeZone }).resolvedOptions().timeZone;
+  } catch {
+    throw new ApiError("VALIDATION_FAILED", "Unknown time zone");
+  }
+};
+
+// The wpm of each second of a side, replayed from their Keystrokes up to the Duel's end: its time,
+// or the Forfeit when it came first.
+const wpmBySecondOf = (played: PlayedDuel, player: PlayedDuelPlayer) => {
+  const config: RunConfig = {
+    mode: "time",
+    seconds: played.seconds,
+    language: played.language,
+    wordListVersion: played.wordListVersion,
+    seed: played.seed,
+  };
+
+  const duration = Math.max(0, Math.min(played.seconds * 1000, played.endedAt - played.startsAt));
+
+  return computeTimeline(config, player.keystrokes, duration).map(({ wpm }) => Math.round(wpm));
 };
 
 const entryOf = (
   userId: string,
-  row: DuelHistoryRow,
+  played: PlayedDuel,
   profiles: ReadonlyMap<string, NonNullable<DuelHistoryEntry["opponent"]>>,
 ): DuelHistoryEntry => ({
-  id: row.id,
-  endedAt: row.endedAt,
-  opponent: row.opponent ? (profiles.get(row.opponent.userId) ?? null) : null,
-  outcome: outcomeFor(userId, row),
-  forfeit: row.outcome === "forfeit",
-  score: row.player.score,
-  opponentScore: row.opponent?.score ?? null,
-  wpm: row.player.wpm,
-  opponentWpm: row.opponent?.wpm ?? null,
-  tp: row.tp,
-  ranked: row.ranked,
+  id: played.id,
+  endedAt: played.endedAt,
+  opponent: played.opponent ? (profiles.get(played.opponent.userId) ?? null) : null,
+  outcome: outcomeFor(userId, played),
+  forfeit: played.outcome === "forfeit",
+  score: played.player.score?.score ?? null,
+  opponentScore: played.opponent?.score?.score ?? null,
+  wpm: played.player.result.wpm,
+  opponentWpm: played.opponent?.result.wpm ?? null,
+  tp: played.tp,
+  ranked: played.ranked,
+  wpmBySecond: wpmBySecondOf(played, played.player),
+  opponentWpmBySecond: played.opponent ? wpmBySecondOf(played, played.opponent) : null,
 });
 
-// A page of the User's Duel history, the most recent first, from `before` when given. The
+// The User's Duels that ended in `range` (a week of their time zone), the most recent first. The
 // opponents are read by id: their Handle of today, never their name.
-export const duelHistory = async (
+export const historyWeek = async (
   { store, users }: DuelHistoryDeps,
   userId: string,
-  before: string | undefined,
-): Promise<DuelHistoryPage> => {
-  // One more than a page: whether there is a next one.
-  const rows = await store.history(userId, {
-    before: before === undefined ? null : parseCursor(before),
-    limit: DUEL_HISTORY_PAGE + 1,
-  });
-
-  const page = rows.slice(0, DUEL_HISTORY_PAGE);
+  range: HistoryRange,
+): Promise<DuelHistoryWeek> => {
+  const played = await store.historyBetween(
+    userId,
+    checkedRange(range, MAX_WEEK_MS),
+    WEEK_DUELS_LIMIT,
+  );
 
   const opponents = await users.profilesOf([
-    ...new Set(page.flatMap((row) => (row.opponent ? [row.opponent.userId] : []))),
+    ...new Set(played.flatMap((duel) => (duel.opponent ? [duel.opponent.userId] : []))),
   ]);
 
   const profiles = new Map(opponents.map(({ id, handle, image }) => [id, { handle, image }]));
 
-  const last = page.at(-1);
+  return { duels: played.map((duel) => entryOf(userId, duel, profiles)) };
+};
 
-  return {
-    duels: page.map((row) => entryOf(userId, row, profiles)),
-    next: rows.length > DUEL_HISTORY_PAGE && last ? cursorOf(last) : null,
-  };
+// How many Duels the User finished on each day of `timeZone` in `range`, and when they finished
+// their first.
+export const historyActivity = async (
+  { store }: Pick<DuelHistoryDeps, "store">,
+  userId: string,
+  range: HistoryRange,
+  timeZone: string,
+): Promise<DuelHistoryActivity> => {
+  const checked = checkedRange(range, MAX_ACTIVITY_MS);
+  const zone = checkedTimeZone(timeZone);
+
+  const [days, first] = await Promise.all([
+    store.activity(userId, checked, zone),
+    store.firstDuelAt(userId),
+  ]);
+
+  return { days, first };
 };
 
 const replayedPlayer = (

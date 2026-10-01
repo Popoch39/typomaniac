@@ -1,8 +1,8 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import {
+  HistoryIcon,
   KeyboardIcon,
   ShieldIcon,
-  SwordsIcon,
   TrophyIcon,
   UserRoundIcon,
   UsersIcon,
@@ -20,7 +20,7 @@ import { m } from "@/paraglide/messages";
 // Play only when on "/" itself: every path starts with it.
 const homeActiveOptions = { exact: true };
 
-// The app's main nav: Play, Ranked and the Leaderboard for everyone; Duels, Friends and the
+// The app's main nav: Play, Ranked and the Leaderboard for everyone; the History, Friends and the
 // Profile with a Session only, a Visitor has none. On Play, the User's wait in the Queue; with a
 // Handle, the Friend requests received on Friends.
 export const SidebarNav = () => {
@@ -51,9 +51,9 @@ export const SidebarNav = () => {
         {me === null ? null : (
           <>
             <SidebarNavLink
-              to="/duels"
-              icon={SwordsIcon}
-              label={m.sidebar_nav_duels({}, { locale })}
+              to="/history"
+              icon={HistoryIcon}
+              label={m.sidebar_nav_history({}, { locale })}
             />
             <SidebarNavLink
               to="/friends"

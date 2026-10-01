@@ -1573,7 +1573,9 @@ describe("duel socket", () => {
       save: () => Promise.reject(new Error("database down")),
       recentWpms: () => Promise.reject(new Error("database down")),
       ensureRating: () => Promise.reject(new Error("database down")),
-      history: () => Promise.reject(new Error("database down")),
+      historyBetween: () => Promise.reject(new Error("database down")),
+      activity: () => Promise.reject(new Error("database down")),
+      firstDuelAt: () => Promise.reject(new Error("database down")),
       playedDuel: () => Promise.reject(new Error("database down")),
       stats: () => Promise.reject(new Error("database down")),
       records: () => Promise.reject(new Error("database down")),
@@ -1774,7 +1776,8 @@ describe("duel socket", () => {
 
     const paths = [
       `/duels/${duelId}`,
-      "/duels",
+      `/duels?from=${NOW - 60_000}&to=${NOW + 60_000}`,
+      `/duels/activity?from=${NOW - 60_000}&to=${NOW + 60_000}&timeZone=UTC`,
       "/me",
       "/me/pace",
       "/leaderboard",

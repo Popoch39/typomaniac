@@ -5,6 +5,9 @@
 @import "@fontsource-variable/martian-mono";
 @import "@fontsource-variable/unbounded";
 @import "@fontsource-variable/jetbrains-mono";
+@import "@fontsource-variable/schibsted-grotesk";
+@import "@fontsource/dm-mono/400.css";
+@import "@fontsource/dm-mono/500.css";
 
 /* Inside the Duel's scene (AppFrame), from the Countdown to the end of the Duel. */
 @custom-variant duel-scene (&:where([data-duel-scene] *));
@@ -41,6 +44,9 @@
   /* The Duel's HUD only (B2 · Affiche): its titles and figures, and the Text typed in it. */
   --font-display: "Unbounded Variable", ui-sans-serif, system-ui, sans-serif;
   --font-text: "JetBrains Mono Variable", ui-monospace, monospace;
+  /* The History only (B · Journal): its text, and its figures and dates. */
+  --font-journal: "Schibsted Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-journal-mono: "DM Mono", ui-monospace, monospace;
   --color-brand: var(--brand);
   --color-on-brand: var(--on-brand);
   --color-pending: var(--pending);

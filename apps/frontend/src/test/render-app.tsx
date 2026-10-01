@@ -6,7 +6,6 @@ import { defaultPace } from "typing-engine";
 
 import { type Activity, activityQueryOptions } from "@/api/activity";
 import { type BestRun, bestRunQueryOptions, type RunSetting } from "@/api/best-run";
-import { duelHistoryQueryOptions } from "@/api/duel-history";
 import { type Friend, friendRequestsQueryOptions, friendsQueryOptions } from "@/api/friends";
 import { leaderboardQueryOptions } from "@/api/leaderboard";
 import { type Me, meQueryOptions } from "@/api/me";
@@ -65,7 +64,7 @@ const cacheFor = (reader: Me | null, { friends, bestRuns, activities }: Held) =>
   queryClient.setQueryData(meQueryOptions.queryKey, reader);
   queryClient.setQueryData(paceQueryOptions(reader).queryKey, defaultPace);
   queryClient.setQueryData(friendsQueryOptions.queryKey, [...friends]);
-  // What /friends, /leaderboard and /duels load, and Jouer's live zones: nothing yet unless given.
+  // What /friends, /leaderboard and /history load, and Jouer's live zones: nothing yet unless given.
   queryClient.setQueryData(friendRequestsQueryOptions.queryKey, { received: [], sent: [] });
   queryClient.setQueryData(activityQueryOptions.queryKey, [...activities]);
   queryClient.setQueryData(leaderboardQueryOptions({}).queryKey, {
@@ -77,9 +76,10 @@ const cacheFor = (reader: Me | null, { friends, bestRuns, activities }: Held) =>
     previous: null,
     next: null,
   });
-  queryClient.setQueryData(duelHistoryQueryOptions.queryKey, {
-    pages: [{ duels: [], next: null }],
-    pageParams: [null],
+  // Whatever week and frieze /history reads: no Duel.
+  queryClient.setQueryDefaults(["history", "week"], { queryFn: () => ({ duels: [] }) });
+  queryClient.setQueryDefaults(["history", "activity"], {
+    queryFn: () => ({ days: [], first: null }),
   });
 
   if (reader !== null) {

@@ -90,7 +90,7 @@ describe("the Queue follows the User across the app", () => {
     ).toBeInTheDocument();
   });
 
-  test.each(["Profil", "Classement", "Friends", "Duels", "Ranked"])(
+  test.each(["Profil", "Classement", "Friends", "Historique", "Ranked"])(
     "going to %s keeps the User in it, with their wait, back on Jouer",
     async (page) => {
       const { user, url } = await renderQueue();
