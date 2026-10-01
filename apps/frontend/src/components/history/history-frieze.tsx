@@ -3,6 +3,7 @@ import { HistoryFriezeWeek } from "@/components/history/history-frieze-week";
 import { friezeColumns } from "@/components/history/history-week";
 import { HistoryWeekTally } from "@/components/history/history-week-tally";
 import { useFriezeActivity, useHistoryView } from "@/components/history/use-history-view";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 
@@ -20,11 +21,19 @@ export const HistoryFrieze = () => {
       className="flex flex-wrap items-center gap-10 rounded-card bg-card px-7 py-6"
     >
       <div className="flex min-w-0 grow flex-col gap-3.5">
-        <div className="flex items-end gap-1">
-          {friezeColumns(friezeEnd, today, counts).map((column) => (
-            <HistoryFriezeWeek key={column.week} column={column} shown={shown} current={current} />
-          ))}
-        </div>
+        {/* One provider: from a day to the next, the tooltip follows at once. */}
+        <TooltipProvider>
+          <div className="flex items-end gap-1">
+            {friezeColumns(friezeEnd, today, counts).map((column) => (
+              <HistoryFriezeWeek
+                key={column.week}
+                column={column}
+                shown={shown}
+                current={current}
+              />
+            ))}
+          </div>
+        </TooltipProvider>
         <HistoryFriezeLegend />
       </div>
       <HistoryWeekTally />

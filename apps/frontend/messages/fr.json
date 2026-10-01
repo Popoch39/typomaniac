@@ -707,6 +707,7 @@
   "history_weeks_label": "Semaines",
   "history_frieze_week": "Semaine du {date}",
   "history_frieze_span": "{count} semaines",
+  "history_frieze_day_none": "Aucun Duel",
   "history_frieze_fewer": "Moins",
   "history_frieze_more": "Plus",
   "history_tally_duels": "Duels",

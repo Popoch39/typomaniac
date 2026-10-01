@@ -13,6 +13,10 @@ const TIME = { timeStyle: "short" } as const;
 export const shortDay = (day: DayKey, locale: Locale) =>
   dateFormat(locale, SHORT_DAY).format(noonOf(day));
 
+// « jeudi 1 oct. », "Thursday, Oct 1".
+export const longDay = (day: DayKey, locale: Locale) =>
+  dateFormat(locale, LONG_DAY).format(noonOf(day));
+
 // The week from its Monday to its Sunday: « 28 sept. – 4 oct. », "Sep 28 – Oct 4".
 export const weekLabel = (week: WeekKey, locale: Locale) => {
   const sunday = noonOf(week);
@@ -38,7 +42,7 @@ export const dayTitle = (day: DayKey, today: DayKey, locale: Locale) => {
 
   return date.getTime() === yesterday.getTime()
     ? m.history_day_yesterday({}, { locale })
-    : dateFormat(locale, LONG_DAY).format(date);
+    : longDay(day, locale);
 };
 
 // When a Duel ended, the time of day only: « 22:40 », "10:40 PM".

@@ -1,13 +1,8 @@
 import { Link } from "@tanstack/react-router";
 
-import { HEAT_PAINT, FUTURE_DAY_PAINT } from "@/components/history/history-paint";
+import { HistoryFriezeDay } from "@/components/history/history-frieze-day";
 import { shortDay } from "@/components/history/history-text";
-import {
-  type FriezeColumn,
-  heatLevel,
-  weekSearch,
-  type WeekKey,
-} from "@/components/history/history-week";
+import { type FriezeColumn, weekSearch, type WeekKey } from "@/components/history/history-week";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 import { cn } from "cn";
@@ -29,14 +24,8 @@ export const HistoryFriezeWeek = ({ column, shown, current }: HistoryFriezeWeekP
         column.week === shown ? "border-foreground" : "border-transparent",
       )}
     >
-      {column.days.map(({ day, duels, future }) => (
-        <span
-          key={day}
-          className={cn(
-            "size-3.5 rounded-[4px]",
-            future ? FUTURE_DAY_PAINT : HEAT_PAINT[heatLevel(duels)],
-          )}
-        />
+      {column.days.map((day) => (
+        <HistoryFriezeDay key={day.day} {...day} />
       ))}
     </Link>
   );

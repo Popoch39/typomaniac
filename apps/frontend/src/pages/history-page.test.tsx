@@ -200,6 +200,30 @@ describe("HistoryPage", () => {
     expect(tally).toEqual(["3", "1", "+6"]);
   });
 
+  test("each day of the frieze tells its Duels and its date under the pointer, not the days to come", async () => {
+    await renderPage({ [CURRENT_WEEK]: thisWeek });
+
+    const days = within(frieze())
+      .getByRole("link", { name: "Semaine du 28 sept." })
+      .querySelectorAll("[data-slot='tooltip-trigger']");
+
+    // Monday to Thursday: Friday to Sunday are still to come.
+    expect(days).toHaveLength(4);
+
+    await userEvent.hover(days[0] ?? document.body);
+
+    const tooltip = await screen.findByRole("tooltip");
+
+    expect(tooltip).toHaveTextContent("1 Duel");
+    expect(tooltip).toHaveTextContent("lundi 28 sept.");
+
+    await userEvent.hover(days[1] ?? document.body);
+
+    expect(await screen.findByRole("tooltip", { name: /Aucun Duel/ })).toHaveTextContent(
+      "mardi 29 sept.",
+    );
+  });
+
   test("the week's Duels by day, the most recent first, each day's tally beside its name", async () => {
     await renderPage({ [CURRENT_WEEK]: thisWeek });
 
