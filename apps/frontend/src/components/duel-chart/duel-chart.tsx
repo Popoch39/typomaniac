@@ -1,3 +1,4 @@
+import { cn } from "cn";
 import type { ReactNode } from "react";
 import {
   CartesianGrid,
@@ -70,7 +71,8 @@ const sideSeries = (side: DuelSide) => [
 // far (line), the raw of each second (dots) and the Misses (crosses, on their own axis). The
 // opponent is drawn first, under the User. A deleted opponent leaves the User's marks only. Every
 // figure, the axes' and the tooltip's, in the Locale.
-export const DuelChart = ({ duel }: { duel: ReplayedDuel }) => {
+// `compact`, in a Bo3's end that holds without scrolling: lower.
+export const DuelChart = ({ duel, compact = false }: { duel: ReplayedDuel; compact?: boolean }) => {
   const locale = useLocale();
   const rows = duelChartRows(duel);
 
@@ -85,7 +87,7 @@ export const DuelChart = ({ duel }: { duel: ReplayedDuel }) => {
     <figure aria-label={m.duel_chart_label({}, { locale })} className="flex flex-col gap-2.5">
       <ChartContainer
         config={duelChartConfig(duel.opponent, locale)}
-        className="aspect-auto h-52 w-full"
+        className={cn("aspect-auto w-full", compact ? "h-36" : "h-52")}
       >
         <ComposedChart data={rows} margin={{ left: 0, right: 0 }}>
           <CartesianGrid vertical={false} />

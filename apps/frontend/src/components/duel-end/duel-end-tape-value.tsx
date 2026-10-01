@@ -32,6 +32,7 @@ export const DuelEndTapeValue = ({ side, value, best, record }: DuelEndTapeValue
         ) : null}
         {side === "mine" ? mark : null}
         <span
+          data-tape-value
           className={cn(
             "font-display text-[34px] font-extrabold tracking-[-0.02em]",
             best === side || best === "level" ? TONES[side] : "text-muted-foreground",

@@ -1,7 +1,10 @@
 import { lazy, Suspense } from "react";
 
 import { NothingOnError } from "@/components/duel/nothing-on-error";
-import { DUEL_END_CARD_PAINT } from "@/components/duel-end/duel-end-paint";
+import {
+  DUEL_END_CARD_PAINT,
+  DUEL_END_COMPACT_CARD_PAINT,
+} from "@/components/duel-end/duel-end-paint";
 import { DuelChartSkeleton } from "@/components/duel-chart/duel-chart-skeleton";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { useLocale } from "@/locale/use-locale";
@@ -16,7 +19,14 @@ const WrittenDuelChart = lazy(async () => {
 
 // The written Duel's chart in its card, like the tale of the tape's; the card goes with it when
 // the Duel fails to load.
-export const DuelEndChart = ({ duelId }: { duelId: string }) => {
+export const DuelEndChart = ({
+  duelId,
+  compact = false,
+}: {
+  duelId: string;
+  // In a Bo3's column: its card's padding smaller.
+  compact?: boolean;
+}) => {
   const locale = useLocale();
 
   return (
@@ -24,7 +34,7 @@ export const DuelEndChart = ({ duelId }: { duelId: string }) => {
       <section
         aria-label={m.duel_ended_chart({}, { locale })}
         data-entrance="chart"
-        className={DUEL_END_CARD_PAINT}
+        className={compact ? DUEL_END_COMPACT_CARD_PAINT : DUEL_END_CARD_PAINT}
       >
         <Suspense
           fallback={
@@ -33,7 +43,7 @@ export const DuelEndChart = ({ duelId }: { duelId: string }) => {
             </LoadingRegion>
           }
         >
-          <WrittenDuelChart duelId={duelId} />
+          <WrittenDuelChart duelId={duelId} compact={compact} />
         </Suspense>
       </section>
     </NothingOnError>

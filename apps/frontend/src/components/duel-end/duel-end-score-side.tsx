@@ -8,6 +8,8 @@ type DuelEndScoreSideProps = {
   opponent?: boolean;
   // Set beside the Score: this User's Record stamp.
   stamp?: ReactNode;
+  // In a Bo3's band, as high as the HUD's: smaller.
+  compact?: boolean;
 };
 
 // One player's half of the band: their name at the top, their Score huge at the foot.
@@ -16,6 +18,7 @@ export const DuelEndScoreSide = ({
   score,
   opponent = false,
   stamp = null,
+  compact = false,
 }: DuelEndScoreSideProps) => (
   <div
     className={cn(
@@ -23,9 +26,18 @@ export const DuelEndScoreSide = ({
       opponent ? "items-end text-on-opponent" : "text-on-brand",
     )}
   >
-    <span className="text-lg font-bold tracking-[0.08em] uppercase">{name}</span>
+    <span className={cn("font-bold tracking-[0.08em] uppercase", compact ? "text-sm" : "text-lg")}>
+      {name}
+    </span>
     <div className="flex items-end gap-[18px]">
-      <span className="text-[112px] leading-[0.85] font-black tracking-[-0.03em]">{score}</span>
+      <span
+        className={cn(
+          "leading-[0.85] font-black tracking-[-0.03em]",
+          compact ? "text-[60px]" : "text-[112px]",
+        )}
+      >
+        {score}
+      </span>
       {stamp}
     </div>
   </div>

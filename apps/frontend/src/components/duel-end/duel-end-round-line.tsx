@@ -30,9 +30,9 @@ export const DuelEndRoundLine = ({ round, opponent }: DuelEndRoundLineProps) => 
     <li
       data-round-line
       data-outcome={outcome}
-      className="grid grid-cols-[1fr_140px_140px_1fr] items-center gap-4 rounded-2xl bg-surface-2/50 px-5 py-2.5"
+      className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 rounded-2xl bg-surface-2/50 px-4 py-2"
     >
-      <span className="font-display text-sm font-extrabold tracking-[0.04em] uppercase">
+      <span className="font-display text-sm font-extrabold tracking-[0.04em] whitespace-nowrap uppercase">
         {m.round_break_round_n({ n: round.index + 1 }, { locale })}
       </span>
       <span
@@ -53,7 +53,7 @@ export const DuelEndRoundLine = ({ round, opponent }: DuelEndRoundLineProps) => 
       </span>
       <span
         className={cn(
-          "justify-self-end rounded-full px-3 py-1 text-sm font-bold",
+          "max-w-28 justify-self-end truncate rounded-full px-3 py-1 text-sm font-bold",
           WINNER_PAINT[outcome],
         )}
       >

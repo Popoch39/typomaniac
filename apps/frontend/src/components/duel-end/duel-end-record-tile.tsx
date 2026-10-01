@@ -34,7 +34,14 @@ const footnote = (tile: RecordTile, locale: Locale) => {
 
 // One Record at the end of the Duel: beaten, on the accent, stamped « Nouveau record », this
 // Duel's figure; otherwise plain, the Record that holds.
-export const DuelEndRecordTile = ({ tile }: { tile: RecordTile }) => {
+// `compact`, in a Bo3's column: lower, its figure smaller.
+export const DuelEndRecordTile = ({
+  tile,
+  compact = false,
+}: {
+  tile: RecordTile;
+  compact?: boolean;
+}) => {
   const locale = useLocale();
   const { Icon, name } = RECORDS[tile.id];
 
@@ -42,7 +49,8 @@ export const DuelEndRecordTile = ({ tile }: { tile: RecordTile }) => {
     <li
       data-entrance="tile"
       className={cn(
-        "flex h-[150px] flex-col justify-between rounded-[24px] px-6 py-5",
+        "flex flex-col justify-between rounded-[24px]",
+        compact ? "h-[92px] px-5 py-3.5" : "h-[150px] px-6 py-5",
         tile.beaten ? "bg-brand text-on-brand" : "bg-card text-muted-foreground",
       )}
     >
@@ -60,7 +68,8 @@ export const DuelEndRecordTile = ({ tile }: { tile: RecordTile }) => {
       <div className="flex items-baseline justify-between gap-3">
         <span
           className={cn(
-            "font-display text-5xl leading-none font-black tracking-[-0.03em]",
+            "font-display leading-none font-black tracking-[-0.03em]",
+            compact ? "text-3xl" : "text-5xl",
             tile.beaten ? "text-on-brand" : "text-foreground",
           )}
         >

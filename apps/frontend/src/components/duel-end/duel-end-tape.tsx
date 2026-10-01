@@ -1,7 +1,12 @@
+import { cn } from "cn";
+
+import {
+  DUEL_END_CARD_PAINT,
+  DUEL_END_COMPACT_CARD_PAINT,
+} from "@/components/duel-end/duel-end-paint";
 import { DuelEndTapeChars } from "@/components/duel-end/duel-end-tape-chars";
 import { DuelEndTapeHeader } from "@/components/duel-end/duel-end-tape-header";
 import { DuelEndTapeLine } from "@/components/duel-end/duel-end-tape-line";
-import { DUEL_END_CARD_PAINT } from "@/components/duel-end/duel-end-paint";
 import { tapeSides } from "@/components/duel-end/ending-rounds";
 import type { RecordId } from "@/components/duel-end/record-tiles";
 import { tapeLines } from "@/components/duel-end/tape-lines";
@@ -14,12 +19,14 @@ type DuelEndTapeProps = {
   opponent: string;
   // The Records the Duel beat: the wpm's and the Combo's tag their lines.
   beaten: ReadonlySet<RecordId>;
+  // In a Bo3's column, which holds without scrolling.
+  compact?: boolean;
 };
 
 // The tale of the tape: each figure of the Duel, line by line, this User against the opponent,
 // then their characters. The columns are named for screen readers only; the rows stand 6 px
 // apart, as the board's, the edges' spacing taken back by the margins (the header row's too).
-export const DuelEndTape = ({ ending, opponent, beaten }: DuelEndTapeProps) => {
+export const DuelEndTape = ({ ending, opponent, beaten, compact = false }: DuelEndTapeProps) => {
   const locale = useLocale();
   const title = m.duel_ended_tape({}, { locale });
 
@@ -27,11 +34,21 @@ export const DuelEndTape = ({ ending, opponent, beaten }: DuelEndTapeProps) => {
   const lines = tapeLines(sides.mine, sides.theirs, beaten, locale);
 
   return (
-    <section aria-label={title} data-entrance="tape" className={DUEL_END_CARD_PAINT}>
-      <table className="-mt-3 -mb-1.5 w-full table-fixed border-separate border-spacing-x-0 border-spacing-y-1.5">
+    <section
+      aria-label={title}
+      data-entrance="tape"
+      className={compact ? DUEL_END_COMPACT_CARD_PAINT : DUEL_END_CARD_PAINT}
+    >
+      <table
+        className={cn(
+          "-mt-3 -mb-1.5 w-full table-fixed border-separate border-spacing-x-0 border-spacing-y-1.5",
+          // In a Bo3's column: lower rows, smaller figures.
+          compact && "text-sm [&_[data-tape-value]]:text-xl [&_tr]:h-8",
+        )}
+      >
         <colgroup>
           <col />
-          <col className="w-[220px]" />
+          <col className={compact ? "w-[150px]" : "w-[220px]"} />
           <col />
         </colgroup>
         <thead>

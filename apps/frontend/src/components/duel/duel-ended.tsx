@@ -1,3 +1,4 @@
+import { cn } from "cn";
 import { useCallback, useRef, useState } from "react";
 
 import { rankChange, tierReached } from "@/components/duel/rank-change";
@@ -6,8 +7,8 @@ import { DuelEndChart } from "@/components/duel-end/duel-end-chart";
 import { DuelEndOutcome } from "@/components/duel-end/duel-end-outcome";
 import { DuelEndRank } from "@/components/duel-end/duel-end-rank";
 import { DuelEndRecords } from "@/components/duel-end/duel-end-records";
-import { DuelEndRounds } from "@/components/duel-end/duel-end-rounds";
 import { DuelEndScores } from "@/components/duel-end/duel-end-scores";
+import { DuelEndSeries } from "@/components/duel-end/duel-end-series";
 import { bestRoundFigures, isSeries } from "@/components/duel-end/ending-rounds";
 import { DuelEndTape } from "@/components/duel-end/duel-end-tape";
 import { beatenRecords, recordTiles } from "@/components/duel-end/record-tiles";
@@ -69,37 +70,34 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
     <div
       ref={mount}
       tabIndex={-1}
-      className="mx-auto flex w-full max-w-[1100px] flex-col gap-6 outline-none"
-    >
-      <DuelEndOutcome outcome={ending.outcome} forfeit={ending.forfeit} opponent={opponent} />
-      {series ? (
-        <>
-          <DuelEndScores
-            label={m.duel_ended_rounds_won({}, { locale })}
-            score={ending.roundsWon}
-            opponentScore={ending.opponentRoundsWon}
-            opponent={opponent}
-            record={false}
-          />
-          <DuelEndRounds rounds={ending.rounds} opponent={opponent} />
-        </>
-      ) : (
-        <DuelEndScores
-          label={m.duel_ended_scores({}, { locale })}
-          score={ending.score.score}
-          opponentScore={ending.opponentScore.score}
-          opponent={opponent}
-          record={beaten.has("score")}
-        />
+      className={cn(
+        "mx-auto flex w-full max-w-[1100px] flex-col outline-none",
+        // A Bo3's end holds in the window, the page's margins taken off.
+        series ? "h-[calc(100svh-5.5rem)] gap-3.5" : "gap-6",
       )}
-      {ending.ranked === null ? null : <DuelEndRank ranked={ending.ranked} />}
+    >
       {reached !== null && tierUp === "open" ? (
         <TierUp from={reached.from} to={reached.to} onClose={closeTierUp} />
       ) : null}
-      {tiles === null ? null : <DuelEndRecords tiles={tiles} />}
-      <DuelEndTape ending={ending} opponent={opponent} beaten={beaten} />
-      <DuelEndChart duelId={ending.duelId} />
-      <DuelEndActions duelId={ending.duelId} />
+      {series ? (
+        <DuelEndSeries ending={ending} opponent={opponent} tiles={tiles} beaten={beaten} />
+      ) : (
+        <>
+          <DuelEndOutcome outcome={ending.outcome} forfeit={ending.forfeit} opponent={opponent} />
+          <DuelEndScores
+            label={m.duel_ended_scores({}, { locale })}
+            score={ending.score.score}
+            opponentScore={ending.opponentScore.score}
+            opponent={opponent}
+            record={beaten.has("score")}
+          />
+          {ending.ranked === null ? null : <DuelEndRank ranked={ending.ranked} />}
+          {tiles === null ? null : <DuelEndRecords tiles={tiles} />}
+          <DuelEndTape ending={ending} opponent={opponent} beaten={beaten} />
+          <DuelEndChart duelId={ending.duelId} />
+          <DuelEndActions duelId={ending.duelId} />
+        </>
+      )}
     </div>
   );
 };

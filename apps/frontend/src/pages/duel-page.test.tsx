@@ -283,7 +283,8 @@ describe("the end of the Duel", () => {
 
     await gsapClock.advance(1);
 
-    expect(await screen.findByText("Nouveau palier")).toBeInTheDocument();
+    // The dialog's portal renders its content again as it opens: the text is looked for each time.
+    await waitFor(() => expect(screen.getByText("Nouveau palier")).toBeInTheDocument());
   });
 
   test("the HUD's band turns into the Duel end's, complete once its entrance is over", async () => {

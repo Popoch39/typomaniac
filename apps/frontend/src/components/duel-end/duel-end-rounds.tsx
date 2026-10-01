@@ -1,4 +1,4 @@
-import { DUEL_END_CARD_PAINT } from "@/components/duel-end/duel-end-paint";
+import { DUEL_END_COMPACT_CARD_PAINT } from "@/components/duel-end/duel-end-paint";
 import { DuelEndRoundLine } from "@/components/duel-end/duel-end-round-line";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
@@ -19,7 +19,7 @@ export const DuelEndRounds = ({
     <section
       aria-label={m.duel_ended_rounds({}, { locale })}
       data-entrance="rounds"
-      className={DUEL_END_CARD_PAINT}
+      className={DUEL_END_COMPACT_CARD_PAINT}
     >
       <ol className="flex flex-col gap-1.5">
         {rounds.map((round) => (

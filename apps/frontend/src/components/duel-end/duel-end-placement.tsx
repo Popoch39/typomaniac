@@ -7,7 +7,16 @@ import { m } from "@/paraglide/messages";
 
 // A Placement Duel: « 3/5 » in a dashed frame where the Blason will be, the Placements left, and
 // a dash per Placement Duel, those played in the accent.
-export const DuelEndPlacement = ({ played, left }: { played: number; left: number }) => {
+// `compact`, in a Bo3's column: smaller.
+export const DuelEndPlacement = ({
+  played,
+  left,
+  compact = false,
+}: {
+  played: number;
+  left: number;
+  compact?: boolean;
+}) => {
   const locale = useLocale();
   const numbers = numberFormat(locale);
 
@@ -15,12 +24,15 @@ export const DuelEndPlacement = ({ played, left }: { played: number; left: numbe
     <>
       <div
         aria-hidden="true"
-        className="flex size-28 shrink-0 items-center justify-center rounded-[36px] border-2 border-dashed border-faint font-display text-[30px] font-black text-muted-foreground"
+        className={cn(
+          "flex shrink-0 items-center justify-center border-2 border-dashed border-faint font-display font-black text-muted-foreground",
+          compact ? "size-16 rounded-[22px] text-lg" : "size-28 rounded-[36px] text-[30px]",
+        )}
       >
         {numbers.format(played)}/{numbers.format(PLACEMENT_DUELS)}
       </div>
-      <div className="flex flex-col gap-3">
-        <p className="text-[26px] font-extrabold">
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
+        <p className={cn("font-extrabold", compact ? "text-lg" : "text-[26px]")}>
           {m.duel_rank_placement({ count: left, shown: numbers.format(left) }, { locale })}
         </p>
         <div aria-hidden="true" className="flex gap-2">
@@ -29,7 +41,8 @@ export const DuelEndPlacement = ({ played, left }: { played: number; left: numbe
               key={index}
               data-placement-dash={index < played ? "played" : "ahead"}
               className={cn(
-                "h-2.5 w-11 rounded-[4px]",
+                "h-2.5 rounded-[4px]",
+                compact ? "max-w-11 flex-1" : "w-11",
                 index < played ? "bg-brand" : "bg-surface-2",
               )}
             />
