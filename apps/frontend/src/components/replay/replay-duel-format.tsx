@@ -11,7 +11,12 @@ export const ReplayDuelFormat = ({ duel }: { duel: ReplayedDuel }) => {
   const locale = useLocale();
 
   const format = duelFormatLine(
-    { challenge: !duel.ranked, seconds: duel.seconds, language: duel.language },
+    {
+      challenge: !duel.ranked,
+      bo3: duel.roundsToWin > 1,
+      seconds: duel.seconds,
+      language: duel.language,
+    },
     locale,
   );
 

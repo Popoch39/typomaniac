@@ -1,6 +1,7 @@
 import { gsap } from "gsap";
 
 import type { BandMorph } from "@/components/duel-end/band-morph";
+import { ratio } from "@/components/duel-scene/scene-ghost";
 
 // How long the band takes to go from the HUD to its place in the Duel end, in seconds.
 export const BAND_MORPH_SECONDS = 0.5;
@@ -15,9 +16,6 @@ const FIGURES_IN_AT = 0.2;
 const FIGURES_IN_SECONDS = 0.3;
 
 const between = (from: number, to: number, progress: number) => from + (to - from) * progress;
-
-// A size over another, 1 without one to divide by (a box not laid out).
-const ratio = (size: number, of: number) => (of > 0 ? size / of : 1);
 
 // On `timeline`, from time 0: the Duel end's band (`data-entrance=band`) leaves the HUD's box and
 // grows and slides into its place, its slant sliding from the Lead's split to the User's share;

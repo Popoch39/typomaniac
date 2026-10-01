@@ -44,6 +44,12 @@ const me: Me = {
 
 const placement = { placementsLeft: 5 };
 
+// The pips of the scene's header, this User's then the opponent's: filled for the Rounds won.
+const pips = () =>
+  Array.from(screen.getByRole("banner").querySelectorAll("[data-pip]"), (pip) =>
+    pip.hasAttribute("data-won"),
+  );
+
 // A Duel found in the Queue, its start far enough for the Countdown to still run.
 const duelFound = (
   selfRank: typeof placement | null,
@@ -57,7 +63,8 @@ const duelFound = (
     wordListVersion: 1,
     seconds,
     startsAt: 60_000,
-    roundsToWin: 1,
+    // A Duel of the Queue is a Bo3, a Challenge a single Round.
+    roundsToWin: selfRank === null ? 1 : 2,
   },
   opponent: { handle: "kzr_", image: null, ornament: null },
   selfOrnament: null,
@@ -234,16 +241,48 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
     expect(within(header).getByRole("link", { name: "typomaniac" })).toBeInTheDocument();
   });
 
-  test("a Duel of the Queue says it is ranked, at the right of the header", async () => {
+  test("a Duel of the Queue says it is ranked, in a Bo3, at the right of the header", async () => {
     await renderPlayPage();
     await pair(duelFound(placement));
 
     expect(
-      within(screen.getByRole("banner")).getByText("Duel classé · 30 s · anglais"),
+      within(screen.getByRole("banner")).getByText("Duel classé · Bo3 · 30 s · anglais"),
     ).toBeInTheDocument();
   });
 
-  test("a Challenge says so, never ranked", async () => {
+  test("beside the format, the Round being played and three pips each, filled once a Round is won", async () => {
+    await renderPlayPage();
+    await pair(duelFound(placement));
+
+    const header = screen.getByRole("banner");
+
+    expect(within(header).getByText("Manche 1")).toBeInTheDocument();
+    expect(within(header).getByText("Manches : 0 à 0")).toBeInTheDocument();
+    expect(pips()).toEqual([false, false, false, false, false, false]);
+
+    act(() =>
+      server().receive({
+        type: "round-ended",
+        round: {
+          index: 0,
+          outcome: "win",
+          result: noResult,
+          opponentResult: noResult,
+          score: { score: 300, bestCombo: 2, bursts: 0 },
+          opponentScore: noScore,
+        },
+        roundsWon: 1,
+        opponentRoundsWon: 0,
+        next: { index: 1, seed: 7, startsAt: 100_000 },
+        serverTime: 0,
+      }),
+    );
+
+    expect(within(header).getByText("Manches : 1 à 0")).toBeInTheDocument();
+    expect(pips()).toEqual([true, false, false, false, false, false]);
+  });
+
+  test("a Challenge says so, never ranked, without Rounds", async () => {
     await renderPlayPage();
     await pair(duelFound(null));
 
@@ -251,6 +290,7 @@ describe("the Duel's scene, from the Countdown to the end of the Duel", () => {
 
     expect(within(header).getByText("Challenge · 30 s · anglais")).toBeInTheDocument();
     expect(within(header).queryByText(/Duel classé/)).not.toBeInTheDocument();
+    expect(within(header).queryByText(/Manche/)).not.toBeInTheDocument();
   });
 
   test("Quitter le Duel stays the way out, by a Forfeit", async () => {
@@ -327,8 +367,9 @@ describe("the Duel's scene in English", () => {
     await pair(duelFound(placement));
 
     expect(
-      within(screen.getByRole("banner")).getByText("Ranked Duel · 30 s · English"),
+      within(screen.getByRole("banner")).getByText("Ranked Duel · Bo3 · 30 s · English"),
     ).toBeInTheDocument();
+    expect(within(screen.getByRole("banner")).getByText("Round 1")).toBeInTheDocument();
   });
 
   test("the format is the Duel's own: a Challenge of another time and Language says so", async () => {

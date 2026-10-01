@@ -121,7 +121,7 @@ describe("DuelHudDevPage", () => {
 
     expect(screen.getByLabelText("Barre latérale")).not.toBeVisible();
     expect(header).toHaveAttribute("inert");
-    expect(within(header).getByText("Duel classé · 30 s · anglais")).toBeInTheDocument();
+    expect(within(header).getByText("Duel classé · Bo3 · 30 s · anglais")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Quitter le Duel" })).toBeEnabled();
   });
 

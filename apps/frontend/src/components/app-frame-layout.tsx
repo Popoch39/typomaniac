@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import type { DuelFormat } from "@/components/duel/duel-format-line";
 import { DUEL_SCENE } from "@/components/duel-scene/duel-scene";
+import type { DuelRoundView } from "@/components/duel-scene/duel-round-view";
 import { DuelSceneHeader } from "@/components/duel-scene/duel-scene-header";
 import { fitDuelScene } from "@/components/duel-scene/fit-duel-scene";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
@@ -10,6 +11,8 @@ import { AppSidebar } from "@/components/sidebar/app-sidebar";
 type AppFrameLayoutProps = {
   // The Duel whose scene the frame is; null for the app's own layout.
   duelFormat: DuelFormat | null;
+  // In a Bo3, where it stands; null otherwise.
+  duelRound: DuelRoundView | null;
   // While the Intro plays over it: out of reach, nothing takes the focus.
   inert: boolean;
   children: ReactNode;
@@ -19,7 +22,7 @@ type AppFrameLayoutProps = {
 // page fixed at the size of its board under the scene's own header, centred and scaled to the
 // window. The same elements either way, so the page is never mounted again as the Duel starts or
 // ends.
-export const AppFrameLayout = ({ duelFormat, inert, children }: AppFrameLayoutProps) => {
+export const AppFrameLayout = ({ duelFormat, duelRound, inert, children }: AppFrameLayoutProps) => {
   const inDuelScene = duelFormat !== null;
 
   return (
@@ -39,7 +42,7 @@ export const AppFrameLayout = ({ duelFormat, inert, children }: AppFrameLayoutPr
             : "min-h-[calc(100svh-1.5rem)] flex-1 pt-9 pr-11 pb-7 pl-12",
         )}
       >
-        {duelFormat === null ? null : <DuelSceneHeader format={duelFormat} />}
+        {duelFormat === null ? null : <DuelSceneHeader format={duelFormat} round={duelRound} />}
         <main data-intro="page" className="flex flex-1 flex-col">
           {children}
         </main>

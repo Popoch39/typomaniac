@@ -2,6 +2,7 @@ import { DuelEndTapeChars } from "@/components/duel-end/duel-end-tape-chars";
 import { DuelEndTapeHeader } from "@/components/duel-end/duel-end-tape-header";
 import { DuelEndTapeLine } from "@/components/duel-end/duel-end-tape-line";
 import { DUEL_END_CARD_PAINT } from "@/components/duel-end/duel-end-paint";
+import { tapeSides } from "@/components/duel-end/ending-rounds";
 import type { RecordId } from "@/components/duel-end/record-tiles";
 import { tapeLines } from "@/components/duel-end/tape-lines";
 import { useLocale } from "@/locale/use-locale";
@@ -22,12 +23,8 @@ export const DuelEndTape = ({ ending, opponent, beaten }: DuelEndTapeProps) => {
   const locale = useLocale();
   const title = m.duel_ended_tape({}, { locale });
 
-  const lines = tapeLines(
-    { result: ending.result, score: ending.score },
-    { result: ending.opponentResult, score: ending.opponentScore },
-    beaten,
-    locale,
-  );
+  const sides = tapeSides(ending);
+  const lines = tapeLines(sides.mine, sides.theirs, beaten, locale);
 
   return (
     <section aria-label={title} data-entrance="tape" className={DUEL_END_CARD_PAINT}>

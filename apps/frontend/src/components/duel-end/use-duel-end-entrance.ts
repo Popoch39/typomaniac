@@ -124,6 +124,13 @@ export const useDuelEndEntrance = (screenRef: RefObject<HTMLElement | null>, tie
           timeline.addPause(TIER_UP_AT, openTierUp);
         }
 
+        // In a Bo3, its Rounds line by line under the band.
+        enter(
+          "[data-entrance=rounds] [data-round-line]",
+          FADED_OUT,
+          { ...FADED_IN, duration: 0.25, stagger: { amount: 0.1 } },
+          rest(0.5),
+        );
         fadeIn("[data-entrance=rank]", 0.35, rest(0.5));
         enter(
           "[data-entrance=tp]",

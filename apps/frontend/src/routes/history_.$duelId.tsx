@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { replayedDuelQueryOptions } from "@/api/duel-history";
+import { writtenDuelQueryOptions } from "@/api/duel-history";
 import { meQueryOptions } from "@/api/me";
 import { ReplayErrorPage } from "@/pages/replay-error-page";
 import { ReplayPage } from "@/pages/replay-page";
@@ -14,7 +14,7 @@ export const Route = createFileRoute("/history_/$duelId")({
     }
   },
   loader: ({ context, params }) =>
-    context.queryClient.ensureQueryData(replayedDuelQueryOptions(params.duelId)),
+    context.queryClient.ensureQueryData(writtenDuelQueryOptions(params.duelId)),
   component: ReplayPage,
   errorComponent: ReplayErrorPage,
 });

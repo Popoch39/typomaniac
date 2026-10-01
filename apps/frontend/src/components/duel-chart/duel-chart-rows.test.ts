@@ -25,6 +25,7 @@ const duel = (overrides: Partial<ReplayedDuel>): ReplayedDuel => ({
   language: "en",
   wordListVersion: 1,
   seconds: 2,
+  roundsToWin: 1,
   startsAt: 10_000,
   endedAt: 12_000,
   outcome: "win",

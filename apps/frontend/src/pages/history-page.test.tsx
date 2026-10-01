@@ -56,6 +56,9 @@ const entry = (overrides: Partial<DuelHistoryEntry>): DuelHistoryEntry => ({
   opponentWpm: 70,
   tp: null,
   ranked: false,
+  roundsToWin: 1,
+  roundsWon: 1,
+  opponentRoundsWon: 0,
   wpmBySecond: [0, 60, 90],
   opponentWpmBySecond: [0, 40, 70],
   ...overrides,
@@ -282,6 +285,42 @@ describe("HistoryPage", () => {
     expect(within(forfeit).queryByText(/TP/)).not.toBeInTheDocument();
     expect(forfeit).toHaveTextContent("— vs —");
     expect(forfeit.querySelectorAll("polyline")).toHaveLength(1);
+  });
+
+  test("a Bo3's card shows the count of its Rounds in place of the Scores, and its last Round's spark", async () => {
+    await renderPage({
+      [CURRENT_WEEK]: [
+        entry({
+          id: "bo3",
+          ranked: true,
+          tp: 18,
+          roundsToWin: 2,
+          roundsWon: 2,
+          opponentRoundsWon: 1,
+          score: 1309,
+          opponentScore: 1158,
+        }),
+        entry({
+          id: "bo3-gone",
+          endedAt: at(9, 1, 9, 0),
+          outcome: "loss",
+          ranked: true,
+          roundsToWin: 2,
+          roundsWon: 0,
+          opponentRoundsWon: null,
+          opponent: null,
+        }),
+      ],
+    });
+
+    const bo3 = card("Aujourd'hui", 0);
+
+    expect(bo3).toHaveTextContent("2 vs 1");
+    expect(bo3).not.toHaveTextContent("1 309");
+    // The spark of its last Round, as the API gives it.
+    expect(bo3.querySelectorAll("polyline")).toHaveLength(2);
+    // Against a deleted User, their count is gone with them.
+    expect(card("Aujourd'hui", 1)).toHaveTextContent("0 vs —");
   });
 
   test("a week without a Duel says so, with a way to play", async () => {

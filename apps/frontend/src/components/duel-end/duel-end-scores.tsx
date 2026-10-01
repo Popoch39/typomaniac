@@ -12,6 +12,8 @@ import { m } from "@/paraglide/messages";
 type ShareStyle = CSSProperties & { "--share": number };
 
 type DuelEndScoresProps = {
+  // What the band is: both Scores, or in a Bo3 the Rounds each won.
+  label: string;
   score: number;
   opponentScore: number;
   opponent: string;
@@ -19,15 +21,22 @@ type DuelEndScoresProps = {
   record: boolean;
 };
 
-// Both Scores in one band: this User's on the accent at the left, the opponent's in their colour
-// at the right, split by a slant at this User's share of both.
-export const DuelEndScores = ({ score, opponentScore, opponent, record }: DuelEndScoresProps) => {
+// Both Scores in one band, or in a Bo3 the count of the Rounds won, in large: this User's on the
+// accent at the left, the opponent's in their colour at the right, split by a slant at this User's
+// share of both.
+export const DuelEndScores = ({
+  label,
+  score,
+  opponentScore,
+  opponent,
+  record,
+}: DuelEndScoresProps) => {
   const locale = useLocale();
   const share: ShareStyle = { "--share": scoreShare(score, opponentScore) };
 
   return (
     <section
-      aria-label={m.duel_ended_scores({}, { locale })}
+      aria-label={label}
       data-entrance="band"
       style={share}
       className="relative h-60 overflow-hidden rounded-card bg-opponent"

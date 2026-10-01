@@ -2,7 +2,7 @@ import { useSuspenseQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeftIcon } from "lucide-react";
 
-import { replayedDuelQueryOptions } from "@/api/duel-history";
+import { writtenDuelQueryOptions } from "@/api/duel-history";
 import { weekKeyOf } from "@/components/history/history-week";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/locale/use-locale";
@@ -10,7 +10,7 @@ import { m } from "@/paraglide/messages";
 
 // « ← History », back to the week the Duel was played in.
 export const ReplayBackLink = ({ duelId }: { duelId: string }) => {
-  const { data: duel } = useSuspenseQuery(replayedDuelQueryOptions(duelId));
+  const { data: duel } = useSuspenseQuery(writtenDuelQueryOptions(duelId));
   const locale = useLocale();
 
   return (

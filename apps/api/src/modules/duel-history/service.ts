@@ -87,6 +87,9 @@ const entryOf = (
     opponentWpm: played.opponent?.result.wpm ?? null,
     tp: played.tp,
     ranked: played.ranked,
+    roundsToWin: played.roundsToWin,
+    roundsWon: played.player.roundsWon,
+    opponentRoundsWon: played.opponent?.roundsWon ?? null,
     wpmBySecond: wpmBySecondOf(played, last, last.player),
     opponentWpmBySecond: last.opponent ? wpmBySecondOf(played, last, last.opponent) : null,
   };

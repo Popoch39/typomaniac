@@ -39,6 +39,15 @@ const RATING: Rating = {
   rank: { tier: "gold", division: 2, tp: 40, shielded: false },
 };
 
+// A Result typed at `wpm`, without a mistake.
+const resultAt = (wpm: number) => ({
+  wpm,
+  raw: wpm,
+  accuracy: 100,
+  consistency: 80,
+  chars: { correct: wpm * 2.5, incorrect: 0, extra: 0, missed: 0 },
+});
+
 // A finished Duel between two Users: `outcome` and `winnerId` as the server wrote them.
 const finishedDuel = ({
   id = crypto.randomUUID(),
@@ -58,13 +67,7 @@ const finishedDuel = ({
 }): DuelRecord => {
   const player = ({ userId, wpm, score, keystrokes = [], rated }: Side): OneRoundPlayer => ({
     userId,
-    result: {
-      wpm,
-      raw: wpm,
-      accuracy: 100,
-      consistency: 80,
-      chars: { correct: wpm * 2.5, incorrect: 0, extra: 0, missed: 0 },
-    },
+    result: resultAt(wpm),
     pace: defaultPace,
     score: score === null ? null : { score, bestCombo: 10, bursts: 1 },
     keystrokes,
@@ -84,6 +87,88 @@ const finishedDuel = ({
     winnerId,
     players: [player(first), player(second)],
   });
+};
+
+// One Round of a Bo3 between two Users: each side's wpm, Score and Keystrokes, its Seed, and how
+// long it lasted (shorter than 30 s when a Forfeit cut it).
+type Bo3Round = {
+  seed: number;
+  sides: [Side, Side];
+  lasted?: number;
+};
+
+// A side of a Round of a Bo3, as the server writes it.
+const bo3Side = ({ userId, wpm, score, keystrokes = [] }: Side) => ({
+  userId,
+  result: resultAt(wpm),
+  score: score === null ? null : { score, bestCombo: 5, bursts: 0 },
+  keystrokes,
+});
+
+// A Bo3 that started at `startsAt`, its Rounds 37.4 s apart (30 s, the server's 400 ms, the 7 s
+// of the Round break), each side's Result over the Duel at `wpm`.
+const bo3Duel = ({
+  id,
+  startsAt,
+  outcome = "win",
+  winnerId,
+  roundsWon,
+  rounds,
+}: {
+  id: string;
+  startsAt: number;
+  outcome?: DuelRecord["outcome"];
+  winnerId: string;
+  roundsWon: [number, number];
+  rounds: [Bo3Round, ...Bo3Round[]];
+}): DuelRecord => {
+  const roundRecord = ({ seed, sides, lasted = 30_000 }: Bo3Round, index: number) => {
+    const roundStart = startsAt + index * 37_400;
+
+    return {
+      index,
+      seed,
+      startsAt: roundStart,
+      endedAt: roundStart + lasted,
+      players: [bo3Side(sides[0]), bo3Side(sides[1])] as const,
+    };
+  };
+
+  const [firstRound, ...laterRounds] = rounds;
+  const first = roundRecord(firstRound, 0);
+  const later = laterRounds.map((round, index) => roundRecord(round, index + 1));
+  const last = later.at(-1) ?? first;
+  const [one, two] = rounds[0].sides;
+
+  return {
+    id,
+    language: "en",
+    wordListVersion: currentWordListVersion.en,
+    seconds: 30,
+    startsAt,
+    mode: "time",
+    endedAt: last.endedAt,
+    outcome,
+    winnerId,
+    roundsToWin: 2,
+    players: [
+      {
+        userId: one.userId,
+        result: resultAt(60),
+        pace: defaultPace,
+        roundsWon: roundsWon[0],
+        rated: null,
+      },
+      {
+        userId: two.userId,
+        result: resultAt(50),
+        pace: defaultPace,
+        roundsWon: roundsWon[1],
+        rated: null,
+      },
+    ],
+    rounds: [first, ...later],
+  };
 };
 
 // A fresh app per test: its Users and its Duels are its own.
@@ -204,12 +289,78 @@ describe("GET /api/duels", () => {
           opponentWpm: 70,
           tp: null,
           ranked: false,
+          // A single Round, won by Ada.
+          roundsToWin: 1,
+          roundsWon: 1,
+          opponentRoundsWon: 0,
           // Neither typed: 30 seconds at 0 wpm.
           wpmBySecond: Array.from({ length: 30 }, () => 0),
           opponentWpmBySecond: Array.from({ length: 30 }, () => 0),
         },
       ],
     });
+  });
+
+  test("a Bo3 shows the count of its Rounds, and its last Round's Scores and wpm of each second", async () => {
+    const { duels, newUser } = setup();
+    const ada = await newUser("ada");
+    const alan = await newUser("alan");
+    const text = generateText(3, "en", currentWordListVersion.en, 100).join(" ");
+
+    // In the last Round only, Ada types her Text at 100 ms a character.
+    const typing = [...text]
+      .slice(0, 300)
+      .map((char, index): Keystroke => ({ kind: "char", char, at: (index + 1) * 100 }));
+
+    duels.saved.push(
+      bo3Duel({
+        id: "bo3",
+        startsAt: 1_000_000,
+        winnerId: ada.id,
+        roundsWon: [2, 1],
+        rounds: [
+          {
+            seed: 1,
+            sides: [
+              { userId: ada.id, wpm: 60, score: 900 },
+              { userId: alan.id, wpm: 50, score: 700 },
+            ],
+          },
+          {
+            seed: 2,
+            sides: [
+              { userId: ada.id, wpm: 40, score: 500 },
+              { userId: alan.id, wpm: 54, score: 800 },
+            ],
+          },
+          {
+            seed: 3,
+            sides: [
+              { userId: ada.id, wpm: 70, score: 1100, keystrokes: typing },
+              { userId: alan.id, wpm: 44, score: 600 },
+            ],
+          },
+        ],
+      }),
+    );
+
+    const [duel] = (await ada.week()).duels;
+
+    expect(duel).toMatchObject({
+      outcome: "win",
+      roundsToWin: 2,
+      roundsWon: 2,
+      opponentRoundsWon: 1,
+      score: 1100,
+      opponentScore: 600,
+    });
+    expect(duel?.wpmBySecond).toHaveLength(30);
+    expect(duel?.wpmBySecond.at(-1)).toBeGreaterThan(0);
+    expect(duel?.opponentWpmBySecond?.at(-1)).toBe(0);
+
+    const [fromAlan] = (await alan.week()).duels;
+
+    expect(fromAlan).toMatchObject({ outcome: "loss", roundsWon: 1, opponentRoundsWon: 2 });
   });
 
   test("each side's wpm of each second, replayed from their Keystrokes, up to the Forfeit", async () => {
@@ -531,6 +682,10 @@ describe("GET /api/duels", () => {
           opponentScore: null,
           wpm: 60,
           opponentWpm: null,
+          // The opponent's Rounds go with their User.
+          roundsToWin: 1,
+          roundsWon: 0,
+          opponentRoundsWon: null,
           wpmBySecond: Array.from({ length: 30 }, () => 0),
           opponentWpmBySecond: null,
         },
@@ -659,14 +814,6 @@ describe("GET /api/duels/activity", () => {
 });
 
 // A Result as `finishedDuel` writes it, for the Duel and for its Round.
-const resultAt = (wpm: number) => ({
-  wpm,
-  raw: wpm,
-  accuracy: 100,
-  consistency: 80,
-  chars: { correct: wpm * 2.5, incorrect: 0, extra: 0, missed: 0 },
-});
-
 // A User of a replayed Duel as `finishedDuel` writes them.
 const player = (image: string, handle: string, wpm: number, roundsWon: number) => ({
   handle,
@@ -764,6 +911,97 @@ describe("GET /api/duels/:duelId", () => {
     expect(fromAlan.rounds[0]?.me.keystrokes).toEqual(alanTyped);
     expect(fromAlan.opponent?.handle).toBe("ada");
     expect(fromAlan.rounds[0]?.opponent?.keystrokes).toEqual(adaTyped);
+  });
+
+  test("a Bo3 is replayed Round by Round, each on its Seed, its time and its own Keystrokes", async () => {
+    const { duels, ada, alan } = await withDuels();
+
+    duels.saved.push(
+      bo3Duel({
+        id: "bo3",
+        startsAt: 3_000_000,
+        winnerId: ada.id,
+        roundsWon: [2, 1],
+        rounds: [
+          {
+            seed: 11,
+            sides: [
+              { userId: ada.id, wpm: 60, score: 900, keystrokes: adaTyped },
+              { userId: alan.id, wpm: 50, score: 700 },
+            ],
+          },
+          {
+            seed: 12,
+            sides: [
+              { userId: ada.id, wpm: 40, score: 500 },
+              { userId: alan.id, wpm: 54, score: 800, keystrokes: alanTyped },
+            ],
+          },
+          {
+            seed: 13,
+            sides: [
+              { userId: ada.id, wpm: 70, score: 1100 },
+              { userId: alan.id, wpm: 44, score: 600 },
+            ],
+          },
+        ],
+      }),
+    );
+
+    const duel = await ada.replay("bo3");
+
+    expect(duel).toMatchObject({
+      roundsToWin: 2,
+      me: { roundsWon: 2 },
+      opponent: { roundsWon: 1 },
+    });
+    expect(
+      duel.rounds.map(({ index, seed, startsAt, endedAt }) => ({ index, seed, startsAt, endedAt })),
+    ).toEqual([
+      { index: 0, seed: 11, startsAt: 3_000_000, endedAt: 3_030_000 },
+      { index: 1, seed: 12, startsAt: 3_037_400, endedAt: 3_067_400 },
+      { index: 2, seed: 13, startsAt: 3_074_800, endedAt: 3_104_800 },
+    ]);
+    expect(duel.rounds[0]?.me.keystrokes).toEqual(adaTyped);
+    expect(duel.rounds[1]?.opponent?.keystrokes).toEqual(alanTyped);
+    expect(duel.rounds.map(({ me }) => me.score?.score)).toEqual([900, 500, 1100]);
+  });
+
+  test("a Bo3 forfeited in its second Round has two Rounds, the second cut at the Forfeit", async () => {
+    const { duels, ada, alan } = await withDuels();
+
+    duels.saved.push(
+      bo3Duel({
+        id: "forfeited",
+        startsAt: 3_000_000,
+        outcome: "forfeit",
+        winnerId: ada.id,
+        roundsWon: [1, 0],
+        rounds: [
+          {
+            seed: 11,
+            sides: [
+              { userId: ada.id, wpm: 60, score: 900 },
+              { userId: alan.id, wpm: 50, score: 700 },
+            ],
+          },
+          {
+            seed: 12,
+            lasted: 12_000,
+            sides: [
+              { userId: ada.id, wpm: 40, score: 200 },
+              { userId: alan.id, wpm: 54, score: 300 },
+            ],
+          },
+        ],
+      }),
+    );
+
+    const duel = await alan.replay("forfeited");
+
+    expect(duel).toMatchObject({ outcome: "loss", forfeit: true, endedAt: 3_049_400 });
+    expect(duel.rounds).toHaveLength(2);
+    expect(duel.rounds[1]).toMatchObject({ index: 1, startsAt: 3_037_400, endedAt: 3_049_400 });
   });
 
   test("a Ranked Duel says so with the TP it moved for the reader, none in Placement nor for a Challenge", async () => {

@@ -11,7 +11,7 @@ import { gsap } from "gsap";
 import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, type MockInstance, test, vi } from "vitest";
 
-import { type ReplayedDuel, replayedDuelQueryOptions } from "@/api/duel-history";
+import { type ReplayedDuel, type WrittenDuel, writtenDuelQueryOptions } from "@/api/duel-history";
 import { type Me, meQueryOptions } from "@/api/me";
 import type { FaceOffSound, FaceOffSounds } from "@/audio/face-off-sounds";
 import { AuraRuntimeContext } from "@/components/aura/aura-runtime-context";
@@ -22,7 +22,7 @@ import { TIER_UP_AT } from "@/components/duel-end/use-duel-end-entrance";
 import { FaceOffSoundsContext } from "@/components/face-off/face-off-sounds-context";
 import { stageScale } from "@/components/tier-up/stage/stage-scale";
 import type { AuraRuntime } from "@/lib/aura-runtime";
-import type { DuelEnding } from "@/stores/duel-store";
+import type { DuelEnding, PlayedRound } from "@/stores/duel-store";
 import { useFaceOffSoundStore } from "@/stores/face-off-sound-store";
 import { useLocaleStore } from "@/stores/locale-store";
 import { usePlayStore } from "@/stores/play-store";
@@ -56,21 +56,60 @@ const NO_FIGURES: Figures = {
   opponentScore: noScore,
 };
 
+// The Rounds of a Duel end: a single one unless a test plays a Bo3.
+type EndingRounds = Pick<DuelEnding, "roundsToWin" | "rounds" | "roundsWon" | "opponentRoundsWon">;
+
 const ending = (
   duelId: string,
   ranked: DuelEnding["ranked"],
   issue: Issue,
   figures: Figures,
   records: DuelEnding["records"],
+  rounds: EndingRounds = singleRoundEnd,
 ): DuelEnding => ({
   ranked,
   duelId,
   ...issue,
   ...figures,
-  ...singleRoundEnd,
+  ...rounds,
   opponent: { handle: "alan", image: null },
   records,
 });
+
+const playedRound = (
+  index: number,
+  outcome: PlayedRound["outcome"],
+  score: number,
+  opponentScore: number,
+): PlayedRound => ({
+  index,
+  outcome,
+  result: noResult,
+  opponentResult: noResult,
+  score: { score, bestCombo: 0, bursts: 0 },
+  opponentScore: { score: opponentScore, bestCombo: 0, bursts: 0 },
+});
+
+// A Bo3 as its end tells it, and as the API sends it written: one Round per Round played.
+type Series = { rounds: EndingRounds; written: WrittenDuel };
+
+const seriesOf = (rounds: PlayedRound[], roundsWon: number, opponentRoundsWon: number): Series => {
+  const single = writtenDuelOf(written);
+  const [first] = single.rounds;
+
+  if (typeof first === "undefined") {
+    throw new Error("A written Duel has a Round");
+  }
+
+  return {
+    rounds: { roundsToWin: 2, rounds, roundsWon, opponentRoundsWon },
+    written: {
+      ...single,
+      roundsToWin: 2,
+      rounds: rounds.map(({ index }) => ({ ...first, index, seed: 42 + index })),
+    },
+  };
+};
 
 const player = (handle: string) => ({
   handle,
@@ -88,6 +127,7 @@ const written: ReplayedDuel = {
   language: "en",
   wordListVersion: 1,
   seconds: 30,
+  roundsToWin: 1,
   startsAt: 0,
   endedAt: 30_000,
   outcome: "draw",
@@ -138,6 +178,8 @@ type RenderOptions = {
   newDuel?: string;
   // With a Tier-up to open: the entrance played up to it (by default), or left at its start.
   untilTierUp?: boolean;
+  // A Bo3: its Rounds told and written. A single Round otherwise.
+  series?: Series;
 };
 
 const ada: Me = {
@@ -164,6 +206,7 @@ const renderEnded = async ({
   records = null,
   newDuel = "Nouveau Duel",
   untilTierUp = true,
+  series,
 }: RenderOptions = {}) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
@@ -171,12 +214,17 @@ const renderEnded = async ({
   queryClient.setQueryData(meQueryOptions.queryKey, ada);
 
   if (cached !== null) {
-    queryClient.setQueryData(replayedDuelQueryOptions(cached.id).queryKey, writtenDuelOf(cached));
+    queryClient.setQueryData(
+      writtenDuelQueryOptions(cached.id).queryKey,
+      series?.written ?? writtenDuelOf(cached),
+    );
   }
 
   const router = createRouter({
     routeTree: createRootRoute({
-      component: () => <DuelEnded ending={ending(duelId, ranked, issue, figures, records)} />,
+      component: () => (
+        <DuelEnded ending={ending(duelId, ranked, issue, figures, records, series?.rounds)} />
+      ),
     }),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
@@ -315,6 +363,133 @@ const ACTIONS = {
   Escape: () => userEvent.keyboard("{Escape}"),
   Enter: () => userEvent.keyboard("{Enter}"),
 };
+
+describe("the Duel end of a Bo3", () => {
+  const twoOne = seriesOf(
+    [
+      playedRound(0, "win", 1284, 1102),
+      playedRound(1, "loss", 1047, 1216),
+      playedRound(2, "win", 1309, 1158),
+    ],
+    2,
+    1,
+  );
+
+  const twoNil = seriesOf(
+    [
+      playedRound(0, "win", 900, 700),
+      playedRound(1, "draw", 640, 640),
+      playedRound(2, "win", 880, 610),
+    ],
+    2,
+    0,
+  );
+
+  test("won 2-1: the count in large, three lines of Round, the chart of the third, the others to pick", async () => {
+    await renderEnded({ series: twoOne, issue: { outcome: "win", forfeit: false } });
+
+    const band = screen.getByRole("region", { name: "Manches gagnées" });
+
+    expect(band).toHaveTextContent("Toi2");
+    expect(band).toHaveTextContent("@alan1");
+    expect(screen.queryByRole("region", { name: "Score" })).toBeNull();
+
+    const lines = within(screen.getByRole("region", { name: "Les manches" })).getAllByRole(
+      "listitem",
+    );
+
+    // Read without the spaces of the Locale's groups.
+    expect(lines.map((line) => line.textContent?.replaceAll(/\s/gu, ""))).toEqual([
+      "Manche112841102Toi",
+      "Manche210471216@alan",
+      "Manche313091158Toi",
+    ]);
+
+    const picker = await screen.findByRole("radiogroup", { name: "Manche affichée" });
+    const choices = within(picker).getAllByRole("radio");
+
+    expect(choices.map((choice) => choice.closest("label")?.textContent)).toEqual([
+      "R1",
+      "R2",
+      "R3",
+    ]);
+    expect(within(picker).getByRole("radio", { name: "R3" })).toBeChecked();
+    expect(screen.getByRole("figure", { name: "Duel chart" })).toBeInTheDocument();
+
+    await userEvent.click(within(picker).getByText("R1"));
+    expect(within(picker).getByRole("radio", { name: "R1" })).toBeChecked();
+    expect(screen.getByRole("figure", { name: "Duel chart" })).toBeInTheDocument();
+  });
+
+  test("a drawn Round is marked as such on its line", async () => {
+    await renderEnded({ series: twoNil, issue: { outcome: "win", forfeit: false } });
+
+    const [, drawnLine] = within(screen.getByRole("region", { name: "Les manches" })).getAllByRole(
+      "listitem",
+    );
+
+    expect(drawnLine).toHaveTextContent("Manche nulle");
+  });
+
+  test("won 2-0: two lines, and no trace of a third Round", async () => {
+    const two = seriesOf([playedRound(0, "win", 900, 700), playedRound(1, "win", 880, 610)], 2, 0);
+
+    await renderEnded({ series: two, issue: { outcome: "win", forfeit: false } });
+
+    const rounds = screen.getByRole("region", { name: "Les manches" });
+
+    expect(within(rounds).getAllByRole("listitem")).toHaveLength(2);
+    expect(rounds).not.toHaveTextContent("Manche 3");
+
+    const picker = await screen.findByRole("radiogroup", { name: "Manche affichée" });
+
+    expect(within(picker).getAllByRole("radio")).toHaveLength(2);
+    expect(within(picker).getByRole("radio", { name: "R2" })).toBeChecked();
+    expect(screen.queryByText("R3")).toBeNull();
+  });
+
+  test("a Record beaten by one of its Rounds is beaten, not by the Duel's average", async () => {
+    await renderEnded({
+      series: twoOne,
+      issue: { outcome: "win", forfeit: false },
+      records: { wpm: null, score: 1300, combo: null },
+    });
+
+    const tiles = screen.getByRole("region", { name: "Records" });
+
+    // The best Round's Score, 1 309, beats 1 300.
+    expect(tiles).toHaveTextContent("1 309");
+    expect(tiles).toHaveTextContent("avant 1 300");
+  });
+
+  test("a Duel of a single Round keeps both Scores, without Rounds nor picker", async () => {
+    await renderEnded({
+      figures: { ...NO_FIGURES, score: { score: 420, bestCombo: 0, bursts: 0 } },
+    });
+
+    expect(screen.getByRole("region", { name: "Score" })).toHaveTextContent("420");
+    expect(screen.queryByRole("region", { name: "Les manches" })).toBeNull();
+    expect(await screen.findByRole("figure", { name: "Duel chart" })).toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Manche affichée" })).toBeNull();
+  });
+
+  test("in English, the Rounds say Round", async () => {
+    useLocaleStore.setState({ locale: "en" });
+    await renderEnded({
+      series: twoOne,
+      issue: { outcome: "win", forfeit: false },
+      newDuel: "New Duel",
+    });
+
+    expect(screen.getByRole("region", { name: "Rounds won" })).toBeInTheDocument();
+
+    const rounds = screen.getByRole("region", { name: "The rounds" });
+
+    expect(rounds).toHaveTextContent("Round 1");
+    expect(rounds).not.toHaveTextContent("Manche");
+    expect(await screen.findByRole("radiogroup", { name: "Round shown" })).toBeInTheDocument();
+  });
+});
 
 describe("DuelEnded", () => {
   test("Revoir opens the Replay of the Duel just played", async () => {

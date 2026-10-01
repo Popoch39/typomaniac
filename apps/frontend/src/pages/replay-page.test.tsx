@@ -11,7 +11,7 @@ import { Suspense } from "react";
 import type { Keystroke } from "typing-engine";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import type { ReplayedDuel, ReplayedPlayer } from "@/api/duel-history";
+import type { ReplayedDuel, ReplayedPlayer, WrittenDuel } from "@/api/duel-history";
 import { DuelReplay } from "@/components/replay/duel-replay";
 import { ClockContext } from "@/components/run/clock-context";
 import { ReplayErrorPage } from "@/pages/replay-error-page";
@@ -51,6 +51,7 @@ const replayed = (overrides: Partial<ReplayedDuel> = {}): ReplayedDuel => ({
   language: "en",
   wordListVersion: 1,
   seconds: 30,
+  roundsToWin: 1,
   // Noon UTC: the 20th in every time zone.
   startsAt: Date.UTC(2026, 8, 20, 12),
   endedAt: Date.UTC(2026, 8, 20, 12, 0, 30, 50),
@@ -82,13 +83,14 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// The Replay of `duel`, read from a simulated API, on a clock the test moves by hand.
-const renderReplay = async (duel: ReplayedDuel) => {
+// The Replay of `duel`, read from a simulated API as `written` (a Duel of its single Round unless
+// a test gives a Bo3), on a clock the test moves by hand.
+const renderReplay = async (duel: ReplayedDuel, written: WrittenDuel = writtenDuelOf(duel)) => {
   let now = 5_000;
 
   const fetch = vi.fn(
     async (_input: RequestInfo | URL) =>
-      new Response(JSON.stringify(writtenDuelOf(duel)), {
+      new Response(JSON.stringify(written), {
         headers: { "content-type": "application/json" },
       }),
   );
@@ -593,6 +595,101 @@ const resultLine = (name: string) => {
     .getAllByRole("cell")
     .map((cell) => cell.textContent);
 };
+
+// `duel` written as a Bo3 of `scores.length` Rounds, each on the same Text 37.4 s after the last,
+// this User's Score in each as `scores` says (their Keystrokes only in the first), the Duel's wpm
+// averaged at 50 for this User, 40 for the opponent. The last Round cut at `forfeitAt` ms when
+// given.
+const bo3Of = (
+  duel: ReplayedDuel,
+  scores: number[],
+  forfeitAt: number | null = null,
+): WrittenDuel => {
+  const single = writtenDuelOf(duel);
+  const [first] = single.rounds;
+
+  if (typeof first === "undefined" || single.opponent === null) {
+    throw new Error("A written Duel has a Round and an opponent");
+  }
+
+  return {
+    ...single,
+    roundsToWin: 2,
+    forfeit: forfeitAt !== null,
+    me: { ...single.me, result: { ...single.me.result, wpm: 50 } },
+    opponent: { ...single.opponent, result: { ...single.opponent.result, wpm: 40 } },
+    rounds: scores.map((score, index) => {
+      const startsAt = first.startsAt + index * 37_400;
+      const last = index === scores.length - 1;
+
+      return {
+        ...first,
+        index,
+        startsAt,
+        endedAt: last && forfeitAt !== null ? startsAt + forfeitAt : startsAt + 30_000,
+        me: {
+          ...first.me,
+          score: { score, bestCombo: 3, bursts: 0 },
+          keystrokes: index === 0 ? first.me.keystrokes : [],
+        },
+      };
+    }),
+  };
+};
+
+describe("the Replay of a Bo3", () => {
+  test("has a tab per Round played, R1 / R2 / R3, opened on the first", async () => {
+    await renderReplay(replayed(), bo3Of(replayed(), [1234, 222, 999]));
+
+    const tabs = screen.getByRole("radiogroup", { name: "Manche affichée" });
+
+    expect(within(tabs).getAllByRole("radio")).toHaveLength(3);
+    expect(within(tabs).getByRole("radio", { name: "R1" })).toBeChecked();
+    // Grouped by a narrow no-break space, as the French Locale writes it.
+    expect(resultLine("Score")).toEqual(["1 234", "567"]);
+  });
+
+  test("each tab replays its Round, its chart and Results following it, with the Duel's average", async () => {
+    const { user } = await renderReplay(replayed(), bo3Of(replayed(), [1234, 222, 999]));
+
+    expect(resultLine("wpm moyen du Duel")).toEqual(["50", "40"]);
+
+    await user.click(screen.getByText("R2"));
+
+    expect(screen.getByRole("radio", { name: "R2" })).toBeChecked();
+    expect(resultLine("Score")).toEqual(["222", "567"]);
+    expect(resultLine("wpm moyen du Duel")).toEqual(["50", "40"]);
+    expect(screen.getByRole("region", { name: "Duel chart" })).toBeInTheDocument();
+    // Replayed from its own start.
+    expect(timer()).toHaveTextContent("0 s");
+
+    await user.click(screen.getByText("R3"));
+    expect(resultLine("Score")).toEqual(["999", "567"]);
+  });
+
+  test("forfeited in its second Round: two tabs, the Forfeit marked on the second only", async () => {
+    const { user } = await renderReplay(
+      forfeitedAt("loss"),
+      bo3Of(forfeitedAt("loss"), [1234, 300], 12_000),
+    );
+
+    const tabs = screen.getByRole("radiogroup", { name: "Manche affichée" });
+
+    expect(within(tabs).getAllByRole("radio")).toHaveLength(2);
+    expect(screen.queryByText(/abandon à/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByText("R2"));
+
+    expect(screen.getByText(/^Toi : abandon à 12/)).toBeInTheDocument();
+  });
+
+  test("a Duel from before the Bo3 has no tabs, nor the Duel's average", async () => {
+    await renderReplay(replayed());
+
+    expect(screen.queryByRole("radiogroup", { name: "Manche affichée" })).toBeNull();
+    expect(screen.queryByText("wpm moyen du Duel")).toBeNull();
+  });
+});
 
 describe("the Duel's stats, under the Replay", () => {
   test("its Duel chart and both sides' Results, whatever the time", async () => {

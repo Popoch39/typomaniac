@@ -30,6 +30,11 @@ const duelHistoryEntry = t.Object({
   tp: t.Nullable(t.Integer()),
   // A Ranked Duel, Placement included: false for a Challenge and for a Duel played before the ranked.
   ranked: t.Boolean(),
+  // How many Rounds won the Duel (2 for a Bo3, 1 for a single Round), and how many each won: the
+  // count a Bo3's card shows. The opponent's null once their User is deleted.
+  roundsToWin: t.Integer(),
+  roundsWon: t.Integer(),
+  opponentRoundsWon: t.Nullable(t.Integer()),
   // The wpm of each second of the reader's Run in the last Round, replayed from their Keystrokes,
   // rounded; up to the Forfeit when there was one.
   wpmBySecond: t.Array(t.Integer()),

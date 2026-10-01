@@ -1,13 +1,20 @@
 import type { ReplayedDuel } from "@/api/duel-history";
 import { DuelResultLine } from "@/components/replay/duel-result-line";
-import { duelResultLines } from "@/components/replay/duel-result-lines";
+import { type DuelAverage, duelResultLines } from "@/components/replay/duel-result-lines";
 import { opponentName } from "@/lib/opponent-name";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 
-// Both sides of the Duel line by line, the User's first, each column in its player's
-// colour. A deleted opponent leaves the User's column only.
-export const DuelResultsTable = ({ duel }: { duel: ReplayedDuel }) => {
+// Both sides of the Duel (or of a Round of a Bo3, then with the Duel's average) line by line, the
+// User's first, each column in its player's colour. A deleted opponent leaves the User's column
+// only.
+export const DuelResultsTable = ({
+  duel,
+  average,
+}: {
+  duel: ReplayedDuel;
+  average: DuelAverage | null;
+}) => {
   const locale = useLocale();
 
   return (
@@ -34,7 +41,7 @@ export const DuelResultsTable = ({ duel }: { duel: ReplayedDuel }) => {
         </tr>
       </thead>
       <tbody className="font-mono tabular-nums">
-        {duelResultLines(duel, locale).map((line) => (
+        {duelResultLines(duel, locale, average).map((line) => (
           <DuelResultLine key={line.id} line={line} />
         ))}
       </tbody>

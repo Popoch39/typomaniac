@@ -26,7 +26,7 @@ export const DuelHud = ({ model, veil, onLeave }: DuelHudProps) => {
       <div className="grow" />
       <DuelBand model={model} />
       <DuelCallouts model={model} />
-      <div className="relative mt-3.5 rounded-card bg-card px-14 py-10">
+      <div data-duel-text-card className="relative mt-3.5 rounded-card bg-card px-14 py-10">
         {/* Unpainted until the start, so no one reads it ahead; it keeps its place, so nothing
             moves as the Face-off's panels split away on GO. */}
         <div className={cn(elapsed < 0 && "invisible")}>

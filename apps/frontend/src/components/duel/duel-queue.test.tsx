@@ -113,7 +113,7 @@ describe("the Queue screen", () => {
 
     const card = screen.getByRole("region", { name: "On te trouve un adversaire…" });
 
-    expect(within(card).getByText("Duel classé · 30 s · anglais")).toBeInTheDocument();
+    expect(within(card).getByText("Duel classé · Bo3 · 30 s · anglais")).toBeInTheDocument();
     expect(within(card).getByLabelText("Temps d'attente")).toHaveTextContent("0:12");
     expect(within(card).getByText("≈ 8 s d'attente · 14 joueurs en file")).toBeInTheDocument();
     expect(within(card).getByRole("button", { name: "Annuler" })).toBeInTheDocument();
@@ -167,7 +167,7 @@ describe("the Queue screen in English", () => {
 
     const card = screen.getByRole("region", { name: "Finding you an opponent…" });
 
-    expect(within(card).getByText("Ranked Duel · 30 s · English")).toBeInTheDocument();
+    expect(within(card).getByText("Ranked Duel · Bo3 · 30 s · English")).toBeInTheDocument();
     expect(within(card).getByLabelText("Wait time")).toHaveTextContent("0:12");
     expect(within(card).getByText("≈ 8 s wait · 1,284 players in the Queue")).toBeInTheDocument();
     expect(within(card).getByRole("button", { name: "Cancel" })).toBeInTheDocument();

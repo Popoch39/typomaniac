@@ -57,7 +57,7 @@ export type ReplayedPlayer = Omit<WrittenPlayer, "result" | "roundsWon"> & Writt
 
 // A finished Duel seen on one of its Rounds: its Text (Seed) and time are the Round's, both sides
 // are what the Users did in it.
-export type ReplayedDuel = Omit<WrittenDuel, "me" | "opponent" | "rounds" | "roundsToWin"> &
+export type ReplayedDuel = Omit<WrittenDuel, "me" | "opponent" | "rounds"> &
   Pick<WrittenRound, "seed" | "startsAt" | "endedAt"> & {
     me: ReplayedPlayer;
     opponent: ReplayedPlayer | null;
@@ -68,12 +68,13 @@ const playerOnRound = (
   side: WrittenRoundSide,
 ): ReplayedPlayer => ({ handle, image, pace, ...side });
 
-// `duel` seen on its Round `round`.
+// `duel` seen on its Round `round`: a Forfeit is in its last Round only, the one it cut short.
 export const duelOnRound = (duel: WrittenDuel, round: WrittenRound): ReplayedDuel => {
-  const { me, opponent, rounds: _, roundsToWin: __, ...rest } = duel;
+  const { me, opponent, rounds, ...rest } = duel;
 
   return {
     ...rest,
+    forfeit: duel.forfeit && round.index === rounds.at(-1)?.index,
     seed: round.seed,
     startsAt: round.startsAt,
     endedAt: round.endedAt,
@@ -82,22 +83,10 @@ export const duelOnRound = (duel: WrittenDuel, round: WrittenRound): ReplayedDue
   };
 };
 
-// The Duel seen on its first Round: the only one a Duel has before the Bo3.
-const onFirstRound = (duel: WrittenDuel): ReplayedDuel => {
-  const [first] = duel.rounds;
-
-  // The API never sends a Duel without a Round (`minItems: 1`).
-  if (typeof first === "undefined") {
-    throw new Error(`Duel ${duel.id} without a Round`);
-  }
-
-  return duelOnRound(duel, first);
-};
-
-export const replayedDuelQueryOptions = (duelId: string) =>
+// A finished Duel of the User, whole: each of its Rounds to pick from.
+export const writtenDuelQueryOptions = (duelId: string) =>
   queryOptions({
     // Apart from the History's keys: invalidating them leaves the Replays be.
     queryKey: ["duel", duelId],
     queryFn: () => fetchWrittenDuel(duelId),
-    select: onFirstRound,
   });

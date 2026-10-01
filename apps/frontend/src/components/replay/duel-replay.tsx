@@ -1,64 +1,43 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { replayedDuelQueryOptions } from "@/api/duel-history";
-import { ReplayControls } from "@/components/replay/replay-controls";
-import { ReplayForfeitMarker } from "@/components/replay/replay-forfeit-marker";
+import { duelOnRound, writtenDuelQueryOptions } from "@/api/duel-history";
+import { RoundPicker } from "@/components/duel-rounds/round-picker";
 import { ReplayHeader } from "@/components/replay/replay-header";
-import { ReplayLecture } from "@/components/replay/replay-lecture";
-import { ReplayPlayback } from "@/components/replay/replay-playback";
-import { ReplayResults } from "@/components/replay/replay-results";
-import { ReplaySidePicker } from "@/components/replay/replay-side-picker";
-import { type ReplayView, replayDuration } from "@/components/replay/replay-sides";
-import { ReplaySpeedPicker } from "@/components/replay/replay-speed-picker";
-import { ReplayStats } from "@/components/replay/replay-stats";
-import { ReplayTimeline } from "@/components/replay/replay-timeline";
-import { useReplayClock } from "@/components/replay/use-replay-clock";
-import { opponentName } from "@/lib/opponent-name";
-import { useLocale } from "@/locale/use-locale";
+import { ReplayRound } from "@/components/replay/replay-round";
 
-// A finished Duel played again Keystroke by Keystroke, at the pace it was typed, from the start on:
-// both Runs rebuilt at each instant, all in the browser. Under its header, both Score cards and the
-// Text, then the Lecture card: the User moves through it with the time bar, picks its speed and
-// whose Run it shows. At the end, both Results and Scores. Under it all, the Duel chart and the
-// Results table, whatever the time. A forfeited Duel stops at its Forfeit,
-// marked under the time bar.
+// A finished Duel played again: under its header, a Bo3's tabs R1 / R2 / R3 (its Rounds played,
+// never one that was not), opened on the first, then the Round chosen, replayed from its start. A
+// Duel of a single Round (a Challenge, a Duel from before the Bo3) has no tabs.
 export const DuelReplay = ({ duelId }: { duelId: string }) => {
-  const { data: duel } = useSuspenseQuery(replayedDuelQueryOptions(duelId));
-  const duration = replayDuration(duel);
+  const { data: written } = useSuspenseQuery(writtenDuelQueryOptions(duelId));
+  const [shown, setShown] = useState(0);
+  const indices = written.rounds.map(({ index }) => index);
+  const round = written.rounds.find(({ index }) => index === shown) ?? written.rounds[0];
+  const last = written.rounds.at(-1);
 
-  const { t, playing, ended, speed, pause, resume, restart, seek, setSpeed } =
-    useReplayClock(duration);
+  // The API never sends a Duel without a Round (`minItems: 1`).
+  if (typeof round === "undefined" || typeof last === "undefined") {
+    return null;
+  }
 
-  const [view, setView] = useState<ReplayView>("own");
-  const locale = useLocale();
+  const series = indices.length > 1;
 
   return (
     <div className="flex flex-col gap-5">
-      <ReplayHeader duel={duel} />
-      {ended ? <ReplayResults duel={duel} /> : <ReplayPlayback duel={duel} t={t} view={view} />}
-      <ReplayLecture>
-        <ReplayTimeline t={t} duration={duration} onSeek={seek} />
-        <ReplayForfeitMarker duel={duel} />
-        <div className="flex items-center gap-4">
-          <ReplayControls
-            playing={playing}
-            ended={ended}
-            onPause={pause}
-            onResume={resume}
-            onRestart={restart}
-          />
-          <ReplaySpeedPicker speed={speed} onChange={setSpeed} />
-          {duel.opponent === null || ended ? null : (
-            <ReplaySidePicker
-              view={view}
-              opponentName={opponentName(duel.opponent, locale)}
-              onChange={setView}
-            />
-          )}
-        </div>
-      </ReplayLecture>
-      <ReplayStats duel={duel} />
+      {/* The Duel whole: how it ended, its Forfeit with it. */}
+      <ReplayHeader duel={duelOnRound(written, last)} />
+      {series ? <RoundPicker rounds={indices} value={round.index} onChange={setShown} /> : null}
+      <ReplayRound
+        // A new Round replays from its start.
+        key={round.index}
+        duel={duelOnRound(written, round)}
+        average={
+          series
+            ? { own: written.me.result.wpm, opponent: written.opponent?.result.wpm ?? null }
+            : null
+        }
+      />
     </div>
   );
 };

@@ -6,12 +6,16 @@ import { DuelEndChart } from "@/components/duel-end/duel-end-chart";
 import { DuelEndOutcome } from "@/components/duel-end/duel-end-outcome";
 import { DuelEndRank } from "@/components/duel-end/duel-end-rank";
 import { DuelEndRecords } from "@/components/duel-end/duel-end-records";
+import { DuelEndRounds } from "@/components/duel-end/duel-end-rounds";
 import { DuelEndScores } from "@/components/duel-end/duel-end-scores";
+import { bestRoundFigures, isSeries } from "@/components/duel-end/ending-rounds";
 import { DuelEndTape } from "@/components/duel-end/duel-end-tape";
 import { beatenRecords, recordTiles } from "@/components/duel-end/record-tiles";
 import { useDuelEndEntrance } from "@/components/duel-end/use-duel-end-entrance";
 import { TierUp } from "@/components/tier-up/tier-up";
 import { atHandle } from "@/lib/at-handle";
+import { useLocale } from "@/locale/use-locale";
+import { m } from "@/paraglide/messages";
 import type { DuelEnding } from "@/stores/duel-store";
 
 // The Tier-up of a move up into a new Tier: to open once the band and the outcome are in, open,
@@ -27,9 +31,11 @@ type TierUpStage = "ahead" | "open" | "closed";
 // in, once: the rest waits under it, then comes in and the screen takes the focus back once it is
 // closed.
 export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
+  const locale = useLocale();
   const opponent = atHandle(ending.opponent.handle);
   const screen = useRef<HTMLDivElement | null>(null);
-  const tiles = recordTiles(ending);
+  const series = isSeries(ending);
+  const tiles = recordTiles({ ...bestRoundFigures(ending), records: ending.records });
   const beaten = beatenRecords(tiles);
   const reached = ending.ranked === null ? null : tierReached(rankChange(ending.ranked));
   const [tierUp, setTierUp] = useState<TierUpStage>(reached === null ? "closed" : "ahead");
@@ -66,12 +72,26 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
       className="mx-auto flex w-full max-w-[1100px] flex-col gap-6 outline-none"
     >
       <DuelEndOutcome outcome={ending.outcome} forfeit={ending.forfeit} opponent={opponent} />
-      <DuelEndScores
-        score={ending.score.score}
-        opponentScore={ending.opponentScore.score}
-        opponent={opponent}
-        record={beaten.has("score")}
-      />
+      {series ? (
+        <>
+          <DuelEndScores
+            label={m.duel_ended_rounds_won({}, { locale })}
+            score={ending.roundsWon}
+            opponentScore={ending.opponentRoundsWon}
+            opponent={opponent}
+            record={false}
+          />
+          <DuelEndRounds rounds={ending.rounds} opponent={opponent} />
+        </>
+      ) : (
+        <DuelEndScores
+          label={m.duel_ended_scores({}, { locale })}
+          score={ending.score.score}
+          opponentScore={ending.opponentScore.score}
+          opponent={opponent}
+          record={beaten.has("score")}
+        />
+      )}
       {ending.ranked === null ? null : <DuelEndRank ranked={ending.ranked} />}
       {reached !== null && tierUp === "open" ? (
         <TierUp from={reached.from} to={reached.to} onClose={closeTierUp} />

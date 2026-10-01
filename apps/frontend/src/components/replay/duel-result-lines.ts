@@ -13,7 +13,15 @@ export type DuelResultLine = {
 };
 
 // What a line of the Results table measures.
-type DuelResultId = "score" | "wpm" | "raw" | "accuracy" | "consistency" | "best-combo" | "bursts";
+type DuelResultId =
+  | "score"
+  | "wpm"
+  | "raw"
+  | "accuracy"
+  | "consistency"
+  | "best-combo"
+  | "bursts"
+  | "average-wpm";
 
 const percent = (value: number, locale: Locale) =>
   m.format_percent({ value: duelNumber(value, locale) }, { locale });
@@ -64,11 +72,35 @@ const MEASURES: Measure[] = [
   },
 ];
 
-// The seven lines comparing both sides of a finished Duel, in the Locale.
-export const duelResultLines = ({ me, opponent }: ReplayedDuel, locale: Locale): DuelResultLine[] =>
-  MEASURES.map(({ id, name, of }) => ({
+// Over a Bo3's Rounds, each side's wpm averaged by the server; the opponent's null once their User
+// is deleted.
+export type DuelAverage = { own: number; opponent: number | null };
+
+// The seven lines comparing both sides of a finished Duel (or of one Round of a Bo3), in the
+// Locale; then, for a Bo3, the line of the Duel's average.
+export const duelResultLines = (
+  { me, opponent }: ReplayedDuel,
+  locale: Locale,
+  average: DuelAverage | null = null,
+): DuelResultLine[] => {
+  const lines: DuelResultLine[] = MEASURES.map(({ id, name, of }) => ({
     id,
     name: name(locale),
     own: of(me, locale),
     opponent: opponent === null ? null : of(opponent, locale),
   }));
+
+  if (average === null) {
+    return lines;
+  }
+
+  return [
+    ...lines,
+    {
+      id: "average-wpm",
+      name: m.duel_results_average_wpm({}, { locale }),
+      own: duelNumber(average.own, locale),
+      opponent: opponent === null ? null : duelNumber(average.opponent, locale),
+    },
+  ];
+};

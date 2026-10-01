@@ -2,8 +2,8 @@ import { Link } from "@tanstack/react-router";
 
 import type { DuelHistoryEntry } from "@/api/duel-history";
 import { outcomeHeadline } from "@/components/duel/outcome-headlines";
-import { duelNumber } from "@/components/duel-history/duel-number";
 import { OpponentHandle } from "@/components/handle/opponent-handle";
+import { HistoryDuelFigures } from "@/components/history/history-duel-figures";
 import { HistoryDuelMeta } from "@/components/history/history-duel-meta";
 import { HistoryDuelSpark } from "@/components/history/history-duel-spark";
 import { HistoryDuelTp } from "@/components/history/history-duel-tp";
@@ -13,8 +13,9 @@ import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 import { cn } from "cn";
 
-// A Duel of the week: how it ended and the TP it moved, the opponent and when, both wpm lines, both
-// Scores. The whole card leads to the Duel's page: its Replay, its chart and its Results.
+// A Duel of the week: how it ended and the TP it moved, the opponent and when, both wpm lines (a
+// Bo3's last Round), both Scores or a Bo3's count of the Rounds. The whole card leads to the
+// Duel's page: its Replay, its chart and its Results.
 export const HistoryDuelCard = ({ duel }: { duel: DuelHistoryEntry }) => {
   const locale = useLocale();
 
@@ -59,11 +60,7 @@ export const HistoryDuelCard = ({ duel }: { duel: DuelHistoryEntry }) => {
         opponentWpmBySecond={duel.opponentWpmBySecond}
       />
       <div className="flex items-center justify-between font-journal-mono text-sm">
-        <span>
-          <span className="font-medium text-caret">{duelNumber(duel.score, locale)}</span>{" "}
-          <span className="text-faint">{m.history_card_versus({}, { locale })}</span>{" "}
-          <span className="text-opponent-caret">{duelNumber(duel.opponentScore, locale)}</span>
-        </span>
+        <HistoryDuelFigures duel={duel} />
         {/* Stretched over the whole card: a click anywhere opens the Duel. */}
         <Link
           to="/history/$duelId"
