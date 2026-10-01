@@ -44,6 +44,7 @@ const duelFound = (rank: typeof placement | null = placement): ServerMessage => 
     wordListVersion: 1,
     seconds: 30,
     startsAt: 5_500,
+    roundsToWin: 1,
   },
   opponent,
   selfOrnament: null,

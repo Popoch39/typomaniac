@@ -26,6 +26,7 @@ import type { DuelEnding } from "@/stores/duel-store";
 import { useFaceOffSoundStore } from "@/stores/face-off-sound-store";
 import { useLocaleStore } from "@/stores/locale-store";
 import { usePlayStore } from "@/stores/play-store";
+import { singleRoundEnd } from "@/test/duel-rounds";
 import { fakeAuraRuntime } from "@/test/fake-aura-runtime";
 import { holdGsapClock } from "@/test/gsap-clock";
 import { writtenDuelOf } from "@/test/written-duel";
@@ -66,6 +67,7 @@ const ending = (
   duelId,
   ...issue,
   ...figures,
+  ...singleRoundEnd,
   opponent: { handle: "alan", image: null },
   records,
 });

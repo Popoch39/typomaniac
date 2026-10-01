@@ -68,6 +68,7 @@ const duelFound = (sockets: ReturnType<typeof fakeServer>, opponent: { handle: s
         wordListVersion: 1,
         seconds: 30,
         startsAt: Date.now() + 5500,
+        roundsToWin: 1,
       },
       opponent: { handle: opponent.handle, image: null, ornament: null },
       selfOrnament: null,

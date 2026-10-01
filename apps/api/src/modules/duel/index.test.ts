@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import pino from "pino";
 import { type OrnamentChoice, PLACEMENT_DUELS, type Rating, seedMmr } from "ranked";
 import {
+  averageResult,
   computeResult,
   computeScore,
   currentWordListVersion,
@@ -24,6 +25,7 @@ import {
   testConfig,
 } from "../../test-app";
 import { MAX_DUEL_MESSAGE_SIZE, type ServerMessage } from "./model";
+import { ROUND_BREAK_MS } from "./running-duel";
 import { MISSED_PROPOSAL_MS, SAVE_TIMEOUT_MS } from "./service";
 import type { DuelRecord } from "./store";
 
@@ -41,6 +43,14 @@ const TIME_UP = STARTS_AT + 30_000;
 // The server ends it once the last Keystrokes had the time to arrive: 400 ms later.
 const ENDS_AT = TIME_UP + 400;
 
+// A Round of a Bo3 and the Round break after it: the next one starts 7 s after the server judged it.
+const ROUND_CYCLE_MS = 30_400 + ROUND_BREAK_MS;
+
+// When the Round `index` (from 0) of a Duel paired at NOW starts, and when the server judges it.
+const roundStartsAt = (index: number) => STARTS_AT + index * ROUND_CYCLE_MS;
+
+const roundEndsAt = (index: number) => ENDS_AT + index * ROUND_CYCLE_MS;
+
 const char = (value: string, at: number) => ({ kind: "char" as const, char: value, at });
 
 const duelOf = (message: ServerMessage) =>
@@ -55,9 +65,18 @@ const endedOf = (message: ServerMessage) => {
   return message;
 };
 
-const resultOf = (message: ServerMessage) => endedOf(message).result;
+// The end of a Round that did not decide the Duel, as a player is told it.
+const roundEndedOf = (message: ServerMessage) => {
+  if (message.type !== "round-ended") {
+    throw new Error(`Not the end of a Round: ${message.type}`);
+  }
 
-const scoreOf = (message: ServerMessage) => endedOf(message).score;
+  return message;
+};
+
+type DuelEnded = ReturnType<typeof endedOf>;
+
+const resultOf = (message: ServerMessage) => endedOf(message).result;
 
 // The first `count` words of the Duel's Text.
 const wordsOf = (message: ServerMessage, count: number) => {
@@ -65,6 +84,13 @@ const wordsOf = (message: ServerMessage, count: number) => {
 
   return duel === null ? [] : generateText(duel.seed, "en", duel.wordListVersion, count);
 };
+
+// The Seed of the Duel's first Round.
+const seedOf = (found: ServerMessage) => duelOf(found)?.seed ?? 0;
+
+// The first word of the Text of a Round on `seed`.
+const firstWordOfSeed = (seed: number) =>
+  generateText(seed, "en", currentWordListVersion.en, 1)[0] ?? "";
 
 // The first word of the Duel's Text: typed right with its space, it is worth (length + 1) chars
 // in 30 s, so (length + 1) / 5 / 0.5 wpm.
@@ -133,6 +159,41 @@ const diamondIv = (tp: number) => ({
   tp,
   shielded: false,
 });
+
+// The Round `index` ends without deciding the Duel: both are told, Ada's end first.
+const roundEnds = async (
+  setNow: (time: number) => void,
+  ada: TestClient,
+  alan: TestClient,
+  index: number,
+) => {
+  setNow(roundEndsAt(index));
+
+  const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+  return [roundEndedOf(forAda), roundEndedOf(forAlan)] as const;
+};
+
+// Nobody types anymore, from the end of the Round `from` (0 by default): each Round left is a
+// drawn one, judged at its end, until the Duel ends. Both ends, Ada's first.
+const playOut = async (
+  setNow: (time: number) => void,
+  ada: TestClient,
+  alan: TestClient,
+  from = 0,
+): Promise<readonly [DuelEnded, DuelEnded]> => {
+  setNow(roundEndsAt(from));
+
+  const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+
+  if (forAda.type === "duel-ended") {
+    return [forAda, endedOf(forAlan)];
+  }
+
+  roundEndedOf(forAda);
+
+  return playOut(setNow, ada, alan, from + 1);
+};
 
 // Ada's connection drops: Alan is told.
 const dropped = async (ada: TestClient, alan: TestClient) => {
@@ -344,6 +405,8 @@ describe("duel socket", () => {
         wordListVersion: currentWordListVersion.en,
         seconds: 30,
         startsAt: STARTS_AT,
+        // A Duel of the Queue: a Bo3.
+        roundsToWin: 2,
       },
       opponent: { handle: "ada", image: "https://img/ada", ornament: null },
       selfOrnament: null,
@@ -434,9 +497,9 @@ describe("duel socket", () => {
     setNow(STARTS_AT + 5000);
     ada.send({ type: "keystrokes", keystrokes: typed(firstWordOf(found), 1000) });
     await alan.next();
-    setNow(ENDS_AT);
 
-    const [ending] = await Promise.all([ada.next().then(endedOf), alan.next()]);
+    // Its Result is the average of its Rounds: the Pace reads that one.
+    const [ending] = await playOut(setNow, ada, alan);
 
     ada.send({ type: "join-queue" });
     alan.send({ type: "join-queue" });
@@ -550,8 +613,8 @@ describe("duel socket", () => {
     expect((await acceptBoth(playing, alan))[0]).toMatchObject({ type: "duel-found" });
     expect(await watching.next()).toEqual({ type: "elsewhere", place: "duel" });
 
-    setNow(ENDS_AT);
-    expect(await playing.next()).toMatchObject({ type: "duel-ended" });
+    // Its Rounds tell the other tab nothing: the place is still the Duel.
+    await playOut(setNow, playing, alan);
     expect(await watching.next()).toEqual(idle());
 
     // Closing the tab that played while in the Queue: the others see her leave it.
@@ -746,7 +809,7 @@ describe("duel socket", () => {
     await ada.settle();
   });
 
-  test("the Duel ends for both at the end plus the tolerance, and Keystrokes past it are ignored", async () => {
+  test("a Round ends for both at the end plus the tolerance, and Keystrokes past it are ignored", async () => {
     const { ada, alan } = await paired();
 
     setNow(ENDS_AT - 1);
@@ -755,16 +818,17 @@ describe("duel socket", () => {
 
     setNow(ENDS_AT);
 
-    expect(await ada.next()).toMatchObject({ type: "duel-ended" });
-    expect(await alan.next()).toMatchObject({ type: "duel-ended" });
+    expect(await ada.next()).toMatchObject({ type: "round-ended", round: { index: 0 } });
+    expect(await alan.next()).toMatchObject({ type: "round-ended", round: { index: 0 } });
 
+    // Dated within the Round that just ended: too late for it, and the next one has not started.
     ada.send({ type: "keystrokes", keystrokes: [char("s", 29_950)] });
 
-    await ada.settle();
+    expect(await ada.next()).toMatchObject({ type: "resync", keystrokes: [], received: 1 });
     await alan.settle();
   });
 
-  test("the best Score wins, and both see the same Results and Scores", async () => {
+  test("the best Score wins the Round, and both see the same Results and Scores", async () => {
     const ada = await queued(await signedIn("Ada"));
     const alan = await queued(await signedIn("Alan"));
     const [found] = await acceptBoth(ada, alan);
@@ -777,33 +841,35 @@ describe("duel socket", () => {
 
     setNow(ENDS_AT);
 
-    const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+    const [forAda, forAlan] = await Promise.all([
+      ada.next().then(roundEndedOf),
+      alan.next().then(roundEndedOf),
+    ]);
 
     expect(forAda).toMatchObject({
-      type: "duel-ended",
-      outcome: "win",
-      forfeit: false,
-      result: { wpm: (word.length + 1) / 5 / 0.5, accuracy: 100 },
-      opponentResult: { wpm: 0, accuracy: 0 },
-      score: { score: word.length + 1, bestCombo: 1, bursts: 0 },
-      opponentScore: { score: 0, bestCombo: 0, bursts: 0 },
-      opponent: { handle: "alan", image: "https://img/alan" },
+      round: {
+        index: 0,
+        outcome: "win",
+        result: { wpm: (word.length + 1) / 5 / 0.5, accuracy: 100 },
+        opponentResult: { wpm: 0, accuracy: 0 },
+        score: { score: word.length + 1, bestCombo: 1, bursts: 0 },
+        opponentScore: { score: 0, bestCombo: 0, bursts: 0 },
+      },
+      roundsWon: 1,
+      opponentRoundsWon: 0,
     });
     expect(forAlan).toMatchObject({
-      type: "duel-ended",
-      outcome: "loss",
-      forfeit: false,
-      opponent: { handle: "ada" },
+      round: { index: 0, outcome: "loss" },
+      roundsWon: 0,
+      opponentRoundsWon: 1,
     });
 
-    const ended = [forAda, forAlan].map((message) =>
-      message.type === "duel-ended" ? message : null,
-    );
-
-    expect(ended[0]?.result).toEqual(ended[1]?.opponentResult);
-    expect(ended[0]?.opponentResult).toEqual(ended[1]?.result);
-    expect(ended[0]?.score).toEqual(ended[1]?.opponentScore);
-    expect(ended[0]?.opponentScore).toEqual(ended[1]?.score);
+    expect(forAda.round.result).toEqual(forAlan.round.opponentResult);
+    expect(forAda.round.opponentResult).toEqual(forAlan.round.result);
+    expect(forAda.round.score).toEqual(forAlan.round.opponentScore);
+    expect(forAda.round.opponentScore).toEqual(forAlan.round.score);
+    // The same next Round for both.
+    expect(forAda.next).toEqual(forAlan.next);
   });
 
   test("a slower player who keeps their Combo beats a faster one who makes mistakes", async () => {
@@ -827,16 +893,19 @@ describe("duel socket", () => {
 
     setNow(ENDS_AT);
 
-    const [forAda, forAlan] = await Promise.all([ada.next().then(endedOf), alan.next()]);
+    const [forAda, forAlan] = await Promise.all([
+      ada.next().then(roundEndedOf),
+      alan.next().then(roundEndedOf),
+    ]);
 
-    expect(forAda.opponentResult.wpm).toBeGreaterThan(forAda.result.wpm);
-    expect(forAda).toMatchObject({
+    expect(forAda.round.opponentResult.wpm).toBeGreaterThan(forAda.round.result.wpm);
+    expect(forAda.round).toMatchObject({
       outcome: "win",
       score: { bestCombo: 10, bursts: 0 },
       // A corrected word starts the Combo again at 1.
       opponentScore: { bestCombo: 1, bursts: 0 },
     });
-    expect(forAlan).toMatchObject({ type: "duel-ended", outcome: "loss" });
+    expect(forAlan.round.outcome).toBe("loss");
   });
 
   test("the same Score is won by the best accuracy", async () => {
@@ -853,15 +922,18 @@ describe("duel socket", () => {
 
     setNow(ENDS_AT);
 
-    const [forAda, forAlan] = await Promise.all([ada.next().then(endedOf), alan.next()]);
+    const [{ round: forAda }, forAlan] = await Promise.all([
+      ada.next().then(roundEndedOf),
+      alan.next().then(roundEndedOf),
+    ]);
 
     expect(forAda.score.score).toBe(forAda.opponentScore.score);
     expect(forAda.result.accuracy).toBeGreaterThan(forAda.opponentResult.accuracy);
     expect(forAda.outcome).toBe("win");
-    expect(forAlan).toMatchObject({ type: "duel-ended", outcome: "loss" });
+    expect(forAlan.round.outcome).toBe("loss");
   });
 
-  test("the same Score and accuracy is a Draw for both", async () => {
+  test("the same Score and accuracy is a drawn Round, which counts for nobody", async () => {
     const ada = await queued(await signedIn("Ada"));
     const alan = await queued(await signedIn("Alan"));
     const [found] = await acceptBoth(ada, alan);
@@ -876,8 +948,13 @@ describe("duel socket", () => {
 
     const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
 
-    expect(forAda).toMatchObject({ type: "duel-ended", outcome: "draw" });
-    expect(forAlan).toMatchObject({ type: "duel-ended", outcome: "draw" });
+    expect(forAda).toMatchObject({
+      type: "round-ended",
+      round: { outcome: "draw" },
+      roundsWon: 0,
+      opponentRoundsWon: 0,
+    });
+    expect(forAlan).toMatchObject({ type: "round-ended", round: { outcome: "draw" } });
   });
 
   test("a Burst is judged against the player's own Pace", async () => {
@@ -894,7 +971,10 @@ describe("duel socket", () => {
 
     setNow(ENDS_AT);
 
-    const [forAda, forAlan] = await Promise.all([ada.next().then(endedOf), alan.next()]);
+    const [{ round: forAda }, forAlan] = await Promise.all([
+      ada.next().then(roundEndedOf),
+      alan.next().then(roundEndedOf),
+    ]);
 
     if (duel === null) {
       throw new Error(`No Duel found: ${found.type}`);
@@ -913,7 +993,7 @@ describe("duel socket", () => {
     expect(forAda.score.bursts).toBe(0);
     expect(forAda.opponentScore.bursts).toBeGreaterThan(0);
     expect(forAda.outcome).toBe("loss");
-    expect(forAlan).toMatchObject({ type: "duel-ended", outcome: "win" });
+    expect(forAlan.round.outcome).toBe("win");
   });
 
   test("ignores Keystrokes from a User who is not in a Duel", async () => {
@@ -936,9 +1016,14 @@ describe("duel socket", () => {
     ada.send({ type: "join-queue" });
     await ada.settle();
 
+    // Between two Rounds: still in the Duel.
     setNow(ENDS_AT);
-    expect(await ada.next()).toMatchObject({ type: "duel-ended" });
-    expect(await alan.next()).toMatchObject({ type: "duel-ended" });
+    expect(await ada.next()).toMatchObject({ type: "round-ended" });
+    expect(await alan.next()).toMatchObject({ type: "round-ended" });
+    ada.send({ type: "join-queue" });
+    await ada.settle();
+
+    await playOut(setNow, ada, alan, 1);
 
     // A new Duel.
     ada.send({ type: "join-queue" });
@@ -1048,6 +1133,11 @@ describe("duel socket", () => {
       opponent: { handle: "alan", image: "https://img/alan", ornament: null },
       selfOrnament: null,
       serverTime: STARTS_AT + 1000 + 9999,
+      // In the first Round, nothing played before it.
+      rounds: [],
+      roundsWon: 0,
+      opponentRoundsWon: 0,
+      round: { index: 0, seed: seedOf(found), startsAt: STARTS_AT },
       keystrokes: [char("s", 100)],
       received: 2,
       opponentKeystrokes: [char("h", 400)],
@@ -1071,9 +1161,10 @@ describe("duel socket", () => {
       keystrokes: [char("a", 15_000)],
     });
 
-    setNow(ENDS_AT);
-    expect(await back.next()).toMatchObject({ type: "duel-ended", forfeit: false });
-    expect(await alan.next()).toMatchObject({ type: "duel-ended", forfeit: false });
+    const [forAda, forAlan] = await playOut(setNow, back, alan);
+
+    expect(forAda.forfeit).toBe(false);
+    expect(forAlan.forfeit).toBe(false);
   });
 
   test("a disconnected player not back within 10 s forfeits, and learns it on their return", async () => {
@@ -1185,14 +1276,18 @@ describe("duel socket", () => {
   test("a Duel whose end came while a player was away tells them on their return", async () => {
     const { cookie, ada, alan } = await pairedUsers();
 
-    setNow(ENDS_AT - 5000);
+    // Two drawn Rounds: the third decides.
+    await roundEnds(setNow, ada, alan, 0);
+    await roundEnds(setNow, ada, alan, 1);
+
+    setNow(roundEndsAt(2) - 5000);
     await dropped(ada, alan);
 
-    setNow(ENDS_AT);
+    setNow(roundEndsAt(2));
     expect(await alan.next()).toMatchObject({ type: "duel-ended", forfeit: false });
 
     // The 10 s run out after the end: nothing more.
-    setNow(ENDS_AT + 10_000);
+    setNow(roundEndsAt(2) + 10_000);
     await alan.settle();
 
     const back = await resumedOn(cookie);
@@ -1298,7 +1393,7 @@ describe("duel socket", () => {
     await ada.settle();
   });
 
-  test("a Duel won at the end is written once, with both Results, Scores and Keystrokes", async () => {
+  test("a Duel won 2-0 ends after its second Round, written once, a line per Round and player", async () => {
     const { ada, alan, adaId, alanId, found } = await pairedUsers();
     const word = firstWordOf(found);
 
@@ -1308,14 +1403,32 @@ describe("duel socket", () => {
     alan.send({ type: "keystrokes", keystrokes: [char("x", 3000)] });
     await ada.next();
 
+    const [first] = await roundEnds(setNow, ada, alan, 0);
+
+    // The second Round starts 7 s after the server judged the first, on a Text of its own.
+    expect(first.next).toEqual({
+      index: 1,
+      seed: expect.any(Number),
+      startsAt: roundEndsAt(0) + ROUND_BREAK_MS,
+    });
+
+    const secondWord = firstWordOfSeed(first.next.seed);
+
+    setNow(roundStartsAt(1) + 5000);
+    ada.send({ type: "keystrokes", keystrokes: typed(secondWord, 1000) });
+    await alan.next();
+
     // Still running: nothing written.
-    setNow(ENDS_AT - 1);
+    setNow(roundEndsAt(1) - 1);
     await ada.settle();
     expect(saved).toEqual([]);
 
-    setNow(ENDS_AT);
+    setNow(roundEndsAt(1));
 
-    const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+    const [forAda, forAlan] = await Promise.all([
+      ada.next().then(endedOf),
+      alan.next().then(endedOf),
+    ]);
 
     const duel = duelOf(found);
 
@@ -1324,21 +1437,44 @@ describe("duel socket", () => {
     }
 
     const { seed, ...written } = duel;
+    const [roundOne, roundTwo] = forAda.rounds;
+    const [alanRoundOne, alanRoundTwo] = forAlan.rounds;
+
+    if (!roundOne || !roundTwo || !alanRoundOne || !alanRoundTwo) {
+      throw new Error("Two Rounds played");
+    }
+
+    // No third Round: 2-0 decides.
+    expect(forAda).toMatchObject({
+      outcome: "win",
+      forfeit: false,
+      roundsToWin: 2,
+      roundsWon: 2,
+      opponentRoundsWon: 0,
+      rounds: [
+        { index: 0, outcome: "win" },
+        { index: 1, outcome: "win" },
+      ],
+      // The Score of the last Round, the Result over both.
+      score: roundTwo.score,
+      result: averageResult([roundOne.result, roundTwo.result]),
+    });
+    expect(forAlan).toMatchObject({ outcome: "loss", roundsWon: 0, opponentRoundsWon: 2 });
+    expect(first.next.seed).not.toBe(seed);
 
     expect(saved).toEqual([
       {
         ...written,
         mode: "time",
-        endedAt: TIME_UP,
+        endedAt: roundStartsAt(1) + 30_000,
         outcome: "win",
         winnerId: adaId,
-        roundsToWin: 1,
         players: [
           {
             userId: adaId,
             result: resultOf(forAda),
             pace: defaultPace,
-            roundsWon: 1,
+            roundsWon: 2,
             // A first Queue: seeded at 600 from the default Pace, then a Placement win at K 60.
             rated: {
               before: { mmr: 600, rank: { placementsLeft: 5 } },
@@ -1358,7 +1494,7 @@ describe("duel socket", () => {
             },
           },
         ],
-        // A single Round, on the Duel's Seed and over its time.
+        // Each Round on its Seed and over its time, its Keystrokes dated from its start.
         rounds: [
           {
             index: 0,
@@ -1368,15 +1504,35 @@ describe("duel socket", () => {
             players: [
               {
                 userId: adaId,
-                result: resultOf(forAda),
-                score: scoreOf(forAda),
+                result: roundOne.result,
+                score: roundOne.score,
                 keystrokes: typed(word, 1000),
               },
               {
                 userId: alanId,
-                result: resultOf(forAlan),
-                score: scoreOf(forAlan),
+                result: alanRoundOne.result,
+                score: alanRoundOne.score,
                 keystrokes: [char("x", 3000)],
+              },
+            ],
+          },
+          {
+            index: 1,
+            seed: first.next.seed,
+            startsAt: roundStartsAt(1),
+            endedAt: roundStartsAt(1) + 30_000,
+            players: [
+              {
+                userId: adaId,
+                result: roundTwo.result,
+                score: roundTwo.score,
+                keystrokes: typed(secondWord, 1000),
+              },
+              {
+                userId: alanId,
+                result: alanRoundTwo.result,
+                score: alanRoundTwo.score,
+                keystrokes: [],
               },
             ],
           },
@@ -1388,8 +1544,8 @@ describe("duel socket", () => {
     expect(forAda).toMatchObject({ duelId: duel.id });
     expect(forAlan).toMatchObject({ duelId: duel.id });
 
-    // Ended once: written once.
-    setNow(ENDS_AT + 60_000);
+    // Ended once: written once, and no third Round.
+    setNow(roundEndsAt(2) + 60_000);
     await ada.settle();
     expect(saved).toHaveLength(1);
   });
@@ -1401,16 +1557,14 @@ describe("duel socket", () => {
     ada.send({ type: "keystrokes", keystrokes: typed(firstWordOf(found), 1000) });
     await alan.next();
 
-    setNow(ENDS_AT);
+    const [forAda, forAlan] = await playOut(setNow, ada, alan);
 
-    const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
-
-    // The Duel beats all three: still, the Records told are those it was played against.
-    expect(resultOf(forAda).wpm).toBeGreaterThan(0.5);
-    expect(scoreOf(forAda).score).toBeGreaterThan(0);
-    expect(endedOf(forAda).records).toEqual({ wpm: 0.5, score: 0, combo: 0 });
+    // Its first Round beats all three: still, the Records told are those it was played against.
+    expect(forAda.rounds[0]?.result.wpm).toBeGreaterThan(0.5);
+    expect(forAda.rounds[0]?.score.score).toBeGreaterThan(0);
+    expect(forAda.records).toEqual({ wpm: 0.5, score: 0, combo: 0 });
     // Alan has finished no Duel: none of his Records is set yet.
-    expect(endedOf(forAlan).records).toEqual({ wpm: null, score: null, combo: null });
+    expect(forAlan.records).toEqual({ wpm: null, score: null, combo: null });
   });
 
   test("the Records are read at the pairing, then frozen for the Duel", async () => {
@@ -1418,11 +1572,10 @@ describe("duel socket", () => {
 
     // Written during the Duel: the Records told at its end do not move.
     saved.push(pastDuel(adaId, 500, NOW + 1000));
-    setNow(ENDS_AT);
 
-    const [forAda] = await Promise.all([ada.next(), alan.next()]);
+    const [forAda] = await playOut(setNow, ada, alan);
 
-    expect(endedOf(forAda).records).toEqual({ wpm: null, score: null, combo: null });
+    expect(forAda.records).toEqual({ wpm: null, score: null, combo: null });
   });
 
   test("the written Keystrokes replay on the Duel's Text to the written Results", async () => {
@@ -1444,8 +1597,7 @@ describe("duel socket", () => {
     });
     await ada.next();
 
-    setNow(ENDS_AT);
-    await Promise.all([ada.next(), alan.next()]);
+    await playOut(setNow, ada, alan);
 
     // After Ada's past Duel.
     const record = saved.at(-1);
@@ -1469,8 +1621,16 @@ describe("duel socket", () => {
     );
 
     expect(replayed).toEqual(round.players.map((side) => side.result));
-    // A single Round: the Duel's Result is its Round's.
-    expect(record.players.map((player) => player.result)).toEqual(replayed);
+    // The Duel's Result is the average of its Rounds' (three: the last two were drawn).
+    expect(record.rounds).toHaveLength(3);
+    expect(record.players.map((player) => player.result)).toEqual(
+      ([0, 1] as const).map((seat) =>
+        averageResult([
+          round.players[seat].result,
+          ...record.rounds.slice(1).map(({ players }) => players[seat].result),
+        ]),
+      ),
+    );
 
     // Each player went at their own Pace, written with them.
     const rescored = round.players.map((side) => {
@@ -1506,10 +1666,13 @@ describe("duel socket", () => {
     alan.send({ type: "keystrokes", keystrokes: typed(word, 2000) });
     await Promise.all([ada.next(), alan.next()]);
 
-    setNow(ENDS_AT);
-    await Promise.all([ada.next(), alan.next()]);
+    // Three drawn Rounds, the same cumulated Score and accuracy: a Draw.
+    const [forAda] = await playOut(setNow, ada, alan);
 
-    expect(saved).toMatchObject([{ outcome: "draw", winnerId: null, endedAt: TIME_UP }]);
+    expect(forAda).toMatchObject({ outcome: "draw", roundsWon: 0, opponentRoundsWon: 0 });
+    expect(saved).toMatchObject([
+      { outcome: "draw", winnerId: null, endedAt: roundStartsAt(2) + 30_000 },
+    ]);
   });
 
   test("leaving the Duel is written at once as a Forfeit won by the opponent", async () => {
@@ -1656,24 +1819,13 @@ describe("duel socket", () => {
       opponentForm: null,
     });
 
-    setNow(ENDS_AT);
-
     // Told before the write fails: the Duel it was to be written under. No Rating read: not
     // ranked. No Records read: none to show.
     const duelId = duelOf(found)?.id;
+    const [forAda, forAlan] = await playOut(setNow, ada, alan);
 
-    expect(await ada.next()).toMatchObject({
-      type: "duel-ended",
-      duelId,
-      ranked: null,
-      records: null,
-    });
-    expect(await alan.next()).toMatchObject({
-      type: "duel-ended",
-      duelId,
-      ranked: null,
-      records: null,
-    });
+    expect(forAda).toMatchObject({ type: "duel-ended", duelId, ranked: null, records: null });
+    expect(forAlan).toMatchObject({ type: "duel-ended", duelId, ranked: null, records: null });
     await ada.settle();
     expect(logged.map((line) => JSON.parse(line))).toMatchObject([
       { msg: "pace not read", err: { message: "database down" } },
@@ -1705,10 +1857,7 @@ describe("duel socket", () => {
 
     const { ada, alan } = await pairedUsers();
 
-    setNow(ENDS_AT);
-
-    expect(await ada.next()).toMatchObject({ type: "duel-ended" });
-    expect(await alan.next()).toMatchObject({ type: "duel-ended" });
+    await playOut(setNow, ada, alan);
 
     // Their next Duel waits for the write: paired once it is given up.
     ada.send({ type: "join-queue" });
@@ -1717,7 +1866,7 @@ describe("duel socket", () => {
     expect(await alan.next()).toEqual({ type: "queued" });
     await ada.settle();
 
-    setNow(ENDS_AT + SAVE_TIMEOUT_MS);
+    setNow(roundEndsAt(2) + SAVE_TIMEOUT_MS);
 
     expect(await ada.next()).toMatchObject({ type: "match-proposed" });
     expect(logged.map((line) => JSON.parse(line))).toMatchObject([
@@ -1746,21 +1895,20 @@ describe("duel socket", () => {
     const { ada, alan, cookie, found } = await pairedUsers();
     const duelId = duelOf(found)?.id;
 
-    setNow(ENDS_AT);
-
     // Both are told at once, with the Duel to replay and their rank moved, the write still going.
-    expect(await ada.next()).toMatchObject({
-      type: "duel-ended",
+    const [forAda, forAlan] = await playOut(setNow, ada, alan);
+
+    expect(forAda).toMatchObject({
       duelId,
       ranked: { tp: null, rank: { placementsLeft: 4 } },
     });
-    expect(await alan.next()).toMatchObject({ type: "duel-ended", duelId });
+    expect(forAlan).toMatchObject({ duelId });
     expect(duels.saved).toEqual([]);
 
     // Free already: a tab opened now sees them idle.
     const other = await connect(cookie);
 
-    expect(await other.next()).toEqual(idle(null, ENDS_AT));
+    expect(await other.next()).toEqual(idle(null, roundEndsAt(2)));
 
     written.resolve();
     await ada.settle();
@@ -1768,7 +1916,7 @@ describe("duel socket", () => {
     expect(duels.saved).toMatchObject([{ id: duelId }]);
   });
 
-  // Ada and Alan, done with a Duel at ENDS_AT whose write waits for `written`.
+  // Ada and Alan, done with a Duel of three drawn Rounds whose write waits for `written`.
   const endedWhileWriting = async () => {
     const { clock, set } = manualClock(NOW);
     const duels = memoryDuelStore();
@@ -1789,9 +1937,7 @@ describe("duel socket", () => {
 
     const players = await pairedUsers();
 
-    setNow(ENDS_AT);
-    await players.ada.next();
-    await players.alan.next();
+    await playOut(setNow, players.ada, players.alan);
 
     return { ...players, written };
   };
@@ -3159,12 +3305,12 @@ describe("duel socket", () => {
       setNow(STARTS_AT + 5000);
       ada.send({ type: "keystrokes", keystrokes: typed(firstWordOf(adaFound), 1000) });
       await alan.next();
-      setNow(ENDS_AT);
 
-      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+      // Won 1-0, the two other Rounds drawn.
+      const [forAda, forAlan] = await playOut(setNow, ada, alan);
 
-      expect(endedOf(forAda).ranked).toMatchObject({ tp: 28, rank: goldIv(78) });
-      expect(endedOf(forAlan).ranked).toMatchObject({ tp: -13, rank: goldIv(82) });
+      expect(forAda.ranked).toMatchObject({ tp: 28, rank: goldIv(78) });
+      expect(forAlan.ranked).toMatchObject({ tp: -13, rank: goldIv(82) });
     });
 
     test("each User is told both ranks and both Forms: the last 5 ranked Duels, the most recent first", async () => {
@@ -3254,9 +3400,8 @@ describe("duel socket", () => {
       // Ada's Pace of 70 wpm: 600 + 20 × 12. Alan's default Pace of 50: 600.
       expect(ratings.get(adaId)).toEqual({ mmr: 840, rank: { placementsLeft: 5 } });
 
-      setNow(ENDS_AT);
-
-      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+      // A Bo3 counts for one Placement Duel.
+      const [forAda, forAlan] = await playOut(setNow, ada, alan);
 
       // A Placement Duel: no TP, one Placement fewer.
       expect(forAda).toMatchObject({
@@ -3276,16 +3421,15 @@ describe("duel socket", () => {
       setNow(STARTS_AT + 5000);
       ada.send({ type: "keystrokes", keystrokes: typed(firstWordOf(found), 1000) });
       await alan.next();
-      setNow(ENDS_AT);
 
-      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+      const [forAda, forAlan] = await playOut(setNow, ada, alan);
 
-      expect(endedOf(forAda).ranked).toEqual({
+      expect(forAda.ranked).toEqual({
         tp: 20,
         previousRank: goldIv(50),
         rank: goldIv(70),
       });
-      expect(endedOf(forAlan).ranked).toEqual({
+      expect(forAlan.ranked).toEqual({
         tp: -20,
         previousRank: goldIv(50),
         rank: goldIv(30),
@@ -3317,24 +3461,22 @@ describe("duel socket", () => {
         { mmr: 1400, rank: diamondIv(50) },
       );
 
-      setNow(ENDS_AT);
-
-      const [forAda, forAlan] = await Promise.all([ada.next(), alan.next()]);
+      const [forAda, forAlan] = await playOut(setNow, ada, alan);
 
       expect(forAda).toMatchObject({ outcome: "draw", ranked: { tp: 16, rank: goldIv(66) } });
       expect(forAlan).toMatchObject({ outcome: "draw", ranked: { tp: -16, rank: diamondIv(34) } });
     });
 
     test("the last Placement reveals the rank the MMR reached", async () => {
-      const { ada } = await rankedPair(
+      const { ada, alan } = await rankedPair(
         { mmr: 1000, rank: { placementsLeft: 1 } },
         { mmr: 1000, rank: goldIv(50) },
       );
 
-      setNow(ENDS_AT);
+      const [forAda] = await playOut(setNow, ada, alan);
 
       // A Draw at 1000: the MMR stays, Gold IV at 0 TP.
-      expect(endedOf(await ada.next()).ranked).toEqual({
+      expect(forAda.ranked).toEqual({
         tp: null,
         previousRank: { placementsLeft: 1 },
         rank: goldIv(0),
@@ -3362,6 +3504,353 @@ describe("duel socket", () => {
       expect(endedOf(forAda).ranked).toMatchObject({ previousRank: goldIv(30) });
       expect(ratings.get(adaId)?.mmr).toBeGreaterThan(984);
       expect(ratings.get(alanId)?.mmr).toBeLessThan(1016);
+    });
+  });
+
+  // `player` types the first `count` words of the Round `index`, on `seed`: the other is told.
+  const typeRound = async (
+    player: TestClient,
+    other: TestClient,
+    index: number,
+    seed: number,
+    count = 1,
+  ) => {
+    const words = generateText(seed, "en", currentWordListVersion.en, count);
+
+    setNow(roundStartsAt(index) + 5000);
+    player.send({ type: "keystrokes", keystrokes: typedWords(words, 1000, 100) });
+    expect(await other.next()).toMatchObject({ type: "opponent-keystrokes" });
+  };
+
+  describe("Bo3", () => {
+    test("a Duel won 2-1 plays three Rounds on three Seeds, each 7 s after the last was judged", async () => {
+      const { ada, alan, found } = await pairedUsers();
+
+      // Ada wins the first Round, Alan the second, then Ada the third, each by one word.
+      await typeRound(ada, alan, 0, seedOf(found));
+
+      const [first] = await roundEnds(setNow, ada, alan, 0);
+
+      await typeRound(alan, ada, 1, first.next.seed);
+
+      const [second] = await roundEnds(setNow, ada, alan, 1);
+
+      await typeRound(ada, alan, 2, second.next.seed);
+      setNow(roundEndsAt(2));
+
+      const [forAda, forAlan] = await Promise.all([
+        ada.next().then(endedOf),
+        alan.next().then(endedOf),
+      ]);
+
+      const seeds = [seedOf(found), first.next.seed, second.next.seed];
+
+      expect(first).toMatchObject({
+        round: { index: 0, outcome: "win" },
+        roundsWon: 1,
+        opponentRoundsWon: 0,
+        next: { index: 1, startsAt: roundEndsAt(0) + 7000 },
+        serverTime: roundEndsAt(0),
+      });
+      expect(second).toMatchObject({
+        round: { index: 1, outcome: "loss" },
+        roundsWon: 1,
+        opponentRoundsWon: 1,
+        next: { index: 2, startsAt: roundEndsAt(1) + 7000 },
+      });
+      expect(forAda).toMatchObject({
+        outcome: "win",
+        forfeit: false,
+        roundsWon: 2,
+        opponentRoundsWon: 1,
+        rounds: [{ outcome: "win" }, { outcome: "loss" }, { outcome: "win" }],
+      });
+      expect(forAlan).toMatchObject({ outcome: "loss", roundsWon: 1, opponentRoundsWon: 2 });
+      expect(new Set(seeds).size).toBe(3);
+      expect(saved.at(-1)?.rounds.map(({ seed }) => seed)).toEqual(seeds);
+    });
+
+    test("the next Round opens at its start, not a millisecond before", async () => {
+      const { ada, alan } = await pairedUsers();
+      const [first] = await roundEnds(setNow, ada, alan, 0);
+
+      setNow(first.next.startsAt - 1);
+      ada.send({ type: "keystrokes", keystrokes: [char("s", 0)] });
+      expect(await ada.next()).toMatchObject({ type: "resync", keystrokes: [], received: 1 });
+
+      setNow(first.next.startsAt);
+      ada.send({ type: "keystrokes", keystrokes: [char("s", 0)] });
+      expect(await alan.next()).toEqual({
+        type: "opponent-keystrokes",
+        keystrokes: [char("s", 0)],
+      });
+    });
+
+    test("a Keystroke sent during the Round break is ignored, and its sender resynced", async () => {
+      const { ada, alan, found } = await pairedUsers();
+
+      await typeRound(ada, alan, 0, seedOf(found));
+      await roundEnds(setNow, ada, alan, 0);
+
+      setNow(roundEndsAt(0) + 3000);
+      ada.send({ type: "keystrokes", keystrokes: [char("s", 100)] });
+
+      // The Round to come starts from nothing: neither the first Round's Keystrokes nor these.
+      expect(await ada.next()).toEqual({
+        type: "resync",
+        keystrokes: [],
+        received: 1,
+        opponentKeystrokes: [],
+      });
+      await alan.settle();
+    });
+
+    test("at 1-1 after a drawn third Round, the cumulated Score decides", async () => {
+      const { ada, alan, alanId, found } = await pairedUsers();
+
+      await typeRound(ada, alan, 0, seedOf(found));
+
+      const [first] = await roundEnds(setNow, ada, alan, 0);
+
+      // Alan wins the second by more than Ada won the first.
+      await typeRound(alan, ada, 1, first.next.seed, 3);
+      await roundEnds(setNow, ada, alan, 1);
+
+      // Nobody types in the third: drawn, it counts for nobody.
+      setNow(roundEndsAt(2));
+
+      const [forAda, forAlan] = await Promise.all([
+        ada.next().then(endedOf),
+        alan.next().then(endedOf),
+      ]);
+
+      expect(forAda).toMatchObject({
+        outcome: "loss",
+        roundsWon: 1,
+        opponentRoundsWon: 1,
+        rounds: [{ outcome: "win" }, { outcome: "loss" }, { outcome: "draw" }],
+      });
+      expect(forAlan.outcome).toBe("win");
+      expect(saved.at(-1)).toMatchObject({ outcome: "win", winnerId: alanId });
+    });
+
+    test("leaving at 1-0 during the Round break loses the Duel, without a Round to cut short", async () => {
+      const { ada, alan, adaId, alanId, found } = await pairedUsers();
+
+      await typeRound(ada, alan, 0, seedOf(found));
+      await roundEnds(setNow, ada, alan, 0);
+
+      setNow(roundEndsAt(0) + 2000);
+      ada.send({ type: "leave-duel" });
+
+      const [forAda, forAlan] = await Promise.all([
+        ada.next().then(endedOf),
+        alan.next().then(endedOf),
+      ]);
+
+      expect(forAda).toMatchObject({ outcome: "loss", forfeit: true, roundsWon: 1 });
+      expect(forAlan).toMatchObject({ outcome: "win", forfeit: true, opponentRoundsWon: 1 });
+      // The Round played is written; the next one never started.
+      expect(saved.at(-1)).toMatchObject({
+        outcome: "forfeit",
+        winnerId: alanId,
+        endedAt: roundEndsAt(0) + 2000,
+        players: [
+          { userId: adaId, roundsWon: 1 },
+          { userId: alanId, roundsWon: 0 },
+        ],
+      });
+      expect(saved.at(-1)?.rounds).toHaveLength(1);
+    });
+
+    test("leaving at 1-0 in the second Round loses the Duel, the Round cut short counting for nobody", async () => {
+      const { ada, alan, found } = await pairedUsers();
+
+      await typeRound(ada, alan, 0, seedOf(found));
+
+      const [first] = await roundEnds(setNow, ada, alan, 0);
+
+      await typeRound(ada, alan, 1, first.next.seed);
+      ada.send({ type: "leave-duel" });
+
+      const [forAda] = await Promise.all([ada.next().then(endedOf), alan.next()]);
+
+      expect(forAda).toMatchObject({
+        outcome: "loss",
+        forfeit: true,
+        roundsWon: 1,
+        rounds: [{ index: 0 }, { index: 1 }],
+      });
+      expect(saved.at(-1)?.rounds).toMatchObject([
+        { index: 0 },
+        { index: 1, endedAt: roundStartsAt(1) + 5000 },
+      ]);
+    });
+
+    test.each([
+      ["2-0", false],
+      ["2-1", true],
+    ])("a Duel won %s moves the same TP and MMR", async (_, dropsOne) => {
+      const { ada, alan, adaId, alanId, found } = await rankedPair(
+        { mmr: 1000, rank: goldIv(50) },
+        { mmr: 1000, rank: goldIv(50) },
+      );
+
+      await typeRound(ada, alan, 0, seedOf(found));
+
+      const [first] = await roundEnds(setNow, ada, alan, 0);
+
+      await typeRound(dropsOne ? alan : ada, dropsOne ? ada : alan, 1, first.next.seed);
+
+      const [forAda, forAlan] = dropsOne
+        ? await roundEnds(setNow, ada, alan, 1).then(async ([second]) => {
+            await typeRound(ada, alan, 2, second.next.seed);
+            setNow(roundEndsAt(2));
+
+            return Promise.all([ada.next().then(endedOf), alan.next().then(endedOf)]);
+          })
+        : await (async () => {
+            setNow(roundEndsAt(1));
+
+            return Promise.all([ada.next().then(endedOf), alan.next().then(endedOf)]);
+          })();
+
+      expect(forAda).toMatchObject({ outcome: "win", ranked: { tp: 20, rank: goldIv(70) } });
+      expect(forAlan).toMatchObject({ outcome: "loss", ranked: { tp: -20, rank: goldIv(30) } });
+      expect(ratings.get(adaId)).toEqual({ mmr: 1016, rank: goldIv(70) });
+      expect(ratings.get(alanId)).toEqual({ mmr: 984, rank: goldIv(30) });
+    });
+
+    test("the Records are the best of the Rounds, never their average", async () => {
+      const { ada, alan, cookie, found } = await pairedUsers();
+
+      // Three words in the first Round, one in the second: a 2-0.
+      await typeRound(ada, alan, 0, seedOf(found), 3);
+
+      const [first] = await roundEnds(setNow, ada, alan, 0);
+
+      await typeRound(ada, alan, 1, first.next.seed);
+      setNow(roundEndsAt(1));
+
+      const [forAda] = await Promise.all([ada.next().then(endedOf), alan.next()]);
+      const [best, other] = forAda.rounds;
+
+      if (!best || !other) {
+        throw new Error("Two Rounds played");
+      }
+
+      expect(best.result.wpm).toBeGreaterThan(forAda.result.wpm);
+
+      const response = await fetch(`http://localhost:${app.server?.port}/api/users/ada/profile`, {
+        headers: { cookie },
+      });
+
+      expect(await response.json()).toMatchObject({
+        stats: {
+          records: {
+            wpm: best.result.wpm,
+            score: Math.max(best.score.score, other.score.score),
+            combo: Math.max(best.score.bestCombo, other.score.bestCombo),
+          },
+        },
+      });
+    });
+
+    describe("reconnection", () => {
+      test("back during the Round break, the Duel resumes with the Rounds played and the next one", async () => {
+        const { cookie, ada, alan, found } = await pairedUsers();
+
+        await typeRound(ada, alan, 0, seedOf(found));
+
+        const [first] = await roundEnds(setNow, ada, alan, 0);
+
+        setNow(roundEndsAt(0) + 1000);
+        await dropped(ada, alan);
+        setNow(roundEndsAt(0) + 4000);
+
+        const back = await resumedOn(cookie);
+
+        expect(await back.next()).toMatchObject({
+          type: "duel-resumed",
+          serverTime: roundEndsAt(0) + 4000,
+          rounds: [first.round],
+          roundsWon: 1,
+          opponentRoundsWon: 0,
+          round: first.next,
+          keystrokes: [],
+          received: 0,
+          opponentKeystrokes: [],
+        });
+        expect(await alan.next()).toEqual({ type: "opponent-reconnected" });
+      });
+
+      test("back in the second Round, only that Round's Keystrokes come back", async () => {
+        const { cookie, ada, alan, found } = await pairedUsers();
+
+        await typeRound(ada, alan, 0, seedOf(found));
+
+        const [first] = await roundEnds(setNow, ada, alan, 0);
+
+        setNow(roundStartsAt(1) + 2000);
+        alan.send({ type: "keystrokes", keystrokes: [char("h", 1500)] });
+        expect(await ada.next()).toMatchObject({ type: "opponent-keystrokes" });
+        ada.send({ type: "keystrokes", keystrokes: [char("s", 1800)] });
+        expect(await alan.next()).toMatchObject({ type: "opponent-keystrokes" });
+
+        await dropped(ada, alan);
+
+        const back = await resumedOn(cookie);
+
+        expect(await back.next()).toMatchObject({
+          type: "duel-resumed",
+          rounds: [{ index: 0 }],
+          round: { index: 1, seed: first.next.seed, startsAt: roundStartsAt(1) },
+          keystrokes: [char("s", 1800)],
+          received: 1,
+          opponentKeystrokes: [char("h", 1500)],
+        });
+      });
+
+      test("a Round ended while away comes back with the resumed Duel", async () => {
+        const { cookie, ada, alan } = await pairedUsers();
+
+        setNow(ENDS_AT - 3000);
+        await dropped(ada, alan);
+        setNow(ENDS_AT);
+        expect(await alan.next()).toMatchObject({ type: "round-ended" });
+
+        const back = await resumedOn(cookie);
+
+        expect(await back.next()).toMatchObject({
+          type: "duel-resumed",
+          rounds: [{ index: 0, outcome: "draw" }],
+          round: { index: 1, startsAt: ENDS_AT + ROUND_BREAK_MS },
+        });
+      });
+
+      test("away more than 10 s into a Round break forfeits the whole Duel", async () => {
+        const { ada, alan, found } = await pairedUsers();
+
+        await typeRound(ada, alan, 0, seedOf(found));
+
+        // Gone 4 s before the end of the first Round: her 10 s run out in the Round break.
+        setNow(ENDS_AT - 4000);
+        await dropped(ada, alan);
+        setNow(ENDS_AT);
+        expect(await alan.next()).toMatchObject({ type: "round-ended" });
+
+        setNow(ENDS_AT + 5999);
+        await alan.settle();
+        setNow(ENDS_AT + 6000);
+
+        expect(await alan.next()).toMatchObject({
+          type: "duel-ended",
+          outcome: "win",
+          forfeit: true,
+          opponentRoundsWon: 1,
+        });
+        expect(saved.at(-1)?.rounds).toHaveLength(1);
+      });
     });
   });
 });

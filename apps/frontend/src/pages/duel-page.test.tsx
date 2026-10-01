@@ -8,6 +8,7 @@ import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
 import { usePlayStore } from "@/stores/play-store";
 import { useRunStore } from "@/stores/run-store";
+import { inFirstRound, singleRoundEnd } from "@/test/duel-rounds";
 import { fakeServer, idle, queueElsewhere } from "@/test/fake-socket";
 import { holdGsapClock } from "@/test/gsap-clock";
 import { ada, renderAppFor } from "@/test/render-app";
@@ -22,6 +23,7 @@ const duel = {
   seconds: 30,
   // The Countdown's first moment on a clock at 0: the Face-off comes in.
   startsAt: 4_500,
+  roundsToWin: 1,
 } as const;
 
 // A moment of the Face-off, its panels covering the screen: the Duel's URL shows under them.
@@ -56,6 +58,7 @@ const duelResumed: ServerMessage = {
   ...pairing,
   selfRank: placement,
   opponentRank: placement,
+  ...inFirstRound(duel),
   keystrokes: [],
   received: 0,
   opponentKeystrokes: [],
@@ -96,6 +99,7 @@ const duelEnded: ServerMessage = {
   opponentResult: noResult,
   score: noScore,
   opponentScore: noScore,
+  ...singleRoundEnd,
   opponent: { handle: "kzr_", image: null },
 };
 

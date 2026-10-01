@@ -19,6 +19,7 @@ export const DuelScreen = () => {
     case "countdown":
     case "running":
     case "finishing":
+    case "round-break":
       return <DuelTypingArea duel={state.duel} />;
     case "ended":
       return <DuelEnded ending={state.ending} />;

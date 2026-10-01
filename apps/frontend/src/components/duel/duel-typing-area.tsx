@@ -25,7 +25,7 @@ export const DuelTypingArea = ({ duel }: { duel: DuelPlay }) => {
   const press = useDuelStore((store) => store.press);
   const leave = useDuelStore((store) => store.leave);
   const elapsed = useDuelElapsed(duel.startsAt);
-  const cues = useDuelCues(duel.id);
+  const cues = useDuelCues(`${duel.id}/${duel.roundIndex}`);
 
   useBandMorphRecorder();
 

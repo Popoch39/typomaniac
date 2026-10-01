@@ -39,6 +39,7 @@ const duelFound: ServerMessage = {
     wordListVersion: 1,
     seconds: 30,
     startsAt: 4_500,
+    roundsToWin: 2,
   },
   opponent,
   selfOrnament: null,

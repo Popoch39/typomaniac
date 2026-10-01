@@ -94,7 +94,6 @@ const replayedDuel = t.Composite([
     endedAt: t.Number(),
     outcome: t.UnionEnum(["win", "loss", "draw"]),
     forfeit: t.Boolean(),
-    roundsToWin: t.Integer(),
     me: replayedPlayer,
     // Null once the opponent's User is deleted.
     opponent: t.Nullable(replayedPlayer),

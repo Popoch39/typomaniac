@@ -1,8 +1,10 @@
 import type { Form, ServerMessage } from "api";
+import type { Keystroke } from "typing-engine";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
+import { inFirstRound } from "@/test/duel-rounds";
 import { fakeServer, idle, queueElsewhere } from "@/test/fake-socket";
 
 const duel = {
@@ -12,6 +14,7 @@ const duel = {
   wordListVersion: 1,
   seconds: 30,
   startsAt: 3_000,
+  roundsToWin: 2,
 } as const;
 
 const duelFound: ServerMessage = {
@@ -46,6 +49,8 @@ const server = () => sockets.server();
 const enter = () => useDuelStore.getState().enter(() => 0);
 
 const phase = () => useDuelStore.getState().state.phase;
+
+const duelState = () => useDuelStore.getState().state;
 
 const matchProposed: ServerMessage = {
   type: "match-proposed",
@@ -242,6 +247,7 @@ describe("the Duel on the app's connection", () => {
       opponent: { handle: "ada", image: null, ornament: null },
       selfOrnament: null,
       serverTime: 1_000,
+      ...inFirstRound(duel),
       keystrokes: [],
       received: 0,
       opponentKeystrokes: [],
@@ -586,5 +592,212 @@ describe("the Duel on the app's connection", () => {
 
     expect(phase()).toBe("disconnected");
     expect(server().sent).toEqual([]);
+  });
+});
+
+describe("a Bo3", () => {
+  // This tab's clock, moved by hand: it agrees with the server's.
+  let now = 0;
+
+  const tick = (at: number) => {
+    now = at;
+    useDuelStore.getState().tick(at);
+  };
+
+  const press = (char: string, at: number) => {
+    now = at;
+    useDuelStore.getState().press({ kind: "char", char }, at);
+  };
+
+  const noResult = {
+    wpm: 0,
+    raw: 0,
+    accuracy: 0,
+    consistency: 0,
+    chars: { correct: 0, incorrect: 0, extra: 0, missed: 0 },
+  };
+
+  const noScore = { score: 0, bestCombo: 0, bursts: 0 };
+
+  // The first Round, won by this User, judged 400 ms after its 30 s: the second starts 7 s later.
+  const firstRound = {
+    index: 0,
+    outcome: "win",
+    result: noResult,
+    opponentResult: noResult,
+    score: { score: 12, bestCombo: 2, bursts: 0 },
+    opponentScore: noScore,
+  } as const;
+
+  const JUDGED_AT = duel.startsAt + 30_400;
+
+  const SECOND_STARTS_AT = JUDGED_AT + 7000;
+
+  const roundEnded: ServerMessage = {
+    type: "round-ended",
+    round: firstRound,
+    roundsWon: 1,
+    opponentRoundsWon: 0,
+    next: { index: 1, seed: 77, startsAt: SECOND_STARTS_AT },
+    serverTime: JUDGED_AT,
+  };
+
+  // The Duel found and played here up to the end of its first Round's time.
+  const finishingFirstRound = () => {
+    now = 0;
+    server().receive(idle());
+    useDuelStore.getState().enter(() => now);
+    server().receive(duelFound);
+    tick(duel.startsAt);
+    press("s", duel.startsAt + 1000);
+    tick(duel.startsAt + 30_000);
+    vi.advanceTimersByTime(100);
+  };
+
+  test("a Round ended without deciding the Duel is a Round break, its Round and counts told", () => {
+    finishingFirstRound();
+    expect(duelState().phase).toBe("finishing");
+
+    now = JUDGED_AT;
+    server().receive(roundEnded);
+
+    expect(duelState()).toMatchObject({
+      phase: "round-break",
+      duel: { roundIndex: 0, rounds: [firstRound], roundsWon: 1, opponentRoundsWon: 0 },
+      next: { index: 1, seed: 77, startsAt: SECOND_STARTS_AT },
+    });
+  });
+
+  test("typing is blocked during the Round break, until the next Round starts at its start", () => {
+    finishingFirstRound();
+    now = JUDGED_AT;
+    server().receive(roundEnded);
+
+    const sentBefore = server().sent.length;
+
+    press("x", SECOND_STARTS_AT - 1000);
+    tick(SECOND_STARTS_AT - 1);
+    expect(duelState().phase).toBe("round-break");
+
+    tick(SECOND_STARTS_AT);
+
+    expect(duelState()).toMatchObject({
+      phase: "running",
+      duel: {
+        roundIndex: 1,
+        config: { seed: 77 },
+        startsAt: SECOND_STARTS_AT,
+        keystrokes: [],
+        opponentKeystrokes: [],
+        score: { score: 0 },
+        opponentScore: { score: 0 },
+        rounds: [firstRound],
+      },
+    });
+
+    // Its Keystrokes are dated from its own start, and only those go to the server.
+    press("h", SECOND_STARTS_AT + 250);
+    vi.advanceTimersByTime(100);
+
+    expect(server().sent.slice(sentBefore)).toEqual([
+      { type: "keystrokes", keystrokes: [{ kind: "char", char: "h", at: 250 }] },
+    ]);
+  });
+
+  test("leaving during the Round break forfeits the Duel", () => {
+    finishingFirstRound();
+    now = JUDGED_AT;
+    server().receive(roundEnded);
+    useDuelStore.getState().exit();
+
+    expect(server().sent.at(-1)).toEqual({ type: "leave-duel" });
+  });
+
+  test("a resync during the Round break leaves the Round played as it was", () => {
+    finishingFirstRound();
+    now = JUDGED_AT;
+    server().receive(roundEnded);
+    server().receive({ type: "resync", keystrokes: [], received: 3, opponentKeystrokes: [] });
+
+    expect(duelState()).toMatchObject({
+      phase: "round-break",
+      duel: { keystrokes: [{ kind: "char", char: "s", at: 1000 }] },
+    });
+  });
+
+  // The Duel as the server holds it at `serverTime`, in its second Round (or the Round break before
+  // it), with the opponent's Keystrokes of that Round.
+  const resumedAt = (serverTime: number, opponentKeystrokes: Keystroke[] = []): ServerMessage => ({
+    type: "duel-resumed",
+    duel,
+    opponent: { handle: "ada", image: null, ornament: null },
+    selfOrnament: null,
+    serverTime,
+    rounds: [firstRound],
+    roundsWon: 1,
+    opponentRoundsWon: 0,
+    round: { index: 1, seed: 77, startsAt: SECOND_STARTS_AT },
+    keystrokes: [],
+    received: 0,
+    opponentKeystrokes,
+    opponentConnected: true,
+    pace: 40,
+    opponentPace: 40,
+    selfRank: goldIv,
+    opponentRank: goldIv,
+    selfForm: null,
+    opponentForm: null,
+    selfStake: goldIvStake,
+  });
+
+  test("resumed during a Round break, it is rebuilt there, the next Round on its start", () => {
+    now = JUDGED_AT + 2000;
+    useDuelStore.getState().enter(() => now);
+    server().receive({ type: "elsewhere", place: "duel" });
+    server().receive(resumedAt(JUDGED_AT + 2000));
+
+    expect(duelState()).toMatchObject({
+      phase: "round-break",
+      duel: { roundIndex: 1, rounds: [firstRound], roundsWon: 1, config: { seed: 77 } },
+      next: { index: 1, seed: 77, startsAt: SECOND_STARTS_AT },
+    });
+
+    tick(SECOND_STARTS_AT);
+    expect(duelState()).toMatchObject({ phase: "running", duel: { roundIndex: 1 } });
+  });
+
+  test("resumed in the second Round, it is rebuilt there with that Round's Keystrokes", () => {
+    now = SECOND_STARTS_AT + 1000;
+    useDuelStore.getState().enter(() => now);
+    server().receive({ type: "elsewhere", place: "duel" });
+    server().receive(resumedAt(SECOND_STARTS_AT + 1000, [{ kind: "char", char: "q", at: 300 }]));
+    tick(SECOND_STARTS_AT + 1000);
+
+    expect(duelState()).toMatchObject({
+      phase: "running",
+      duel: {
+        roundIndex: 1,
+        rounds: [firstRound],
+        startsAt: SECOND_STARTS_AT,
+        opponentKeystrokes: [{ kind: "char", char: "q", at: 300 }],
+      },
+    });
+  });
+
+  test("back from a lost connection during the Round break, the same Round break goes on", () => {
+    finishingFirstRound();
+    now = JUDGED_AT;
+    server().receive(roundEnded);
+    server().drop();
+    vi.advanceTimersByTime(1_000);
+    now = JUDGED_AT + 1000;
+    server().receive({ type: "elsewhere", place: "duel" });
+    server().receive(resumedAt(JUDGED_AT + 1000));
+
+    expect(duelState()).toMatchObject({
+      phase: "round-break",
+      duel: { connected: true, keystrokes: [{ kind: "char", char: "s", at: 1000 }] },
+      next: { startsAt: SECOND_STARTS_AT },
+    });
   });
 });

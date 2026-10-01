@@ -8,6 +8,7 @@ import { meQueryOptions } from "@/api/me";
 import { type Profile, profileQueryOptions } from "@/api/profile";
 import { LiveRank } from "@/components/tier/rank/live-rank";
 import { useConnectionStore } from "@/stores/connection-store";
+import { singleRoundEnd } from "@/test/duel-rounds";
 import { fakeServer, idle } from "@/test/fake-socket";
 
 const noResult = {
@@ -33,6 +34,7 @@ const duelEnded = (ranked: Extract<ServerMessage, { type: "duel-ended" }>["ranke
   opponentResult: noResult,
   score: noScore,
   opponentScore: noScore,
+  ...singleRoundEnd,
   opponent: { handle: "alan", image: null, ornament: null },
   records: { wpm: 64, score: 488, combo: 19 },
 });

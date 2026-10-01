@@ -16,6 +16,7 @@ import {
   sendToServer,
   useConnectionStore,
 } from "@/stores/connection-store";
+import { inFirstRound, singleRoundEnd } from "@/test/duel-rounds";
 import { fakeServer, idle, queueElsewhere } from "@/test/fake-socket";
 
 const duel = {
@@ -25,6 +26,7 @@ const duel = {
   wordListVersion: 1,
   seconds: 30,
   startsAt: 3_000,
+  roundsToWin: 1,
 } as const;
 
 const opponent = { handle: "ada", image: null, ornament: null };
@@ -73,6 +75,7 @@ const duelResumed: ServerMessage = {
   opponent,
   selfOrnament: null,
   serverTime: 0,
+  ...inFirstRound(duel),
   keystrokes: [],
   received: 0,
   opponentKeystrokes: [],
@@ -97,6 +100,7 @@ const duelEnded: ServerMessage = {
   opponentResult: noResult,
   score: noScore,
   opponentScore: noScore,
+  ...singleRoundEnd,
   opponent,
 };
 

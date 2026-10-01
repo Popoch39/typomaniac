@@ -20,6 +20,7 @@ import { ClockContext } from "@/components/run/clock-context";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useDuelStore } from "@/stores/duel-store";
 import { useLocaleStore } from "@/stores/locale-store";
+import { inFirstRound, singleRoundEnd } from "@/test/duel-rounds";
 import { fakeServer, idle } from "@/test/fake-socket";
 import { holdGsapClock } from "@/test/gsap-clock";
 
@@ -48,6 +49,7 @@ const duelFound: ServerMessage = {
     wordListVersion: 1,
     seconds: 30,
     startsAt: STARTS_AT,
+    roundsToWin: 1,
   },
   opponent: { handle: "kzr_", image: null, ornament: null },
   selfOrnament: null,
@@ -208,10 +210,12 @@ const duelResumed = (
     wordListVersion: 1,
     seconds: 30,
     startsAt: STARTS_AT,
+    roundsToWin: 1,
   },
   opponent: { handle: "kzr_", image: null, ornament: null },
   selfOrnament: null,
   serverTime: now,
+  ...inFirstRound({ seed: 42, startsAt: STARTS_AT }),
   keystrokes,
   received: keystrokes.length,
   opponentKeystrokes,
@@ -680,6 +684,7 @@ const duelEnded = ({
   opponentResult: noResult,
   score: { score, bestCombo: 0, bursts: 0 },
   opponentScore: { score: opponentScore, bestCombo: 0, bursts: 0 },
+  ...singleRoundEnd,
   opponent: { handle: "kzr_", image: null },
 });
 

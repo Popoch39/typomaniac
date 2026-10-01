@@ -3,16 +3,17 @@ import { useEffect, useState } from "react";
 import type { DuelCues } from "@/components/duel-hud/duel-hud-model";
 import { type KeystrokeCues, onCues, onOpponentCues } from "@/lib/cue-bus";
 
-// The Cues heard in one Duel.
-type HeardCues = DuelCues & { duelId: string };
+// The Cues heard in one Round of a Duel.
+type HeardCues = DuelCues & { roundKey: string };
 
-const heardIn = (duelId: string): HeardCues => ({ duelId, self: [], opponent: [] });
+const heardIn = (roundKey: string): HeardCues => ({ roundKey, self: [], opponent: [] });
 
-// The Cues of both sides' Keystrokes in the Duel `duelId`, as the bus hands them out while it is
-// shown: what the HUD's effects play (ADR 0010). The Keystrokes a resync or a resume replays send
-// none. Keystrokes that caused nothing are left out.
-export const useDuelCues = (duelId: string): DuelCues => {
-  const [heard, setHeard] = useState(() => heardIn(duelId));
+// The Cues of both sides' Keystrokes in the Round `roundKey` (the Duel's id and the Round's index:
+// they are stamped from its start), as the bus hands them out while it is shown: what the HUD's
+// effects play (ADR 0010). The Keystrokes a resync or a resume replays send none. Keystrokes that
+// caused nothing are left out.
+export const useDuelCues = (roundKey: string): DuelCues => {
+  const [heard, setHeard] = useState(() => heardIn(roundKey));
 
   useEffect(() => {
     const hear = (side: keyof DuelCues) => (keystroke: KeystrokeCues) => {
@@ -21,9 +22,9 @@ export const useDuelCues = (duelId: string): DuelCues => {
       }
 
       setHeard((current) => {
-        const duel = current.duelId === duelId ? current : heardIn(duelId);
+        const round = current.roundKey === roundKey ? current : heardIn(roundKey);
 
-        return { ...duel, [side]: [...duel[side], keystroke] };
+        return { ...round, [side]: [...round[side], keystroke] };
       });
     };
 
@@ -34,7 +35,7 @@ export const useDuelCues = (duelId: string): DuelCues => {
       stopOwn();
       stopOpponent();
     };
-  }, [duelId]);
+  }, [roundKey]);
 
-  return heard.duelId === duelId ? heard : heardIn(duelId);
+  return heard.roundKey === roundKey ? heard : heardIn(roundKey);
 };

@@ -26,6 +26,7 @@ import { HomePage } from "@/pages/home-page";
 import { useConnectionStore } from "@/stores/connection-store";
 import { useLocaleStore } from "@/stores/locale-store";
 import { usePlayStore } from "@/stores/play-store";
+import { singleRoundEnd } from "@/test/duel-rounds";
 import { fakeServer, idle } from "@/test/fake-socket";
 import { holdGsapClock } from "@/test/gsap-clock";
 
@@ -56,6 +57,7 @@ const duelFound = (
     wordListVersion: 1,
     seconds,
     startsAt: 60_000,
+    roundsToWin: 1,
   },
   opponent: { handle: "kzr_", image: null, ornament: null },
   selfOrnament: null,
@@ -90,6 +92,7 @@ const duelEnded: ServerMessage = {
   opponentResult: noResult,
   score: noScore,
   opponentScore: noScore,
+  ...singleRoundEnd,
   opponent: { handle: "kzr_", image: null },
 };
 

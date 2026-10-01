@@ -31,14 +31,35 @@ type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
 // the Duel, null if the server could not read them.
 export type DuelEnding = Omit<DuelEnded, "type">;
 
-// A Duel as this tab plays it. Both Runs and both Scores are replayed by the engine: this User's
-// from the Keystrokes typed here, the opponent's from those the server relays.
+// A Round once played, as the server judged it for this User: their outcome, both Results and
+// both Scores, theirs first.
+export type PlayedRound = DuelEnded["rounds"][number];
+
+type RoundEnded = Extract<ServerMessage, { type: "round-ended" }>;
+
+// The Round to play after a Round break: its index from 0, its Seed, and its start on this tab's
+// clock. Its Text shows only then.
+export type NextRound = { index: number; seed: number; startsAt: number };
+
+// A Duel as this tab plays it, Round after Round. Both Runs and both Scores are those of the Round
+// being played, replayed by the engine: this User's from the Keystrokes typed here, the opponent's
+// from those the server relays.
 export type DuelPlay = {
   id: string;
   opponent: DuelOpponent;
+  // The Text of the Round being played.
   config: RunConfig & { mode: "time" };
-  // The start on this tab's clock: the server's `startsAt` shifted by the clock offset.
+  // The start of the Round being played on this tab's clock: the server's `startsAt` shifted by
+  // the clock offset. Keystrokes are dated from it.
   startsAt: number;
+  // How many Rounds win the Duel: 2 for a Ranked Duel (a Bo3), 1 for a Challenge.
+  roundsToWin: number;
+  // The index of the Round being played, from 0.
+  roundIndex: number;
+  // The Rounds played so far, the first first, and how many each player won.
+  rounds: readonly PlayedRound[];
+  roundsWon: number;
+  opponentRoundsWon: number;
   // Each player's Pace, frozen by the server at the pairing: their Bursts are judged against it.
   pace: number;
   opponentPace: number;
@@ -126,9 +147,12 @@ export type DuelState =
   // Paired, typing blocked until the start.
   | { phase: "countdown"; duel: DuelPlay }
   | { phase: "running"; duel: DuelPlay }
-  // The time is up here: typing blocked, the HUD says the end until the server ends the Duel, once
+  // The time is up here: typing blocked, the HUD says the end until the server ends the Round, once
   // the last Keystrokes reached it.
   | { phase: "finishing"; duel: DuelPlay }
+  // Between two Rounds of a Bo3: typing blocked until the next one starts. `duel` is the Round
+  // just played (its Rounds and counts already told), or after a resume, the next one not started.
+  | { phase: "round-break"; duel: DuelPlay; next: NextRound }
   // The server's end of the Duel, the same on both screens: the Duel end.
   | { phase: "ended"; ending: DuelEnding }
   // Another tab of the same User plays the place: the Queue or the Duel.
@@ -174,10 +198,14 @@ type DuelStore = {
 };
 
 // The Duel being played, null outside one: for selectors.
-export const duelOf = (state: DuelState) =>
-  state.phase === "countdown" || state.phase === "running" || state.phase === "finishing"
-    ? state.duel
-    : null;
+export const duelOf = (state: DuelState) => (isPlaying(state) ? state.duel : null);
+
+// From the Countdown to the server's end of the Duel, Round breaks included.
+const isPlaying = (state: DuelState) =>
+  state.phase === "countdown" ||
+  state.phase === "running" ||
+  state.phase === "finishing" ||
+  state.phase === "round-break";
 
 // A Duel without ranks is a Challenge, never ranked, as the Face-off says.
 export const isChallenge = (duel: Pick<DuelPlay, "selfRank">) => duel.selfRank === null;
@@ -250,24 +278,45 @@ const queueKeystroke = (keystroke: Keystroke) => {
   flushTimer ??= setTimeout(flush, BATCH_MS);
 };
 
-const configOf = ({ duel }: DuelFound | DuelResumed) =>
+// The Text of a Round of the Duel, on its own Seed.
+const roundConfigOf = ({ duel }: DuelFound | DuelResumed, seed: number) =>
   ({
     mode: "time",
     seconds: duel.seconds,
     language: duel.language,
     wordListVersion: duel.wordListVersion,
-    seed: duel.seed,
+    seed,
   }) as const;
+
+// The Round the server is at: the first one when the Duel is found, the one being played (or the
+// next one, during a Round break) when it is resumed.
+const roundOf = (message: DuelFound | DuelResumed) =>
+  message.type === "duel-resumed"
+    ? message.round
+    : { index: 0, seed: message.duel.seed, startsAt: message.duel.startsAt };
+
+// The Rounds played and won so far, as the server tells them: none when the Duel is found.
+const roundsSoFarOf = (message: DuelFound | DuelResumed) =>
+  message.type === "duel-resumed"
+    ? {
+        rounds: message.rounds,
+        roundsWon: message.roundsWon,
+        opponentRoundsWon: message.opponentRoundsWon,
+      }
+    : { rounds: [], roundsWon: 0, opponentRoundsWon: 0 };
+
+// How far the server's clock runs ahead of this tab's, as the Duel's last message told it: each
+// Round's start is shifted by that much.
+let serverOffset = 0;
+
+// A server time on this tab's clock. The offset lags by the message's delay, so a start is never
+// early.
+const onTabClock = (serverTime: number) => serverTime - serverOffset;
 
 // The Score of a player so far, as the server computes it from the same Keystrokes and Pace. Up to
 // the last Keystroke, the word in progress pays nothing yet.
 const scoreOf = (config: RunConfig, keystrokes: readonly Keystroke[], pace: number) =>
   computeScore(config, keystrokes, pace, keystrokes.at(-1)?.at ?? 0);
-
-// The server's clock runs `serverTime - clock()` ahead of this tab's: its `startsAt` is shifted by
-// that much. The offset lags by the message's delay, so the Countdown never ends early.
-const localStart = ({ duel, serverTime }: DuelFound | DuelResumed) =>
-  duel.startsAt - serverTime + clock();
 
 // The Queue's status, while waiting in it: its join time shifted onto this tab's clock as the
 // Duel's start is.
@@ -357,43 +406,57 @@ const answered = (state: DuelState, stage: "accepted" | "declined") =>
 const awaitsAnswer = (state: DuelState) =>
   state.phase === "proposed" && state.proposal.stage === "pending";
 
-// The Duel from the server's state: Countdown first, the next frame starts it if already due.
+// The Duel from the server's state: Countdown first, the next frame starts it if already due. A
+// Round of a Bo3 still to start after one played: the Round break, until its start.
 const playing = (
   message: DuelFound | DuelResumed,
   played: Pick<DuelPlay, "keystrokes" | "opponentKeystrokes" | "opponentConnected"> & {
     received: number;
   },
 ): DuelState => {
-  const config = configOf(message);
+  const round = roundOf(message);
+  const config = roundConfigOf(message, round.seed);
+  const soFar = roundsSoFarOf(message);
 
+  serverOffset = message.serverTime - clock();
   outbox = [];
   sent = { base: played.received, keystrokes: [] };
 
-  return {
-    phase: "countdown",
-    duel: {
-      id: message.duel.id,
-      opponent: message.opponent,
-      config,
-      startsAt: localStart(message),
-      pace: message.pace,
-      opponentPace: message.opponentPace,
-      selfOrnament: message.selfOrnament,
-      selfRank: message.selfRank,
-      opponentRank: message.opponentRank,
-      selfForm: message.selfForm,
-      opponentForm: message.opponentForm,
-      selfStake: message.selfStake,
-      run: replayRun(config, played.keystrokes),
-      keystrokes: played.keystrokes,
-      score: scoreOf(config, played.keystrokes, message.pace),
-      opponentRun: replayRun(config, played.opponentKeystrokes),
-      opponentKeystrokes: played.opponentKeystrokes,
-      opponentScore: scoreOf(config, played.opponentKeystrokes, message.opponentPace),
-      connected: true,
-      opponentConnected: played.opponentConnected,
-    },
+  const duel: DuelPlay = {
+    id: message.duel.id,
+    opponent: message.opponent,
+    config,
+    startsAt: onTabClock(round.startsAt),
+    roundsToWin: message.duel.roundsToWin,
+    roundIndex: round.index,
+    ...soFar,
+    pace: message.pace,
+    opponentPace: message.opponentPace,
+    selfOrnament: message.selfOrnament,
+    selfRank: message.selfRank,
+    opponentRank: message.opponentRank,
+    selfForm: message.selfForm,
+    opponentForm: message.opponentForm,
+    selfStake: message.selfStake,
+    run: replayRun(config, played.keystrokes),
+    keystrokes: played.keystrokes,
+    score: scoreOf(config, played.keystrokes, message.pace),
+    opponentRun: replayRun(config, played.opponentKeystrokes),
+    opponentKeystrokes: played.opponentKeystrokes,
+    opponentScore: scoreOf(config, played.opponentKeystrokes, message.opponentPace),
+    connected: true,
+    opponentConnected: played.opponentConnected,
   };
+
+  if (round.index > 0 && clock() < duel.startsAt) {
+    return {
+      phase: "round-break",
+      duel,
+      next: { index: round.index, seed: round.seed, startsAt: duel.startsAt },
+    };
+  }
+
+  return { phase: "countdown", duel };
 };
 
 const startDuel = (message: DuelFound) =>
@@ -424,13 +487,33 @@ const resynced = (
   };
 };
 
-// Back in the Duel, played here from now on. The same Duel as this tab's (a lost connection) keeps its
-// start and resends what the server did not receive; otherwise (a reload, another tab) the Duel
-// is rebuilt from the server's state, the Countdown's end or the time left run as before.
+// Back in the Duel, played here from now on. The same Round as this tab's (a lost connection) keeps
+// its start and resends what the server did not receive, and the same Round break goes on as it
+// was; otherwise (a reload, another tab, a Round that ended or started meanwhile) the Duel is
+// rebuilt from the server's state, the Countdown's end, the Round break or the time left run as
+// before.
 const resumed = (state: DuelState, message: DuelResumed): DuelState => {
   const local = duelOf(state);
 
-  if (local !== null && local.id === message.duel.id) {
+  if (
+    state.phase === "round-break" &&
+    state.duel.id === message.duel.id &&
+    state.next.index === message.round.index
+  ) {
+    serverOffset = message.serverTime - clock();
+
+    return {
+      ...state,
+      duel: { ...state.duel, connected: true, opponentConnected: message.opponentConnected },
+    };
+  }
+
+  if (
+    local !== null &&
+    state.phase !== "round-break" &&
+    local.id === message.duel.id &&
+    local.roundIndex === message.round.index
+  ) {
     // Already in `sent`: only sent again.
     outbox = notReceived(message.received);
     flush();
@@ -488,9 +571,11 @@ const opponentTyped = (
 
 // Applies a change to the Duel while it is played, up to the server's end.
 const updateDuel = (state: DuelState, update: (duel: DuelPlay) => DuelPlay): DuelState =>
-  state.phase === "countdown" || state.phase === "running" || state.phase === "finishing"
-    ? { ...state, duel: update(state.duel) }
-    : state;
+  isPlaying(state) ? { ...state, duel: update(state.duel) } : state;
+
+// Applies a change to the Round being played: a Round break has none, its Round is over.
+const updateRound = (state: DuelState, update: (duel: DuelPlay) => DuelPlay): DuelState =>
+  state.phase === "round-break" ? state : updateDuel(state, update);
 
 // How the server's `duel-ended` says the Duel ended for this User, without its type.
 const endingOf = ({
@@ -501,6 +586,10 @@ const endingOf = ({
   opponentResult,
   score,
   opponentScore,
+  roundsToWin,
+  rounds,
+  roundsWon,
+  opponentRoundsWon,
   opponent,
   ranked,
   records,
@@ -512,10 +601,58 @@ const endingOf = ({
   opponentResult,
   score,
   opponentScore,
+  roundsToWin,
+  rounds,
+  roundsWon,
+  opponentRoundsWon,
   opponent,
   ranked,
   records,
 });
+
+// The server judged the Round and the Duel goes on: the Round break, its Round and counts told,
+// until the next Round starts on this tab's clock. Typing is blocked meanwhile, and what was not
+// sent of the Round over is dropped.
+const roundEnded = (state: DuelState, message: RoundEnded): DuelState => {
+  if (state.phase !== "running" && state.phase !== "finishing" && state.phase !== "countdown") {
+    return state;
+  }
+
+  serverOffset = message.serverTime - clock();
+  clearOutbox();
+
+  return {
+    phase: "round-break",
+    duel: {
+      ...state.duel,
+      rounds: [...state.duel.rounds, message.round],
+      roundsWon: message.roundsWon,
+      opponentRoundsWon: message.opponentRoundsWon,
+    },
+    next: { ...message.next, startsAt: onTabClock(message.next.startsAt) },
+  };
+};
+
+// The next Round starts: its Text, both Runs and Scores from nothing, its Keystrokes dated from its
+// start. Nothing of the Round before is sent anymore.
+const nextRound = (duel: DuelPlay, next: NextRound): DuelPlay => {
+  const config = { ...duel.config, seed: next.seed };
+
+  sent = { base: 0, keystrokes: [] };
+
+  return {
+    ...duel,
+    config,
+    startsAt: next.startsAt,
+    roundIndex: next.index,
+    run: replayRun(config, []),
+    keystrokes: [],
+    score: scoreOf(config, [], duel.pace),
+    opponentRun: replayRun(config, []),
+    opponentKeystrokes: [],
+    opponentScore: scoreOf(config, [], duel.opponentPace),
+  };
+};
 
 // The server ends the Duel, possibly before this tab's time is up: nothing typed here counts
 // anymore, and the Duel end shows at once, without holding the HUD: at the end of its time, by a
@@ -621,7 +758,9 @@ const stateAfter = (
     case "duel-resumed":
       return resumed(state, message);
     case "resync":
-      return updateDuel(state, (duel) => resynced(duel, message));
+      return updateRound(state, (duel) => resynced(duel, message));
+    case "round-ended":
+      return roundEnded(state, message);
     case "opponent-disconnected":
       return updateDuel(state, (duel) => ({ ...duel, opponentConnected: false }));
     case "opponent-reconnected":
@@ -686,6 +825,11 @@ const pressed = (store: DuelStore, key: Key, now: number): Pick<DuelStore, "stat
 const ticked = (state: DuelState, now: number): DuelState => {
   if (state.phase === "countdown" && now >= state.duel.startsAt) {
     return { phase: "running", duel: state.duel };
+  }
+
+  // GO: the next Round opens, exactly at its start.
+  if (state.phase === "round-break" && now >= state.next.startsAt) {
+    return { phase: "running", duel: nextRound(state.duel, state.next) };
   }
 
   if (state.phase !== "running") {
@@ -781,8 +925,9 @@ export const useDuelStore = create<DuelStore>()((set, get) => ({
   exit: () => {
     const { state } = get();
 
-    // Leaving on purpose once the time is up would forfeit a Duel whose end is on its way.
-    if (state.phase === "countdown" || state.phase === "running") {
+    // Leaving on purpose once the time is up would forfeit a Duel whose end is on its way. Leaving
+    // during a Round break forfeits the Duel still to play.
+    if (state.phase === "countdown" || state.phase === "running" || state.phase === "round-break") {
       send({ type: "leave-duel" });
     } else if (seat === "queue" && inQueuePlace(state)) {
       send({ type: "leave-queue" });

@@ -147,11 +147,43 @@ const Duel = t.Object({
   wordListVersion: t.Integer(),
   // A `time` Duel of that many seconds.
   seconds: t.Integer(),
-  // Server time, in ms since the epoch.
+  // Server time, in ms since the epoch: the start of its first Round.
   startsAt: t.Number(),
+  // How many Rounds a player wins the Duel with: 2 for a Ranked Duel (a Bo3), 1 for a Challenge.
+  roundsToWin: t.Integer(),
 });
 
 export type Duel = typeof Duel.static;
+
+// A Round once played, as one of its players sees it: its index from 0, its outcome for them, and
+// both Results and Scores on its Text, theirs first.
+const PlayedRound = t.Object({
+  index: t.Integer(),
+  outcome: DuelOutcome,
+  result: Result,
+  opponentResult: Result,
+  score: DuelScore,
+  opponentScore: DuelScore,
+});
+
+export type PlayedRound = typeof PlayedRound.static;
+
+// The Round to play: its index from 0, the Seed of its Text and its start (server time). Its
+// Keystrokes are dated from that start.
+const RoundStart = t.Object({
+  index: t.Integer(),
+  seed: t.Integer(),
+  startsAt: t.Number(),
+});
+
+export type RoundStart = typeof RoundStart.static;
+
+// The Rounds played so far and how many each player won, as a player sees them: theirs first.
+const RoundsSoFar = {
+  rounds: t.Array(PlayedRound),
+  roundsWon: t.Integer(),
+  opponentRoundsWon: t.Integer(),
+};
 
 const QueueStatus = t.Object({
   type: t.Literal("queue-status"),
@@ -268,13 +300,16 @@ const ServerMessage = t.Union([
     selfStake: t.Nullable(Stake),
   }),
   // The User's Duel, played on this connection from now on (`resume-duel`): the Duel as
-  // `duel-found` gives it, plus the state that holds, as `resync` gives it.
+  // `duel-found` gives it, the Rounds played so far and the Round being played (or, during a Round
+  // break, the next one, not started yet), plus the state of that Round, as `resync` gives it.
   t.Object({
     type: t.Literal("duel-resumed"),
     duel: Duel,
     opponent: PairedOpponent,
     selfOrnament: WornOrnament,
     serverTime: t.Number(),
+    ...RoundsSoFar,
+    round: RoundStart,
     keystrokes: t.Array(Keystroke),
     received: t.Integer(),
     opponentKeystrokes: t.Array(Keystroke),
@@ -301,10 +336,22 @@ const ServerMessage = t.Union([
     received: t.Integer(),
     opponentKeystrokes: t.Array(Keystroke),
   }),
-  // The end, the same for both: each side gets its own outcome, its Result and Score and the
-  // opponent's. Sent on `resume-duel` too to a User who missed the end of their Duel while no
-  // connection of theirs played it: until then, their place is still the Duel. Told before the
-  // Duel is written: `duelId` is the id it is written under, the Duel to replay.
+  // A Round is over and the Duel is not decided: the Round break, then the next Round. Its outcome,
+  // both Results and Scores, the Rounds won so far, and the next Round, which starts 7 s after the
+  // server judged this one: its Text shows only then. `serverTime` for the clock offset.
+  t.Object({
+    type: t.Literal("round-ended"),
+    round: PlayedRound,
+    roundsWon: t.Integer(),
+    opponentRoundsWon: t.Integer(),
+    next: RoundStart,
+    serverTime: t.Number(),
+  }),
+  // The end, the same for both: each side gets its own outcome, its Result over the Rounds and its
+  // Score in the last one, and the opponent's, then every Round played (the one a Forfeit cut short
+  // included) and the Rounds won. Sent on `resume-duel` too to a User who missed the end of their
+  // Duel while no connection of theirs played it: until then, their place is still the Duel. Told
+  // before the Duel is written: `duelId` is the id it is written under, the Duel to replay.
   t.Object({
     type: t.Literal("duel-ended"),
     duelId: t.String(),
@@ -315,6 +362,8 @@ const ServerMessage = t.Union([
     opponentResult: Result,
     score: DuelScore,
     opponentScore: DuelScore,
+    roundsToWin: t.Integer(),
+    ...RoundsSoFar,
     opponent: DuelOpponent,
     // The User's rank moved by a Duel of the Queue, as its write applies it; null for a Challenge
     // (never ranked).
@@ -343,6 +392,8 @@ export const DuelModel = {
   queueOverview: QueueOverview,
   opponent: DuelOpponent,
   duel: Duel,
+  playedRound: PlayedRound,
+  roundStart: RoundStart,
   keystroke: Keystroke,
   result: Result,
   score: DuelScore,

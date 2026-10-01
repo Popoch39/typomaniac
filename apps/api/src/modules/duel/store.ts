@@ -60,8 +60,6 @@ export type DuelRecord = Omit<Duel, "seed"> & {
   outcome: (typeof DUEL_OUTCOMES)[number];
   // The winner's User id; null for a Draw.
   winnerId: string | null;
-  // How many Rounds a player had to win: 1 for a Duel of a single Round.
-  roundsToWin: number;
   players: readonly [DuelPlayerRecord, DuelPlayerRecord];
   // The Rounds played, the first first: at least one.
   rounds: readonly [RoundRecord, ...RoundRecord[]];

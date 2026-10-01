@@ -16,6 +16,7 @@ import {
   middle,
   space,
 } from "@/test/fake-audio-output";
+import { inFirstRound, singleRoundEnd } from "@/test/duel-rounds";
 import { fakeServer } from "@/test/fake-socket";
 
 // Seed 42 in English, version 1, gives "small help while late…" (pinned in the typing-engine tests).
@@ -26,6 +27,7 @@ const duel = {
   wordListVersion: 1,
   seconds: 30,
   startsAt: 3_000,
+  roundsToWin: 1,
 } as const;
 
 const opponent = { handle: "ada", image: null, ornament: null };
@@ -213,6 +215,7 @@ describe("typing sound in a Duel", () => {
       opponent,
       selfOrnament: null,
       serverTime: now,
+      ...inFirstRound(duel),
       keystrokes: [],
       received: 0,
       opponentKeystrokes: opponentTyped("small"),
@@ -265,6 +268,7 @@ describe("typing sound in a Duel", () => {
       opponentResult: noResult,
       score: noScore,
       opponentScore: noScore,
+      ...singleRoundEnd,
       opponent,
     });
     type("sm", endsAt + 1_000);

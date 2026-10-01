@@ -22,6 +22,7 @@ export const DuelArea = () => {
     case "countdown":
     case "running":
     case "finishing":
+    case "round-break":
     case "ended":
     case "disconnected":
       return null;

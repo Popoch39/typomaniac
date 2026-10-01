@@ -30,6 +30,11 @@ const DUEL_LANGUAGE = "en";
 
 const DUEL_SECONDS = 30;
 
+// A Duel of the Queue is a Bo3 of those Rounds (ADR 0017); a Challenge, a single one.
+const RANKED_ROUNDS_TO_WIN = 2;
+
+const CHALLENGE_ROUNDS_TO_WIN = 1;
+
 // How many of the Users in the Queue its overview shows.
 const OVERVIEW_WAITING = 3;
 
@@ -371,7 +376,7 @@ export class DuelQueue implements ChallengeArena {
       this.#playOn(user.id, connection);
     }
 
-    this.#start(seats);
+    this.#start(seats, CHALLENGE_ROUNDS_TO_WIN);
   }
 
   // To the connection that plays the User's place.
@@ -592,7 +597,7 @@ export class DuelQueue implements ChallengeArena {
       duel: duel.duel,
       opponent: duel.opponentProfileOf(userId),
       serverTime: this.#clock.now(),
-      ...duel.stateOf(userId),
+      ...duel.resumeOf(userId),
       opponentConnected: this.#playing.has(opponentId),
       ...duel.pairingOf(userId),
     });
@@ -608,7 +613,7 @@ export class DuelQueue implements ChallengeArena {
   // Form, Records, and the routes that read it) wait for that write. Their Keystrokes are ignored
   // from the end on. It ends once: at the end of its time, or on a Forfeit, whichever comes first.
   #finish(duel: RunningDuel, finish: (now: number) => Finish) {
-    if (duel.userIds.some((userId) => this.#duels.get(userId) !== duel)) {
+    if (!this.#isLive(duel)) {
       return;
     }
 
@@ -637,6 +642,39 @@ export class DuelQueue implements ChallengeArena {
       this.#away.delete(userId);
       this.#tellEnd(userId, message);
     }
+  }
+
+  // The Round being played is judged at its end (the end of its time and END_TOLERANCE_MS), unless
+  // the Duel is over by then. A Round that does not decide the Duel tells both players its outcome
+  // and the next Round, which ends in turn; one who is away learns it on their return
+  // (`duel-resumed`). The Round that decides it ends the Duel.
+  #endRoundAtItsEnd(duel: RunningDuel) {
+    const index = duel.roundIndex;
+
+    this.#clock.at(duel.endsAt, () => {
+      if (!this.#isLive(duel) || duel.roundIndex !== index) {
+        return;
+      }
+
+      const end = duel.endRound(this.#clock.now(), randomSeed);
+
+      if (end.kind === "finished") {
+        this.#finish(duel, () => end.finish);
+
+        return;
+      }
+
+      for (const { userId, message } of end.announcements) {
+        this.#send(userId, message);
+      }
+
+      this.#endRoundAtItsEnd(duel);
+    });
+  }
+
+  // The Duel is still played: neither player has had its end.
+  #isLive(duel: RunningDuel) {
+    return duel.userIds.every((userId) => this.#duels.get(userId) === duel);
   }
 
   // Whether the Duel is written: not when the write failed, or took longer than SAVE_TIMEOUT_MS
@@ -1088,7 +1126,7 @@ export class DuelQueue implements ChallengeArena {
     }
 
     this.#recentWaits = this.#recentWaits.slice(-2 * ESTIMATED_WAIT_PAIRINGS);
-    this.#start(players);
+    this.#start(players, RANKED_ROUNDS_TO_WIN);
   }
 
   // Declining, or leaving the Queue during a Match proposal.
@@ -1203,10 +1241,10 @@ export class DuelQueue implements ChallengeArena {
     this.#pair();
   }
 
-  // Seed drawn here, same format for every Duel, the Countdown starting ACCEPTED_MS from now. Each
-  // player is told on the connection that plays, their other connections that the Duel is
-  // elsewhere; their Challenges are over.
-  #start([a, b]: readonly [PacedUser, PacedUser]) {
+  // Seed drawn here, same Rounds for every Duel, played to `roundsToWin`, the Countdown starting
+  // ACCEPTED_MS from now. Each player is told on the connection that plays, their other connections
+  // that the Duel is elsewhere; their Challenges are over.
+  #start([a, b]: readonly [PacedUser, PacedUser], roundsToWin: number) {
     const serverTime = this.#clock.now();
 
     const duel = new RunningDuel(
@@ -1217,13 +1255,14 @@ export class DuelQueue implements ChallengeArena {
         wordListVersion: currentWordListVersion[DUEL_LANGUAGE],
         seconds: DUEL_SECONDS,
         startsAt: serverTime + ACCEPTED_MS + COUNTDOWN_MS,
+        roundsToWin,
       },
       [a, b],
     );
 
     this.#duels.set(a.user.id, duel);
     this.#duels.set(b.user.id, duel);
-    this.#clock.at(duel.endsAt, () => this.#finish(duel, () => duel.end()));
+    this.#endRoundAtItsEnd(duel);
 
     for (const { user } of [a, b]) {
       this.#onDuel(user.id, true);

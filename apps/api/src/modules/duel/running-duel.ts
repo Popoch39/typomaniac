@@ -5,9 +5,11 @@ import {
   computeResult,
   computeScore,
   duelOutcome,
+  isDuelDecided,
   type Keystroke,
   type Outcome,
   type Result,
+  roundOutcome,
   type RoundSide,
   type RoundSides,
   roundsWon,
@@ -17,15 +19,23 @@ import {
 
 import { type RankedOutcome, type Rating, rateDuel, type Stake, stakeOf, type Tier } from "ranked";
 
-import type { Duel, DuelScore, Form, Records, ServerMessage } from "./model";
+import type {
+  Duel,
+  DuelScore,
+  Form,
+  PlayedRound,
+  Records,
+  RoundStart,
+  ServerMessage,
+} from "./model";
 import type { DuelPlayerRecord, DuelRecord, RatedPlayer, RoundRecord } from "./store";
-
-// How many Rounds a player wins the Duel with: every Duel is a single Round so far.
-const ROUNDS_TO_WIN = 1;
 
 // How late past the end a Keystroke may still arrive: the network delay of the last ones. The
 // client sends its batch every 50 ms and empties it at the end.
 export const END_TOLERANCE_MS = 400;
+
+// Between the server's judgement of a Round and the start of the next one: the Round break.
+export const ROUND_BREAK_MS = 7000;
 
 // More Keystrokes than this within a second is no human's cadence: a Forfeit.
 const MAX_KEYSTROKES_PER_SECOND = 40;
@@ -48,11 +58,18 @@ export type PacedUser = {
 
 export type DuelEnded = Extract<ServerMessage, { type: "duel-ended" }>;
 
+type RoundEnded = Extract<ServerMessage, { type: "round-ended" }>;
+
 // The end of the Duel as one player is told it.
 export type Ending = { userId: string; message: DuelEnded };
 
 // The end of the Duel: as each player is told it, and as it is written.
 export type Finish = { endings: Ending[]; record: DuelRecord };
+
+// The end of a Round: the next one, as each player is told it, or the end of the Duel it decided.
+export type RoundEnd =
+  | { kind: "next"; announcements: { userId: string; message: RoundEnded }[] }
+  | { kind: "finished"; finish: Finish };
 
 // The outcome of the Duel for each player, from the engine's.
 const OUTCOMES = {
@@ -92,6 +109,42 @@ const judgedRound = ({ sides: [first, second] }: EndedRound): RoundSides => [
   judgedSide(first),
   judgedSide(second),
 ];
+
+// A player's seat in the Duel: the first player's sides come first.
+type Seat = 0 | 1;
+
+const otherSeat = (seat: Seat): Seat => (seat === 0 ? 1 : 0);
+
+// A Round as the player at `seat` sees it: their outcome, and their side first.
+const playedRoundFor = (round: EndedRound, seat: Seat): PlayedRound => {
+  const mine = round.sides[seat];
+  const theirs = round.sides[otherSeat(seat)];
+
+  return {
+    index: round.record.index,
+    outcome: OUTCOMES[roundOutcome(...judgedRound(round))][seat],
+    result: mine.result,
+    opponentResult: theirs.result,
+    score: mine.score,
+    opponentScore: theirs.score,
+  };
+};
+
+// The Rounds `played` as the player at `seat` sees them, and the Rounds each won: a drawn Round,
+// and those in `uncounted` (cut short by a Forfeit), count for nobody.
+const roundsSoFarFor = (
+  seat: Seat,
+  played: readonly EndedRound[],
+  uncounted: readonly EndedRound[] = [],
+) => {
+  const won = roundsWon(played.map(judgedRound));
+
+  return {
+    rounds: [...played, ...uncounted].map((round) => playedRoundFor(round, seat)),
+    roundsWon: won[seat],
+    opponentRoundsWon: won[otherSeat(seat)],
+  };
+};
 
 // A player as a Round is written: the Keystrokes that replay to their Result and Score.
 const roundPlayerOf = ({ user, acceptedRun }: Player, { result, score }: Side) => ({
@@ -150,15 +203,17 @@ const isFlooding = ({ keystrokes }: AcceptedRun) => {
   return typeof last !== "undefined" && typeof first !== "undefined" && last.at - first.at < 1000;
 };
 
-// A Duel between its Countdown and its end: the server judges each player's Keystrokes with the
-// engine and only keeps those whose date is plausible (ADR 0003).
+// A Duel between its Countdown and its end, Round after Round: the server judges each player's
+// Keystrokes with the engine and only keeps those whose date is plausible (ADR 0003). It plays its
+// Rounds until a player won `roundsToWin` of them, or the last one it plays is over.
 export class RunningDuel {
   readonly duel: Duel;
 
   readonly #players: readonly [Player, Player];
 
-  // The Round being played: the first one starts with the Duel, on its Seed.
-  readonly #round: CurrentRound;
+  // The Round being played, or during a Round break the next one: the first one starts with the
+  // Duel, on its Seed.
+  #round: CurrentRound;
 
   // The Rounds played so far, the first first.
   readonly #played: EndedRound[] = [];
@@ -201,21 +256,26 @@ export class RunningDuel {
     return this.#round.startsAt + this.#durationMs + END_TOLERANCE_MS;
   }
 
+  // The index of the Round being played, or of the next one during a Round break.
+  get roundIndex() {
+    return this.#round.index;
+  }
+
   get userIds() {
     return this.#players.map((player) => player.user.id);
   }
 
-  #player(userId: string) {
-    const [first, second] = this.#players;
+  #seatOf(userId: string): Seat {
+    return this.#players[0].user.id === userId ? 0 : 1;
+  }
 
-    return first.user.id === userId ? first : second;
+  #player(userId: string) {
+    return this.#players[this.#seatOf(userId)];
   }
 
   // `userId` is one of the two players.
   #opponent(userId: string) {
-    const [first, second] = this.#players;
-
-    return first.user.id === userId ? second : first;
+    return this.#players[otherSeat(this.#seatOf(userId))];
   }
 
   opponentOf(userId: string) {
@@ -257,17 +317,18 @@ export class RunningDuel {
     };
   }
 
-  // The end at `endedAt` (ms since the epoch) after the Rounds `played`, the first first, and the
-  // Round a Forfeit cut short, if any: it counts for nobody. Both players see the same Results
-  // and Scores. `judged` is the outcome, first player against second.
+  // The end at `endedAt` (ms since the epoch) after the Rounds played, the first first, and on a
+  // Forfeit the Round it cut short, if one was being played: it counts for nobody. Both players see
+  // the same Results and Scores. `judged` is the outcome, first player against second.
   #finish(
     endedAt: number,
-    played: readonly EndedRound[],
-    cutShort: EndedRound | null,
     judged: Outcome,
+    { forfeit, cutShort }: { forfeit: boolean; cutShort: EndedRound | null },
   ): Finish {
     const [first, second] = this.#players;
-    const [firstRound, ...laterRounds] = cutShort ? [...played, cutShort] : played;
+    const played = this.#played;
+    const uncounted = cutShort ? [cutShort] : [];
+    const [firstRound, ...laterRounds] = [...played, ...uncounted];
 
     // `end` and `forfeit` always end a Round first.
     if (!firstRound) {
@@ -276,12 +337,11 @@ export class RunningDuel {
 
     const last = laterRounds.at(-1) ?? firstRound;
     const won = roundsWon(played.map(judgedRound));
-    const forfeit = cutShort !== null;
     const [firstOutcome, secondOutcome] = OUTCOMES[judged];
     const [firstRated, secondRated] = rate(this.#players, OUTCOMES[judged]);
 
     // A player's Result over the Rounds, and their Score in the last one.
-    const sideOver = (seat: 0 | 1): Side => ({
+    const sideOver = (seat: Seat): Side => ({
       result: averageResult([
         firstRound.sides[seat].result,
         ...laterRounds.map(({ sides }) => sides[seat].result),
@@ -293,35 +353,40 @@ export class RunningDuel {
     const secondSide = sideOver(1);
 
     const endingFor = (
-      player: Player,
-      opponent: Player,
+      seat: Seat,
       outcome: DuelEnded["outcome"],
       [side, opponentSide]: [Side, Side],
       rated: RatedPlayer | null,
-    ): Ending => ({
-      userId: player.user.id,
-      message: {
-        type: "duel-ended",
-        duelId: this.duel.id,
-        outcome,
-        forfeit,
-        result: side.result,
-        opponentResult: opponentSide.result,
-        score: side.score,
-        opponentScore: opponentSide.score,
-        opponent: profileOf(opponent.user),
-        ranked: rankedOf(rated),
-        records: player.records,
-      },
-    });
+    ): Ending => {
+      const player = this.#players[seat];
+
+      return {
+        userId: player.user.id,
+        message: {
+          type: "duel-ended",
+          duelId: this.duel.id,
+          outcome,
+          forfeit,
+          result: side.result,
+          opponentResult: opponentSide.result,
+          score: side.score,
+          opponentScore: opponentSide.score,
+          roundsToWin: this.duel.roundsToWin,
+          ...roundsSoFarFor(seat, played, uncounted),
+          opponent: profileOf(this.#players[otherSeat(seat)].user),
+          ranked: rankedOf(rated),
+          records: player.records,
+        },
+      };
+    };
 
     const winner = { first, second, draw: null }[judged];
     const { seed: _, ...duel } = this.duel;
 
     return {
       endings: [
-        endingFor(first, second, firstOutcome, [firstSide, secondSide], firstRated),
-        endingFor(second, first, secondOutcome, [secondSide, firstSide], secondRated),
+        endingFor(0, firstOutcome, [firstSide, secondSide], firstRated),
+        endingFor(1, secondOutcome, [secondSide, firstSide], secondRated),
       ],
       record: {
         ...duel,
@@ -329,7 +394,6 @@ export class RunningDuel {
         endedAt,
         outcome: forfeit ? "forfeit" : winner ? "win" : "draw",
         winnerId: winner?.user.id ?? null,
-        roundsToWin: ROUNDS_TO_WIN,
         players: [
           playerRecord(first, firstSide.result, won[0], firstRated),
           playerRecord(second, secondSide.result, won[1], secondRated),
@@ -339,31 +403,92 @@ export class RunningDuel {
     };
   }
 
-  // The end once the time of the Round is up: it ended when its time ran out, not when the server
-  // stopped waiting for the last Keystrokes. The Duel goes as its Rounds (duelOutcome of the
-  // engine): the most Rounds won, then the cumulated Score, then the average accuracy.
-  end() {
-    const endedAt = this.#round.startsAt + this.#durationMs;
+  // A Seed for the next Round, drawn by `draw` until it is none of the Duel's so far: each Round
+  // has its own Text.
+  #nextSeed(draw: () => number) {
+    const used = new Set([
+      ...this.#played.map(({ record }) => record.seed),
+      this.#round.config.seed,
+    ]);
 
-    this.#played.push(this.#endRound(endedAt));
+    let seed = draw();
 
-    return this.#finish(endedAt, this.#played, null, duelOutcome(this.#played.map(judgedRound)));
+    while (used.has(seed)) {
+      seed = draw();
+    }
+
+    return seed;
   }
 
-  // `loserId` forfeits: the opponent wins the Duel, whatever its Rounds and Scores so far. The
-  // Round being played ends there.
+  // The end once the time of the Round is up, judged at `judgedAt` (ms since the epoch): the Round
+  // ended when its time ran out, not when the server stopped waiting for the last Keystrokes. A
+  // decided Duel ends there, as its Rounds go (duelOutcome of the engine: the most Rounds won, then
+  // the cumulated Score, then the average accuracy). Otherwise the next Round, on a new Seed from
+  // `draw`, starts ROUND_BREAK_MS after the judgement, each player's Run and Combo from zero.
+  endRound(judgedAt: number, draw: () => number): RoundEnd {
+    const endedAt = this.#round.startsAt + this.#durationMs;
+    const ended = this.#endRound(endedAt);
+
+    this.#played.push(ended);
+
+    const judged = this.#played.map(judgedRound);
+
+    if (isDuelDecided(judged, this.duel.roundsToWin)) {
+      return {
+        kind: "finished",
+        finish: this.#finish(endedAt, duelOutcome(judged), { forfeit: false, cutShort: null }),
+      };
+    }
+
+    this.#round = {
+      index: this.#round.index + 1,
+      config: { ...this.#round.config, seed: this.#nextSeed(draw) },
+      startsAt: judgedAt + ROUND_BREAK_MS,
+    };
+
+    for (const player of this.#players) {
+      player.acceptedRun = startAcceptedRun(this.#round.config);
+      player.received = 0;
+    }
+
+    const next = this.#roundStart();
+
+    return {
+      kind: "next",
+      announcements: this.#players.map((player) => {
+        const seat = this.#seatOf(player.user.id);
+        const { roundsWon: won, opponentRoundsWon } = roundsSoFarFor(seat, this.#played);
+
+        return {
+          userId: player.user.id,
+          message: {
+            type: "round-ended",
+            round: playedRoundFor(ended, seat),
+            roundsWon: won,
+            opponentRoundsWon,
+            next,
+            serverTime: judgedAt,
+          },
+        };
+      }),
+    };
+  }
+
+  // `loserId` forfeits at `now`: the opponent wins the Duel, whatever its Rounds and Scores so far.
+  // The Round being played ends there; during a Round break, no Round is: the next one is never
+  // played.
   forfeit(loserId: string, now: number) {
     const [first] = this.#players;
+    const between = this.#played.length > 0 && now < this.#round.startsAt;
 
-    return this.#finish(
-      now,
-      this.#played,
-      this.#endRound(now),
-      first.user.id === loserId ? "second" : "first",
-    );
+    return this.#finish(now, first.user.id === loserId ? "second" : "first", {
+      forfeit: true,
+      cutShort: between ? null : this.#endRound(now),
+    });
   }
 
-  // Judges each Keystroke of a batch on its arrival, `now` on the server's clock.
+  // Judges each Keystroke of a batch on its arrival, `now` on the server's clock, against the Round
+  // being played: during a Round break, every Keystroke arrives before the next one starts.
   receive(userId: string, keystrokes: readonly Keystroke[], now: number): Batch {
     const player = this.#player(userId);
     const batch: Batch = { accepted: [], rejected: false, flooded: false };
@@ -396,7 +521,16 @@ export class RunningDuel {
     return batch;
   }
 
-  // The state that holds for a player: what a resync sends them.
+  // The Round being played, or the next one during a Round break.
+  #roundStart(): RoundStart {
+    return {
+      index: this.#round.index,
+      seed: this.#round.config.seed,
+      startsAt: this.#round.startsAt,
+    };
+  }
+
+  // The state that holds for a player in the Round being played: what a resync sends them.
   stateOf(userId: string) {
     const player = this.#player(userId);
 
@@ -404,6 +538,16 @@ export class RunningDuel {
       keystrokes: [...player.acceptedRun.keystrokes],
       received: player.received,
       opponentKeystrokes: [...this.#opponent(userId).acceptedRun.keystrokes],
+    };
+  }
+
+  // Where the Duel stands for a player coming back to it: the Rounds played, the Round being
+  // played (or the next one) and its state, as `duel-resumed` sends them.
+  resumeOf(userId: string) {
+    return {
+      ...roundsSoFarFor(this.#seatOf(userId), this.#played),
+      round: this.#roundStart(),
+      ...this.stateOf(userId),
     };
   }
 

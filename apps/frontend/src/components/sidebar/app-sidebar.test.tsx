@@ -790,6 +790,7 @@ const duelFound: ServerMessage = {
     wordListVersion: 1,
     seconds: 30,
     startsAt: 3_000,
+    roundsToWin: 1,
   },
   opponent: { handle: "grace", image: null, ornament: null },
   selfOrnament: null,

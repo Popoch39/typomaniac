@@ -17,6 +17,7 @@ import { DuelEnded } from "@/components/duel/duel-ended";
 import { FaceOffSoundsContext } from "@/components/face-off/face-off-sounds-context";
 import { RankedSearchAction } from "@/components/play/ranked-search-action";
 import { usePlayStore } from "@/stores/play-store";
+import { singleRoundEnd } from "@/test/duel-rounds";
 
 const me: Me = {
   id: "ada-id",
@@ -98,6 +99,7 @@ describe("the Face-off's sound, unlocked by the click that leads to it", () => {
           opponentResult: noResult,
           score: noScore,
           opponentScore: noScore,
+          ...singleRoundEnd,
           opponent: { handle: "alan", image: null },
           records: null,
         }}

@@ -246,7 +246,8 @@ describe("Challenges, on the socket", () => {
 
     expect(alanFound).toMatchObject({
       type: "duel-found",
-      duel: { language: "en", seconds: 30, startsAt: STARTS_AT },
+      // A single Round, never a Bo3.
+      duel: { language: "en", seconds: 30, startsAt: STARTS_AT, roundsToWin: 1 },
       opponent: { handle: "ada", image: ada.image },
       serverTime: NOW,
       // Never ranked: no rank to show.
@@ -261,9 +262,13 @@ describe("Challenges, on the socket", () => {
     // It counts like any Duel: written at its end. But it is never ranked: no Rating moves, none
     // is even created.
     clock.set(STARTS_AT + 30_000 + 400);
-    // Each is told their own Records from before it: none for Alan, who never played.
+    // Each is told their own Records from before it: none for Alan, who never played. Its only
+    // Round ends it: no `round-ended`, a drawn Round decides a Draw.
     expect(await alanTab.next()).toMatchObject({
       type: "duel-ended",
+      outcome: "draw",
+      roundsToWin: 1,
+      rounds: [{ index: 0, outcome: "draw" }],
       ranked: null,
       records: { wpm: null, score: null, combo: null },
     });
@@ -273,7 +278,11 @@ describe("Challenges, on the socket", () => {
       records: { wpm: 64, score: 0, combo: 0 },
     });
     expect(duels.saved).toHaveLength(2);
-    expect(duels.saved.at(-1)).toMatchObject({ players: [{ rated: null }, { rated: null }] });
+    expect(duels.saved.at(-1)).toMatchObject({
+      roundsToWin: 1,
+      players: [{ rated: null }, { rated: null }],
+    });
+    expect(duels.saved.at(-1)?.rounds).toHaveLength(1);
     expect(duels.ratings.size).toBe(0);
   });
 
