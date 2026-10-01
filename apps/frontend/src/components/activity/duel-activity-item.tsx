@@ -26,7 +26,19 @@ export const DuelActivityItem = ({ activity, now }: DuelActivityItemProps) => {
   const wpm = numberFormat(locale).format(Math.round(friend.wpm));
 
   return (
-    <ActivityRow friend={friend} at={activity.at} now={now}>
+    <ActivityRow
+      friend={friend}
+      at={activity.at}
+      now={now}
+      meta={
+        opponent
+          ? m.activity_wpm_both(
+              { wpm, opponentWpm: numberFormat(locale).format(Math.round(opponent.wpm)) },
+              { locale },
+            )
+          : m.activity_wpm({ wpm }, { locale })
+      }
+    >
       {withSlots(
         (marks) =>
           SENTENCES[friend.outcome](
@@ -38,14 +50,6 @@ export const DuelActivityItem = ({ activity, now }: DuelActivityItemProps) => {
           opponent: <OpponentHandle opponent={opponent} className="font-semibold" />,
         },
       )}
-      <span className="block font-mono text-xs text-muted-foreground tabular-nums">
-        {opponent
-          ? m.activity_wpm_both(
-              { wpm, opponentWpm: numberFormat(locale).format(Math.round(opponent.wpm)) },
-              { locale },
-            )
-          : m.activity_wpm({ wpm }, { locale })}
-      </span>
     </ActivityRow>
   );
 };

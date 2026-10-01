@@ -20,6 +20,17 @@ export const presentFriends = (
     return presence === "offline" ? [] : [{ ...friend, presence }];
   });
 
+// The Friends in the list's order, the ones offline after those who are there. A Friend whose
+// Presence is not told is offline.
+export const offlineLast = (
+  friends: readonly Friend[],
+  presences: ReadonlyMap<string, Presence>,
+): Friend[] => {
+  const isOffline = (friend: Friend) => (presences.get(friend.id) ?? "offline") === "offline";
+
+  return friends.toSorted((a, b) => Number(isOffline(a)) - Number(isOffline(b)));
+};
+
 // The rows of the sidebar's « En ligne »: those to challenge first, then those in a Duel, 5 at
 // most; `count` is all the Friends who are there.
 export const sidebarFriendRows = (present: readonly PresentFriend[]) => ({

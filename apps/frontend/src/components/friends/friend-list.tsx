@@ -1,35 +1,32 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
-
-import { friendsQueryOptions } from "@/api/friends";
+import type { Friend } from "@/api/friends";
 import { FriendRow } from "@/components/friends/friend-row";
 import { FriendsEmpty } from "@/components/friends/friends-empty";
-import { FriendsListSection } from "@/components/friends/friends-list-section";
-import { numberFormat } from "@/locale/formats";
-import { useLocale } from "@/locale/use-locale";
-import { m } from "@/paraglide/messages";
+import { FriendsPanel } from "@/components/friends/friends-panel";
+import { offlineLast } from "@/components/friends/online-friends";
+import { useConnectionStore } from "@/stores/connection-store";
 
-// The User's Friends, by Handle, each with their Presence: one online can be challenged.
 type FriendListProps = {
+  friends: readonly Friend[];
   // Where the empty list sends the User to find some.
   searchInputId: string;
 };
 
-export const FriendList = ({ searchInputId }: FriendListProps) => {
-  const { data: friends } = useSuspenseQuery(friendsQueryOptions);
-  const locale = useLocale();
+// The User's Friends under their tab, each with their Presence: the ones there first, in the list's
+// order, then the ones offline. One online can be challenged.
+export const FriendList = ({ friends, searchInputId }: FriendListProps) => {
+  const presences = useConnectionStore((store) => store.friends?.presences ?? null);
+
+  const ordered = presences === null ? friends : offlineLast(friends, presences);
 
   return (
-    <FriendsListSection
-      title={m.friends_list_title(
-        { count: numberFormat(locale).format(friends.length) },
-        { locale },
-      )}
+    <FriendsPanel
+      value="friends"
       isEmpty={friends.length === 0}
       empty={<FriendsEmpty searchInputId={searchInputId} />}
     >
-      {friends.map((friend) => (
+      {ordered.map((friend) => (
         <FriendRow key={friend.id} friend={friend} />
       ))}
-    </FriendsListSection>
+    </FriendsPanel>
   );
 };

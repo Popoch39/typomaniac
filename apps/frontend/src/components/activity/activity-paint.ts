@@ -1,6 +1,4 @@
-import { cn } from "cn";
-
-import { FRIENDS_CARD_PAINT } from "@/components/friends/friends-paint";
-
-// The Activity's card, its rows a little further in than the lists' next to it.
-export const ACTIVITY_CARD_PAINT = cn(FRIENDS_CARD_PAINT, "p-2");
+// The Activity's card, as the « A · Onglets » board draws it: 28 px corners, its rows inset 10 px.
+// Scrolls on its own, never the page.
+export const ACTIVITY_CARD_PAINT =
+  "flex min-h-0 flex-col overflow-y-auto rounded-[28px] bg-card p-2.5";

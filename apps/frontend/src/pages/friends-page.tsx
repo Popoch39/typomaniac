@@ -16,12 +16,15 @@ export const FriendsPage = () => {
   }
 
   return (
-    <section className="flex flex-col gap-6">
-      <FriendsHeader />
+    // The whole window's height: the columns take what the header leaves.
+    <section className="flex flex-1 flex-col gap-7">
       {me.handle === null ? (
-        <div className="max-w-md">
-          <FriendsHandleRequired />
-        </div>
+        <>
+          <FriendsHeader />
+          <div className="max-w-md">
+            <FriendsHandleRequired />
+          </div>
+        </>
       ) : (
         <FriendsOverview />
       )}

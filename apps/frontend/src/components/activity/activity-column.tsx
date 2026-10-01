@@ -1,3 +1,4 @@
+import { cn } from "cn";
 import { Suspense, useId } from "react";
 
 import { ActivityList } from "@/components/activity/activity-list";
@@ -18,8 +19,9 @@ export const ActivityColumn = ({ searchInputId }: ActivityColumnProps) => {
   const locale = useLocale();
 
   return (
-    <section aria-labelledby={titleId} className="flex flex-col gap-2.5">
-      <h2 id={titleId} className={SMALL_TITLE_PAINT}>
+    <section aria-labelledby={titleId} className="flex min-h-0 flex-1 flex-col gap-4">
+      {/* As high as the tabs next to it: both cards start on the same line. */}
+      <h2 id={titleId} className={cn("flex h-12 shrink-0 items-center", SMALL_TITLE_PAINT)}>
         {m.activity_title({}, { locale })}
       </h2>
       <Suspense fallback={<ActivitySkeleton />}>

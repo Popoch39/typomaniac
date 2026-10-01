@@ -19,8 +19,8 @@ export const ActivitySkeleton = () => {
       className={cn("gap-0", ACTIVITY_CARD_PAINT)}
     >
       {ROW_KEYS.map((row) => (
-        <div key={row} className="flex items-start gap-3 p-3">
-          <Skeleton className="size-9 shrink-0 rounded-[33%]" />
+        <div key={row} className="flex items-start gap-3 px-2.5 py-3">
+          <Skeleton className="size-8 shrink-0 rounded-[33%]" />
           <div className="flex flex-1 flex-col gap-2">
             <Skeleton className="h-4 w-4/5" />
             <Skeleton className="h-3 w-16" />

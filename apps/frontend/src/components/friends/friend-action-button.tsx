@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 
 type FriendActionButtonVariant = "default" | "outline" | "ghost";
 
-// Each variant as the Friends board draws it on a row: the answer awaited on the accent, bolder;
-// the quiet ones in the secondary text.
+// Each variant as the « A · Onglets » board draws it on a row: the answer awaited on the accent,
+// bolder; the quiet ones in the secondary text.
 const VARIANT_PAINT: Record<FriendActionButtonVariant, string> = {
-  default: "px-4 font-bold",
+  default: "px-3.5 font-bold",
   outline: "px-3.5",
-  ghost: "px-3.5 text-muted-foreground",
+  ghost: "px-3 text-muted-foreground",
 };
 
 type FriendActionButtonProps = {
@@ -43,7 +43,7 @@ export const FriendActionButton = ({
       aria-label={label}
       disabled={isPending}
       onClick={() => mutate()}
-      className={cn("rounded-[14px]", VARIANT_PAINT[variant], className)}
+      className={cn("h-9 rounded-[12px] text-[13px]", VARIANT_PAINT[variant], className)}
     >
       {children}
     </Button>

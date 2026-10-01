@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 
 import type { Friend } from "@/api/friends";
 import {
+  offlineLast,
   type PresentFriend,
   presentFriends,
   sidebarFriendRows,
@@ -43,6 +44,23 @@ describe("the Friends who are there", () => {
 
   test("a Friend whose Presence is not told is offline", () => {
     expect(presentFriends([friend("ada")], new Map())).toEqual([]);
+  });
+});
+
+describe("the Friends page's order", () => {
+  test("those online or in a Duel first, then the ones offline, each in the list's order", () => {
+    const friends = ["ada", "alan", "grace", "linus", "mary"].map(friend);
+
+    const ordered = offlineLast(
+      friends,
+      presencesOf([
+        ["alan", "in-duel"],
+        ["grace", "offline"],
+        ["mary", "online"],
+      ]),
+    );
+
+    expect(handles(ordered)).toEqual(["alan", "mary", "ada", "grace", "linus"]);
   });
 });
 

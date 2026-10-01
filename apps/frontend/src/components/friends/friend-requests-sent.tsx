@@ -1,39 +1,34 @@
-import { useSuspenseQuery } from "@tanstack/react-query";
-
-import { friendRequestsQueryOptions } from "@/api/friends";
+import type { FriendRequests } from "@/api/friends";
 import { FriendActionButton } from "@/components/friends/friend-action-button";
-import { FriendsListSection } from "@/components/friends/friends-list-section";
-import { UserRow } from "@/components/friends/user-row";
+import { FriendsGridRow } from "@/components/friends/friends-grid-row";
+import { FRIENDS_PANEL_NOTE_PAINT } from "@/components/friends/friends-paint";
+import { FriendsPanel } from "@/components/friends/friends-panel";
+import { FriendsRowStatus } from "@/components/friends/friends-row-status";
 import { atHandle } from "@/lib/at-handle";
-import { numberFormat } from "@/locale/formats";
 import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 
-// The Friend requests the User sent, still waiting for an answer.
-export const FriendRequestsSent = () => {
-  const { data: sent } = useSuspenseQuery({
-    ...friendRequestsQueryOptions,
-    select: (requests) => requests.sent,
-  });
+type FriendRequestsSentProps = { sent: FriendRequests["sent"] };
 
+// The Friend requests the User sent, still waiting for an answer, under their tab: each can be
+// cancelled.
+export const FriendRequestsSent = ({ sent }: FriendRequestsSentProps) => {
   const locale = useLocale();
 
   return (
-    <FriendsListSection
-      title={m.friends_sent_title({ count: numberFormat(locale).format(sent.length) }, { locale })}
+    <FriendsPanel
+      value="sent"
       isEmpty={sent.length === 0}
-      empty={
-        <p className="px-1 text-sm text-muted-foreground">{m.friends_sent_none({}, { locale })}</p>
-      }
+      empty={<p className={FRIENDS_PANEL_NOTE_PAINT}>{m.friends_sent_none({}, { locale })}</p>}
     >
       {sent.map((user) => (
-        <UserRow
+        <FriendsGridRow
           key={user.id}
           user={user}
-          aside={
-            <span className="text-xs text-muted-foreground">
+          status={
+            <FriendsRowStatus dot="bg-faint">
               {m.friends_sent_pending({}, { locale })}
-            </span>
+            </FriendsRowStatus>
           }
         >
           <FriendActionButton
@@ -44,8 +39,8 @@ export const FriendRequestsSent = () => {
           >
             {m.friends_cancel({}, { locale })}
           </FriendActionButton>
-        </UserRow>
+        </FriendsGridRow>
       ))}
-    </FriendsListSection>
+    </FriendsPanel>
   );
 };

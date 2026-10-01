@@ -3,7 +3,6 @@ import { HANDLE_SEARCH_MIN_LENGTH } from "handle";
 
 import { ApiError } from "@/api/client";
 import { userSearchQueryOptions } from "@/api/user-search";
-import { FRIENDS_CARD_PAINT } from "@/components/friends/friends-paint";
 import { UserFoundItem } from "@/components/friends/user-found-item";
 import { UserRowsSkeleton } from "@/components/friends/user-rows-skeleton";
 import { numberFormat } from "@/locale/formats";
@@ -36,7 +35,7 @@ export const UserSearchResults = ({ typed, handle }: UserSearchResultsProps) => 
 
   if (!searchable) {
     return (
-      <p className="px-1 text-sm text-muted-foreground">
+      <p className="px-3 py-2.5 text-sm text-muted-foreground">
         {m.friends_search_min_length(
           {
             count: HANDLE_SEARCH_MIN_LENGTH,
@@ -54,7 +53,7 @@ export const UserSearchResults = ({ typed, handle }: UserSearchResultsProps) => 
 
   if (search.isError) {
     return (
-      <p role="alert" className="px-1 text-sm text-destructive">
+      <p role="alert" className="px-3 py-2.5 text-sm text-destructive">
         {errorMessage(search.error, locale)}
       </p>
     );
@@ -62,12 +61,14 @@ export const UserSearchResults = ({ typed, handle }: UserSearchResultsProps) => 
 
   if (search.data.length === 0) {
     return (
-      <p className="px-1 text-sm text-muted-foreground">{m.friends_search_none({}, { locale })}</p>
+      <p className="px-3 py-2.5 text-sm text-muted-foreground">
+        {m.friends_search_none({}, { locale })}
+      </p>
     );
   }
 
   return (
-    <ul className={FRIENDS_CARD_PAINT}>
+    <ul className="flex flex-col">
       {search.data.map((user) => (
         <UserFoundItem key={user.id} user={user} />
       ))}

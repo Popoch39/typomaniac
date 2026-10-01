@@ -1,4 +1,3 @@
-import { cn } from "cn";
 import { SwordsIcon } from "lucide-react";
 
 import { challengeBlocker } from "@/components/challenge/challenge-blocker";
@@ -33,7 +32,7 @@ export const ChallengeButton = ({ friend, iconOnly = false }: ChallengeButtonPro
     <span title={blocker ?? undefined}>
       <Button
         size={iconOnly ? "icon" : "default"}
-        variant={iconOnly ? "ghost" : "secondary"}
+        variant={iconOnly ? "ghost" : "default"}
         aria-label={
           blocker === null
             ? m.challenge_send_label({ handle }, { locale })
@@ -41,13 +40,13 @@ export const ChallengeButton = ({ friend, iconOnly = false }: ChallengeButtonPro
         }
         disabled={blocker !== null}
         onClick={challenge}
-        className={cn(
-          "rounded-[14px]",
-          iconOnly ? "text-muted-foreground [&_svg]:size-4.5" : "pr-3.5 pl-3",
-        )}
+        className={
+          iconOnly
+            ? "rounded-[14px] text-muted-foreground [&_svg]:size-4.5"
+            : "h-9 rounded-[12px] px-3.5 text-[13px] font-bold"
+        }
       >
-        <SwordsIcon aria-hidden />
-        {iconOnly ? null : m.challenge_send({}, { locale })}
+        {iconOnly ? <SwordsIcon aria-hidden /> : m.challenge_send({}, { locale })}
       </Button>
     </span>
   );

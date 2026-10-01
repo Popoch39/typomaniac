@@ -56,6 +56,19 @@ const ornamentBy = (handle: string) =>
     ?.querySelector("[data-ornament] use")
     ?.getAttribute("href") ?? null;
 
+// Opens the tab of that name, its count included.
+const openTab = async (name: string) => {
+  await userEvent.click(screen.getByRole("tab", { name }));
+};
+
+const linkOf = (handle: string) => screen.getByRole("link", { name: `@${handle}` });
+
+// The Handles of the Friends' tab, in its order.
+const friendHandles = () =>
+  within(screen.getByRole("tabpanel"))
+    .getAllByRole("link")
+    .map((link) => link.textContent);
+
 // The row of that Handle's link, to look into.
 const rowOf = (handle: string) => {
   const row = screen.getByRole("link", { name: `@${handle}` }).closest("li");
@@ -123,13 +136,14 @@ const renderPage = async (
   userFriends: Friend[] = friends,
   activity: Activity[] = activities,
   user: Me = me,
+  userRequests: FriendRequests = requests,
 ) => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
 
   queryClient.setQueryData(meQueryOptions.queryKey, user);
   queryClient.setQueryData(activityQueryOptions.queryKey, activity);
   queryClient.setQueryData(friendsQueryOptions.queryKey, userFriends);
-  queryClient.setQueryData(friendRequestsQueryOptions.queryKey, requests);
+  queryClient.setQueryData(friendRequestsQueryOptions.queryKey, userRequests);
   queryClient.setQueryData(userSearchQueryOptions("bar").queryKey, found);
 
   const router = createRouter({
@@ -157,20 +171,60 @@ afterEach(() => {
 });
 
 describe("FriendsPage", () => {
-  test("each list is titled with its count, the Friend requests received in a badge", async () => {
+  test("each tab says how many it holds, the Friends' open first", async () => {
     await renderPage();
 
     expect(
-      screen.getByRole("heading", { level: 2, name: "Friend requests reçues 1" }),
+      within(screen.getByRole("tablist", { name: "Tes Friends et tes Friend requests" }))
+        .getAllByRole("tab")
+        .map((tab) => tab.textContent),
+    ).toEqual(["Friends 1", "Demandes 1", "Envoyées 1"]);
+    expect(screen.getByRole("tab", { name: "Friends 1" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel")).toHaveTextContent("@alan");
+  });
+
+  test("without a Friend request waiting, the Demandes tab has no count", async () => {
+    await renderPage(friends, activities, me, { received: [], sent: [] });
+
+    await openTab("Demandes");
+
+    expect(screen.getByRole("tabpanel")).toHaveTextContent("Aucune Friend request en attente.");
+  });
+
+  test("a Friend request received waits for an answer: accept or decline", async () => {
+    await renderPage();
+    await openTab("Demandes 1");
+
+    const row = rowOf("grace");
+
+    expect(row.getByText("veut être ton Friend")).toBeInTheDocument();
+    expect(
+      row.getByRole("button", { name: "Accepter la Friend request de @grace" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { level: 2, name: "Friend requests envoyées · 1" }),
+      row.getByRole("button", { name: "Refuser la Friend request de @grace" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: "Friends · 1" })).toBeInTheDocument();
+  });
+
+  test("the Friends there come first, then the ones offline, each in the list's order", async () => {
+    const sockets = fakeServer();
+
+    useConnectionStore.getState().open(sockets.open);
+    await renderPage(["ada", "alan", "mary", "ken"].map(friendNamed), []);
+
+    expect(friendHandles()).toEqual(["@ada", "@alan", "@mary", "@ken"]);
+
+    tellPresences(sockets, [
+      ["mary", "online"],
+      ["alan", "in-duel"],
+    ]);
+
+    expect(friendHandles()).toEqual(["@alan", "@mary", "@ada", "@ken"]);
   });
 
   test("a Friend request sent waits for its answer, and can be cancelled", async () => {
     await renderPage();
+    await openTab("Envoyées 1");
 
     const row = rowOf("linus");
 
@@ -225,15 +279,10 @@ describe("FriendsPage", () => {
     expect(screen.queryByRole("region", { name: "Activity" })).not.toBeInTheDocument();
   });
 
-  test("while it loads, Skeletons stand in for each list and the Activity", () => {
+  test("while it loads, Skeletons stand in for the Friends and the Activity", () => {
     render(<FriendsPendingPage />);
 
-    for (const label of [
-      "Chargement des Friend requests reçues",
-      "Chargement des Friend requests envoyées",
-      "Chargement des Friends",
-      "Chargement de l'Activity",
-    ]) {
+    for (const label of ["Chargement des Friends", "Chargement de l'Activity"]) {
       expect(screen.getByRole("status", { name: label })).toBeInTheDocument();
     }
   });
@@ -241,19 +290,20 @@ describe("FriendsPage", () => {
   test("each Handle leads to its User's Profile: Friends and Friend requests", async () => {
     await renderPage(friends, []);
 
-    for (const handle of ["alan", "grace", "linus"]) {
-      expect(screen.getByRole("link", { name: `@${handle}` })).toHaveAttribute(
-        "href",
-        `/u/${handle}`,
-      );
-    }
+    expect(linkOf("alan")).toHaveAttribute("href", "/u/alan");
+    await openTab("Demandes 1");
+    expect(linkOf("grace")).toHaveAttribute("href", "/u/grace");
+    await openTab("Envoyées 1");
+    expect(linkOf("linus")).toHaveAttribute("href", "/u/linus");
   });
 
   test("each avatar wears its User's Ornament: Friends, Friend requests, search, Activity", async () => {
     await renderPage(friends, []);
 
     expect(ornamentBy("alan")).toBe("#tier-ornament-gold");
+    await openTab("Demandes 1");
     expect(ornamentBy("grace")).toBe("#tier-ornament-platinum");
+    await openTab("Envoyées 1");
     expect(ornamentBy("linus")).toBeNull();
 
     await userEvent.type(screen.getByLabelText("Chercher un User"), "bar");
@@ -291,6 +341,22 @@ describe("FriendsPage", () => {
     ).toBeInTheDocument();
   });
 
+  test("the Users found close on Escape, and come back as the User types again", async () => {
+    await renderPage();
+
+    const field = screen.getByLabelText("Chercher un User");
+
+    await userEvent.type(field, "bar");
+    await screen.findByRole("link", { name: "@barbara" });
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByRole("link", { name: "@barbara" })).not.toBeInTheDocument();
+
+    await userEvent.type(field, "{Backspace}r");
+
+    expect(await screen.findByRole("link", { name: "@barbara" })).toBeInTheDocument();
+  });
+
   test("the search shows it is looking while the Handle is typed", async () => {
     await renderPage();
 
@@ -317,7 +383,7 @@ describe("FriendsPage", () => {
 
     // Each row opens on the Friend's avatar, their initial without an image.
     expect(items.map((item) => item.textContent)).toEqual([
-      "A@alan a battu @turing par abandon72 wpm · 40 wpmil y a 5 minutes",
+      "A@alan a battu @turing par abandon72 wpm · 40 wpm · il y a 5 min",
       "A@alan et @ada sont maintenant Friendsavant-hier",
     ]);
     expect(column.getByRole("link", { name: "@turing" })).toHaveAttribute("href", "/u/turing");
@@ -357,7 +423,7 @@ describe("FriendsPage", () => {
     await column.findByText("@grace");
     expect(column.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
       "A@alan et @grace sont maintenant Friendsà l'instant",
-      "A@alan a battu @turing par abandon72 wpm · 40 wpmil y a 5 minutes",
+      "A@alan a battu @turing par abandon72 wpm · 40 wpm · il y a 5 min",
       "A@alan et @ada sont maintenant Friendsavant-hier",
     ]);
   });
@@ -397,32 +463,29 @@ describe("FriendsPage", () => {
       useLocaleStore.setState({ locale: "en" });
     });
 
-    test("the page, each list titled with its count", async () => {
+    test("the page, each tab with its count", async () => {
       await renderPage();
 
+      expect(screen.getByText("Challenge the ones online, answer the others.")).toBeInTheDocument();
       expect(
-        screen.getByText(
-          "Find a User by their Handle, answer their Friend requests, challenge your Friends who are online.",
-        ),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("heading", { level: 2, name: "Received Friend requests 1" }),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByRole("heading", { level: 2, name: "Sent Friend requests · 1" }),
-      ).toBeInTheDocument();
-      expect(screen.getByRole("heading", { level: 2, name: "Friends · 1" })).toBeInTheDocument();
+        within(screen.getByRole("tablist", { name: "Your Friends and Friend requests" }))
+          .getAllByRole("tab")
+          .map((tab) => tab.textContent),
+      ).toEqual(["Friends 1", "Requests 1", "Sent 1"]);
     });
 
     test("the Friend requests: answer those received, cancel those sent", async () => {
       await renderPage();
+      await openTab("Requests 1");
 
+      expect(rowOf("grace").getByText("wants to be your Friend")).toBeInTheDocument();
       expect(
         rowOf("grace").getByRole("button", { name: "Accept @grace's Friend request" }),
       ).toHaveTextContent("Accept");
       expect(
         rowOf("grace").getByRole("button", { name: "Decline @grace's Friend request" }),
       ).toHaveTextContent("Decline");
+      await openTab("Sent 1");
       expect(rowOf("linus").getByText("pending")).toBeInTheDocument();
       expect(
         rowOf("linus").getByRole("button", { name: "Cancel your Friend request to @linus" }),
@@ -458,12 +521,7 @@ describe("FriendsPage", () => {
     test("while it loads, each Skeleton says what it loads", () => {
       render(<FriendsPendingPage />);
 
-      for (const label of [
-        "Loading received Friend requests",
-        "Loading sent Friend requests",
-        "Loading Friends",
-        "Loading Activity",
-      ]) {
+      for (const label of ["Loading Friends", "Loading Activity"]) {
         expect(screen.getByRole("status", { name: label })).toBeInTheDocument();
       }
     });
@@ -473,7 +531,7 @@ describe("FriendsPage", () => {
 
       const field = screen.getByLabelText("Find a User");
 
-      expect(field).toHaveAttribute("placeholder", "@handle");
+      expect(field).toHaveAttribute("placeholder", "Find a User by @handle");
 
       await userEvent.type(field, "b");
 
@@ -506,7 +564,7 @@ describe("FriendsPage", () => {
       const column = within(screen.getByRole("region", { name: "Activity" }));
 
       expect(column.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
-        "A@alan beat @turing by Forfeit72 wpm · 40 wpm5 minutes ago",
+        "A@alan beat @turing by Forfeit72 wpm · 40 wpm · 5 min. ago",
         "A@alan and @ada are now Friends2 days ago",
       ]);
     });
@@ -532,8 +590,8 @@ describe("FriendsPage", () => {
       const column = within(screen.getByRole("region", { name: "Activity" }));
 
       expect(column.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
-        "A@alan lost to @turing72 wpm · 40 wpm5 minutes ago",
-        "A@alan drew with Deleted User1,284 wpm5 minutes ago",
+        "A@alan lost to @turing72 wpm · 40 wpm · 5 min. ago",
+        "A@alan drew with Deleted User1,284 wpm · 5 min. ago",
       ]);
     });
 
