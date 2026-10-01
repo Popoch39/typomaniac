@@ -18,9 +18,10 @@ const duelHistoryEntry = t.Object({
   outcome: t.UnionEnum(["win", "loss", "draw"]),
   // The loser forfeited.
   forfeit: t.Boolean(),
-  // The Scores, null for the Duels played before the Score.
+  // The Scores of the last Round, null for the Duels played before the Score.
   score: t.Nullable(t.Integer()),
   opponentScore: t.Nullable(t.Integer()),
+  // The wpm over the Rounds.
   wpm: t.Number(),
   // Null once the opponent's User is deleted, with their Score.
   opponentWpm: t.Nullable(t.Number()),
@@ -29,8 +30,8 @@ const duelHistoryEntry = t.Object({
   tp: t.Nullable(t.Integer()),
   // A Ranked Duel, Placement included: false for a Challenge and for a Duel played before the ranked.
   ranked: t.Boolean(),
-  // The wpm of each second of the reader's Run, replayed from their Keystrokes, rounded; up to the
-  // Forfeit when there was one.
+  // The wpm of each second of the reader's Run in the last Round, replayed from their Keystrokes,
+  // rounded; up to the Forfeit when there was one.
   wpmBySecond: t.Array(t.Integer()),
   // The opponent's the same way; null once their User is deleted.
   opponentWpmBySecond: t.Nullable(t.Array(t.Integer())),
@@ -43,35 +44,62 @@ const activityDay = t.Object({ day: t.String(), duels: t.Integer() });
 
 export type ActivityDay = typeof activityDay.static;
 
-// One of the two Users of a replayed Duel: their Handle and avatar of today, and what replays their
-// side (the Keystrokes the server accepted, their Pace) to the Result and Score they got.
+// One of the two Users of a replayed Duel: their Handle and avatar of today, their Result over the
+// Rounds, the Pace their Bursts were judged against and how many Rounds they won.
 const replayedPlayer = t.Composite([
   DuelModel.opponent,
   t.Object({
     result: DuelModel.result,
     // Null for the Duels written before the Pace came from the history.
     pace: t.Nullable(t.Number()),
-    // Null for the Duels played before the Score.
-    score: t.Nullable(DuelModel.score),
-    keystrokes: t.Array(DuelModel.keystroke),
+    roundsWon: t.Integer(),
   }),
 ]);
 
 export type ReplayedPlayer = typeof replayedPlayer.static;
 
-// A finished Duel seen from the User who replays it: its Text (Seed, Language, Word list version),
-// its time, how it ended for them, whether it was Ranked and the TP it moved for them (as in the
-// Duel history), their side (`me`) and the opponent's.
+// One User's side of a replayed Round: what replays it (the Keystrokes the server accepted, with
+// the Pace of the Duel) to the Result and Score they got.
+const replayedRoundSide = t.Object({
+  result: DuelModel.result,
+  // Null for the Duels played before the Score.
+  score: t.Nullable(DuelModel.score),
+  keystrokes: t.Array(DuelModel.keystroke),
+});
+
+export type ReplayedRoundSide = typeof replayedRoundSide.static;
+
+// A played Round of a replayed Duel: its index from 0, its Text (Seed), its time (`seconds`, from
+// `startsAt` to `endedAt`: the end of its time, or the Forfeit that cut it short), and both sides.
+const replayedRound = t.Object({
+  index: t.Integer(),
+  seed: t.Integer(),
+  seconds: t.Integer(),
+  startsAt: t.Number(),
+  endedAt: t.Number(),
+  me: replayedRoundSide,
+  // Null once the opponent's User is deleted.
+  opponent: t.Nullable(replayedRoundSide),
+});
+
+export type ReplayedRound = typeof replayedRound.static;
+
+// A finished Duel seen from the User who replays it: what its Rounds are played in (Language, Word
+// list version, seconds), its time, how it ended for them, whether it was Ranked and the TP it moved
+// for them (as in the Duel history), how many Rounds won it, both Users, and its Rounds.
 const replayedDuel = t.Composite([
-  DuelModel.duel,
+  t.Omit(DuelModel.duel, ["seed"]),
   t.Pick(duelHistoryEntry, ["tp", "ranked"]),
   t.Object({
     endedAt: t.Number(),
     outcome: t.UnionEnum(["win", "loss", "draw"]),
     forfeit: t.Boolean(),
+    roundsToWin: t.Integer(),
     me: replayedPlayer,
     // Null once the opponent's User is deleted.
     opponent: t.Nullable(replayedPlayer),
+    // The Rounds played, the first first: never one that was not.
+    rounds: t.Array(replayedRound, { minItems: 1 }),
   }),
 ]);
 

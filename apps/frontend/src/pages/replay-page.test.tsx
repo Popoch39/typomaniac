@@ -16,6 +16,7 @@ import { DuelReplay } from "@/components/replay/duel-replay";
 import { ClockContext } from "@/components/run/clock-context";
 import { ReplayErrorPage } from "@/pages/replay-error-page";
 import { useLocaleStore } from "@/stores/locale-store";
+import { writtenDuelOf } from "@/test/written-duel";
 
 // Seed 42 in English, version 1, starts with "small help while" (pinned in the typing-engine tests).
 const adaTyped: Keystroke[] = [
@@ -87,7 +88,9 @@ const renderReplay = async (duel: ReplayedDuel) => {
 
   const fetch = vi.fn(
     async (_input: RequestInfo | URL) =>
-      new Response(JSON.stringify(duel), { headers: { "content-type": "application/json" } }),
+      new Response(JSON.stringify(writtenDuelOf(duel)), {
+        headers: { "content-type": "application/json" },
+      }),
   );
 
   vi.stubGlobal("fetch", fetch);

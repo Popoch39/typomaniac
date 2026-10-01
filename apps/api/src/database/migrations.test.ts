@@ -224,3 +224,199 @@ describe(BEST_RUN, () => {
     expect(await count()).toEqual([{ count: 0 }]);
   });
 });
+
+const DUEL_ROUNDS_FROM_PLAYERS = "0014_duel_rounds_from_players.sql";
+
+const DUEL_PLAYER_ROUNDS_ONLY = "0015_duel_player_rounds_only.sql";
+
+// Each User's Records over the rows of `table`, as the Stats aggregate them.
+const recordsSql = (table: string) =>
+  `select user_id, max(wpm) as wpm, max(score) as score, max(best_combo) as combo
+   from ${table} group by user_id order by user_id`;
+
+describe(DUEL_ROUNDS_FROM_PLAYERS, () => {
+  test("every Duel becomes a Duel of one Round, with the same Seed, time, Results, Scores, Keystrokes and Records", async () => {
+    const db = await migratedUpTo(DUEL_ROUNDS_FROM_PLAYERS);
+
+    await addUser(db, "ada");
+    await addUser(db, "alan");
+
+    // A Duel won by Score, a Draw, a Forfeit and one written before the Score.
+    await db.exec(`
+      insert into duel (id, seed, language, word_list_version, mode, seconds, started_at, ended_at,
+        outcome, winner_id, ranked)
+      values ('won', 4294967295, 'en', 1, 'time', 30, '2026-09-01 10:00:00', '2026-09-01 10:00:30',
+               'win', 'ada', true),
+             ('drawn', 7, 'en', 1, 'time', 30, '2026-09-02 10:00:00', '2026-09-02 10:00:30',
+               'draw', null, false),
+             ('forfeit', 8, 'fr', 1, 'time', 30, '2026-09-03 10:00:00', '2026-09-03 10:00:12',
+               'forfeit', 'alan', false),
+             ('old', 9, 'en', 1, 'time', 30, '2026-08-01 10:00:00', '2026-08-01 10:00:30',
+               'win', 'alan', false)
+    `);
+
+    await db.exec(`
+      insert into duel_player (duel_id, user_id, wpm, raw, accuracy, consistency, correct_chars,
+        incorrect_chars, extra_chars, missed_chars, pace, score, best_combo, bursts, tp_delta,
+        mmr_delta, keystrokes)
+      values ('won', 'ada', 92.5, 95, 98, 81, 230, 3, 1, 0, 70, 1200, 40, 3, 18, 21,
+               '[{"kind":"char","char":"a","at":120}]'),
+             ('won', 'alan', 71, 74, 96, 77, 180, 6, 0, 2, 65, 800, 22, 1, -15, -19, '[]'),
+             ('drawn', 'ada', 60, 60, 100, 90, 150, 0, 0, 0, 70, 500, 12, 0, null, null, '[]'),
+             ('drawn', 'alan', 60, 61, 100, 88, 150, 0, 0, 0, 65, 500, 14, 0, null, null, '[]'),
+             ('forfeit', 'ada', 40, 42, 90, 60, 50, 5, 0, 0, 70, 150, 6, 0, null, null, '[]'),
+             ('forfeit', 'alan', 55, 55, 97, 70, 70, 2, 0, 0, 65, 210, 9, 1, null, null,
+               '[{"kind":"backspace","at":300}]'),
+             ('old', 'ada', 110, 115, 97, 80, 270, 8, 0, 0, null, null, null, null, null, null, '[]'),
+             ('old', 'alan', 120, 121, 99, 85, 300, 3, 0, 0, null, null, null, null, null, null, '[]')
+    `);
+
+    const recordsBefore = (await db.query(recordsSql("duel_player"))).rows;
+
+    const playersBefore = (
+      await db.query(`
+        select p.duel_id, p.user_id, 0 as round_index, d.seed, d.started_at, d.ended_at, p.wpm,
+          p.raw, p.accuracy, p.consistency, p.correct_chars, p.incorrect_chars, p.extra_chars,
+          p.missed_chars, p.score, p.best_combo, p.bursts, p.keystrokes
+        from duel_player p join duel d on d.id = p.duel_id
+        order by p.duel_id, p.user_id
+      `)
+    ).rows;
+
+    await apply(db, [DUEL_ROUNDS_FROM_PLAYERS, DUEL_PLAYER_ROUNDS_ONLY]);
+
+    const rounds = (
+      await db.query(`
+        select duel_id, user_id, round_index, seed, started_at, ended_at, wpm, raw, accuracy,
+          consistency, correct_chars, incorrect_chars, extra_chars, missed_chars, score,
+          best_combo, bursts, keystrokes
+        from duel_round order by duel_id, user_id
+      `)
+    ).rows;
+
+    expect(rounds).toEqual(playersBefore);
+    expect((await db.query(recordsSql("duel_round"))).rows).toEqual(recordsBefore);
+
+    const { rows: players } = await db.query(`
+      select p.duel_id, p.user_id, p.rounds_won, p.wpm, p.pace, p.tp_delta, d.rounds_to_win
+      from duel_player p join duel d on d.id = p.duel_id
+      order by p.duel_id, p.user_id
+    `);
+
+    expect(players).toEqual([
+      {
+        duel_id: "drawn",
+        user_id: "ada",
+        rounds_won: 0,
+        wpm: 60,
+        pace: 70,
+        tp_delta: null,
+        rounds_to_win: 1,
+      },
+      {
+        duel_id: "drawn",
+        user_id: "alan",
+        rounds_won: 0,
+        wpm: 60,
+        pace: 65,
+        tp_delta: null,
+        rounds_to_win: 1,
+      },
+      {
+        duel_id: "forfeit",
+        user_id: "ada",
+        rounds_won: 0,
+        wpm: 40,
+        pace: 70,
+        tp_delta: null,
+        rounds_to_win: 1,
+      },
+      {
+        duel_id: "forfeit",
+        user_id: "alan",
+        rounds_won: 0,
+        wpm: 55,
+        pace: 65,
+        tp_delta: null,
+        rounds_to_win: 1,
+      },
+      {
+        duel_id: "old",
+        user_id: "ada",
+        rounds_won: 0,
+        wpm: 110,
+        pace: null,
+        tp_delta: null,
+        rounds_to_win: 1,
+      },
+      {
+        duel_id: "old",
+        user_id: "alan",
+        rounds_won: 1,
+        wpm: 120,
+        pace: null,
+        tp_delta: null,
+        rounds_to_win: 1,
+      },
+      {
+        duel_id: "won",
+        user_id: "ada",
+        rounds_won: 1,
+        wpm: 92.5,
+        pace: 70,
+        tp_delta: 18,
+        rounds_to_win: 1,
+      },
+      {
+        duel_id: "won",
+        user_id: "alan",
+        rounds_won: 0,
+        wpm: 71,
+        pace: 65,
+        tp_delta: -15,
+        rounds_to_win: 1,
+      },
+    ]);
+  });
+
+  test("a Round goes with its Duel and with its User", async () => {
+    const db = await migratedUpTo(DUEL_ROUNDS_FROM_PLAYERS);
+
+    await apply(db, [DUEL_ROUNDS_FROM_PLAYERS, DUEL_PLAYER_ROUNDS_ONLY]);
+    await addUser(db, "ada");
+    await addUser(db, "alan");
+    await db.exec(`
+      insert into duel (id, language, word_list_version, mode, seconds, started_at, ended_at,
+        outcome, winner_id)
+      values ('one', 'en', 1, 'time', 30, now(), now(), 'draw', null),
+             ('two', 'en', 1, 'time', 30, now(), now(), 'draw', null)
+    `);
+
+    const round = (duelId: string, userId: string, index: number) =>
+      db.query(
+        `insert into duel_round (duel_id, user_id, round_index, seed, started_at, ended_at, wpm,
+           raw, accuracy, consistency, correct_chars, incorrect_chars, extra_chars, missed_chars,
+           keystrokes)
+         values ($1, $2, $3, 1, now(), now(), 60, 60, 100, 90, 150, 0, 0, 0, '[]')`,
+        [duelId, userId, index],
+      );
+
+    await round("one", "ada", 0);
+    await round("one", "ada", 1);
+    await round("one", "alan", 0);
+    await round("two", "ada", 0);
+
+    await expect(round("one", "ada", 1)).rejects.toThrow();
+
+    const count = async () =>
+      (await db.query<{ count: number }>("select count(*)::int as count from duel_round")).rows;
+
+    await db.exec(`delete from duel where id = 'two'`);
+
+    expect(await count()).toEqual([{ count: 3 }]);
+
+    await db.exec(`delete from "user" where id = 'ada'`);
+
+    expect(await count()).toEqual([{ count: 1 }]);
+  });
+});

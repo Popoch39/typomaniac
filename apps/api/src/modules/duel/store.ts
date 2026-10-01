@@ -11,18 +11,38 @@ import { type Keystroke, paceDuels, paceOf, type Result } from "typing-engine";
 
 import type { Duel, DuelScore, Form, Records } from "./model";
 
-// A player of a finished Duel: their Result, their Pace and Score and the Keystrokes the server
-// accepted from them, which replay to both on the Duel's Text.
+// A player of a finished Duel: their Result over its Rounds (`averageResult` of the engine), their
+// Pace and how many Rounds they won.
 export type DuelPlayerRecord = {
   userId: string;
   result: Result;
   // The Pace their Bursts were judged against, frozen at the pairing, in wpm.
   pace: number;
+  // A drawn Round, or the one a Forfeit cut short, counts for nobody.
+  roundsWon: number;
+  // What a Duel of the Queue did to their Rating, written with the Duel; null for a Challenge.
+  rated: RatedPlayer | null;
+};
+
+// A player of one Round: their Result and Score on its Text, and the Keystrokes the server accepted
+// from them, which replay to both.
+export type RoundPlayerRecord = {
+  userId: string;
+  result: Result;
   // Null for the Duels written before the Score: their outcome is the one of the time, by wpm.
   score: DuelScore | null;
   keystrokes: readonly Keystroke[];
-  // What a Duel of the Queue did to their Rating, written with the Duel; null for a Challenge.
-  rated: RatedPlayer | null;
+};
+
+// A played Round of a finished Duel: its index from 0, its Text (Seed), its time in ms since the
+// epoch (the end of its time, or the moment of the Forfeit that cut it short) and its two players,
+// in the order of the Duel's.
+export type RoundRecord = {
+  index: number;
+  seed: number;
+  startsAt: number;
+  endedAt: number;
+  players: readonly [RoundPlayerRecord, RoundPlayerRecord];
 };
 
 // A player's Rating before and after a ranked Duel, and the TP it moved (null in Placement).
@@ -31,16 +51,20 @@ export type RatedPlayer = { before: Rating; after: Rating; tp: number | null };
 // How a finished Duel ended, for both players: someone won, a Draw, or the loser forfeited.
 export const DUEL_OUTCOMES = ["win", "draw", "forfeit"] as const;
 
-// A finished Duel as it is written: enough to replay it (Seed, Language, Word list version, Mode
-// and the Keystrokes) and its outcome. `startsAt` and `endedAt` in ms since the epoch: the end of
-// its time, or the moment of the Forfeit.
-export type DuelRecord = Duel & {
+// A finished Duel as it is written: enough to replay its Rounds (Language, Word list version, Mode,
+// and each Round's Seed and Keystrokes) and its outcome. `startsAt` and `endedAt` in ms since the
+// epoch: the start of its first Round, the end of its last one.
+export type DuelRecord = Omit<Duel, "seed"> & {
   mode: "time";
   endedAt: number;
   outcome: (typeof DUEL_OUTCOMES)[number];
   // The winner's User id; null for a Draw.
   winnerId: string | null;
+  // How many Rounds a player had to win: 1 for a Duel of a single Round.
+  roundsToWin: number;
   players: readonly [DuelPlayerRecord, DuelPlayerRecord];
+  // The Rounds played, the first first: at least one.
+  rounds: readonly [RoundRecord, ...RoundRecord[]];
 };
 
 // A stretch `[from, to)` of a User's Duel history, by the end of its Duels, in ms since the epoch.
@@ -53,11 +77,20 @@ export type ActivityDayRow = { day: string; duels: number };
 // it came from the history.
 export type PlayedDuelPlayer = Omit<DuelPlayerRecord, "pace" | "rated"> & { pace: number | null };
 
+// A played Round read back for the reader (`player`): the opponent's side is null once their User
+// is deleted, as their player row.
+export type PlayedRound = Omit<RoundRecord, "players"> & {
+  player: RoundPlayerRecord;
+  opponent: RoundPlayerRecord | null;
+};
+
 // A finished Duel read back for one of its two Users (`player`), to replay it. `opponent` is null
 // once their User is deleted: their player row goes with it.
-export type PlayedDuel = Omit<DuelRecord, "players"> & {
+export type PlayedDuel = Omit<DuelRecord, "players" | "rounds"> & {
   player: PlayedDuelPlayer;
   opponent: PlayedDuelPlayer | null;
+  // The Rounds played, the first first.
+  rounds: readonly [PlayedRound, ...PlayedRound[]];
   // The TP the Duel moved for the reader: null for a Challenge, in Placement and before the ranked.
   tp: number | null;
   // A Ranked Duel, Placement included: false for a Challenge and before the ranked.
@@ -163,8 +196,8 @@ export type DuelStore = {
   playedDuel: (userId: string, duelId: string) => Promise<PlayedDuel | null>;
   // The Stats of a User's finished Duels, those whose opponent was deleted too.
   stats: (userId: string) => Promise<DuelStats>;
-  // The Records of a User, as their Stats count them: without the rest of the Stats, for the
-  // end of a Duel.
+  // The Records of a User, as their Stats count them: the best of their Rounds, without the rest of
+  // the Stats, for the end of a Duel.
   records: (userId: string) => Promise<Records>;
   // The Progression of a User: their last `limit` finished Duels but the Forfeits (all of them when
   // null), the oldest first.

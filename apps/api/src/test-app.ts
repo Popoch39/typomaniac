@@ -34,6 +34,9 @@ import {
   leaderboardKeyOf,
   type LeaderboardRow,
   type PlayedDuel,
+  type PlayedRound,
+  type RoundPlayerRecord,
+  type RoundRecord,
 } from "./modules/duel/store";
 import { type FriendMessage, FriendLiveModel, type Relation } from "./modules/friend/model";
 import { type Friendship, type FriendStore, orderedPair } from "./modules/friend/store";
@@ -148,9 +151,9 @@ const average = (values: number[]) =>
 
 const best = (values: number[]) => (values.length === 0 ? null : Math.max(...values));
 
-// The Records over a User's player rows, as the Drizzle store aggregates them: the Score and the
+// The Records over a User's Round rows, as the Drizzle store aggregates them: the Score and the
 // Combo only over the rows written since the Score.
-const recordsOf = (players: readonly DuelPlayerRecord[]): Records => {
+const recordsOf = (players: readonly RoundPlayerRecord[]): Records => {
   const scores = players.flatMap(({ score }) => (score ? [score] : []));
 
   return {
@@ -158,6 +161,22 @@ const recordsOf = (players: readonly DuelPlayerRecord[]): Records => {
     score: best(scores.map(({ score }) => score)),
     combo: best(scores.map(({ bestCombo }) => bestCombo)),
   };
+};
+
+// The Round rows of `userId` in `record`.
+const roundRowsIn = (record: DuelRecord, userId: string) =>
+  record.rounds.flatMap(({ players }) => players.filter((player) => player.userId === userId));
+
+// A Round as `userId` played it: the opponent's side is gone with their User.
+const playedRoundOf = (
+  { players, ...round }: RoundRecord,
+  userId: string,
+  isDeleted: (userId: string) => boolean,
+): PlayedRound => {
+  const [first, second] = players;
+  const [own, other] = first.userId === userId ? [first, second] : [second, first];
+
+  return { ...round, player: own, opponent: isDeleted(other.userId) ? null : other };
 };
 
 // The finished Duels, kept in `saved` in the order they were written: a test can write past Duels
@@ -176,9 +195,11 @@ export const memoryDuelStore = () => {
   const playersOf = (record: DuelRecord) =>
     record.players.filter((player) => !deleted.has(player.userId));
 
-  // The player rows of `userId`, in every Duel they finished.
-  const playerRowsOf = (userId: string) =>
-    saved.flatMap((record) => playersOf(record).filter((player) => player.userId === userId));
+  const isDeleted = (userId: string) => deleted.has(userId);
+
+  // The Round rows of `userId`, in every Duel they finished: gone with their User.
+  const roundRowsOf = (userId: string) =>
+    isDeleted(userId) ? [] : saved.flatMap((record) => roundRowsIn(record, userId));
 
   const winnerOf = ({ winnerId }: DuelRecord) =>
     winnerId === null || deleted.has(winnerId) ? null : winnerId;
@@ -201,13 +222,21 @@ export const memoryDuelStore = () => {
       return null;
     }
 
-    const { players: _, ...duel } = record;
+    const {
+      players: _,
+      rounds: [firstRound, ...laterRounds],
+      ...duel
+    } = record;
 
     return {
       ...duel,
       winnerId: winnerOf(record),
       player,
       opponent: players.find((candidate) => candidate.userId !== userId) ?? null,
+      rounds: [
+        playedRoundOf(firstRound, userId, isDeleted),
+        ...laterRounds.map((round) => playedRoundOf(round, userId, isDeleted)),
+      ],
       ...rankingOf(record, player),
     };
   };
@@ -390,10 +419,10 @@ export const memoryDuelStore = () => {
           wpm: average(scored.map((result) => result.wpm)),
           accuracy: average(scored.map((result) => result.accuracy)),
         },
-        records: recordsOf(played.map(({ player }) => player)),
+        records: recordsOf(roundRowsOf(userId)),
       };
     },
-    records: async (userId) => recordsOf(playerRowsOf(userId)),
+    records: async (userId) => recordsOf(roundRowsOf(userId)),
   };
 
   const deleteUser = (userId: string) => {
@@ -539,8 +568,56 @@ export const memoryBestRunStore = (): BestRunStore => {
 
 // A Duel `userId` finished at `endedAt`, typing at `wpm`, against a User who is not in the test:
 // only its end and that wpm count for the Pace.
+// A player of a Duel of a single Round, as the tests write one: their side of the Duel, with the
+// Score and Keystrokes of its Round.
+export type OneRoundPlayer = Omit<DuelPlayerRecord, "roundsWon"> &
+  Pick<RoundPlayerRecord, "score" | "keystrokes">;
+
+// A Duel of a single Round on `seed`, as every Duel was before the Bo3: its Round runs from its
+// start to its end, its winner by Score won it.
+export const oneRoundDuel = ({
+  seed,
+  players,
+  ...duel
+}: Omit<DuelRecord, "players" | "rounds" | "roundsToWin"> & {
+  seed: number;
+  players: readonly [OneRoundPlayer, OneRoundPlayer];
+}): DuelRecord => {
+  const sideOf = ({ userId, result, pace, rated }: OneRoundPlayer): DuelPlayerRecord => ({
+    userId,
+    result,
+    pace,
+    rated,
+    roundsWon: Number(duel.outcome === "win" && duel.winnerId === userId),
+  });
+
+  const roundSideOf = ({ userId, result, score, keystrokes }: OneRoundPlayer) => ({
+    userId,
+    result,
+    score,
+    keystrokes,
+  });
+
+  const [first, second] = players;
+
+  return {
+    ...duel,
+    roundsToWin: 1,
+    players: [sideOf(first), sideOf(second)],
+    rounds: [
+      {
+        index: 0,
+        seed,
+        startsAt: duel.startsAt,
+        endedAt: duel.endedAt,
+        players: [roundSideOf(first), roundSideOf(second)],
+      },
+    ],
+  };
+};
+
 export const pastDuel = (userId: string, wpm: number, endedAt: number): DuelRecord => {
-  const player = (id: string) => ({
+  const player = (id: string): OneRoundPlayer => ({
     userId: id,
     result: {
       wpm,
@@ -555,7 +632,7 @@ export const pastDuel = (userId: string, wpm: number, endedAt: number): DuelReco
     rated: null,
   });
 
-  return {
+  return oneRoundDuel({
     id: crypto.randomUUID(),
     seed: 1,
     language: "en",
@@ -567,7 +644,7 @@ export const pastDuel = (userId: string, wpm: number, endedAt: number): DuelReco
     outcome: "draw",
     winnerId: null,
     players: [player(userId), player("someone-else")],
-  };
+  });
 };
 
 const RANKED_WINNERS = { win: "self", loss: "other", draw: null } as const;
@@ -591,8 +668,8 @@ export const rankedPastDuel = (
     outcome: winner === null ? "draw" : "win",
     winnerId: winner === null ? null : { self, other }[winner].userId,
     players: [
-      { ...self, rated },
-      { ...other, rated },
+      { ...self, rated, roundsWon: Number(winner === "self") },
+      { ...other, rated, roundsWon: Number(winner === "other") },
     ],
   };
 };

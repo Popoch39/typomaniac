@@ -28,6 +28,7 @@ import { useLocaleStore } from "@/stores/locale-store";
 import { usePlayStore } from "@/stores/play-store";
 import { fakeAuraRuntime } from "@/test/fake-aura-runtime";
 import { holdGsapClock } from "@/test/gsap-clock";
+import { writtenDuelOf } from "@/test/written-duel";
 
 const noResult = {
   wpm: 0,
@@ -168,7 +169,7 @@ const renderEnded = async ({
   queryClient.setQueryData(meQueryOptions.queryKey, ada);
 
   if (cached !== null) {
-    queryClient.setQueryData(replayedDuelQueryOptions(cached.id).queryKey, cached);
+    queryClient.setQueryData(replayedDuelQueryOptions(cached.id).queryKey, writtenDuelOf(cached));
   }
 
   const router = createRouter({

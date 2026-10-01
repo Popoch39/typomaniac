@@ -4,8 +4,16 @@ import type { Standing } from "ranked";
 import { currentWordListVersion, defaultPace } from "typing-engine";
 
 import { createApp } from "../../app";
-import { createTestAuth, memoryDuelStore, signIn, testConfig, testUsers } from "../../test-app";
-import type { DuelPlayerRecord, DuelRecord } from "../duel/store";
+import {
+  createTestAuth,
+  memoryDuelStore,
+  type OneRoundPlayer,
+  oneRoundDuel,
+  signIn,
+  testConfig,
+  testUsers,
+} from "../../test-app";
+import type { DuelRecord } from "../duel/store";
 import { ProfileModel } from "./model";
 
 const profileBody = TypeCompiler.Compile(ProfileModel.profile);
@@ -29,7 +37,7 @@ const finishedDuel = ({
   winnerId?: string | null;
   players: [Side, Side];
 }): DuelRecord => {
-  const player = ({ userId, wpm, accuracy = 100, score }: Side): DuelPlayerRecord => ({
+  const player = ({ userId, wpm, accuracy = 100, score }: Side): OneRoundPlayer => ({
     userId,
     result: {
       wpm,
@@ -46,7 +54,7 @@ const finishedDuel = ({
 
   duelCount += 1;
 
-  return {
+  return oneRoundDuel({
     id: `duel-${duelCount}`,
     seed: 1,
     language: "en",
@@ -58,7 +66,7 @@ const finishedDuel = ({
     outcome,
     winnerId,
     players: [player(first), player(second)],
-  };
+  });
 };
 
 // `count` Duels `ada` won, their wpm 1, 2, 3… in the order they ended.
@@ -461,6 +469,52 @@ describe("GET /api/users/:handle/profile", () => {
 
     expect(records).toEqual({ wpm: 120, score: 900, combo: 40 });
     expect(averages).toEqual({ wpm: 100, accuracy: 95 });
+  });
+
+  test("a Record is set by a Round, never by a Duel's Result over its Rounds", async () => {
+    const { duels, newUser, profileOf } = setup();
+    const ada = await newUser("ada");
+    const alan = await newUser("alan");
+
+    const duel = finishedDuel({
+      winnerId: ada.id,
+      players: [
+        { userId: ada.id, wpm: 70, score: { score: 300, bestCombo: 9 } },
+        { userId: alan.id, wpm: 50, score: { score: 100, bestCombo: 4 } },
+      ],
+    });
+
+    const [round] = duel.rounds;
+    const [adaSide, alanSide] = round.players;
+
+    // A second Round, faster: the Duel's wpm, 80, is the average of its Rounds.
+    duels.saved.push({
+      ...duel,
+      players: [
+        { ...duel.players[0], result: { ...duel.players[0].result, wpm: 80 } },
+        duel.players[1],
+      ],
+      rounds: [
+        round,
+        {
+          ...round,
+          index: 1,
+          players: [
+            {
+              ...adaSide,
+              result: { ...adaSide.result, wpm: 90 },
+              score: { score: 500, bestCombo: 6, bursts: 1 },
+            },
+            alanSide,
+          ],
+        },
+      ],
+    });
+
+    const { records } = (await profileOf(ada.cookie, "ada")).stats;
+
+    // The best wpm and Score of the second Round, the best Combo of the first.
+    expect(records).toEqual({ wpm: 90, score: 500, combo: 9 });
   });
 
   test("the Duels against a deleted User still count", async () => {

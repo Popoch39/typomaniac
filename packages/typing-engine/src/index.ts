@@ -37,7 +37,17 @@ export { cuesOf, type Cue, type Moment } from "./cues";
 
 export { paceDuels, paceOf } from "./pace";
 
-export { duelOutcome, type DuelSide, type Outcome } from "./outcome";
+export {
+  averageResult,
+  duelOutcome,
+  isDuelDecided,
+  maxRounds,
+  roundOutcome,
+  roundsWon,
+  type Outcome,
+  type RoundSide,
+  type RoundSides,
+} from "./outcome";
 
 export {
   acceptKeystroke,

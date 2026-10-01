@@ -3,8 +3,15 @@ import { byStanding, type Rank, type Standing } from "ranked";
 import { currentWordListVersion, defaultPace } from "typing-engine";
 
 import { createApp } from "../../app";
-import { createTestAuth, memoryDuelStore, signIn, testConfig, testUsers } from "../../test-app";
-import type { DuelPlayerRecord, DuelRecord } from "../duel/store";
+import {
+  createTestAuth,
+  memoryDuelStore,
+  type OneRoundPlayer,
+  oneRoundDuel,
+  signIn,
+  testConfig,
+  testUsers,
+} from "../../test-app";
 
 const standing = (tier: "silver" | "gold" | "platinum", tp = 50): Standing => ({
   tier,
@@ -15,7 +22,7 @@ const standing = (tier: "silver" | "gold" | "platinum", tp = 50): Standing => ({
 
 let duelCount = 0;
 
-const player = (userId: string): DuelPlayerRecord => ({
+const player = (userId: string): OneRoundPlayer => ({
   userId,
   result: {
     wpm: 60,
@@ -39,7 +46,7 @@ const rankedDuel = (
 ) => {
   duelCount += 1;
 
-  const record: DuelRecord = {
+  const record = oneRoundDuel({
     id: `duel-${duelCount}`,
     seed: 1,
     language: "en",
@@ -51,7 +58,7 @@ const rankedDuel = (
     outcome: "win",
     winnerId: byStanding(before, after) > 0 ? userId : opponentId,
     players: [player(userId), player(opponentId)],
-  };
+  });
 
   record.players[0].rated = {
     before: { mmr: 900, rank: before },

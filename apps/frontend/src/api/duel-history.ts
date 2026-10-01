@@ -39,16 +39,65 @@ export const historyActivityQueryOptions = (range: HistoryRange) => {
   });
 };
 
-const fetchReplayedDuel = async (duelId: string) => unwrap(await api.duels({ duelId }).get());
+const fetchWrittenDuel = async (duelId: string) => unwrap(await api.duels({ duelId }).get());
 
-// A finished Duel of the User, whole, seen from them: its Text, both sides and their Keystrokes.
-export type ReplayedDuel = Awaited<ReturnType<typeof fetchReplayedDuel>>;
+// A finished Duel of the User, whole, seen from them: both Users and each of its Rounds, with their
+// Text and both sides' Keystrokes.
+export type WrittenDuel = Awaited<ReturnType<typeof fetchWrittenDuel>>;
 
-export type ReplayedPlayer = ReplayedDuel["me"];
+type WrittenPlayer = NonNullable<WrittenDuel["opponent"]>;
+
+type WrittenRound = WrittenDuel["rounds"][number];
+
+type WrittenRoundSide = WrittenRound["me"];
+
+// One User of a Duel seen on one of its Rounds: who they are and their Pace, with the Result,
+// Score and Keystrokes of that Round.
+export type ReplayedPlayer = Omit<WrittenPlayer, "result" | "roundsWon"> & WrittenRoundSide;
+
+// A finished Duel seen on one of its Rounds: its Text (Seed) and time are the Round's, both sides
+// are what the Users did in it.
+export type ReplayedDuel = Omit<WrittenDuel, "me" | "opponent" | "rounds" | "roundsToWin"> &
+  Pick<WrittenRound, "seed" | "startsAt" | "endedAt"> & {
+    me: ReplayedPlayer;
+    opponent: ReplayedPlayer | null;
+  };
+
+const playerOnRound = (
+  { handle, image, pace }: WrittenPlayer,
+  side: WrittenRoundSide,
+): ReplayedPlayer => ({ handle, image, pace, ...side });
+
+// `duel` seen on its Round `round`.
+export const duelOnRound = (duel: WrittenDuel, round: WrittenRound): ReplayedDuel => {
+  const { me, opponent, rounds: _, roundsToWin: __, ...rest } = duel;
+
+  return {
+    ...rest,
+    seed: round.seed,
+    startsAt: round.startsAt,
+    endedAt: round.endedAt,
+    me: playerOnRound(me, round.me),
+    opponent: opponent && round.opponent ? playerOnRound(opponent, round.opponent) : null,
+  };
+};
+
+// The Duel seen on its first Round: the only one a Duel has before the Bo3.
+const onFirstRound = (duel: WrittenDuel): ReplayedDuel => {
+  const [first] = duel.rounds;
+
+  // The API never sends a Duel without a Round (`minItems: 1`).
+  if (typeof first === "undefined") {
+    throw new Error(`Duel ${duel.id} without a Round`);
+  }
+
+  return duelOnRound(duel, first);
+};
 
 export const replayedDuelQueryOptions = (duelId: string) =>
   queryOptions({
     // Apart from the History's keys: invalidating them leaves the Replays be.
     queryKey: ["duel", duelId],
-    queryFn: () => fetchReplayedDuel(duelId),
+    queryFn: () => fetchWrittenDuel(duelId),
+    select: onFirstRound,
   });

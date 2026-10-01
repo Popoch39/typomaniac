@@ -4,8 +4,16 @@ import type { Rating } from "ranked";
 import { currentWordListVersion, defaultPace, generateText, type Keystroke } from "typing-engine";
 
 import { createApp } from "../../app";
-import { createTestAuth, memoryDuelStore, signIn, testConfig, testUsers } from "../../test-app";
-import type { DuelPlayerRecord, DuelRecord } from "../duel/store";
+import {
+  createTestAuth,
+  memoryDuelStore,
+  type OneRoundPlayer,
+  oneRoundDuel,
+  signIn,
+  testConfig,
+  testUsers,
+} from "../../test-app";
+import type { DuelRecord } from "../duel/store";
 import { DuelHistoryModel } from "./model";
 
 const historyWeek = TypeCompiler.Compile(DuelHistoryModel.week);
@@ -48,7 +56,7 @@ const finishedDuel = ({
   winnerId?: string | null;
   players: [Side, Side];
 }): DuelRecord => {
-  const player = ({ userId, wpm, score, keystrokes = [], rated }: Side): DuelPlayerRecord => ({
+  const player = ({ userId, wpm, score, keystrokes = [], rated }: Side): OneRoundPlayer => ({
     userId,
     result: {
       wpm,
@@ -63,7 +71,7 @@ const finishedDuel = ({
     rated: rated ? { before: RATING, after: RATING, tp: rated.tp } : null,
   });
 
-  return {
+  return oneRoundDuel({
     id,
     seed: 1,
     language: "en",
@@ -75,7 +83,7 @@ const finishedDuel = ({
     outcome,
     winnerId,
     players: [player(first), player(second)],
-  };
+  });
 };
 
 // A fresh app per test: its Users and its Duels are its own.
@@ -650,19 +658,29 @@ describe("GET /api/duels/activity", () => {
   });
 });
 
-// A side of a replayed Duel as `finishedDuel` writes it, without its Keystrokes.
-const player = (image: string, handle: string, wpm: number, score: number) => ({
+// A Result as `finishedDuel` writes it, for the Duel and for its Round.
+const resultAt = (wpm: number) => ({
+  wpm,
+  raw: wpm,
+  accuracy: 100,
+  consistency: 80,
+  chars: { correct: wpm * 2.5, incorrect: 0, extra: 0, missed: 0 },
+});
+
+// A User of a replayed Duel as `finishedDuel` writes them.
+const player = (image: string, handle: string, wpm: number, roundsWon: number) => ({
   handle,
   image,
-  result: {
-    wpm,
-    raw: wpm,
-    accuracy: 100,
-    consistency: 80,
-    chars: { correct: wpm * 2.5, incorrect: 0, extra: 0, missed: 0 },
-  },
+  result: resultAt(wpm),
   pace: defaultPace,
+  roundsWon,
+});
+
+// A side of the Round of a replayed Duel as `finishedDuel` writes it.
+const roundSide = (wpm: number, score: number, keystrokes: Keystroke[]) => ({
+  result: resultAt(wpm),
   score: { score, bestCombo: 10, bursts: 1 },
+  keystrokes,
 });
 
 describe("GET /api/duels/:duelId", () => {
@@ -714,7 +732,6 @@ describe("GET /api/duels/:duelId", () => {
 
     expect(await ada.replay("ada-alan")).toEqual({
       id: "ada-alan",
-      seed: 1,
       language: "en",
       wordListVersion: currentWordListVersion.en,
       seconds: 30,
@@ -724,16 +741,29 @@ describe("GET /api/duels/:duelId", () => {
       forfeit: false,
       ranked: false,
       tp: null,
-      me: { ...player(ada.image, "ada", 90, 1200), keystrokes: adaTyped },
-      opponent: { ...player(alan.image, "alan", 70, 800), keystrokes: alanTyped },
+      roundsToWin: 1,
+      me: player(ada.image, "ada", 90, 1),
+      opponent: player(alan.image, "alan", 70, 0),
+      rounds: [
+        {
+          index: 0,
+          seed: 1,
+          seconds: 30,
+          startsAt: 1_000_000,
+          endedAt: 1_030_000,
+          me: roundSide(90, 1200, adaTyped),
+          opponent: roundSide(70, 800, alanTyped),
+        },
+      ],
     });
 
     const fromAlan = await alan.replay("ada-alan");
 
     expect(fromAlan.outcome).toBe("loss");
-    expect(fromAlan.me.keystrokes).toEqual(alanTyped);
+    expect(fromAlan.me.roundsWon).toBe(0);
+    expect(fromAlan.rounds[0]?.me.keystrokes).toEqual(alanTyped);
     expect(fromAlan.opponent?.handle).toBe("ada");
-    expect(fromAlan.opponent?.keystrokes).toEqual(adaTyped);
+    expect(fromAlan.rounds[0]?.opponent?.keystrokes).toEqual(adaTyped);
   });
 
   test("a Ranked Duel says so with the TP it moved for the reader, none in Placement nor for a Challenge", async () => {
@@ -787,8 +817,8 @@ describe("GET /api/duels/:duelId", () => {
     const duel = await grace.replay("grace-linus");
 
     expect(duel.outcome).toBe("draw");
-    expect(duel.me.score).toBeNull();
-    expect(duel.opponent?.score).toBeNull();
+    expect(duel.rounds[0]?.me.score).toBeNull();
+    expect(duel.rounds[0]?.opponent?.score).toBeNull();
   });
 
   test("a User who did not play the Duel gets 404, like for a Duel that does not exist", async () => {
@@ -825,6 +855,7 @@ describe("GET /api/duels/:duelId", () => {
     const duel = await ada.replay("ada-alan");
 
     expect(duel.opponent).toBeNull();
-    expect(duel.me.keystrokes).toEqual(adaTyped);
+    expect(duel.rounds[0]?.opponent).toBeNull();
+    expect(duel.rounds[0]?.me.keystrokes).toEqual(adaTyped);
   });
 });

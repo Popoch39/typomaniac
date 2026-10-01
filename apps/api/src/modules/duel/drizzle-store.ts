@@ -17,8 +17,10 @@ import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import type { Table } from "../../database/schema";
 import { DIVISIONS, PLACEMENT_DUELS, type Rating } from "ranked";
 
+import type { Result } from "typing-engine";
+
 import type { Records } from "./model";
-import { duel, duelPlayer, pastPlacementSql, rankedRating } from "./schema";
+import { duel, duelPlayer, duelRound, pastPlacementSql, rankedRating } from "./schema";
 import type {
   DuelPlayerRecord,
   DuelStore,
@@ -26,6 +28,9 @@ import type {
   LeaderboardKey,
   PlayedDuel,
   PlayedDuelPlayer,
+  PlayedRound,
+  RoundPlayerRecord,
+  RoundRecord,
 } from "./store";
 
 // A Rating as its row holds it: the Placement as a count of Duels played.
@@ -80,44 +85,81 @@ const leaderboardRowsOf = (rows: (typeof rankedRating.$inferSelect)[]) =>
     return "placementsLeft" in rank ? [] : [{ userId: row.userId, standing: rank }];
   });
 
+// A Result as its columns hold it, on a player row or a Round row.
+const resultColumns = ({ wpm, raw, accuracy, consistency, chars }: Result) => ({
+  wpm,
+  raw,
+  accuracy,
+  consistency,
+  correctChars: chars.correct,
+  incorrectChars: chars.incorrect,
+  extraChars: chars.extra,
+  missedChars: chars.missed,
+});
+
+type ResultRow = Pick<
+  typeof duelPlayer.$inferSelect,
+  | "wpm"
+  | "raw"
+  | "accuracy"
+  | "consistency"
+  | "correctChars"
+  | "incorrectChars"
+  | "extraChars"
+  | "missedChars"
+>;
+
+const resultOf = (row: ResultRow): Result => ({
+  wpm: row.wpm,
+  raw: row.raw,
+  accuracy: row.accuracy,
+  consistency: row.consistency,
+  chars: {
+    correct: row.correctChars,
+    incorrect: row.incorrectChars,
+    extra: row.extraChars,
+    missed: row.missedChars,
+  },
+});
+
 const playerRow = (
   duelId: string,
-  { userId, result, pace, score, keystrokes, rated }: DuelPlayerRecord,
+  { userId, result, pace, roundsWon, rated }: DuelPlayerRecord,
 ) => ({
   duelId,
   userId,
   pace,
+  roundsWon,
   tpDelta: rated?.tp ?? null,
   mmrDelta: rated ? rated.after.mmr - rated.before.mmr : null,
-  wpm: result.wpm,
-  raw: result.raw,
-  accuracy: result.accuracy,
-  consistency: result.consistency,
-  correctChars: result.chars.correct,
-  incorrectChars: result.chars.incorrect,
-  extraChars: result.chars.extra,
-  missedChars: result.chars.missed,
-  score: score === null ? null : score.score,
-  bestCombo: score === null ? null : score.bestCombo,
-  bursts: score === null ? null : score.bursts,
-  keystrokes,
+  ...resultColumns(result),
 });
+
+const roundRows = (duelId: string, { index, seed, startsAt, endedAt, players }: RoundRecord) =>
+  players.map(({ userId, result, score, keystrokes }) => ({
+    duelId,
+    userId,
+    roundIndex: index,
+    seed,
+    startedAt: new Date(startsAt),
+    endedAt: new Date(endedAt),
+    ...resultColumns(result),
+    score: score === null ? null : score.score,
+    bestCombo: score === null ? null : score.bestCombo,
+    bursts: score === null ? null : score.bursts,
+    keystrokes,
+  }));
 
 const playerOf = (row: typeof duelPlayer.$inferSelect): PlayedDuelPlayer => ({
   userId: row.userId,
-  result: {
-    wpm: row.wpm,
-    raw: row.raw,
-    accuracy: row.accuracy,
-    consistency: row.consistency,
-    chars: {
-      correct: row.correctChars,
-      incorrect: row.incorrectChars,
-      extra: row.extraChars,
-      missed: row.missedChars,
-    },
-  },
+  result: resultOf(row),
   pace: row.pace,
+  roundsWon: row.roundsWon,
+});
+
+const roundPlayerOf = (row: typeof duelRound.$inferSelect): RoundPlayerRecord => ({
+  userId: row.userId,
+  result: resultOf(row),
   // All three or none: written together since the Score.
   score:
     row.score === null || row.bestCombo === null || row.bursts === null
@@ -126,12 +168,41 @@ const playerOf = (row: typeof duelPlayer.$inferSelect): PlayedDuelPlayer => ({
   keystrokes: row.keystrokes,
 });
 
-// The Records over a User's player rows: the best wpm, Score and Combo, Challenges and Forfeits
-// included. The Score's are null on the rows written before it.
+// The Rounds of a Duel as `userId` played them, from its Round rows: theirs, and the opponent's
+// when their User is still there. Null without a row of theirs, which a written Duel always has.
+const playedRoundsOf = (
+  userId: string,
+  rows: readonly (typeof duelRound.$inferSelect)[],
+): PlayedDuel["rounds"] | null => {
+  const rounds = rows
+    .filter((row) => row.userId === userId)
+    .toSorted((a, b) => a.roundIndex - b.roundIndex)
+    .map((own): PlayedRound => {
+      const opponent = rows.find(
+        (row) => row.roundIndex === own.roundIndex && row.userId !== userId,
+      );
+
+      return {
+        index: own.roundIndex,
+        seed: own.seed,
+        startsAt: own.startedAt.getTime(),
+        endedAt: own.endedAt.getTime(),
+        player: roundPlayerOf(own),
+        opponent: opponent ? roundPlayerOf(opponent) : null,
+      };
+    });
+
+  const [first, ...later] = rounds;
+
+  return first ? [first, ...later] : null;
+};
+
+// The Records over a User's Round rows: the best wpm, Score and Combo of a Round, Challenges and
+// Forfeits included. The Score's are null on the rows written before it.
 const bestColumns = {
-  bestWpm: max(duelPlayer.wpm),
-  bestScore: max(duelPlayer.score),
-  bestCombo: max(duelPlayer.bestCombo),
+  bestWpm: max(duelRound.wpm),
+  bestScore: max(duelRound.score),
+  bestCombo: max(duelRound.bestCombo),
 };
 
 // The Records of the row `bestColumns` aggregates, all null without a Duel.
@@ -152,9 +223,9 @@ const playedOf = (
   played: typeof duel.$inferSelect,
   own: typeof duelPlayer.$inferSelect,
   opponent: typeof duelPlayer.$inferSelect | undefined,
+  rounds: PlayedDuel["rounds"],
 ): PlayedDuel => ({
   id: played.id,
-  seed: played.seed,
   language: played.language,
   wordListVersion: played.wordListVersion,
   mode: played.mode,
@@ -163,19 +234,59 @@ const playedOf = (
   endedAt: played.endedAt.getTime(),
   outcome: played.outcome,
   winnerId: played.winnerId,
+  roundsToWin: played.roundsToWin,
   player: playerOf(own),
   opponent: opponent ? playerOf(opponent) : null,
+  rounds,
   tp: own.tpDelta,
   ranked: played.ranked,
 });
 
-// The production DuelStore: a finished Duel and its two players, in one transaction.
+// A User's Records, over their Round rows: their own read, apart from the player rows.
+const recordsOfUser = async (db: BunSQLDatabase<Table>, userId: string) => {
+  const [row] = await db.select(bestColumns).from(duelRound).where(eq(duelRound.userId, userId));
+
+  return recordsOf(row);
+};
+
+// The Round rows of the Duels `duelIds`, by Duel: those of the Users still there.
+const roundRowsOf = async (db: BunSQLDatabase<Table>, duelIds: readonly string[]) => {
+  const rows =
+    duelIds.length === 0
+      ? []
+      : await db
+          .select()
+          .from(duelRound)
+          .where(inArray(duelRound.duelId, [...duelIds]));
+
+  const byDuel = new Map<string, (typeof duelRound.$inferSelect)[]>();
+
+  for (const row of rows) {
+    byDuel.set(row.duelId, [...(byDuel.get(row.duelId) ?? []), row]);
+  }
+
+  return byDuel;
+};
+
+// The Duel as `userId` played it, from its rows; null without a Round of theirs.
+const playedFrom = (
+  userId: string,
+  played: typeof duel.$inferSelect,
+  own: typeof duelPlayer.$inferSelect,
+  opponent: typeof duelPlayer.$inferSelect | undefined,
+  rounds: readonly (typeof duelRound.$inferSelect)[] | undefined,
+) => {
+  const playedRounds = playedRoundsOf(userId, rounds ?? []);
+
+  return playedRounds && playedOf(played, own, opponent, playedRounds);
+};
+
+// The production DuelStore: a finished Duel, its two players and their Rounds, in one transaction.
 export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
   save: async (record) => {
     await db.transaction(async (tx) => {
       await tx.insert(duel).values({
         id: record.id,
-        seed: record.seed,
         language: record.language,
         wordListVersion: record.wordListVersion,
         mode: record.mode,
@@ -185,10 +296,14 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
         outcome: record.outcome,
         winnerId: record.winnerId,
         ranked: record.players.every((player) => player.rated !== null),
+        roundsToWin: record.roundsToWin,
       });
       await tx
         .insert(duelPlayer)
         .values(record.players.map((player) => playerRow(record.id, player)));
+      await tx
+        .insert(duelRound)
+        .values(record.rounds.flatMap((round) => roundRows(record.id, round)));
 
       const ratings = record.players.flatMap(({ userId, rated }) =>
         rated ? [ratingRow(userId, rated.after)] : [],
@@ -337,7 +452,22 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
 
     const opponentOf = new Map(opponents.map((row) => [row.duelId, row]));
 
-    return own.map((row) => playedOf(row.duel, row.duel_player, opponentOf.get(row.duel.id)));
+    const roundsOf = await roundRowsOf(
+      db,
+      own.map((row) => row.duel.id),
+    );
+
+    return own.flatMap((row) => {
+      const played = playedFrom(
+        userId,
+        row.duel,
+        row.duel_player,
+        opponentOf.get(row.duel.id),
+        roundsOf.get(row.duel.id),
+      );
+
+      return played ? [played] : [];
+    });
   },
   // Counted by day of the User's time zone: `ended_at` holds UTC.
   activity: async (userId, range, timeZone) => {
@@ -375,8 +505,15 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
     }
 
     const opponent = rows.find((row) => row.duel_player.userId !== userId);
+    const roundsOf = await roundRowsOf(db, [duelId]);
 
-    return playedOf(own.duel, own.duel_player, opponent?.duel_player);
+    return playedFrom(
+      userId,
+      own.duel,
+      own.duel_player,
+      opponent?.duel_player,
+      roundsOf.get(duelId),
+    );
   },
   // The last Duels read newest first, then turned around.
   progression: async (userId, limit) => {
@@ -451,11 +588,11 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
       ),
     }));
   },
-  // One pass over the User's player rows. A loss is neither a win nor a Draw: a deleted winner
-  // leaves `winner_id` null on a Duel that was not a Draw. The averages leave out the Forfeits, as
-  // the Progression does.
+  // One pass over the User's player rows, and their Records over their Round rows, at once. A loss
+  // is neither a win nor a Draw: a deleted winner leaves `winner_id` null on a Duel that was not a
+  // Draw. The averages leave out the Forfeits, as the Progression does.
   stats: async (userId) => {
-    const [row] = await db
+    const aggregate = db
       .select({
         duels: countRows(),
         wins: sql<number>`count(*) filter (where ${duel.winnerId} = ${userId})`.mapWith(Number),
@@ -467,12 +604,12 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
         accuracy: sql<
           number | null
         >`avg(${duelPlayer.accuracy}) filter (where ${duel.outcome} <> 'forfeit')`.mapWith(Number),
-        ...bestColumns,
       })
       .from(duelPlayer)
       .innerJoin(duel, eq(duel.id, duelPlayer.duelId))
       .where(eq(duelPlayer.userId, userId));
 
+    const [[row], records] = await Promise.all([aggregate, recordsOfUser(db, userId)]);
     const duels = row?.duels ?? 0;
     const wins = row?.wins ?? 0;
     const draws = row?.draws ?? 0;
@@ -486,16 +623,9 @@ export const drizzleDuelStore = (db: BunSQLDatabase<Table>): DuelStore => ({
         wpm: scored === 0 ? null : (row?.wpm ?? null),
         accuracy: scored === 0 ? null : (row?.accuracy ?? null),
       },
-      records: recordsOf(row),
+      records,
     };
   },
   // The same aggregate as the Stats' Records, alone.
-  records: async (userId) => {
-    const [row] = await db
-      .select(bestColumns)
-      .from(duelPlayer)
-      .where(eq(duelPlayer.userId, userId));
-
-    return recordsOf(row);
-  },
+  records: async (userId) => recordsOfUser(db, userId),
 });

@@ -1323,20 +1323,22 @@ describe("duel socket", () => {
       throw new Error(`No Duel found: ${found.type}`);
     }
 
+    const { seed, ...written } = duel;
+
     expect(saved).toEqual([
       {
-        ...duel,
+        ...written,
         mode: "time",
         endedAt: TIME_UP,
         outcome: "win",
         winnerId: adaId,
+        roundsToWin: 1,
         players: [
           {
             userId: adaId,
             result: resultOf(forAda),
             pace: defaultPace,
-            score: scoreOf(forAda),
-            keystrokes: typed(word, 1000),
+            roundsWon: 1,
             // A first Queue: seeded at 600 from the default Pace, then a Placement win at K 60.
             rated: {
               before: { mmr: 600, rank: { placementsLeft: 5 } },
@@ -1348,13 +1350,35 @@ describe("duel socket", () => {
             userId: alanId,
             result: resultOf(forAlan),
             pace: defaultPace,
-            score: scoreOf(forAlan),
-            keystrokes: [char("x", 3000)],
+            roundsWon: 0,
             rated: {
               before: { mmr: 600, rank: { placementsLeft: 5 } },
               after: { mmr: 570, rank: { placementsLeft: 4 } },
               tp: null,
             },
+          },
+        ],
+        // A single Round, on the Duel's Seed and over its time.
+        rounds: [
+          {
+            index: 0,
+            seed,
+            startsAt: duel.startsAt,
+            endedAt: TIME_UP,
+            players: [
+              {
+                userId: adaId,
+                result: resultOf(forAda),
+                score: scoreOf(forAda),
+                keystrokes: typed(word, 1000),
+              },
+              {
+                userId: alanId,
+                result: resultOf(forAlan),
+                score: scoreOf(forAlan),
+                keystrokes: [char("x", 3000)],
+              },
+            ],
           },
         ],
       },
@@ -1430,25 +1454,35 @@ describe("duel socket", () => {
       throw new Error("No Duel written");
     }
 
+    const [round] = record.rounds;
+
     const config = {
       mode: record.mode,
       seconds: record.seconds,
       language: record.language,
       wordListVersion: record.wordListVersion,
-      seed: record.seed,
+      seed: round.seed,
     };
 
-    const replayed = record.players.map((player) =>
-      computeResult(config, player.keystrokes, record.seconds * 1000),
+    const replayed = round.players.map((side) =>
+      computeResult(config, side.keystrokes, record.seconds * 1000),
     );
 
-    expect(replayed).toEqual(record.players.map((player) => player.result));
+    expect(replayed).toEqual(round.players.map((side) => side.result));
+    // A single Round: the Duel's Result is its Round's.
+    expect(record.players.map((player) => player.result)).toEqual(replayed);
 
     // Each player went at their own Pace, written with them.
-    const rescored = record.players.map((player) => {
+    const rescored = round.players.map((side) => {
+      const player = record.players.find(({ userId }) => userId === side.userId);
+
+      if (typeof player === "undefined") {
+        throw new Error(`No player ${side.userId} in the Duel`);
+      }
+
       const { score, bestCombo, bursts } = computeScore(
         config,
-        player.keystrokes,
+        side.keystrokes,
         player.pace,
         record.seconds * 1000,
       );
@@ -1457,10 +1491,10 @@ describe("duel socket", () => {
     });
 
     expect(record.players.map((player) => player.pace)).toEqual([70, defaultPace]);
-    expect(record.players.map((player) => player.score)).toEqual(rescored);
+    expect(round.players.map((side) => side.score)).toEqual(rescored);
     // Not a trivial replay: both typed something that counts.
-    expect(record.players.map((player) => player.result.wpm > 0)).toEqual([true, true]);
-    expect(record.players.map((player) => (player.score?.score ?? 0) > 0)).toEqual([true, true]);
+    expect(round.players.map((side) => side.result.wpm > 0)).toEqual([true, true]);
+    expect(round.players.map((side) => (side.score?.score ?? 0) > 0)).toEqual([true, true]);
   });
 
   test("a Draw is written with no winner", async () => {
@@ -1492,9 +1526,22 @@ describe("duel socket", () => {
         outcome: "forfeit",
         winnerId: alanId,
         endedAt: STARTS_AT + 5000,
+        // The Round the Forfeit cut short counts for nobody.
         players: [
-          { userId: adaId, keystrokes: [char("s", 1000)] },
-          { userId: alanId, keystrokes: [] },
+          { userId: adaId, roundsWon: 0 },
+          { userId: alanId, roundsWon: 0 },
+        ],
+        // It ends at the Forfeit.
+        rounds: [
+          {
+            index: 0,
+            startsAt: STARTS_AT,
+            endedAt: STARTS_AT + 5000,
+            players: [
+              { userId: adaId, keystrokes: [char("s", 1000)] },
+              { userId: alanId, keystrokes: [] },
+            ],
+          },
         ],
       },
     ]);

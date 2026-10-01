@@ -92,6 +92,27 @@
       "when": 1790795082434,
       "tag": "0012_duel_ended_at_index",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790869301474,
+      "tag": "0013_duel_rounds",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790869301915,
+      "tag": "0014_duel_rounds_from_players",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790869341441,
+      "tag": "0015_duel_player_rounds_only",
+      "breakpoints": true
     }
   ]
 }
