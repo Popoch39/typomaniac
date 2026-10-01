@@ -87,13 +87,20 @@ describe("the Round break's view", () => {
     expect(view).toMatchObject({ nextNumber: 3, deciding: true });
   });
 
-  test("a third Round after a drawn one is not the deciding one of a 1-1", () => {
+  test("a third Round after a drawn one is deciding on its card, but not the 1-1 of the caption", () => {
     const view = roundBreakView(
       duel([played(0, "win", 500, 400), played(1, "draw", 300, 300)], 1, 0),
       next(2),
     );
 
-    expect(view.cards[2]?.foot).toBe("to-play");
+    expect(view.cards[2]?.foot).toBe("deciding");
     expect(view.deciding).toBe(false);
+  });
+
+  test("after a drawn first Round, the third is sure to be played: deciding, never if needed", () => {
+    const view = roundBreakView(duel([played(0, "draw", 640, 640)], 0, 0), next(1));
+
+    expect(view.cards[1]?.foot).toBe("to-play");
+    expect(view.cards[2]?.foot).toBe("deciding");
   });
 });

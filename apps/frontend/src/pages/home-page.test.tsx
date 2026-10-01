@@ -360,6 +360,21 @@ describe("/run", () => {
 });
 
 describe("the Ranked card", () => {
+  test("says its Duel's format, a Bo3, in French and in English", async () => {
+    await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
+    receive(idle());
+
+    expect(
+      within(rankedCard()).getByText("Duel classé · Bo3 · 30 s · anglais"),
+    ).toBeInTheDocument();
+
+    act(() => useLocaleStore.setState({ locale: "en" }));
+
+    expect(
+      within(rankedCard()).getByText("Ranked Duel · Bo3 · 30 s · English"),
+    ).toBeInTheDocument();
+  });
+
   test("Lancer la recherche joins the Queue and shows the search on Jouer; Annuler, the cards again", async () => {
     const { user, url } = await renderAppFor("/fr", { reader: ada, openSocket: sockets.open });
 

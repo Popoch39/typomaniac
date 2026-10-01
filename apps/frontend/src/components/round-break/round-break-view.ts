@@ -36,7 +36,8 @@ export type RoundCount = {
 export type RoundBreakView = {
   cards: RoundCard[];
   count: RoundCount;
-  // The next Round, from 1, and whether it decides the Duel: both one Round away, the last one.
+  // The next Round, from 1, and whether the caption announces the deciding Round: the last one, both
+  // one Round away (« 1 partout »).
   nextNumber: number;
   deciding: boolean;
 };
@@ -79,16 +80,35 @@ export const roundBreakView = (
   const deciding =
     next.index === last && roundsWon === roundsToWin - 1 && opponentRoundsWon === roundsToWin - 1;
 
+  // A Round is sure to be played once nobody can win the Duel before it: with the Rounds left until
+  // it, neither player reaches `roundsToWin`.
+  const surelyPlayed = (index: number) =>
+    Math.max(roundsWon, opponentRoundsWon) + (index - next.index) < roundsToWin;
+
+  // The last Round, sure to be played, decides the Duel: « décisive ». The next one otherwise is to
+  // play; a later one is « décisive » once sure to be played, « si besoin » until then.
+  const footOf = (index: number, state: RoundCardState): CardFoot | null => {
+    if (state === "next") {
+      return index === last ? "deciding" : "to-play";
+    }
+
+    if (state !== "later") {
+      return null;
+    }
+
+    return index === last && surelyPlayed(index) ? "deciding" : "if-needed";
+  };
+
   const cards = Array.from({ length: last + 1 }, (_, index): RoundCard => {
     const state = stateOf(index, next.index);
     const round = rounds.find((played) => played.index === index);
-    const played = round === undefined ? null : playedCardOf(round);
 
-    if (state === "next") {
-      return { index, state, played, foot: deciding ? "deciding" : "to-play" };
-    }
-
-    return { index, state, played, foot: state === "later" ? "if-needed" : null };
+    return {
+      index,
+      state,
+      played: round === undefined ? null : playedCardOf(round),
+      foot: footOf(index, state),
+    };
   });
 
   const justPlayed = rounds.find((played) => played.index === next.index - 1);
