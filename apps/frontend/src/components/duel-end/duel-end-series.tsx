@@ -20,6 +20,8 @@ type DuelEndSeriesProps = {
 // The end of a Bo3, held in the window without scrolling (a laptop of 1280 × 720 included): its
 // outcome, the count of the Rounds in large on the band, then three columns (its Rounds line by
 // line and the rank, the Records, the Duel chart or the tale of the tape), and the ways out.
+// Under 1024 px of width, two columns (the Rounds and the rank, the Duel), the Records side by side
+// under both.
 export const DuelEndSeries = ({ ending, opponent, tiles, beaten }: DuelEndSeriesProps) => {
   const locale = useLocale();
 
@@ -39,12 +41,12 @@ export const DuelEndSeries = ({ ending, opponent, tiles, beaten }: DuelEndSeries
         record={false}
         compact
       />
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.1fr)_minmax(0,0.8fr)_minmax(0,1.5fr)] gap-3.5">
-        <div className="flex min-h-0 min-w-0 flex-col gap-3.5">
+      <div className="grid flex-1 grid-cols-[minmax(0,1.1fr)_minmax(0,0.8fr)_minmax(0,1.5fr)] content-start gap-3.5 [grid-template-areas:'rounds_records_duel'] @max-5xl:grid-cols-2 @max-5xl:[grid-template-areas:'rounds_duel'_'records_records']">
+        <div className="flex min-w-0 flex-col gap-3.5 [grid-area:rounds]">
           <DuelEndRounds rounds={ending.rounds} opponent={opponent} />
           {ending.ranked === null ? null : <DuelEndRank ranked={ending.ranked} compact />}
         </div>
-        <div className="min-h-0 min-w-0">
+        <div className="min-w-0 [grid-area:records]">
           {tiles === null ? null : <DuelEndRecords tiles={tiles} compact />}
         </div>
         <DuelEndSeriesDuel ending={ending} opponent={opponent} beaten={beaten} />

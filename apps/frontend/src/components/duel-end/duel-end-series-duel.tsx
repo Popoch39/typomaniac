@@ -18,7 +18,7 @@ export const DuelEndSeriesDuel = ({ ending, opponent, beaten }: DuelEndSeriesDue
   const [view, setView] = useState<DuelEndView>("chart");
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3 [grid-area:duel]">
       <DuelEndViewPicker view={view} onChange={setView} />
       {view === "chart" ? (
         <DuelEndChart duelId={ending.duelId} compact />

@@ -6,7 +6,7 @@ import { useLocale } from "@/locale/use-locale";
 import { m } from "@/paraglide/messages";
 
 // The User's three Records against this Duel, a tile each, side by side; in a Bo3's column
-// (`compact`), one above the other, smaller.
+// (`compact`), one above the other, smaller, or side by side when the screen is narrow.
 export const DuelEndRecords = ({
   tiles,
   compact = false,
@@ -18,7 +18,13 @@ export const DuelEndRecords = ({
 
   return (
     <section aria-label={m.duel_ended_records({}, { locale })}>
-      <ul className={cn("grid", compact ? "grid-cols-1 gap-3" : "grid-cols-3 gap-4")}>
+      <ul
+        className={cn(
+          "grid",
+          // Under a Bo3's end of less than 1024 px, under its two columns: side by side again.
+          compact ? "grid-cols-1 gap-3 @max-5xl:grid-cols-3" : "grid-cols-3 gap-4",
+        )}
+      >
         {tiles.map((tile) => (
           <DuelEndRecordTile key={tile.id} tile={tile} compact={compact} />
         ))}

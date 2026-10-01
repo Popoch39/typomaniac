@@ -72,8 +72,9 @@ export const DuelEnded = ({ ending }: { ending: DuelEnding }) => {
       tabIndex={-1}
       className={cn(
         "mx-auto flex w-full max-w-[1100px] flex-col outline-none",
-        // A Bo3's end holds in the window, the page's margins taken off.
-        series ? "h-[calc(100svh-5.5rem)] gap-3.5" : "gap-6",
+        // A Bo3's end fills the window, the page's margins taken off; in a window too low for it,
+        // it grows and the page scrolls, never a block over another. Its columns follow its width.
+        series ? "@container min-h-[calc(100svh-5.5rem)] gap-3.5" : "gap-6",
       )}
     >
       {reached !== null && tierUp === "open" ? (
