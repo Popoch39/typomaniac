@@ -45,7 +45,7 @@ export const DuelEndScores = ({
       style={share}
       className={cn(
         "relative shrink-0 overflow-hidden rounded-card bg-opponent",
-        compact ? "h-28" : "h-60",
+        compact ? "h-24" : "h-60",
       )}
     >
       <DuelEndScoreFills />
@@ -53,7 +53,7 @@ export const DuelEndScores = ({
         data-band-figures
         className={cn(
           "relative flex h-full items-stretch justify-between",
-          compact ? "px-9 py-3.5" : "px-11 py-8",
+          compact ? "px-9 py-3" : "px-11 py-8",
         )}
       >
         <DuelEndScoreSide

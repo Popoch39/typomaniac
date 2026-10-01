@@ -3,6 +3,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 
 import { meQueryOptions } from "@/api/me";
+import { ForcedReducedMotionContext } from "@/components/motion/reduced-motion-context";
 import { RoundBreak, type RoundBreakDuel } from "@/components/round-break/round-break";
 import { GO_AT, ROUND_BREAK_TIMES } from "@/components/round-break/round-break-timeline";
 import { ClockContext } from "@/components/run/clock-context";
@@ -65,7 +66,12 @@ afterEach(() => {
 });
 
 // The Round break before `upcoming`, the tab's clock `at` ms from the start of the Round break.
-const renderBreak = (duel: RoundBreakDuel, upcoming: NextRound, at = GO_AT * 1000) => {
+const renderBreak = (
+  duel: RoundBreakDuel,
+  upcoming: NextRound,
+  at = GO_AT * 1000,
+  reduced = false,
+) => {
   const queryClient = new QueryClient();
 
   queryClient.setQueryData(meQueryOptions.queryKey, ada);
@@ -74,9 +80,11 @@ const renderBreak = (duel: RoundBreakDuel, upcoming: NextRound, at = GO_AT * 100
 
   render(
     <QueryClientProvider client={queryClient}>
-      <ClockContext value={() => now}>
-        <RoundBreak duel={duel} next={upcoming} onLeave={() => {}} />
-      </ClockContext>
+      <ForcedReducedMotionContext value={reduced}>
+        <ClockContext value={() => now}>
+          <RoundBreak duel={duel} next={upcoming} onLeave={() => {}} />
+        </ClockContext>
+      </ForcedReducedMotionContext>
     </QueryClientProvider>,
   );
 };
@@ -167,6 +175,29 @@ describe("the Round break", () => {
     renderBreak(duel, next(1));
     expect(opacityOf('[data-rb="go"]')).toBe("1");
     expect(opacityOf('[data-rb="count-1"]')).toBe("0");
+  });
+
+  test("under reduced motion, the same moments in fades: no rise, no turn", () => {
+    const duel = duelWith([played(0, "win", 500, 400)], 1, 0);
+
+    renderBreak(duel, next(1), 0, true);
+
+    const slot = document.querySelector<HTMLElement>('[data-rb="slot-0"]');
+    const back = document.querySelector<HTMLElement>('[data-rb="flip"] [data-rb="back"]');
+    const turn = document.querySelector<HTMLElement>('[data-rb="flip"] [data-rb="turn"]');
+
+    expect(slot?.style.opacity).toBe("0");
+    // Faded in where it stands, never lowered to rise.
+    expect(slot?.style.transform ?? "").not.toContain("70px");
+    // Its back already faces the User and the card never turns: the faces cross-fade.
+    // (an inline transform without a turn, over the class that turns it 180°).
+    expect(back?.style.transform).toBe("translate(0, 0)");
+    expect(turn?.style.transform ?? "").not.toContain("rotateY");
+    cleanup();
+
+    // During the 2, as with the motion.
+    renderBreak(duel, next(1), (ROUND_BREAK_TIMES.countdown[1] + 0.2) * 1000, true);
+    expect(document.querySelector<HTMLElement>('[data-rb="count-2"]')?.style.opacity).toBe("1");
   });
 
   test("in English, it says Round", () => {

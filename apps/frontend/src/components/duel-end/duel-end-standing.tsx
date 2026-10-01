@@ -16,11 +16,11 @@ type DuelEndStandingProps = {
 // TP, then the Division's bar.
 export const DuelEndStanding = ({ card, compact }: DuelEndStandingProps) => (
   <>
-    <span className={cn("shrink-0", compact ? "size-16" : "size-28")}>
+    <span className={cn("shrink-0", compact ? "size-12" : "size-28")}>
       <TierBlason tier={card.standing.tier} />
     </span>
     {card.tp === null ? null : <DuelEndTpDelta tp={card.tp} compact={compact} />}
-    <DuelEndRankName standing={card.standing} headline={card.headline} />
+    <DuelEndRankName standing={card.standing} headline={card.headline} compact={compact} />
     {card.bar === null ? null : (
       <div className={cn("flex grow", compact && "basis-full")}>
         <DuelEndTpBar bar={card.bar} standing={card.standing} />

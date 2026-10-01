@@ -33,7 +33,7 @@ export const DuelEndScoreSide = ({
       <span
         className={cn(
           "leading-[0.85] font-black tracking-[-0.03em]",
-          compact ? "text-[60px]" : "text-[112px]",
+          compact ? "text-[52px]" : "text-[112px]",
         )}
       >
         {score}

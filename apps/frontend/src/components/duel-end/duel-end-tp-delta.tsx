@@ -15,7 +15,7 @@ export const DuelEndTpDelta = ({ tp, compact = false }: { tp: number; compact?: 
       data-entrance="tp"
       className={cn(
         "shrink-0 font-display font-black tracking-[-0.03em]",
-        compact ? "text-[40px]" : "text-[56px]",
+        compact ? "text-[30px]" : "text-[56px]",
         tp >= 0 ? "text-brand" : "text-muted-foreground",
       )}
     >

@@ -19,15 +19,20 @@ const HEADLINES = {
   placed: { say: (locale: Locale) => m.duel_rank_placed({}, { locale }), tone: "text-brand" },
 };
 
-type DuelEndRankNameProps = { standing: Standing; headline: RankHeadline | null };
+type DuelEndRankNameProps = {
+  standing: Standing;
+  headline: RankHeadline | null;
+  // In a Bo3's column: smaller, on the line of the Blason and the TP.
+  compact?: boolean;
+};
 
 // The rank after the Duel and its TP, under its headline when the Duel changed it.
-export const DuelEndRankName = ({ standing, headline }: DuelEndRankNameProps) => {
+export const DuelEndRankName = ({ standing, headline, compact = false }: DuelEndRankNameProps) => {
   const locale = useLocale();
   const said = headline === null ? null : HEADLINES[headline];
 
   return (
-    <div className="flex min-w-[220px] shrink-0 flex-col gap-1.5">
+    <div className={cn("flex shrink-0 flex-col", compact ? "gap-0.5" : "min-w-[220px] gap-1.5")}>
       {said === null ? null : (
         <p
           className={cn("font-display text-[13px] font-bold tracking-[0.1em] uppercase", said.tone)}
@@ -35,7 +40,9 @@ export const DuelEndRankName = ({ standing, headline }: DuelEndRankNameProps) =>
           {said.say(locale)}
         </p>
       )}
-      <p className="text-[28px] font-extrabold">{standingName(standing, locale)}</p>
+      <p className={cn("font-extrabold", compact ? "text-xl" : "text-[28px]")}>
+        {standingName(standing, locale)}
+      </p>
       <p className="font-mono text-sm text-muted-foreground">
         {m.rank_tp({ tp: numberFormat(locale).format(standing.tp) }, { locale })}
       </p>

@@ -27,7 +27,7 @@ export const DuelEndRank = ({
       data-entrance="rank"
       className={cn(
         "flex items-center rounded-card bg-card",
-        compact ? "flex-wrap gap-x-5 gap-y-3 px-6 py-4" : "gap-8 px-9 py-[26px]",
+        compact ? "flex-wrap gap-x-4 gap-y-2.5 px-5 py-3.5" : "gap-8 px-9 py-[26px]",
       )}
     >
       {card.kind === "placement" ? (
