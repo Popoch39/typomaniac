@@ -11,6 +11,7 @@ import { ReplayResults } from "@/components/replay/replay-results";
 import { ReplaySidePicker } from "@/components/replay/replay-side-picker";
 import { type ReplayView, replayDuration } from "@/components/replay/replay-sides";
 import { ReplaySpeedPicker } from "@/components/replay/replay-speed-picker";
+import { ReplayStats } from "@/components/replay/replay-stats";
 import { ReplayTimeline } from "@/components/replay/replay-timeline";
 import { useReplayClock } from "@/components/replay/use-replay-clock";
 import { opponentName } from "@/lib/opponent-name";
@@ -19,7 +20,8 @@ import { useLocale } from "@/locale/use-locale";
 // A finished Duel played again Keystroke by Keystroke, at the pace it was typed, from the start on:
 // both Runs rebuilt at each instant, all in the browser. Under its header, both Score cards and the
 // Text, then the Lecture card: the User moves through it with the time bar, picks its speed and
-// whose Run it shows. At the end, both Results and Scores. A forfeited Duel stops at its Forfeit,
+// whose Run it shows. At the end, both Results and Scores. Under it all, the Duel chart and the
+// Results table, whatever the time. A forfeited Duel stops at its Forfeit,
 // marked under the time bar.
 export const DuelReplay = ({ duelId }: { duelId: string }) => {
   const { data: duel } = useSuspenseQuery(replayedDuelQueryOptions(duelId));
@@ -56,6 +58,7 @@ export const DuelReplay = ({ duelId }: { duelId: string }) => {
           )}
         </div>
       </ReplayLecture>
+      <ReplayStats duel={duel} />
     </div>
   );
 };

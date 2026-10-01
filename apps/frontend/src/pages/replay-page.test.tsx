@@ -577,6 +577,41 @@ describe("DuelReplay", () => {
   });
 });
 
+// A line of the Results table: what it measures, then the User's value and the opponent's.
+const resultLine = (name: string) => {
+  const table = within(screen.getByRole("region", { name: "Results du Duel" })).getByRole("table");
+  const line = within(table).getByRole("rowheader", { name }).closest("tr");
+
+  if (line === null) {
+    throw new Error(`No line ${name}`);
+  }
+
+  return within(line)
+    .getAllByRole("cell")
+    .map((cell) => cell.textContent);
+};
+
+describe("the Duel's stats, under the Replay", () => {
+  test("its Duel chart and both sides' Results, whatever the time", async () => {
+    await renderReplay(replayed());
+
+    expect(screen.getByRole("region", { name: "Duel chart" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Results du Duel" })).toBeInTheDocument();
+    // Grouped by a narrow no-break space, as the French Locale writes it.
+    expect(resultLine("Score")).toEqual(["1 234", "567"]);
+    expect(resultLine("wpm")).toEqual(["42", "42"]);
+    expect(resultLine("précision")).toEqual(["96 %", "96 %"]);
+    expect(resultLine("meilleur Combo")).toEqual(["3", "3"]);
+  });
+
+  test("a Duel before the Score, and a deleted opponent's column gone", async () => {
+    await renderReplay(replayed({ me: player("ada", adaTyped, null), opponent: null }));
+
+    expect(resultLine("Score")).toEqual(["—"]);
+    expect(resultLine("wpm")).toEqual(["42"]);
+  });
+});
+
 // The page shown for a Duel that cannot be read, on a router of its own: its way out is a link.
 const renderError = async () => {
   const router = createRouter({

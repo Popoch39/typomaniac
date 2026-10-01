@@ -14,7 +14,7 @@ import { m } from "@/paraglide/messages";
 import { cn } from "cn";
 
 // A Duel of the week: how it ended and the TP it moved, the opponent and when, both wpm lines, both
-// Scores, and the way to its Replay.
+// Scores. The whole card leads to the Duel's page: its Replay, its chart and its Results.
 export const HistoryDuelCard = ({ duel }: { duel: DuelHistoryEntry }) => {
   const locale = useLocale();
 
@@ -22,7 +22,7 @@ export const HistoryDuelCard = ({ duel }: { duel: DuelHistoryEntry }) => {
     <li
       className={cn(
         // 24 px as the board: `rounded-3xl` follows `--radius`, 26.4 px.
-        "flex flex-col gap-3.5 rounded-[24px] bg-card px-5 pt-4.5 pb-4 transition-colors",
+        "group relative flex flex-col gap-3.5 rounded-[24px] bg-card px-5 pt-4.5 pb-4 transition-colors",
         CARD_HOVER_PAINT,
       )}
     >
@@ -46,7 +46,11 @@ export const HistoryDuelCard = ({ duel }: { duel: DuelHistoryEntry }) => {
           fallbackClassName="bg-surface-2 text-xs font-bold text-foreground"
         />
         <span className="flex min-w-0 flex-col">
-          <OpponentHandle opponent={duel.opponent} className="truncate text-[15px] font-bold" />
+          {/* Above the card's link: a link never goes in another. */}
+          <OpponentHandle
+            opponent={duel.opponent}
+            className="relative z-10 truncate text-[15px] font-bold"
+          />
           <HistoryDuelMeta endedAt={duel.endedAt} ranked={duel.ranked} forfeit={duel.forfeit} />
         </span>
       </div>
@@ -60,10 +64,11 @@ export const HistoryDuelCard = ({ duel }: { duel: DuelHistoryEntry }) => {
           <span className="text-faint">{m.history_card_versus({}, { locale })}</span>{" "}
           <span className="text-opponent-caret">{duelNumber(duel.opponentScore, locale)}</span>
         </span>
+        {/* Stretched over the whole card: a click anywhere opens the Duel. */}
         <Link
           to="/history/$duelId"
           params={{ duelId: duel.id }}
-          className="py-2.5 font-journal text-sm font-bold text-primary no-underline hover:text-[color-mix(in_srgb,var(--brand)_60%,var(--text))]"
+          className="py-2.5 font-journal text-sm font-bold text-primary no-underline outline-none group-hover:text-[color-mix(in_srgb,var(--brand)_60%,var(--text))] after:absolute after:inset-0 after:rounded-[24px] focus-visible:after:ring-3 focus-visible:after:ring-ring/50"
         >
           {m.history_card_replay({}, { locale })}
         </Link>
