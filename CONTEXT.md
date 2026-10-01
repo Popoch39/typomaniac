@@ -37,7 +37,7 @@ Une tentative solo de frappe sur un Text, jouée par un Visitor ou un User, qui 
 _Avoid_ : test, partie, game, race
 
 **Text** :
-La suite de mots à taper pendant un Run ou un Duel, entièrement déterminée par une Seed, une Language et une Word list version. Rejouer un Run, c'est retaper le même Text.
+La suite de mots à taper pendant un Run ou un Round, entièrement déterminée par une Seed, une Language et une Word list version. Rejouer un Run, c'est retaper le même Text.
 _Avoid_ : prompt, phrase, quote
 
 **Seed** :
@@ -66,7 +66,7 @@ Un mot validé avec au moins une faute restée : une lettre fausse, en trop ou s
 _Avoid_ : mot faux, mot raté, erreur, typo
 
 **Result** :
-Les statistiques d'un Run terminé, calculées à partir de ses Keystrokes : wpm, raw, accuracy, consistency et le décompte des caractères.
+Les statistiques d'un Run ou d'un Round terminé, calculées à partir de ses Keystrokes : wpm, raw, accuracy, consistency et le décompte des caractères. Le Result d'un Duel est la moyenne de ceux de ses Rounds.
 _Avoid_ : stats, score (le Score est autre chose)
 
 **wpm** :
@@ -92,8 +92,16 @@ _Avoid_ : ombre, bot, pacer
 ### Duel
 
 **Duel** :
-Deux Users, appariés par la Queue ou par un Challenge, qui tapent le même Text en même temps, au format fixe `time` 30 s en anglais, et dont chacun obtient un Result et un Score. Le meilleur Score gagne, départagé par l'accuracy ; sinon c'est un Draw. Les Duels joués avant le Score gardent leur issue d'origine, au wpm. Un Duel se termine aussi par un Forfeit.
-_Avoid_ : match, versus, 1v1, partie, race
+Deux Users, appariés par la Queue ou par un Challenge, qui tapent en même temps, en Rounds de `time` 30 s en anglais : un seul Round pour un Challenge, au meilleur des trois (Bo3) pour un Duel Ranked. Le Duel revient à celui qui gagne le plus de Rounds ; à égalité de Rounds, au meilleur Score cumulé des Rounds, puis à la meilleure accuracy moyenne ; sinon c'est un Draw. Les Duels joués avant le Bo3 n'ont qu'un Round, et ceux joués avant le Score gardent leur issue d'origine, au wpm. Un Duel se termine aussi par un Forfeit.
+_Avoid_ : match, versus, 1v1, partie, race, série
+
+**Round** :
+L'un des Rounds de 30 s d'un Duel, sur un Text tiré pour lui, le même pour les deux Users. Chacun y obtient un Result et un Score. Le meilleur Score gagne le Round, départagé par l'accuracy ; sinon le Round est nul et ne compte pour personne. Un Duel Ranked s'arrête dès qu'un User a gagné deux Rounds, et jamais après le troisième. Le Combo repart de zéro à chaque Round.
+_Avoid_ : manche (sauf dans l'interface française), game, map, set
+
+**Round break** :
+Les 7 secondes entre deux Rounds d'un même Duel, identiques pour les deux Users : l'issue du Round joué et le compte des Rounds, puis le 3-2-1 du suivant. Son Text ne se dévoile qu'au départ, et la frappe est bloquée tout du long. Il n'y en a pas après le Round qui décide le Duel : le Duel end suit directement.
+_Avoid_ : intermission, mi-temps, pause
 
 **Queue** :
 L'attente des Users qui veulent un Duel Ranked. Deux Users distincts y sont appariés quand leurs MMR sont assez proches : l'écart accepté part de ±100 et s'élargit avec l'attente, jusqu'à n'importe quel adversaire au bout de 30 secondes. Un appariement ouvre une Match proposal, il ne lance pas le Duel. Un User peut la rejoindre à tout moment, sauf pendant un Queue lock, et la quitter à tout moment ; pendant une Match proposal, la quitter revient à la refuser. Il peut y attendre tout en lançant un Challenge : le premier qui aboutit l'emporte. Un Challenge accepté le sort de la Queue ; une Match proposal annule ses Challenges en attente, envoyés comme reçus. Pendant l'attente, il voit depuis quand il attend, combien de Users sont dans la Queue, lui compris, et l'Estimated wait ; avant de la rejoindre, il en voit déjà la taille et l'Estimated wait. Il peut aussi y attendre partout dans l'app, en jouant des Runs ou en allant sur d'autres pages : la Queue le suit dans la Queue pill.
@@ -120,7 +128,7 @@ Le temps pendant lequel un User qui a trop Dodgé ne peut pas rejoindre la Queue
 _Avoid_ : cooldown, ban, pénalité, blocage
 
 **Countdown** :
-Les 4,5 secondes avant le départ d'un Duel, identiques pour les deux Users : le Face-off, puis le 3-2-1. La frappe y est bloquée tout du long. Il part 1 seconde après la double acceptation d'une Match proposal ou l'acceptation d'un Challenge.
+Les 4,5 secondes avant le premier Round d'un Duel, identiques pour les deux Users : le Face-off, puis le 3-2-1. La frappe y est bloquée tout du long. Il part 1 seconde après la double acceptation d'une Match proposal ou l'acceptation d'un Challenge. Les Rounds suivants partent après un Round break.
 _Avoid_ : timer, décompte, compte à rebours
 
 **Face-off** :
@@ -132,15 +140,15 @@ Les 5 derniers Duels Ranked terminés d'un User, montrés au Face-off : l'issue 
 _Avoid_ : forme, stats, bilan, historique récent
 
 **Forfeit** :
-La fin d'un Duel perdu par abandon : départ volontaire, absence prolongée après une déconnexion, ou frappe à une cadence inhumaine. L'adversaire gagne.
+La fin d'un Duel perdu par abandon : départ volontaire, absence prolongée après une déconnexion, ou frappe à une cadence inhumaine. Il termine le Duel entier, quel que soit le compte des Rounds : l'adversaire gagne.
 _Avoid_ : abandon, ragequit, disqualification
 
 **Draw** :
-L'issue d'un Duel où les deux Users ont le même Score et la même accuracy : aucun ne gagne.
+L'issue d'un Duel où aucun ne gagne : même nombre de Rounds gagnés, même Score cumulé et même accuracy moyenne. Un Round sans vainqueur n'est pas un Draw, c'est un Round nul.
 _Avoid_ : égalité, nul, tie
 
 **Score** :
-Les points d'un User dans un Duel ou un Run : chaque mot juste rapporte ses caractères (espace compris), multipliés par son Combo, et doublés par un Burst. Un Wrong word ne rapporte rien ; le mot en cours à la fin du temps rapporte ses lettres justes. Il désigne le vainqueur d'un Duel, départagé par l'accuracy ; dans un Run, il ne sert qu'à s'entraîner.
+Les points d'un User dans un Round ou un Run : chaque mot juste rapporte ses caractères (espace compris), multipliés par son Combo, et doublés par un Burst. Un Wrong word ne rapporte rien ; le mot en cours à la fin du temps rapporte ses lettres justes. Il désigne le vainqueur d'un Round, départagé par l'accuracy ; dans un Run, il ne sert qu'à s'entraîner.
 _Avoid_ : points, Result
 
 **Combo** :
@@ -152,23 +160,23 @@ Un mot juste sans faute, d'au moins 4 lettres, tapé au moins 20 % plus vite que
 _Avoid_ : perfect, crit, rush
 
 **Pace** :
-La cadence de référence d'un User pour le Burst, figée au départ : le wpm médian de ses 10 derniers Duels, ou de ceux qu'il a s'il en a moins ; 50 wpm sans aucun Duel, et pour un Visitor. Elle vient de l'historique, pas du Duel en cours, pour qu'alterner mots lents et rapides ne rapporte rien.
+La cadence de référence d'un User pour le Burst, figée au départ du Run ou du Duel, pour tous ses Rounds : le wpm médian de ses 10 derniers Duels, ou de ceux qu'il a s'il en a moins ; 50 wpm sans aucun Duel, et pour un Visitor. Elle vient de l'historique, pas du Duel en cours, pour qu'alterner mots lents et rapides ne rapporte rien.
 _Avoid_ : moyenne, niveau, cadence
 
 **Lead** :
-L'écart de Score entre les deux Users d'un Duel à un instant donné, vu par le User : positif quand il mène, nul quand leurs Scores sont égaux.
+L'écart de Score entre les deux Users d'un Round à un instant donné, vu par le User : positif quand il mène, nul quand leurs Scores sont égaux.
 _Avoid_ : avance, écart, marge
 
 **Lead change** :
-Le passage en tête de l'autre User pendant un Duel, compté seulement quand sa tête tient 0,3 seconde : une tête qui ne dure pas n'en est pas un. La première tête du Duel n'en est pas un non plus.
+Le passage en tête de l'autre User pendant un Round, compté seulement quand sa tête tient 0,3 seconde : une tête qui ne dure pas n'en est pas un. La première tête du Round n'en est pas un non plus.
 _Avoid_ : renversement, comeback, retournement
 
 **Callout** :
-Ce que le HUD d'un Duel annonce au centre, un seul à la fois, tiré des Cues des deux Users et des Lead changes. Par ordre d'importance : un Lead change, puis les Bursts, les paliers de Combo et les Combos cassés du User, puis les Bursts, les Combos cassés et le x4 de son adversaire. Chacun reste au moins 0,5 seconde, sauf si un plus important arrive. À la fin du temps, le Callout annonce la fin ; l'issue se lit sur le Duel end.
+Ce que le HUD d'un Duel annonce au centre, un seul à la fois, tiré des Cues des deux Users et des Lead changes. Par ordre d'importance : un Lead change, puis les Bursts, les paliers de Combo et les Combos cassés du User, puis les Bursts, les Combos cassés et le x4 de son adversaire. Chacun reste au moins 0,5 seconde, sauf si un plus important arrive. À la fin du temps d'un Round, le Callout annonce la fin ; l'issue se lit sur le Round break ou le Duel end.
 _Avoid_ : annonce, toast, notification, popup
 
 **Duel end** :
-L'écran qui suit la fin du temps d'un Duel, dès que le serveur l'a tranché : l'issue, les deux Scores, le rang et ses TP, les Records battus et le Duel chart. Un Tier-up s'y ouvre après l'issue.
+L'écran qui suit la fin du temps du Round qui décide un Duel, dès que le serveur l'a tranché : l'issue et le compte des Rounds, les deux Scores de chaque Round, le rang et ses TP, les Records battus et le Duel chart du dernier Round, les autres au choix. Un Tier-up s'y ouvre après l'issue.
 _Avoid_ : Affiche, écran de résultat, récap, écran de fin
 
 **Duel history** :
@@ -176,11 +184,11 @@ Les Duels terminés d'un User, du plus récent au plus ancien.
 _Avoid_ : match history, historique de parties
 
 **Replay** :
-La relecture d'un Duel enregistré, à partir des Keystrokes des deux Users, au rythme où ils ont tapé.
+La relecture d'un Duel enregistré, Round par Round, à partir des Keystrokes des deux Users, au rythme où ils ont tapé.
 _Avoid_ : playback, rediffusion
 
 **Duel chart** :
-Le graph d'un Duel terminé, seconde par seconde, pour chacun des deux Users : son wpm cumulé, son raw de chaque seconde et ses Misses. Seuls les deux Users du Duel le voient.
+Le graph d'un Round terminé, seconde par seconde, pour chacun des deux Users : son wpm cumulé, son raw de chaque seconde et ses Misses. Seuls les deux Users du Duel le voient.
 _Avoid_ : graph, courbe, timeline
 
 **Stats** :
@@ -188,7 +196,7 @@ Les agrégats des Duels terminés d'un User : son bilan (victoires, défaites, D
 _Avoid_ : statistiques, Result, score
 
 **Record** :
-Le meilleur wpm, le meilleur Score ou le meilleur Combo d'un User sur ses Duels terminés, Challenges et Forfeits compris. Un Duel bat un Record en le dépassant ; le premier Duel les pose tous.
+Le meilleur wpm, le meilleur Score ou le meilleur Combo d'un User sur un Round de ses Duels terminés, Challenges et Forfeits compris. Un Duel bat un Record quand l'un de ses Rounds le dépasse ; le premier Duel les pose tous.
 _Avoid_ : PB, meilleur score, top
 
 **Progression** :
@@ -202,7 +210,7 @@ Le classement des Users par les Duels de la Queue : chaque Duel Ranked terminé,
 _Avoid_ : compétitif, ladder, classé
 
 **MMR** :
-Le niveau caché d'un User, un Elo : il sert à l'apparier dans la Queue et à peser ses TP, et n'est jamais montré, pas même à lui. Il part de sa Pace au premier Duel Ranked. Une victoire compte 1, un Draw 0,5, une défaite 0 ; un Forfeit est une victoire pour l'adversaire.
+Le niveau caché d'un User, un Elo : il sert à l'apparier dans la Queue et à peser ses TP, et n'est jamais montré, pas même à lui. Il part de sa Pace au premier Duel Ranked. Une victoire compte 1, un Draw 0,5, une défaite 0, quel que soit le compte des Rounds ; un Forfeit est une victoire pour l'adversaire.
 _Avoid_ : elo, rating, cote, niveau
 
 **TP** :
@@ -242,8 +250,8 @@ Ce qu'un Duel Ranked peut faire aux TP d'un User : les TP qu'une victoire lui ra
 _Avoid_ : preview, pari, prévision
 
 **Promotion Duel** :
-Un Duel Ranked dont la victoire ferait changer un User de Tier ou le ferait entrer en Maniac, que le Face-off annonce comme tel. C'est un Duel ordinaire, seul, aux mêmes règles : pas une série. Monter d'une Division sans changer de Tier n'en fait pas un.
-_Avoid_ : série de promotion, promo, BO
+Un Duel Ranked dont la victoire ferait changer un User de Tier ou le ferait entrer en Maniac, que le Face-off annonce comme tel. C'est un Duel ordinaire, seul, en Bo3 comme tout Duel Ranked et aux mêmes règles : pas une série de Duels. Monter d'une Division sans changer de Tier n'en fait pas un.
+_Avoid_ : série de promotion, promo
 
 **Tier-up** :
 La célébration plein écran, à la fin d'un Duel Ranked, d'un User qui monte dans un nouveau Tier ou entre en Maniac. L'ancien Emblem cède la place au nouveau Crest, puis viennent le nom du Tier et le trajet du rang. Elle est plus intense à chaque Tier. Monter d'une Division sans changer de Tier n'en déclenche pas, et une descente non plus.
@@ -272,7 +280,7 @@ Ce qu'un User laisse voir à ses Friends de sa disponibilité : en ligne (typoma
 _Avoid_ : statut, online, activité
 
 **Challenge** :
-L'invitation d'un User à l'un de ses Friends, en ligne, à jouer un Duel ensemble, hors de la Queue. Elle expire au bout de 30 secondes ; l'envoyeur peut l'annuler, le destinataire l'accepter ou la refuser. Accepter lance le Countdown du Duel 1 seconde plus tard ; ce Duel compte comme n'importe quel autre, sauf qu'il n'est jamais Ranked : il ne touche ni au MMR ni aux TP. Un User n'a qu'un Challenge envoyé à la fois.
+L'invitation d'un User à l'un de ses Friends, en ligne, à jouer un Duel ensemble, hors de la Queue. Elle expire au bout de 30 secondes ; l'envoyeur peut l'annuler, le destinataire l'accepter ou la refuser. Accepter lance le Countdown du Duel 1 seconde plus tard ; ce Duel, en un seul Round, compte comme n'importe quel autre, sauf qu'il n'est jamais Ranked : il ne touche ni au MMR ni aux TP. Un User n'a qu'un Challenge envoyé à la fois.
 _Avoid_ : défi, invitation, invite, duel privé
 
 **Activity** :
