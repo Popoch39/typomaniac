@@ -34,8 +34,10 @@ export const WpmCard = ({ handle, average, record }: WpmCardProps) => {
       aria-busy={isPending}
       className={cn("row-span-2 flex flex-col gap-4 p-7", PROFILE_TILE_PAINT)}
     >
-      {/* The window's picker goes under the figure where the tile is too narrow for both. */}
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
+      {/* The window's picker goes under the figure where the tile is too narrow for both: by the
+          tile's width alone (40rem holds a 3-digit average and « sur les 200 derniers Duels »),
+          never by what the window shows, so picking one never moves it. */}
+      <div className="flex flex-col items-start gap-3 @min-[40rem]:flex-row @min-[40rem]:justify-between @min-[40rem]:gap-4">
         <div className="flex flex-col gap-2.5">
           <h2 id={titleId} className={PROFILE_CARD_LABEL_PAINT}>
             {m.profile_stat_average_wpm({}, { locale })}
