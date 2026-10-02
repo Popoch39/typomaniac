@@ -4,6 +4,7 @@ import { type AuthHandler, authentication, readSession } from "../auth";
 import type { DuelStore } from "../duel/store";
 import { MeModel } from "../me/model";
 import { meOf } from "../me/service";
+import type { PhotoUrl } from "../photo/avatar";
 import type { Users } from "../user/users";
 import { HandleModel } from "./model";
 import { checkHandle, setHandle } from "./service";
@@ -13,9 +14,16 @@ export type HandleModuleConfig = {
   trustProxy: boolean;
   users: Users;
   duelStore: DuelStore;
+  photoUrl: PhotoUrl;
 };
 
-export const handleModule = ({ auth, trustProxy, users, duelStore }: HandleModuleConfig) =>
+export const handleModule = ({
+  auth,
+  trustProxy,
+  users,
+  duelStore,
+  photoUrl,
+}: HandleModuleConfig) =>
   new Elysia({ name: "handle", seed: users })
     .use(authentication(auth, { trustProxy }))
     // Sets or changes the User's Handle: 422 with the reason in `details` when invalid, 409 when
@@ -25,7 +33,10 @@ export const handleModule = ({ auth, trustProxy, users, duelStore }: HandleModul
       async ({ user, body, request, set }) => {
         await setHandle(users, user.id, body.handle);
 
-        return meOf(duelStore, (await readSession(auth, request, set, { fresh: true })).user);
+        return meOf(
+          { store: duelStore, photoUrl },
+          (await readSession(auth, request, set, { fresh: true })).user,
+        );
       },
       {
         auth: true,

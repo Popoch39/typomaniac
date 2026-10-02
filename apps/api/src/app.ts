@@ -19,6 +19,10 @@ import type { FriendStore } from "./modules/friend/store";
 import { handleModule } from "./modules/handle";
 import { meModule } from "./modules/me";
 import { leaderboardModule } from "./modules/leaderboard";
+import { photoModule } from "./modules/photo";
+import type { PhotoUrl } from "./modules/photo/avatar";
+import type { PhotoCodec } from "./modules/photo/codec";
+import type { PhotoStore } from "./modules/photo/store";
 import { profileModule } from "./modules/profile";
 import { userModule } from "./modules/user";
 import type { Users } from "./modules/user/users";
@@ -62,6 +66,14 @@ export type AppConfig = {
   friendRequestRateLimit: RateLimit;
   // The Best Run of each User and setting: Drizzle in production, in memory in the tests.
   bestRunStore: BestRunStore;
+  // The Photos: SeaweedFS in production, in memory in the tests, null when it is not configured.
+  photoStore: PhotoStore | null;
+  // Reads and encodes the Photos sent: Bun.Image, kept out of this file's graph (photo/store.ts).
+  photoCodec: PhotoCodec;
+  // Where a Photo is served, on the API's public URL: the Users make the Avatars with it.
+  photoUrl: PhotoUrl;
+  // Per User, on sending a Photo: each one is decoded and encoded again.
+  photoRateLimit: RateLimit;
 };
 
 // Order matters: headers and the request id are set before anything can throw, and
@@ -70,7 +82,7 @@ export type AppConfig = {
 // also applies to the routes of the plugins used here (the docs). The feature modules
 // come last, each one from src/modules/.
 export const createApp = (config: AppConfig) => {
-  const { auth, trustProxy, users, duelStore, friendStore } = config;
+  const { auth, trustProxy, users, duelStore, friendStore, photoUrl } = config;
 
   // The Presence and the live Friend events, in memory: told by the Friend routes once they wrote,
   // and by the Duel socket of each connection and each Duel.
@@ -126,8 +138,21 @@ export const createApp = (config: AppConfig) => {
       detail: { summary: "Health check", tags: ["System"] },
     })
     .use(authentication(auth, { trustProxy }))
-    .use(meModule({ auth, trustProxy, duelStore, lastDuelWritten }))
-    .use(handleModule({ auth, trustProxy, users, duelStore }))
+    .use(meModule({ auth, trustProxy, duelStore, photoUrl, lastDuelWritten }))
+    .use(handleModule({ auth, trustProxy, users, duelStore, photoUrl }))
+    .use(
+      photoModule({
+        auth,
+        trustProxy,
+        users,
+        duelStore,
+        store: config.photoStore,
+        codec: config.photoCodec,
+        photoUrl,
+        logger: config.logger,
+        sendRateLimit: config.photoRateLimit,
+      }),
+    )
     .use(
       userModule({
         auth,

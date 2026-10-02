@@ -12,5 +12,22 @@ services:
       timeout: 5s
       retries: 10
 
+  # The Photos' S3 storage (ADR 0018), private: the API serves them. Dev credentials only, in
+  # docker/seaweedfs/s3.json and the S3_* of .env.example.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.47
+    command: "server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data"
+    ports:
+      - "8334:8333"
+    volumes:
+      - seaweedfs:/data
+      - ./docker/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8333/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   pgdata:
+  seaweedfs:

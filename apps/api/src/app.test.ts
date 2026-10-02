@@ -444,6 +444,7 @@ describe("auth", () => {
       name: "Ada",
       email: "ada@example.com",
       image: "https://img/ada",
+      hasPhoto: false,
       handle: null,
       rank: null,
       ornament: null,

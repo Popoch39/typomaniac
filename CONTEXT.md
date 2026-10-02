@@ -7,16 +7,24 @@ Contexte unique du monorepo : le vocabulaire partagé par le front et l'API.
 ### Identité
 
 **User** :
-Une personne connue de typomaniac, identifiée par son email. C'est la seule entité qui porte l'identité ; son Profile n'est qu'une page qui le montre, pas une entité séparée. Les autres Users ne voient que son Handle, son avatar avec son Ornament, son rang et ses Stats, jamais son email ni son name.
+Une personne connue de typomaniac, identifiée par son email. C'est la seule entité qui porte l'identité ; son Profile n'est qu'une page qui le montre, pas une entité séparée. Les autres Users ne voient que son Handle, son Avatar avec son Ornament, son rang et ses Stats, jamais son email ni son name.
 _Avoid_ : compte, player, membre
 
 **Profile** :
-La page d'un User, trouvée par son Handle, que tout User connecté peut voir : son Handle, son avatar avec son Ornament, son rang avec son Emblem et ses Stats. Sur la page Profil, la sienne, le User choisit son Handle et son Ornament. Sa Duel history, ses Duel charts et ses Replays n'y figurent pas.
+La page d'un User, trouvée par son Handle, que tout User connecté peut voir : son Handle, son Avatar avec son Ornament, son rang avec son Emblem et ses Stats. Sur la page Profil, la sienne, le User choisit son Handle, sa Photo et son Ornament. Sa Duel history, ses Duel charts et ses Replays n'y figurent pas.
 _Avoid_ : fiche, page perso, compte
 
 **Handle** :
 Le nom public et unique d'un User, choisi par lui avant son premier Duel et modifiable à tout moment : de 3 à 20 caractères parmi `a-z`, `0-9` et `_`, sans distinction de casse. C'est par lui qu'on trouve un User et qu'on le désigne partout dans l'app. Changer de Handle libère l'ancien ; les Friends et l'historique tiennent au User, pas au Handle.
 _Avoid_ : pseudo, username, tag, name
+
+**Avatar** :
+L'image qui montre un User partout dans l'app : sa Photo, sinon l'image de son fournisseur OAuth, sinon les initiales de son Handle. Son Ornament l'entoure. Un Duel garde l'Avatar lu quand il a apparié les deux Users.
+_Avoid_ : photo de profil, pp, picture
+
+**Photo** :
+L'image qu'un User a envoyée lui-même pour son Avatar, cadrée par lui. Il la change ou la retire depuis sa page Profil, même sans Handle ; la retirer lui rend l'image de son fournisseur. Elle disparaît avec lui.
+_Avoid_ : upload, image perso, photo de profil
 
 **Account** :
 Le lien entre un User et un fournisseur OAuth (GitHub, Google, Discord). Un User peut en avoir plusieurs ; deux Accounts dont l'email est vérifié par le fournisseur se rattachent au même User.
@@ -226,11 +234,11 @@ L'insigne d'un Tier, le même pour toutes ses Divisions : bouclier de l'Iron au 
 _Avoid_ : icône de rang, logo de rang, logo, badge
 
 **Ornament** :
-La décoration d'un Tier que porte un User autour de son avatar, plus riche à chaque Tier. Hors Placement, il choisit de suivre son Tier (le défaut), de figer celui d'un Tier atteint à ou sous son Tier actuel, ou de n'en porter aucun. Il ne porte jamais celui d'un Tier au-dessus du sien : s'il descend sous le Tier figé, il porte celui de son Tier actuel. Les autres Users le voient partout où ils voient son avatar.
+La décoration d'un Tier que porte un User autour de son Avatar, plus riche à chaque Tier. Hors Placement, il choisit de suivre son Tier (le défaut), de figer celui d'un Tier atteint à ou sous son Tier actuel, ou de n'en porter aucun. Il ne porte jamais celui d'un Tier au-dessus du sien : s'il descend sous le Tier figé, il porte celui de son Tier actuel. Les autres Users le voient partout où ils voient son Avatar.
 _Avoid_ : cadre, bordure, frame, décoration d'avatar
 
 **Aura** :
-La lumière vivante qu'un Ornament dégage à partir du Gold, plus intense à chaque Tier : un reflet sur le métal au Gold, des poussières de lumière au Platinum, des éclats prismatiques au Diamond, un feu et des braises au Maniac. Pleine là où l'avatar ou le Crest est montré en grand, légère dans les listes.
+La lumière vivante qu'un Ornament dégage à partir du Gold, plus intense à chaque Tier : un reflet sur le métal au Gold, des poussières de lumière au Platinum, des éclats prismatiques au Diamond, un feu et des braises au Maniac. Pleine là où l'Avatar ou le Crest est montré en grand, légère dans les listes.
 _Avoid_ : glow, effet, FX, prestige
 
 **Crest** :
@@ -306,5 +314,5 @@ L'arrivée dans l'app au chargement d'une page, quelle qu'elle soit : le Logo de
 _Avoid_ : splash, animation de démarrage, loader
 
 **Rail** :
-La barre latérale repliée : une colonne d'icônes, chacune nommée au survol, qui laisse la place aux pages. Elle garde tout ce que montre la barre entière : la nav, l'attente dans la Queue (un point sur Jouer), les Friends en ligne (leurs avatars), la Locale, le Theme et le User (son avatar ouvre son menu). Elle l'est sous 1440 px de large, et pendant qu'un Run solo est tapé, du premier Keystroke au Result : elle s'y replie alors en un mouvement et se déplie au Result. Jamais un réglage. En scène du Duel, la barre est simplement masquée.
+La barre latérale repliée : une colonne d'icônes, chacune nommée au survol, qui laisse la place aux pages. Elle garde tout ce que montre la barre entière : la nav, l'attente dans la Queue (un point sur Jouer), les Friends en ligne (leurs Avatars), la Locale, le Theme et le User (son Avatar ouvre son menu). Elle l'est sous 1440 px de large, et pendant qu'un Run solo est tapé, du premier Keystroke au Result : elle s'y replie alors en un mouvement et se déplie au Result. Jamais un réglage. En scène du Duel, la barre est simplement masquée.
 _Avoid_ : sidebar réduite, mini-sidebar, mode compact, Retrait

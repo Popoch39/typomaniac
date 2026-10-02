@@ -19,6 +19,7 @@ const me: Me = {
   name: "Popoch",
   email: "popoch@example.com",
   image: null,
+  hasPhoto: false,
   handle: "popoch",
   rank: null,
   ornament: null,

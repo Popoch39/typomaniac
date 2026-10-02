@@ -40,26 +40,34 @@ import {
 } from "./modules/duel/store";
 import { type FriendMessage, FriendLiveModel, type Relation } from "./modules/friend/model";
 import { type Friendship, type FriendStore, orderedPair } from "./modules/friend/store";
+import { photoUrlOn } from "./modules/photo/avatar";
+import { bunPhotoCodec } from "./modules/photo/bun-codec";
+import type { PhotoStore } from "./modules/photo/store";
 import { authUsers, type HandleSearch, type UserRow } from "./modules/user/users";
 
 // Shared by the test files: the app's config with in-memory dependencies.
 
 export const FRONT_ORIGIN = "http://localhost:5173";
 
-// A function: each instance gets its own rate limit counters.
-export const testAuthOptions = ({ isProduction = false } = {}) =>
+// A function: each instance gets its own rate limit counters. A deleted User's Photo is erased from
+// `photoStore`, when given.
+export const testAuthOptions = ({
+  isProduction = false,
+  photoStore = null,
+}: { isProduction?: boolean; photoStore?: PhotoStore | null } = {}) =>
   authOptions({
     secret: "a-test-secret-of-at-least-thirty-two-chars",
     baseURL: "http://localhost",
     trustedOrigin: FRONT_ORIGIN,
     socialProviders: {},
     isProduction,
+    photoStore,
   });
 
 // The production auth options on Better Auth's in-memory database, plus its test
 // helpers to open Sessions without going through an OAuth provider.
-export const createTestAuth = () => {
-  const options = testAuthOptions();
+export const createTestAuth = ({ photoStore }: { photoStore?: PhotoStore | null } = {}) => {
+  const options = testAuthOptions({ photoStore });
 
   return betterAuth({
     ...options,
@@ -84,6 +92,34 @@ export const signIn = async (
 
   return { user, token: login.token, cookie: login.headers.get("cookie") ?? "" };
 };
+
+// The cookies a browser holds: each Set-Cookie of a response replaces the one of the same name.
+export const cookieJar = (initial: string) => {
+  const cookies = new Map(
+    initial.split("; ").map((cookie) => {
+      const [name = "", ...value] = cookie.split("=");
+
+      return [name, value.join("=")];
+    }),
+  );
+
+  const store = (response: Response) => {
+    for (const cookie of response.headers.getSetCookie()) {
+      const [pair = ""] = cookie.split(";");
+      const [name = "", ...value] = pair.split("=");
+
+      cookies.set(name, value.join("="));
+    }
+
+    return response;
+  };
+
+  const header = () => [...cookies].map(([name, value]) => `${name}=${value}`).join("; ");
+
+  return { store, header };
+};
+
+export type CookieJar = ReturnType<typeof cookieJar>;
 
 // A clock moved by hand: `set` moves it forward and runs, in order, the callbacks due by then.
 export const manualClock = (start: number) => {
@@ -684,18 +720,42 @@ const memoryHandleSearch =
     const rows = await adapter.findMany<UserRow>({ model: "user", limit: Number.MAX_SAFE_INTEGER });
 
     return rows
-      .flatMap(({ id, handle, image }) =>
+      .flatMap(({ id, handle, image, photo }) =>
         handle && handle.startsWith(prefix) && id !== excluding
-          ? [{ id, handle, image: image ?? null }]
+          ? [{ id, handle, image: image ?? null, photo: photo ?? null }]
           : [],
       )
       .toSorted((a, b) => (a.handle < b.handle ? -1 : 1))
       .slice(0, limit);
   };
 
+// The API's public URL in the tests: the one of the requests they build.
+export const testPhotoUrl = photoUrlOn("http://localhost");
+
 // The Users on a test auth's database.
 export const testUsers = (auth: AuthHandler) =>
-  authUsers(auth, { searchHandles: memoryHandleSearch(auth) });
+  authUsers(auth, { searchHandles: memoryHandleSearch(auth), photoUrl: testPhotoUrl });
+
+// The Photos in memory: `keys` lists those kept.
+export const memoryPhotoStore = () => {
+  const photos = new Map<string, Uint8Array>();
+
+  const store: PhotoStore = {
+    put: async (key, bytes) => {
+      photos.set(key, bytes);
+    },
+    get: async (key) => {
+      const bytes = photos.get(key);
+
+      return bytes === undefined ? null : new Blob([bytes]);
+    },
+    delete: async (key) => {
+      photos.delete(key);
+    },
+  };
+
+  return { ...store, keys: () => [...photos.keys()] };
+};
 
 const serverMessage = TypeCompiler.Compile(DuelModel.serverMessage);
 
@@ -884,6 +944,10 @@ export const testConfig = (overrides: Partial<AppConfig> = {}): AppConfig => {
     friendStore: memoryFriendStore(),
     friendRequestRateLimit: { max: 1000, windowMs: 60_000 },
     bestRunStore: memoryBestRunStore(),
+    photoStore: memoryPhotoStore(),
+    photoCodec: bunPhotoCodec,
+    photoUrl: testPhotoUrl,
+    photoRateLimit: { max: 1000, windowMs: 60_000 },
     ...overrides,
   };
 };

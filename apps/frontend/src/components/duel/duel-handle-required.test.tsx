@@ -11,6 +11,7 @@ const ada: Me = {
   name: "Ada",
   email: "ada@example.com",
   image: null,
+  hasPhoto: false,
   handle: null,
   rank: null,
   ornament: null,

@@ -14,13 +14,11 @@ export const drizzleHandleSearch =
   (db: BunSQLDatabase<Table>): HandleSearch =>
   async (prefix, { excluding, limit }) => {
     const rows = await db
-      .select({ id: user.id, handle: user.handle, image: user.image })
+      .select({ id: user.id, handle: user.handle, image: user.image, photo: user.photo })
       .from(user)
       .where(and(like(user.handle, `${escapeLike(prefix)}%`), ne(user.id, excluding)))
       .orderBy(sql`${user.handle} collate "C"`)
       .limit(limit);
 
-    return rows.flatMap(({ id, handle, image }) =>
-      handle === null ? [] : [{ id, handle, image }],
-    );
+    return rows.flatMap(({ handle, ...row }) => (handle === null ? [] : [{ ...row, handle }]));
   };

@@ -149,3 +149,35 @@ describe("parseEnv social providers", () => {
     }
   });
 });
+
+describe("parseEnv Photo storage", () => {
+  const STORAGE = {
+    S3_ENDPOINT: "http://localhost:8333",
+    S3_BUCKET: "photos",
+    S3_ACCESS_KEY_ID: "access-key",
+    S3_SECRET_ACCESS_KEY: "secret-key",
+  };
+
+  test("reads the storage when its four variables are set", () => {
+    expect(parseEnv({ ...REQUIRED, ...STORAGE }).photoStorage).toEqual({
+      endpoint: "http://localhost:8333",
+      bucket: "photos",
+      accessKeyId: "access-key",
+      secretAccessKey: "secret-key",
+    });
+  });
+
+  test("leaves the storage off when none is set, blank counting as unset", () => {
+    expect(parseEnv(REQUIRED).photoStorage).toBeNull();
+
+    const blank = Object.fromEntries(Object.keys(STORAGE).map((name) => [name, ""]));
+
+    expect(parseEnv({ ...REQUIRED, ...blank }).photoStorage).toBeNull();
+  });
+
+  test("rejects a storage with only some of its variables", () => {
+    for (const missing of Object.keys(STORAGE)) {
+      expect(() => parseEnv({ ...REQUIRED, ...STORAGE, [missing]: "" })).toThrow("S3_");
+    }
+  });
+});

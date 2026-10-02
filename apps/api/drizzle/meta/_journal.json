@@ -113,6 +113,13 @@
       "when": 1790869341441,
       "tag": "0015_duel_player_rounds_only",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790926600281,
+      "tag": "0016_user_photo",
+      "breakpoints": true
     }
   ]
 }

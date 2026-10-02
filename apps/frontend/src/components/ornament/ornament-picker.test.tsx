@@ -13,6 +13,7 @@ const ada: Me = {
   name: "Ada Lovelace",
   email: "ada@example.com",
   image: null,
+  hasPhoto: false,
   handle: "ada",
   rank: { tier: "gold", division: 2, tp: 42, shielded: false },
   ornament: "gold",

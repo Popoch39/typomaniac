@@ -24,6 +24,11 @@ const EnvSchema = t.Object({
   GOOGLE_CLIENT_SECRET: t.Optional(t.String()),
   DISCORD_CLIENT_ID: t.Optional(t.String()),
   DISCORD_CLIENT_SECRET: t.Optional(t.String()),
+  // The S3 storage of the Photos (SeaweedFS), all four or none: without it, no Photo is sent.
+  S3_ENDPOINT: t.Optional(t.String()),
+  S3_BUCKET: t.Optional(t.String()),
+  S3_ACCESS_KEY_ID: t.Optional(t.String()),
+  S3_SECRET_ACCESS_KEY: t.Optional(t.String()),
 });
 
 type ParsedEnv = typeof EnvSchema.static;
@@ -32,7 +37,42 @@ type OAuthClient = { clientId: string; clientSecret: string };
 
 export type SocialProviders = { github?: OAuthClient; google?: OAuthClient; discord?: OAuthClient };
 
-export type Env = ParsedEnv & { socialProviders: SocialProviders };
+export type PhotoStorage = {
+  endpoint: string;
+  bucket: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+};
+
+export type Env = ParsedEnv & {
+  socialProviders: SocialProviders;
+  photoStorage: PhotoStorage | null;
+};
+
+// Like a provider's credentials: all set enables it, none leaves it off, some is a mistake that
+// stops the server rather than silently drop the Photos.
+const photoStorageOf = (env: ParsedEnv): PhotoStorage | null => {
+  const storage = {
+    endpoint: env.S3_ENDPOINT,
+    bucket: env.S3_BUCKET,
+    accessKeyId: env.S3_ACCESS_KEY_ID,
+    secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+  };
+
+  const { endpoint, bucket, accessKeyId, secretAccessKey } = storage;
+
+  if (endpoint && bucket && accessKeyId && secretAccessKey) {
+    return { endpoint, bucket, accessKeyId, secretAccessKey };
+  }
+
+  if (Object.values(storage).some(Boolean)) {
+    throw new Error(
+      "S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY must be set together",
+    );
+  }
+
+  return null;
+};
 
 type Credentials = { prefix: string; clientId?: string; clientSecret?: string };
 
@@ -87,5 +127,5 @@ const socialProvidersOf = (env: ParsedEnv) => {
 export const parseEnv = (source: NodeJS.ProcessEnv): Env => {
   const env = Value.Parse(EnvSchema, source);
 
-  return { ...env, socialProviders: socialProvidersOf(env) };
+  return { ...env, socialProviders: socialProvidersOf(env), photoStorage: photoStorageOf(env) };
 };

@@ -1,6 +1,8 @@
 import { betterAuth, type BetterAuthOptions, type BetterAuthRateLimitOptions } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { openAPI } from "better-auth/plugins";
+import { Type } from "@sinclair/typebox";
+import { TypeCompiler } from "@sinclair/typebox/compiler";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 
 import { type Table, table } from "../../database/schema";
@@ -8,6 +10,7 @@ import { API_PREFIX } from "../../lib/api-prefix";
 import type { SocialProviders } from "../../parse-env";
 import { CLIENT_IP_HEADER } from "../../plugins/client-ip";
 import { FixedWindowStore } from "../../plugins/fixed-window-store";
+import type { PhotoStore } from "../photo/store";
 
 // Registered under createApp's prefix.
 export const AUTH_ROUTE = "/auth";
@@ -62,7 +65,12 @@ export type AuthSettings = {
   trustedOrigin: string;
   socialProviders: SocialProviders;
   isProduction: boolean;
+  // Where a deleted User's Photo is erased: null when the storage is not configured.
+  photoStore: PhotoStore | null;
 };
+
+// The deleted row comes untyped from Better Auth's hook: its Photo key is read through a schema.
+const deletedPhoto = TypeCompiler.Compile(Type.Object({ photo: Type.String() }));
 
 // The schema is only read server side (auth.api.generateOpenAPISchema) and merged into
 // our own spec, off in production: the plugin's routes answer 404 over HTTP.
@@ -79,6 +87,7 @@ export const authOptions = ({
   trustedOrigin,
   socialProviders,
   isProduction,
+  photoStore,
 }: AuthSettings) =>
   ({
     secret,
@@ -87,10 +96,24 @@ export const authOptions = ({
     trustedOrigins: [trustedOrigin],
     socialProviders,
     // The Handle, lowercased, null until the User chooses it. Never set by a sign-up: only
-    // through its own route (src/modules/handle), which checks it.
+    // through its own route (src/modules/handle), which checks it. The Photo, by its key in the
+    // PhotoStore, null without one: only through its own routes (src/modules/photo).
     user: {
       additionalFields: {
         handle: { type: "string", required: false, input: false, unique: true },
+        photo: { type: "string", required: false, input: false },
+      },
+    },
+    // A deleted User takes their Photo with them (CONTEXT.md).
+    databaseHooks: {
+      user: {
+        delete: {
+          after: async (user) => {
+            if (photoStore !== null && deletedPhoto.Check(user)) {
+              await photoStore.delete(user.photo);
+            }
+          },
+        },
       },
     },
     // No email is ever sent: the address is not checked, the User stays unverified.

@@ -1,33 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import { createApp } from "../../app";
-import { createTestAuth, signIn, testConfig, testUsers } from "../../test-app";
-
-// The cookies a browser holds: each Set-Cookie of a response replaces the one of the same name.
-const cookieJar = (initial: string) => {
-  const cookies = new Map(
-    initial.split("; ").map((cookie) => {
-      const [name = "", ...value] = cookie.split("=");
-
-      return [name, value.join("=")];
-    }),
-  );
-
-  const store = (response: Response) => {
-    for (const cookie of response.headers.getSetCookie()) {
-      const [pair = ""] = cookie.split(";");
-      const [name = "", ...value] = pair.split("=");
-
-      cookies.set(name, value.join("="));
-    }
-
-    return response;
-  };
-
-  const header = () => [...cookies].map(([name, value]) => `${name}=${value}`).join("; ");
-
-  return { store, header };
-};
+import { cookieJar, createTestAuth, signIn, testConfig, testUsers } from "../../test-app";
 
 describe("handle", () => {
   const auth = createTestAuth();

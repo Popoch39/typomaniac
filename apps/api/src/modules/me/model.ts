@@ -13,7 +13,10 @@ export const MeModel = {
     id: t.String(),
     name: t.String(),
     email: t.String(),
+    // Their Avatar: their Photo, otherwise their provider's image, null for their initials.
     image: t.Nullable(t.String()),
+    // Whether the Avatar is a Photo they sent: only one can be removed.
+    hasPhoto: t.Boolean(),
     // Null until the User chooses it: the front asks for it.
     handle: t.Nullable(t.String()),
     // Their rank, never their MMR: null until they first join the Queue.

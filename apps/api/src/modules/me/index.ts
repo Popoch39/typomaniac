@@ -3,6 +3,7 @@ import { Elysia } from "elysia";
 import { type AuthHandler, authentication } from "../auth";
 import type { LastDuelWritten } from "../duel/service";
 import { type DuelStore, readPace } from "../duel/store";
+import type { PhotoUrl } from "../photo/avatar";
 import { MeModel } from "./model";
 import { meOf, setOrnament } from "./service";
 
@@ -10,12 +11,19 @@ export type MeModuleConfig = {
   auth: AuthHandler;
   trustProxy: boolean;
   duelStore: DuelStore;
+  photoUrl: PhotoUrl;
   lastDuelWritten: LastDuelWritten;
 };
 
 // The signed-in User: /api/me and what hangs off it. Their rank and Pace are read once their last
 // Duel is written: the end of a Duel reads the User again right away.
-export const meModule = ({ auth, trustProxy, duelStore, lastDuelWritten }: MeModuleConfig) =>
+export const meModule = ({
+  auth,
+  trustProxy,
+  duelStore,
+  photoUrl,
+  lastDuelWritten,
+}: MeModuleConfig) =>
   new Elysia({ name: "me", seed: duelStore })
     .use(authentication(auth, { trustProxy }))
     .get(
@@ -23,7 +31,7 @@ export const meModule = ({ auth, trustProxy, duelStore, lastDuelWritten }: MeMod
       async ({ user }) => {
         await lastDuelWritten(user.id);
 
-        return meOf(duelStore, user);
+        return meOf({ store: duelStore, photoUrl }, user);
       },
       {
         auth: true,
@@ -37,7 +45,7 @@ export const meModule = ({ auth, trustProxy, duelStore, lastDuelWritten }: MeMod
       async ({ user, body }) => {
         await setOrnament(duelStore, user.id, body.choice);
 
-        return meOf(duelStore, user);
+        return meOf({ store: duelStore, photoUrl }, user);
       },
       {
         auth: true,

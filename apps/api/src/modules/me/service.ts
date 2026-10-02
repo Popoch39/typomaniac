@@ -2,6 +2,7 @@ import { canWear, isPlacement, type OrnamentChoice, type Rank } from "ranked";
 
 import { ApiError } from "../../lib/errors";
 import { type DuelStore, leaderboardKeyOf, readRankAndOrnamentChoice } from "../duel/store";
+import { avatarOf, type PhotoUrl } from "../photo/avatar";
 import type { Me } from "./model";
 
 type SessionUser = {
@@ -10,7 +11,11 @@ type SessionUser = {
   email: string;
   image?: string | null;
   handle?: string | null;
+  photo?: string | null;
 };
+
+// What /api/me reads past the Session: the Duels for the rank, the Photo's URL for the Avatar.
+export type MeDeps = { store: DuelStore; photoUrl: PhotoUrl };
 
 // The User's Place in the Leaderboard: null where it leaves them out, in Placement, without a
 // Rating or without a Handle.
@@ -20,8 +25,8 @@ const placeOf = (store: DuelStore, userId: string, handle: string | null, rank: 
     : store.leaderboardPlace(leaderboardKeyOf({ userId, standing: rank }));
 
 // The signed-in User as /api/me shows them: their rank, never their MMR, their Ornament and their
-// Place in the Leaderboard.
-export const meOf = async (store: DuelStore, user: SessionUser): Promise<Me> => {
+// Place in the Leaderboard. Their Avatar, and whether it is a Photo they may remove.
+export const meOf = async ({ store, photoUrl }: MeDeps, user: SessionUser): Promise<Me> => {
   const handle = user.handle ?? null;
   const rankAndOrnament = await readRankAndOrnamentChoice(store, user.id);
 
@@ -29,7 +34,8 @@ export const meOf = async (store: DuelStore, user: SessionUser): Promise<Me> => 
     id: user.id,
     name: user.name,
     email: user.email,
-    image: user.image ?? null,
+    image: avatarOf(photoUrl, user),
+    hasPhoto: Boolean(user.photo),
     handle,
     ...rankAndOrnament,
     place: await placeOf(store, user.id, handle, rankAndOrnament.rank),

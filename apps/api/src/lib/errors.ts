@@ -10,6 +10,7 @@ export const ERRORS = {
   VALIDATION_FAILED: { status: 422, message: "The request is invalid" },
   TOO_MANY_REQUESTS: { status: 429, message: "Too many requests, retry later" },
   INTERNAL_SERVER_ERROR: { status: 500, message: "Something went wrong on our side" },
+  SERVICE_UNAVAILABLE: { status: 503, message: "This service is not available" },
 } as const;
 
 export type ErrorCode = keyof typeof ERRORS;

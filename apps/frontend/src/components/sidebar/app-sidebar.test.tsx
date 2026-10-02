@@ -40,6 +40,7 @@ const ada: Me = {
   name: "Ada Lovelace",
   email: "ada@example.com",
   image: null,
+  hasPhoto: false,
   handle: "ada",
   rank: null,
   ornament: null,
