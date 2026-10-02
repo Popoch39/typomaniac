@@ -50,7 +50,7 @@ export const latestWordListVersion: Readonly<Record<Language, number>> = {
 // The Word list version a new Text is drawn from, per Language. It lags behind the latest while a
 // new version ships to every client first, so none receives a Text it cannot build.
 export const currentWordListVersion: Readonly<Record<Language, number>> = {
-  en: 1,
+  en: 2,
   fr: 1,
 };
 
