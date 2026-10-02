@@ -1,6 +1,6 @@
 # typomaniac
 
-Monorepo Turborepo : `apps/frontend` (Vite 8, React 19), `apps/api` (Elysia sur Bun), `packages/typing-engine`, `packages/handle` (règles du Handle, pures, partagées par le front et l'API), `packages/ranked` (règles de la Ranked, pures, partagées de même), `packages/typescript-config`, `tools/loadtest`, `tools/oxlint/typomaniac` (règles oxlint maison).
+Monorepo Turborepo : `apps/frontend` (Vite 8, React 19), `apps/api` (Elysia sur Bun), `packages/typing-engine`, `packages/handle` (règles du Handle, pures, partagées par le front et l'API), `packages/ranked` (règles de la Ranked, pures, partagées de même), `packages/typescript-config`, `tools/loadtest`, `tools/word-list` (construit la Word list version 2 anglaise, lancé à la main, ADR 0019), `tools/oxlint/typomaniac` (règles oxlint maison).
 
 ## Instructions par workspace
 

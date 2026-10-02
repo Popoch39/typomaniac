@@ -2,9 +2,9 @@ import {
   applyKeystroke,
   computeResult,
   createRun,
-  currentWordListVersion,
   isFinished,
   type Keystroke,
+  latestWordListVersion,
   type RunConfig,
 } from "typing-engine";
 
@@ -52,7 +52,7 @@ const replayed = (config: RunConfig, keystrokes: readonly Keystroke[]) => {
 // The Result of a Run, from its Keystrokes only: whatever the client computed is never read. A
 // `words` Run ends on its last Keystroke, which must finish it; a `time` Run lasts its time.
 const resultOf = (run: SentRun) => {
-  if (run.wordListVersion > currentWordListVersion[run.language]) {
+  if (run.wordListVersion > latestWordListVersion[run.language]) {
     throw invalid("/wordListVersion", "unknown");
   }
 

@@ -18,6 +18,9 @@ export default defineConfig({
     tailwindcss(),
   ],
   resolve: { tsconfigPaths: true },
+  // Vite drops legal comments (`/*!`, `@license`) when it minifies: the notices of what the bundle
+  // ships, such as the SCOWL one on the English word list, must stay in it.
+  build: { rolldownOptions: { output: { comments: { legal: true } } } },
   // The Duel's page and all it imports (Face-off, HUD, Duel end, Tier-up) transformed as the dev
   // server starts: the first Face-off does not wait for them one by one.
   server: { warmup: { clientFiles: ["./src/pages/duel-page.tsx"] } },

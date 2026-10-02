@@ -55,8 +55,8 @@ Le nombre qui fixe un Text : même Seed, même Language et même Word list versi
 La langue dans laquelle un Text est tiré : français (sans accents) ou anglais.
 
 **Word list version** :
-Une édition figée de la liste de mots d'une Language. Changer la liste crée une nouvelle version, et les anciennes restent disponibles : un Duel enregistré se rejoue toujours sur son Text d'origine. Un nouveau Run ou Duel utilise la version courante.
-_Avoid_ : dictionnaire, révision, version du Text
+Une édition figée de la liste de mots d'une Language, avec le poids de chaque mot (un mot courant sort plus souvent) et la règle qui l'empêche de revenir trop tôt : ensemble, ils fixent la façon dont un Text est tiré. Changer la liste, un poids ou la règle crée une nouvelle version, et les anciennes restent disponibles : un Duel enregistré se rejoue toujours sur son Text d'origine. Un nouveau Run ou Duel utilise la version courante.
+_Avoid_ : dictionnaire, révision, version du Text, palier (pour les poids : le mot est réservé au Tier)
 
 **Mode** :
 Ce qui termine un Run : `time`, au bout d'une durée ; `words`, après un nombre de mots.

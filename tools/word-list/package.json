@@ -1,0 +1,14 @@
+{
+  "name": "word-list",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check-types": "tsc --noEmit",
+    "fetch": "bun run src/fetch.ts",
+    "generate": "bun run src/generate.ts"
+  },
+  "devDependencies": {
+    "bun-types": "^1.4.2"
+  }
+}

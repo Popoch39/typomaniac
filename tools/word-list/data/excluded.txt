@@ -1,0 +1,7 @@
+# Frequent SCOWL words a Text should not hold, removed before the 1,000 are taken: one word per
+# line, then `# why`. See README.md.
+god  # counted mostly as the proper noun God
+french  # proper adjective, a capital in English
+re  # abbreviation, not a word on its own
+sex  # out of place in a Text typed against strangers
+sexual  # out of place in a Text typed against strangers

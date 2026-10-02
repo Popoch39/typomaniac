@@ -58,4 +58,10 @@ export {
   type RejectReason,
 } from "./acceptance";
 
-export { currentWordListVersion, generateText, wordList, type Language } from "./text";
+export {
+  currentWordListVersion,
+  generateText,
+  latestWordListVersion,
+  wordList,
+  type Language,
+} from "./text";

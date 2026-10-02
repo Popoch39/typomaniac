@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { TypeCompiler } from "@sinclair/typebox/compiler";
-import { currentWordListVersion, generateText, type Keystroke } from "typing-engine";
+import {
+  currentWordListVersion,
+  generateText,
+  type Keystroke,
+  latestWordListVersion,
+} from "typing-engine";
 
 import { createApp } from "../../app";
 import { createTestAuth, memoryBestRunStore, signIn, testConfig } from "../../test-app";
@@ -26,8 +31,13 @@ type SentRun = {
 
 // The first `words` words of the Seed's English Text typed without a mistake, one char every
 // `msPerChar` ms from 0, each word followed by its space but the last one when `lastSpace` is false.
-const typed = (seed: number, words: number, msPerChar: number, { lastSpace = true } = {}) => {
-  const text = generateText(seed, "en", VERSION, words).join(" ");
+const typed = (
+  seed: number,
+  words: number,
+  msPerChar: number,
+  { lastSpace = true, version = VERSION } = {},
+) => {
+  const text = generateText(seed, "en", version, words).join(" ");
   const chars = lastSpace ? `${text} ` : text;
 
   return [...chars].map((char, index): Keystroke => ({
@@ -138,6 +148,21 @@ const setup = () => {
 };
 
 describe("POST /api/runs", () => {
+  // A front can be on a newer version than the API's current one while a new version ships.
+  test("accepts a Run on any Word list version the engine knows", async () => {
+    const { newUser } = setup();
+    const ada = await newUser();
+    const version = latestWordListVersion.en;
+    const keystrokes = typed(7, 10, 100, { lastSpace: false, version });
+
+    expect(await ada.send(wordsRun(100, { wordListVersion: version, keystrokes }))).toEqual({
+      seed: 7,
+      wordListVersion: version,
+      keystrokes,
+      wpm: expect.closeTo(flawlessWpm(keystrokes), 6),
+    });
+  });
+
   test("a first Run becomes the Best Run of its setting, its wpm computed by the server", async () => {
     const { newUser } = setup();
     const ada = await newUser();
@@ -225,7 +250,7 @@ describe("POST /api/runs", () => {
   const invalidRuns: [string, SentRun, string][] = [
     [
       "an unknown Word list version",
-      wordsRun(100, { wordListVersion: VERSION + 1 }),
+      wordsRun(100, { wordListVersion: latestWordListVersion.en + 1 }),
       "/wordListVersion",
     ],
     [

@@ -5,6 +5,7 @@
     "apps/*",
     "packages/*",
     "tools/loadtest",
+    "tools/word-list",
     "tools/oxlint/typomaniac"
   ],
   "type": "module",
